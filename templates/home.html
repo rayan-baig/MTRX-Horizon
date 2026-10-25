@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+<title>MTRX Horizon</title>
+<meta name="description" content="MTRX Horizon builds RankUp, CyberLogix AI and OmniArmor.ai: software that watches, warns and motivates, so people can get on with the work that matters.">
+<meta property="og:title" content="MTRX Horizon">
+<meta property="og:description" content="One vision. Infinite possibilities. The home of RankUp, CyberLogix AI and OmniArmor.ai.">
+<meta property="og:image" content="/static/img/logo-512.png">
+</head>
+<body class="home">
+<div class="sky" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" data-knock="logo" role="img" aria-label="MTRX Horizon logo"></span>
+    <span class="brand-text">
+      <span class="wordmark">MTRX <b>HORIZON</b></span>
+      <span class="tagline">One vision. Infinite possibilities.</span>
+    </span>
+  </div>
+  <nav class="mainnav" aria-label="Main">
+    <a href="#top" class="active">Home</a>
+    <a href="#apps">Apps</a>
+    <a href="#about">About</a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="hero-art" aria-hidden="true"></div>
+    <div class="hero-copy">
+      <p class="eyebrow">Welcome to MTRX Horizon</p>
+      <h1><span class="line">One Vision.</span> <span class="line gradient-text">Infinite Possibilities.</span></h1>
+      <p class="lede">MTRX Horizon builds software that quietly does the hard part for you:
+        watching the things that can break, catching deadlines before they turn into fines,
+        and turning everyday chores into a game worth winning.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#apps">Explore Our Apps <span aria-hidden="true">→</span></a>
+        <a class="btn btn-ghost" href="#about">About Us</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="apps" class="apps" aria-label="Our apps">
+    <article class="app-card green">
+      <div class="app-art" aria-hidden="true"></div>
+      <div class="app-head">
+        <span class="app-icon" data-knock="rankup"><img src="/static/img/rankup-icon.webp" alt="" width="64" height="64"></span>
+        <div>
+          <h2>RankUp</h2>
+          <p class="tags">Gamification <i>•</i> Family <i>•</i> Rewards</p>
+        </div>
+      </div>
+      <p class="app-lede">Turn daily chores into achievements and build better habits.</p>
+      <details>
+        <summary class="btn btn-outline">Learn more <span aria-hidden="true">→</span></summary>
+        <ul>
+          <li>A parent sets a chore, the child does it and snaps a photo as proof.</li>
+          <li>A smart photo check gives its opinion. The parent always makes the call.</li>
+          <li>Approved chores earn points, levels and arcade tokens across 15 game worlds and 24 games.</li>
+          <li>Free for one child. Standard and Elite plans add more.</li>
+        </ul>
+        {% if urls.rankup %}<a class="btn btn-outline" href="{{ urls.rankup }}" rel="noopener">Open RankUp <span aria-hidden="true">↗</span></a>{% endif %}
+      </details>
+    </article>
+
+    <article class="app-card blue">
+      <div class="app-art" aria-hidden="true"></div>
+      <div class="app-head">
+        <span class="app-icon" data-knock="cyberlogix"><img src="/static/img/cyberlogix-icon.webp" alt="" width="64" height="64"></span>
+        <div>
+          <h2>CyberLogix AI</h2>
+          <p class="tags">Monitoring <i>•</i> Alerts <i>•</i> Proof</p>
+        </div>
+      </div>
+      <p class="app-lede">Watches the equipment you can't afford to lose, and wakes a real person when it fails.</p>
+      <details>
+        <summary class="btn btn-outline">Learn more <span aria-hidden="true">→</span></summary>
+        <ul>
+          <li>Wireless sensors watch freezers, server racks, vaccine fridges and more.</li>
+          <li>A problem sends a text, then a phone call, then the next person, until someone answers.</li>
+          <li>Every reading is kept in a sealed record, ready for an insurance claim.</li>
+          <li>Built for 12 industries, from restaurants to data centers.</li>
+        </ul>
+        {% if urls.cyberlogix %}<a class="btn btn-outline" href="{{ urls.cyberlogix }}" rel="noopener">Open CyberLogix AI <span aria-hidden="true">↗</span></a>{% endif %}
+      </details>
+    </article>
+
+    <article class="app-card violet">
+      <div class="app-art" aria-hidden="true"></div>
+      <div class="app-head">
+        <span class="app-icon" data-knock="omniarmor"><img src="/static/img/omniarmor-icon.webp" alt="" width="64" height="64"></span>
+        <div>
+          <h2>OmniArmor.ai</h2>
+          <p class="tags">Compliance <i>•</i> Deadlines <i>•</i> Records</p>
+        </div>
+      </div>
+      <p class="app-lede">Catch the fine before it catches you.</p>
+      <details>
+        <summary class="btn btn-outline">Learn more <span aria-hidden="true">→</span></summary>
+        <ul>
+          <li>500 compliance checks across 50 industries, each naming the rule it comes from.</li>
+          <li>Counts the days by itself and emails the team before anything is due.</li>
+          <li>Keeps a record an inspector, auditor or insurer can be shown.</li>
+          <li>Includes the Future Owner Academy, a business course for the next generation.</li>
+        </ul>
+        {% if urls.omniarmor %}<a class="btn btn-outline" href="{{ urls.omniarmor }}" rel="noopener">Open OmniArmor.ai <span aria-hidden="true">↗</span></a>{% endif %}
+      </details>
+    </article>
+  </section>
+
+  <section id="about" class="about">
+    <div class="panel about-card">
+      <div class="about-brand">
+        <span class="about-mark" data-knock="mark" role="img" aria-label="MTRX Horizon logo"></span>
+        <div>
+          <p class="wordmark">MTRX <b>HORIZON</b></p>
+          <p class="tagline">One vision. Infinite possibilities.</p>
+        </div>
+      </div>
+      <p class="about-text">A family of software products, each built to take one worry off
+        someone's plate, from a family's chore list to a business's freezer at 3am.</p>
+      <dl class="facts">
+        <div><dt>Apps</dt><dd>3</dd><span>and growing</span></div>
+        <div><dt>Compliance checks</dt><dd>500</dd><span>OmniArmor.ai</span></div>
+        <div><dt>Industries watched</dt><dd>12</dd><span>CyberLogix AI</span></div>
+        <div><dt>Game worlds</dt><dd>15</dd><span>RankUp</span></div>
+      </dl>
+    </div>
+    <div class="panel values">
+      <p class="eyebrow">What we stand for</p>
+      <ul>
+        <li><b class="dot cyan"></b><span>Real numbers only</span><em>No made-up stats, ever.</em></li>
+        <li><b class="dot blue"></b><span>People decide</span><em>Software helps. Humans choose.</em></li>
+        <li><b class="dot violet"></b><span>Proof you can show</span><em>Records that hold up.</em></li>
+        <li><b class="dot pink"></b><span>Your data is yours</span><em>Kept private, kept safe.</em></li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span class="foot-brand">MTRX HORIZON</span>
+  <span class="foot-values">Innovation <i>•</i> Creativity <i>•</i> Impact</span>
+  <span class="foot-line">Technology for a stronger tomorrow.</span>
+  <span class="foot-copy">© 2026 MTRX Horizon. All rights reserved.</span>
+</footer>
+
+<script src="/static/js/knock.js" defer></script>
+</body>
+</html>

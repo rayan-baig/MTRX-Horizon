@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+<link rel="stylesheet" href="/static/css/console.css">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<title>Control Console · MTRX Horizon</title>
+<meta name="robots" content="noindex">
+</head>
+<body class="console">
+<div class="sky" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" role="img" aria-label="MTRX Horizon logo"></span>
+    <span class="brand-text">
+      <span class="wordmark">MTRX <b>HORIZON</b></span>
+      <span class="tagline">One vision. Infinite possibilities.</span>
+    </span>
+  </div>
+  <nav class="mainnav" aria-label="Console">
+    <a href="#overview" class="active">Overview</a>
+    <a href="#platforms">Apps</a>
+    <a href="#projects">Projects</a>
+    <a href="#devices">Devices</a>
+  </nav>
+  <div class="who">
+    <span class="who-mark" aria-hidden="true"></span>
+    <span class="who-name" id="who-name">MTRX Horizon</span>
+    <button class="btn btn-ghost btn-small" id="signout" type="button">Sign out</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" aria-label="Sections">
+    <nav>
+      <a href="#overview" class="active"><span class="ico ico-home"></span>Overview</a>
+      <a href="#platforms"><span class="ico ico-apps"></span>Applications</a>
+      <a href="#performance"><span class="ico ico-chart"></span>Analytics</a>
+      <a href="#projects"><span class="ico ico-projects"></span>Projects</a>
+      <a href="#activity"><span class="ico ico-activity"></span>Activity</a>
+      <a href="#devices"><span class="ico ico-devices"></span>Devices</a>
+    </nav>
+    <div class="side-card">
+      <span class="side-mark" aria-hidden="true"></span>
+      <p class="wordmark">MTRX <b>HORIZON</b></p>
+      <p class="side-title">Control Console</p>
+      <p class="side-sub">Manage. Monitor. Grow.</p>
+    </div>
+  </aside>
+
+  <main class="grid" id="overview">
+    <section class="welcome panel">
+      <div class="welcome-art" aria-hidden="true"></div>
+      <div class="welcome-copy">
+        <p class="eyebrow">Welcome to</p>
+        <h1 class="wordmark big">MTRX <b>HORIZON</b></h1>
+        <p class="welcome-line">One Vision. Infinite Possibilities.</p>
+        <p class="welcome-text">Your companies at a glance. Every number here is real: if an app isn't
+          connected yet, it says so instead of guessing.</p>
+        <div class="cta-row">
+          <button class="btn btn-primary" type="button" data-action="invite">Approve a device <span aria-hidden="true">→</span></button>
+          <button class="btn btn-ghost" type="button" data-action="refresh">Refresh</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel overview-card" aria-labelledby="ov-title">
+      <div class="panel-head">
+        <h2 id="ov-title"><span class="ico ico-globe"></span>Ecosystem overview</h2>
+        <span class="live" id="updated">Loading…</span>
+      </div>
+      <dl class="ov-list">
+        <div><dt><span class="ico ico-apps"></span>Apps connected</dt><dd id="ov-connected">–</dd></div>
+        <div><dt><span class="ico ico-users"></span>Total users</dt><dd id="ov-users">–</dd></div>
+        <div><dt><span class="ico ico-devices"></span>Approved devices</dt><dd id="ov-devices">–</dd></div>
+        <div><dt><span class="ico ico-clock"></span>Server running for</dt><dd id="ov-uptime">–</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel platforms" id="platforms" aria-labelledby="pl-title">
+      <div class="panel-head"><h2 id="pl-title">Our platforms</h2></div>
+      <ul class="platform-list" id="platform-list"></ul>
+    </section>
+
+    <section class="panel performance" id="performance" aria-labelledby="pf-title">
+      <div class="panel-head">
+        <h2 id="pf-title">Ecosystem performance</h2>
+        <div class="range" role="group" aria-label="Time range">
+          <button type="button" data-days="7">7D</button>
+          <button type="button" data-days="30" class="on">30D</button>
+          <button type="button" data-days="90">90D</button>
+          <button type="button" data-days="365">1Y</button>
+        </div>
+      </div>
+      <div class="legend">
+        <span class="lg green">RankUp</span><span class="lg blue">CyberLogix AI</span><span class="lg violet">OmniArmor.ai</span>
+      </div>
+      <div class="chart" id="chart"></div>
+    </section>
+
+    <section class="panel activity" id="activity" aria-labelledby="ac-title">
+      <div class="panel-head"><h2 id="ac-title">Recent activity</h2></div>
+      <ul class="feed" id="feed"></ul>
+    </section>
+
+    <section class="panel actions" aria-labelledby="qa-title">
+      <div class="panel-head"><h2 id="qa-title">Quick actions</h2></div>
+      <ul class="action-list">
+        <li><button type="button" data-action="invite"><span class="ico ico-plus"></span>Approve a new device<span aria-hidden="true">→</span></button></li>
+        <li><button type="button" data-action="refresh"><span class="ico ico-refresh"></span>Refresh numbers<span aria-hidden="true">→</span></button></li>
+        <li><a href="#devices"><span class="ico ico-devices"></span>Manage devices<span aria-hidden="true">→</span></a></li>
+        <li><a href="/" target="_blank" rel="noopener"><span class="ico ico-globe"></span>Open the public site<span aria-hidden="true">→</span></a></li>
+      </ul>
+    </section>
+
+    <section class="panel metrics" aria-labelledby="mt-title">
+      <div class="panel-head"><h2 id="mt-title">Live system metrics</h2><span class="hint">This server</span></div>
+      <div class="dials" id="dials"></div>
+    </section>
+
+    <section class="panel projects" id="projects" aria-labelledby="pj-title">
+      <div class="panel-head"><h2 id="pj-title">Projects</h2></div>
+      <ul class="project-list" id="project-list"></ul>
+    </section>
+
+    <section class="panel devices" id="devices" aria-labelledby="dv-title">
+      <div class="panel-head">
+        <h2 id="dv-title">Approved devices</h2>
+        <button class="link" type="button" data-action="invite">Add one</button>
+      </div>
+      <ul class="device-list" id="device-list"></ul>
+    </section>
+  </main>
+</div>
+
+<footer class="footer">
+  <span class="foot-brand">MTRX HORIZON</span>
+  <span class="foot-values">Innovation <i>•</i> Creativity <i>•</i> Impact</span>
+  <span class="foot-line">Technology for a stronger tomorrow.</span>
+  <span class="foot-copy">© 2026 MTRX Horizon</span>
+</footer>
+
+<dialog id="invite-dialog" class="panel" aria-labelledby="inv-title">
+  <h2 id="inv-title">Approve a new device</h2>
+  <p>Scan this with the new phone's camera, or open the link on the new laptop. It works once,
+    for <b id="inv-minutes">10</b> minutes.</p>
+  <img id="inv-qr" alt="QR code for approving a new device" width="240" height="240">
+  <div class="inv-link"><input id="inv-url" readonly aria-label="Approval link"><button class="btn btn-ghost btn-small" type="button" id="inv-copy">Copy</button></div>
+  <p class="inv-count" id="inv-count"></p>
+  <form method="dialog"><button class="btn btn-primary">Done</button></form>
+</dialog>
+
+<p class="toast" id="toast" role="status" aria-live="polite"></p>
+
+<script src="/static/js/console.js" defer></script>
+</body>
+</html>

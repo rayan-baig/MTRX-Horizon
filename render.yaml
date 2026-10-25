@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: mtrx-horizon
+    runtime: docker
+    plan: starter            # the free plan has no disk, so approved devices would be forgotten
+    healthCheckPath: /healthz
+    numInstances: 1
+    disk:
+      name: data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: MTRX_TRUST_PROXY
+        value: "1"
+      - key: MTRX_DB_PATH
+        value: /app/data/horizon.db
+      - key: MTRX_SETUP_TOKEN
+        generateValue: true
+      - key: MTRX_KNOCK
+        sync: false          # you type this in yourself; it is never stored in the code

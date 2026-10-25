@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+<title>MTRX Horizon</title>
+<meta name="robots" content="noindex">
+</head>
+<body>
+<div class="sky" aria-hidden="true"></div>
+<main class="door">
+  <form class="panel" id="add" data-token="{{ token }}">
+    <span class="brand-mark" role="img" aria-label="MTRX Horizon logo"></span>
+    <h1>Approve this device</h1>
+    <p>Give it a name so you can tell your devices apart.</p>
+    <label class="visually-hidden" for="name">Device name</label>
+    <input id="name" name="name" maxlength="60" autocomplete="off" placeholder="For example: My laptop" required>
+    <button class="btn btn-primary" type="submit">Approve this device</button>
+    <p class="status" id="status" role="status"></p>
+  </form>
+</main>
+<script src="/static/js/devicekey.js" defer></script>
+<script src="/static/js/add.js" defer></script>
+</body>
+</html>
