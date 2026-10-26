@@ -1,0 +1,693 @@
+<title>Block Craft Battles</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+/* Layout: one cinema screen up top, the chapter list under it, like an
+   episode guide. A single dark look: these scenes are night, fire and void. */
+:root {
+  color-scheme: dark;
+  --night: #07101d;
+  --panel: #0f1d30;
+  --edge: #24405f;
+  --ink: #eaf4ff;
+  --dim: #9fbad6;
+  --grass: #5ad85a;
+  --ember: #ff7a3d;
+  --void: #c49bff;
+  --pixel: "Pixelify Sans", "Courier New", monospace;
+  --text: "IBM Plex Sans", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--night); color: var(--ink); font: 400 15px/1.55 var(--text);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 960px; margin: 0 auto; display: grid; gap: 18px; }
+header h1 { font: 700 clamp(26px, 5vw, 40px)/1.05 var(--pixel); margin: 0 0 6px; letter-spacing: .02em; text-wrap: balance; }
+header h1 span { color: var(--grass); }
+header p { margin: 0; color: var(--dim); max-width: 62ch; }
+
+.screen {
+  position: relative; border: 3px solid var(--edge); background: #000;
+  box-shadow: 6px 6px 0 #000; overflow: hidden;
+}
+canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; image-rendering: pixelated; image-rendering: crisp-edges; }
+.card {
+  position: absolute; left: 50%; bottom: 7%; transform: translateX(-50%);
+  width: min(88%, 560px); padding: 12px 16px; text-align: center;
+  background: rgba(5, 10, 20, .82); border: 2px solid var(--accent, var(--grass));
+  box-shadow: 4px 4px 0 #000; transition: opacity .5s ease, transform .5s ease;
+}
+.card[data-show="no"] { opacity: 0; transform: translate(-50%, 10px); pointer-events: none; }
+.card .lvl { font: 500 12px/1 var(--pixel); letter-spacing: .14em; text-transform: uppercase; color: var(--accent, var(--grass)); }
+.card h2 { font: 700 clamp(20px, 4vw, 30px)/1.1 var(--pixel); margin: 6px 0 6px; }
+.card p { margin: 0; font-size: clamp(13px, 2.2vw, 15px); color: var(--ink); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.controls button {
+  font: 600 14px/1 var(--text); color: var(--ink); background: var(--panel);
+  border: 2px solid var(--edge); padding: 10px 14px; cursor: pointer; box-shadow: 3px 3px 0 #000;
+}
+.controls button:hover { border-color: var(--grass); }
+.controls button:focus-visible, .chapter:focus-visible { outline: 3px solid var(--grass); outline-offset: 2px; }
+.controls .note { color: var(--dim); font-size: 13px; margin-left: auto; }
+
+.chapters { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.chapter {
+  width: 100%; text-align: left; cursor: pointer; color: var(--ink); font: inherit;
+  display: grid; grid-template-columns: 54px 1fr; gap: 2px 12px; align-items: center;
+  padding: 10px 12px; background: var(--panel); border: 2px solid var(--edge); box-shadow: 3px 3px 0 #000;
+}
+.chapter[aria-current="true"] { border-color: var(--accent, var(--grass)); background: #13263d; }
+.chapter .lv { grid-row: span 2; font: 700 15px/1.1 var(--pixel); color: var(--accent, var(--grass)); text-align: center; }
+.chapter .lv small { display: block; font: 500 10px/1 var(--pixel); color: var(--dim); letter-spacing: .1em; }
+.chapter b { font: 700 16px/1.2 var(--pixel); }
+.chapter span.what { color: var(--dim); font-size: 13px; }
+.chapter .fx { color: var(--void); font-size: 12px; }
+.boss { display: grid; gap: 12px; padding: 14px; background: var(--panel); border: 2px solid var(--void); box-shadow: 4px 4px 0 #000; }
+.boss h3 { margin: 0; font: 700 18px/1.2 var(--pixel); color: var(--void); }
+.boss p.rules { margin: 0; color: var(--dim); font-size: 13.5px; max-width: 70ch; }
+.boss .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.boss .row > span { font: 600 12px/1 var(--text); color: var(--dim); text-transform: uppercase; letter-spacing: .08em; min-width: 120px; }
+.boss button { font: 600 13.5px/1 var(--text); color: var(--ink); background: #0a1626; border: 2px solid var(--edge); padding: 9px 12px; cursor: pointer; box-shadow: 3px 3px 0 #000; }
+.boss button.hit { border-color: var(--grass); }
+.boss button.hurt { border-color: #ff5c5c; }
+.boss button:hover { filter: brightness(1.25); }
+.boss button:focus-visible { outline: 3px solid var(--grass); outline-offset: 2px; }
+.boss button b { color: var(--grass); } .boss button.hurt b { color: #ff8a8a; }
+.boss ol { margin: 0; padding-left: 18px; color: var(--ink); font-size: 13.5px; display: grid; gap: 3px; min-height: 1.5em; }
+.boss ol li.bad { color: #ffb0b0; } .boss ol li.good { color: #b9f5b9; } .boss ol li.special { color: #e6c8ff; }
+footer { color: var(--dim); font-size: 13px; max-width: 70ch; }
+@media (max-width: 520px) { .controls .note { margin-left: 0; width: 100%; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Block Craft <span>Battles</span></h1>
+    <p>The story behind the Block Craft theme, one fight per world. Each scene plays when a child reaches that world. Until then the world stays a secret.</p>
+  </header>
+
+  <div class="screen">
+    <canvas id="stage" width="256" height="144" aria-label="Animated battle scene"></canvas>
+    <div class="card" id="card" data-show="no" aria-live="polite">
+      <div class="lvl" id="card-lvl"></div>
+      <h2 id="card-title"></h2>
+      <p id="card-story"></p>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button type="button" id="replay">&#8635; Replay</button>
+    <button type="button" id="playall">&#9654; Play the whole story</button>
+    <span class="note" id="note">Scene 1 of 6</span>
+  </div>
+
+  <section class="boss" id="boss" hidden aria-labelledby="boss-title">
+    <h3 id="boss-title">Boss fight: how the dragon battle works</h3>
+    <p class="rules">Every chore a parent approves is a hit on the dragon, and harder chores hit harder.
+      A chore sent back, or 48 hours with no chore done, lets the dragon strike back. Now and then it
+      uses a special attack on its own. If your health runs out you are knocked back to the village to
+      rest: your health refills and the dragon gets a little back. Nobody loses their progress.</p>
+    <div class="row"><span>Chore approved</span>
+      <button type="button" class="hit" data-hit="easy">Easy chore <b>&minus;40</b></button>
+      <button type="button" class="hit" data-hit="medium">Medium chore <b>&minus;80</b></button>
+      <button type="button" class="hit" data-hit="hard">Hard chore <b>&minus;150</b></button>
+      <button type="button" class="hit" data-hit="boss">Boss chore <b>&minus;300</b></button>
+    </div>
+    <div class="row"><span>Dragon's turn</span>
+      <button type="button" class="hurt" data-hurt="declined">Chore sent back <b>&minus;15</b></button>
+      <button type="button" class="hurt" data-hurt="idle">48 hours, no chores <b>&minus;25</b></button>
+      <button type="button" class="hurt" data-hurt="special">Special attack now</button>
+    </div>
+    <ol id="boss-log" aria-live="polite"></ol>
+  </section>
+
+  <ol class="chapters" id="chapters"></ol>
+
+  <footer>A preview for the RankUp app. In the app, the glitch scenes run on arrival in the Nether and the End, and the final world only appears after the dragon.</footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const W = 256, H = 144, GROUND = 118;
+  const cv = document.getElementById("stage");
+  const ctx = cv.getContext("2d");
+  const buf = document.createElement("canvas"); buf.width = W; buf.height = H;
+  const g = buf.getContext("2d");
+  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ------------------------------------------------------------ chapters */
+  const SCENES = [
+    { id: "raid", level: 1, title: "Raid Night", accent: "#5ad85a", world: "village",
+      what: "Raiders at the gate", story: "Raiders hit your village every night, and you are sick and tired of it. Time to fight back.",
+      enemies: [["raider", 270, 0], ["raider", 300, 1.2], ["raider", 330, 2.4]] },
+    { id: "portal", level: 125, title: "The Nether Portal", accent: "#ff6a3d", world: "nether", glitch: true, portal: true,
+      what: "Through the portal", story: "You followed the raiders' tracks to a portal of obsidian, still warm. This is where they come from.",
+      enemies: [["spirit", 210, 0.8], ["spirit", 240, 2.2]] },
+    { id: "rise", level: 175, title: "Nether Rise", accent: "#ff3b5c", world: "nether",
+      what: "The raiders' fortress", story: "Their land. The air burns, and every raid on your village started here.",
+      enemies: [["raider", 270, 0], ["raider", 295, 0.6], ["brute", 330, 1.6], ["raider", 360, 2.6]] },
+    { id: "end", level: 250, title: "The End", accent: "#d6b4ff", world: "end", glitch: true,
+      what: "The shadow walkers", story: "The raiders were never in charge. Something sent them, from a quiet island at the end of everything.",
+      enemies: [["shadow", 190, 0.4], ["shadow", 220, 1.4], ["shadow", 170, 2.4]] },
+    { id: "dragon", level: 399, title: "The Dragon", accent: "#e879f9", world: "end",
+      what: "Boss fight, powered by chores", story: "It sent the raiders the whole time. Now it has seen you.",
+      enemies: [], boss: true },
+    { id: "home", level: 450, title: "Hero's Return", accent: "#ffc94a", world: "dawn", celebrate: true,
+      what: "Back to the village", story: "The dragon is down and the raids are over. You walk back through the portal, and your whole village is waiting to cheer you home.",
+      enemies: [] },
+  ];
+
+  /* ------------------------------------------------------------ drawing helpers */
+  const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  /* Characters are drawn at twice size, anchored on their own feet, so the
+     fight reads at a glance instead of being a row of ants. */
+  const S = 2;
+  function big(x, y, fn, s = S) { g.save(); g.translate(x, y); g.scale(s, s); g.translate(-x, -y); fn(); g.restore(); }
+
+  function sky(world, t) {
+    const grads = {
+      village: ["#06101f", "#14284a"], nether: ["#2a0505", "#6b1408"],
+      end: ["#05020c", "#1c1033"], dawn: ["#2b2a6b", "#ff9a5a"],
+    }[world];
+    const gr = g.createLinearGradient(0, 0, 0, GROUND);
+    gr.addColorStop(0, grads[0]); gr.addColorStop(1, grads[1]);
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    if (world === "village") {
+      R(206, 16, 14, 14, "#f4f1d0"); R(208, 18, 4, 4, "#dcd8b0");           // square moon
+      for (let i = 0; i < 26; i++) R((i * 53) % W, (i * 29) % 70, 1, 1, i % 3 ? "#9fb7e0" : "#fff");
+    }
+    if (world === "end") for (let i = 0; i < 60; i++) {
+      const tw = (Math.sin(t * 2 + i) + 1) / 2;
+      R((i * 97) % W, (i * 41) % 100, 1, 1, `rgba(220,200,255,${0.3 + tw * 0.7})`);
+    }
+    if (world === "nether") for (let i = 0; i < 14; i++) {        // drifting ash
+      const y = (i * 37 + t * 10) % GROUND, x = (i * 71 + Math.sin(t + i) * 6) % W;
+      R(x, GROUND - y, 1, 1, "#ffb08a");
+    }
+    if (world === "dawn") { R(30, 30, 18, 18, "#ffe08a"); R(26, 34, 26, 10, "rgba(255,224,138,.35)"); }
+  }
+
+  function groundRow(world) {
+    const top = { village: "#5ad85a", nether: "#8f2e1d", end: "#e8e0a8", dawn: "#6fe06f" }[world];
+    const dirt = { village: "#7a5232", nether: "#5c1a12", end: "#cfc68c", dawn: "#8a6038" }[world];
+    for (let x = 0; x < W; x += 8) {
+      R(x, GROUND, 8, 3, top); R(x, GROUND + 3, 8, H - GROUND - 3, dirt);
+      R(x, GROUND + 3, 1, H, "rgba(0,0,0,.18)");
+      if ((x / 8) % 3 === 0) R(x + 3, GROUND + 9, 2, 2, "rgba(0,0,0,.2)");
+    }
+  }
+
+  function house(x, w, h, wall, roof, lit) {
+    R(x, GROUND - h, w, h, wall);
+    for (let i = 0; i < 4; i++) R(x - 2 + i * 2, GROUND - h - 2 - i * 2, w + 4 - i * 4, 2, roof);
+    R(x + w / 2 - 2, GROUND - 8, 4, 8, "#3b2414");
+    R(x + 3, GROUND - h + 4, 4, 4, lit ? "#ffd36b" : "#1a1a2a");
+  }
+
+  function backdrop(scene, t) {
+    sky(scene.world, t);
+    if (scene.world === "village" || scene.world === "dawn") {
+      house(18, 26, 22, "#a8743f", "#6b3f1f", true);
+      house(56, 22, 18, "#b88a52", "#5a3418", scene.world === "dawn");
+      house(214, 30, 26, "#a8743f", "#6b3f1f", true);
+      R(100, GROUND - 30, 6, 30, "#6b4a2a"); R(92, GROUND - 42, 22, 14, "#2f8f3a");   // tree
+    }
+    if (scene.world === "nether") {
+      R(0, GROUND - 46, 40, 46, "#3d0a12"); R(6, GROUND - 56, 10, 10, "#3d0a12"); R(26, GROUND - 52, 10, 6, "#3d0a12");
+      R(200, GROUND - 60, 56, 60, "#2a0608"); for (let i = 0; i < 4; i++) R(206 + i * 12, GROUND - 52, 5, 7, "#ff8a3d");
+      const glow = 0.5 + Math.sin(t * 3) * 0.2;
+      g.fillStyle = `rgba(255,120,40,${glow * 0.35})`; g.fillRect(0, GROUND - 6, W, 6);
+    }
+    if (scene.world === "end") {
+      [[30, 54], [70, 40], [210, 60]].forEach(([x, h], i) => {
+        R(x, GROUND - h, 10, h, "#140c24"); R(x + 2, GROUND - h - 4, 6, 4, "#d6b4ff");
+        const p = (Math.sin(t * 3 + i) + 1) / 2;
+        g.fillStyle = `rgba(214,180,255,${0.15 + p * 0.25})`; g.fillRect(x - 3, GROUND - h - 8, 16, 12);
+      });
+    }
+    groundRow(scene.world);
+    if (scene.portal) portal(36, t);
+  }
+
+  function portal(x, t) {
+    R(x, GROUND - 40, 4, 40, "#1a0f2e"); R(x + 24, GROUND - 40, 4, 40, "#1a0f2e");
+    R(x, GROUND - 44, 28, 4, "#1a0f2e");
+    for (let y = 0; y < 40; y += 2) for (let i = 0; i < 20; i += 2) {
+      const v = Math.sin(t * 6 + y * 0.4 + i * 0.7);
+      R(x + 4 + i, GROUND - 40 + y, 2, 2, v > 0.3 ? "#b06bff" : v > -0.4 ? "#7a2cd6" : "#4b1a8f");
+    }
+  }
+
+  /* ------------------------------------------------------------ characters */
+  function hero(h, t) {
+    const x = h.x, y = GROUND + h.jump, f = h.face;
+    const step = h.moving ? Math.sin(t * 14) * 2 : 0;
+    const flash = h.hurt > 0 && Math.floor(h.hurt * 30) % 2 === 0;
+    const skin = flash ? "#fff" : "#e0a878";
+    R(x - 3, y - 6, 2, 6 + Math.min(0, step), "#3b5bdb"); R(x + 1, y - 6, 2, 6 - Math.max(0, step), "#3b5bdb");
+    R(x - 3, y - 13, 6, 7, flash ? "#fff" : "#1fa3a3");
+    R(x - 3, y - 19, 6, 6, skin); R(x - 3, y - 20, 6, 2, "#5b3a1e");
+    R(x + (f > 0 ? 1 : -2), y - 17, 1, 1, "#1b1b2b");
+    // sword arm
+    g.save(); g.translate(x + f * 2, y - 11);
+    const swing = h.swing > 0 ? (1 - h.swing / 0.25) : 0;
+    const a = f > 0 ? (-1.9 + swing * 2.6) : (Math.PI + 1.9 - swing * 2.6);
+    g.rotate(h.raise ? -Math.PI / 2 : a);
+    g.fillStyle = "#e0a878"; g.fillRect(0, -1, 3, 2);
+    g.fillStyle = "#6b4a2a"; g.fillRect(3, -1, 2, 2);
+    g.fillStyle = "#8ff0ff"; g.fillRect(5, -1, 9, 2); g.fillStyle = "#d8fbff"; g.fillRect(5, -1, 9, 1);
+    g.restore();
+    if (h.swing > 0.05) { // slash arc
+      g.strokeStyle = `rgba(200,250,255,${h.swing * 3})`; g.lineWidth = 1;
+      g.beginPath(); g.arc(x + f * 2, y - 11, 14, f > 0 ? -1.2 : Math.PI - 0.6, f > 0 ? 0.6 : Math.PI + 1.2); g.stroke();
+    }
+  }
+
+  function raider(e, t, big) {
+    const s = big ? 1.5 : 1, x = e.x, y = GROUND;
+    const flash = e.hit > 0;
+    const c = (col) => flash ? "#fff" : col;
+    const step = e.moving ? Math.sin(t * 12 + e.x) * 2 : 0;
+    R(x - 3 * s, y - 6 * s, 2 * s, 6 * s + step, c("#2b2f36")); R(x + 1 * s, y - 6 * s, 2 * s, 6 * s - step, c("#2b2f36"));
+    R(x - 3 * s, y - 14 * s, 6 * s, 8 * s, c("#3a3f47"));
+    R(x - 3 * s, y - 20 * s, 6 * s, 6 * s, c("#9aa0a6"));
+    R(x - 3 * s, y - 18 * s, 6 * s, 1, c("#2b2f36"));               // the frown
+    R(x - 2 * s, y - 17 * s, 1, 1, "#000"); R(x - 0.5 * s, y - 15 * s, 2, 2, c("#7d848c"));
+    const lift = e.attack > 0 ? -6 : 0;
+    R(x - 6 * s, y - 15 * s + lift, 2, 9 * s, "#6b4a2a"); R(x - 8 * s, y - 15 * s + lift, 4 * s, 4 * s, "#b9c0c8"); // axe
+  }
+
+  function spirit(e, t) {
+    const x = e.x, y = e.anchor + Math.sin(t * 3 + e.x) * 3;
+    for (let i = 0; i < 4; i++) {
+      const a = t * 4 + i * Math.PI / 2;
+      R(x + Math.cos(a) * 7 - 1, y + Math.sin(a) * 4 + 4, 2, 4, "#ff9a2a");
+    }
+    g.fillStyle = "rgba(255,170,40,.25)"; g.fillRect(x - 7, y - 7, 14, 16);
+    R(x - 3, y - 4, 6, 8, e.hit > 0 ? "#fff" : "#ffd23d"); R(x - 2, y - 2, 1, 1, "#3b1a00"); R(x + 1, y - 2, 1, 1, "#3b1a00");
+  }
+
+  function shadow(e, t) {
+    if (e.blink > 0 && Math.floor(e.blink * 20) % 2) return;
+    const x = e.x, y = GROUND, col = e.hit > 0 ? "#fff" : "#0c0816";
+    R(x - 1, y - 14, 1, 14, col); R(x + 1, y - 14, 1, 14, col);
+    R(x - 2, y - 26, 5, 12, col); R(x - 3, y - 25, 1, 12, col); R(x + 3, y - 25, 1, 12, col);
+    R(x - 2, y - 31, 5, 5, col); R(x - 2, y - 29, 2, 1, "#d06bff"); R(x + 1, y - 29, 2, 1, "#d06bff");
+  }
+
+  function dragon(e, t) {
+    const x = e.x, y = e.y;
+    const flap = Math.sin(t * 6) * 10;
+    const col = e.hit > 0 ? "#fff" : "#3a1a5c";
+    const rim = e.hit > 0 ? "#fff" : "#8a5ad6";
+    g.fillStyle = col;
+    g.strokeStyle = rim; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x - 30, y - 6 - flap); g.lineTo(x - 18, y + 2); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(x + 6, y); g.lineTo(x + 30, y - 6 - flap); g.lineTo(x + 18, y + 2); g.fill(); g.stroke();
+    R(x - 16, y - 4, 32, 1, rim);
+    R(x - 16 * e.face - (e.face > 0 ? 0 : 0), y - 3, 32, 7, col);
+    R(x + 16 * e.face - (e.face > 0 ? 0 : 8), y - 6, 8, 7, col);
+    R(x + 18 * e.face - (e.face > 0 ? -2 : 4), y - 4, 2, 1, "#ff4dff");
+    for (let i = 0; i < 4; i++) R(x - 22 * e.face - i * 4 * e.face, y + Math.sin(t * 5 + i) * 2, 4, 3, col);
+    if (e.breath > 0) for (let i = 0; i < 12; i++) {
+      const d = i * 4 + (1 - e.breath) * 10;
+      R(x + (22 + d) * e.face, y + d * 0.6 + rnd() * 3, 3, 3, i % 2 ? "#c26bff" : "#ff7bff");
+    }
+  }
+
+  function villager(v, t) {
+    const y = GROUND - Math.max(0, Math.sin(t * 6 + v.p) * 6);
+    R(v.x - 3, y - 14, 6, 14, v.c); R(v.x - 3, y - 20, 6, 6, "#c98f5c"); R(v.x - 1, y - 16, 2, 3, "#a86b3c");
+    R(v.x - 4, y - 12, 1, 4, "#c98f5c"); R(v.x + 3, y - 12, 1, 4, "#c98f5c");
+  }
+
+  /* ------------------------------------------------------------ particles */
+  let parts = [];
+  function burst(x, y, n, cols, speed = 40, life = 0.7) {
+    for (let i = 0; i < n; i++) {
+      const a = rnd() * Math.PI * 2, s = speed * (0.3 + rnd());
+      parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 20, life, max: life, c: cols[i % cols.length] });
+    }
+  }
+  function drawParts(dt) {
+    parts = parts.filter((p) => (p.life -= dt) > 0);
+    for (const p of parts) {
+      p.vy += 80 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      g.globalAlpha = Math.max(0, p.life / p.max); R(p.x, p.y, 2, 2, p.c); g.globalAlpha = 1;
+    }
+  }
+
+  /* ------------------------------------------------------------ the fight */
+  let scene, T, heroS, foes, bolts, shake, won, wonAt, playingAll, idx = 0;
+
+  /* ------------------------------------------------------------ the boss fight
+     Chores drive it. Damage follows the chore's difficulty (the same
+     easy / medium / hard / boss ladder that sets its XP). */
+  const BOSS_MAX = 1000, HERO_MAX = 100;
+  const HITS = { easy: 40, medium: 80, hard: 150, boss: 300 };
+  const HITNAME = { easy: "An easy chore", medium: "A medium chore", hard: "A hard chore", boss: "A boss chore" };
+  const HURTS = {
+    declined: { dmg: 15, text: "A chore was sent back. The dragon breathes fire.", kind: "breath" },
+    idle: { dmg: 25, text: "48 hours with no chore done. The dragon dives.", kind: "dive" },
+  };
+  const SPECIALS = [
+    { name: "Wing Storm", dmg: 10, kind: "wings" },
+    { name: "Void Breath", dmg: 20, kind: "breath" },
+    { name: "Tail Quake", dmg: 15, kind: "quake" },
+  ];
+  let boss = null, pops = [];
+
+  function log(text, cls) {
+    const li = document.createElement("li"); li.textContent = text; if (cls) li.className = cls;
+    const ol = document.getElementById("boss-log"); ol.prepend(li);
+    while (ol.children.length > 5) ol.lastChild.remove();
+  }
+  function pop(text, x, y, col) { pops.push({ text, x, y, col, life: 1.2 }); }
+
+  function bossHit(kind) {
+    if (!boss || boss.dead || boss.act) return;
+    boss.act = { type: "strike", t: 0, dmg: HITS[kind] };
+    log(`${HITNAME[kind]} was approved: ${HITS[kind]} damage.`, "good");
+  }
+  function bossAttack(kind) {
+    if (!boss || boss.dead || boss.act) return;
+    if (kind === "special") {
+      const sp = SPECIALS[Math.floor(rnd() * SPECIALS.length)];
+      boss.banner = { text: sp.name.toUpperCase() + "!", life: 1.6 };
+      boss.act = { type: sp.kind, t: 0, dmg: sp.dmg };
+      log(`Special attack: ${sp.name}, ${sp.dmg} damage.`, "special");
+      return;
+    }
+    const h = HURTS[kind];
+    boss.act = { type: h.kind, t: 0, dmg: h.dmg };
+    log(`${h.text} ${h.dmg} damage.`, "bad");
+  }
+
+  function landOnHero(dmg) {
+    boss.php = Math.max(0, boss.php - dmg); hurtHero(); shake = 0.3;
+    pop("-" + dmg, heroS.x, GROUND - 46, "#ff8a8a");
+    if (boss.php === 0) {
+      boss.php = HERO_MAX; boss.hp = Math.min(BOSS_MAX, boss.hp + 100);
+      boss.banner = { text: "KNOCKED OUT", life: 2 };
+      log("Knocked out! Back to the village to rest. Health refilled, and the dragon healed 100.", "bad");
+    }
+  }
+
+  function updateBoss(dt) {
+    const b = boss;
+    b.hit = Math.max(0, b.hit - dt); b.breath = Math.max(0, b.breath - dt);
+    b.shown += (b.hp - b.shown) * Math.min(1, dt * 6); b.pshown += (b.php - b.pshown) * Math.min(1, dt * 6);
+    if (b.banner && (b.banner.life -= dt) <= 0) b.banner = null;
+    pops = pops.filter((p) => (p.life -= dt) > 0);
+    if (b.dead) {
+      b.y += 40 * dt; heroS.raise = true; heroS.jump = -Math.abs(Math.sin((T - wonAt) * 7)) * 5;
+      return;
+    }
+    b.phase += dt;
+    const a = b.act;
+    if (!a) {
+      b.x = 168 + Math.sin(b.phase * 0.8) * 20; b.y = 56 + Math.sin(b.phase * 1.7) * 8; b.face = -1;
+      heroS.x += (56 - heroS.x) * Math.min(1, dt * 5); heroS.face = 1; heroS.moving = Math.abs(56 - heroS.x) > 1; heroS.jump = 0;
+      if ((b.nextSpecial -= dt) <= 0) { b.nextSpecial = 12 + rnd() * 10; bossAttack("special"); }
+      if (playingAll && (b.auto -= dt) <= 0) {          // the story plays itself: mostly approvals
+        b.auto = 1.5; const r = rnd();
+        if (r < 0.62) bossHit(["medium", "hard", "boss", "hard"][Math.floor(rnd() * 4)]);
+        else if (r < 0.82) bossAttack("declined"); else bossAttack("idle");
+      }
+      return;
+    }
+    a.t += dt;
+    if (a.type === "strike") {            // run in, leap, hit, come back
+      const tx = b.x - 34;
+      if (a.t < 0.45) { heroS.moving = true; heroS.x += (tx - heroS.x) * Math.min(1, dt * 9); heroS.jump = -Math.sin(a.t / 0.45 * Math.PI) * 26; }
+      else if (!a.done) {
+        a.done = true; heroS.swing = 0.25; b.hit = 0.2; shake = 0.25;
+        b.hp = Math.max(0, b.hp - a.dmg);
+        burst(b.x, b.y, 18, ["#ffffff", "#bff6ff", "#e879f9"], 55, 0.6);
+        pop("-" + a.dmg, b.x, b.y - 22, "#b9f5b9");
+        if (b.hp === 0) {
+          b.dead = true; won = true; wonAt = T; shake = 0.5;
+          burst(b.x, b.y, 120, ["#1a0b26", "#e879f9", "#fff", "#ffd36b"], 100, 1.8);
+          log("The dragon is down! The raids are over.", "good");
+        }
+      }
+      if (a.t > 0.75) b.act = null;
+    } else if (a.type === "breath") {      // fire from where it hovers
+      if (a.t < 0.2) b.breath = 0.7;
+      if (a.t > 0.5 && !a.done) { a.done = true; landOnHero(a.dmg); }
+      if (a.t > 0.9) b.act = null;
+    } else if (a.type === "dive" || a.type === "wings") {
+      const k = a.t < 0.5 ? a.t / 0.5 : 1 - (a.t - 0.5) / 0.5;
+      b.x += ((heroS.x + 40) - b.x) * k * 0.15; b.y = 56 + k * (GROUND - 80);
+      if (a.type === "wings" && a.t > 0.3 && a.t < 0.6) for (let i = 0; i < 2; i++) parts.push({ x: b.x - 20, y: GROUND - 8 - rnd() * 30, vx: -90, vy: 0, life: 0.5, max: 0.5, c: "#c9b8ff" });
+      if (a.t > 0.5 && !a.done) { a.done = true; landOnHero(a.dmg); heroS.x -= 10; }
+      if (a.t > 1) b.act = null;
+    } else if (a.type === "quake") {
+      if (a.t > 0.2 && a.t < 0.7) shake = 0.2;
+      if (a.t > 0.4 && !a.done) { a.done = true; burst(heroS.x, GROUND, 20, ["#e8e0a8", "#8a7f4a"], 50, 0.6); landOnHero(a.dmg); }
+      if (a.t > 0.9) b.act = null;
+    }
+  }
+
+  function bar(x, y, w, frac, shown, col, label) {
+    R(x - 1, y - 1, w + 2, 7, "#000"); R(x, y, w, 5, "#2a2a3a");
+    R(x, y, Math.round(w * shown), 5, "#ffffff"); R(x, y, Math.round(w * frac), 5, col);
+    R(x, y, Math.round(w * frac), 1, "rgba(255,255,255,.35)");
+    g.font = "bold 7px monospace"; g.textAlign = "left"; g.fillStyle = "#fff"; g.fillText(label, x, y - 2);
+  }
+
+  function renderBoss() {
+    const b = boss;
+    if (!b.dead || b.y < H) big(b.x, b.y, () => dragon(b, T), 1.6);
+    bar(8, 12, 76, b.php / HERO_MAX, b.pshown / HERO_MAX, "#5ad85a", `YOU  ${Math.round(b.pshown)}/${HERO_MAX}`);
+    bar(100, 12, 148, b.hp / BOSS_MAX, b.shown / BOSS_MAX, "#c94bff", `THE DRAGON  ${Math.round(b.shown)}/${BOSS_MAX}`);
+    g.textAlign = "center";
+    for (const p of pops) {
+      g.globalAlpha = Math.min(1, p.life * 2); g.font = "bold 10px monospace";
+      g.fillStyle = "#000"; g.fillText(p.text, p.x + 1, p.y - (1.2 - p.life) * 16 + 1);
+      g.fillStyle = p.col; g.fillText(p.text, p.x, p.y - (1.2 - p.life) * 16); g.globalAlpha = 1;
+    }
+    if (b.banner) {
+      g.font = "bold 12px monospace"; g.fillStyle = "#000"; g.fillText(b.banner.text, 129, 37);
+      g.fillStyle = "#ffd36b"; g.fillText(b.banner.text, 128, 36);
+    }
+  }
+
+  function start(i) {
+    idx = i; scene = SCENES[i]; T = 0; parts = []; bolts = []; shake = 0; won = false; wonAt = 0; seed = 7 + i;
+    heroS = { x: scene.portal ? 50 : 30, face: 1, swing: 0, cd: 0, hurt: 0, jump: 0, moving: false, raise: false };
+    foes = scene.enemies.map(([type, x, delay]) => ({
+      type, x: Math.min(x, W + 12), delay, anchor: GROUND - 34, hp: type === "dragon" ? 6 : type === "brute" ? 4 : 2, hit: 0, cd: 1 + delay,
+      dead: false, moving: false, attack: 0, blink: 0, y: 40, face: -1, breath: 0, phase: 0,
+    }));
+    boss = null;
+    document.getElementById("boss").hidden = !scene.boss;
+    if (scene.boss) {
+      heroS.x = 56;
+      boss = { hp: BOSS_MAX, shown: BOSS_MAX, php: HERO_MAX, pshown: HERO_MAX, x: 168, y: 56, face: -1, hit: 0, breath: 0,
+               phase: 0, act: null, nextSpecial: 9 + rnd() * 6, dead: false, banner: null, auto: 0 };
+      pops = []; document.getElementById("boss-log").textContent = "";
+      log("The dragon has 1,000 health. Every approved chore is a hit.", "");
+    }
+    if (scene.celebrate) {
+      foes = [];
+      heroS.x = -10;
+      scene.villagers = [44, 78, 160, 186, 112].map((x, k) => ({ x, p: k * 1.3, c: ["#6b4a2a", "#3b6b8f", "#7a3f8f", "#2f7a4a", "#8f3a2f"][k] }));
+    }
+    const card = document.getElementById("card");
+    card.dataset.show = "no";
+    document.documentElement.style.setProperty("--accent", scene.accent);
+    document.getElementById("card-lvl").textContent = scene.level === 1 ? "The beginning" : `Level ${scene.level}`;
+    document.getElementById("card-title").textContent = scene.title;
+    document.getElementById("card-story").textContent = scene.story;
+    document.getElementById("note").textContent = `Scene ${i + 1} of ${SCENES.length}`;
+    document.querySelectorAll(".chapter").forEach((b, k) => b.setAttribute("aria-current", String(k === i)));
+  }
+
+  function nearest() {
+    let best = null;
+    for (const f of foes) if (!f.dead && T > f.delay && (!best || Math.abs(f.x - heroS.x) < Math.abs(best.x - heroS.x))) best = f;
+    return best;
+  }
+
+  function hurtHero() { heroS.hurt = 0.4; shake = 0.15; burst(heroS.x, GROUND - 24, 8, ["#ff5c5c", "#ffd0d0"], 30, 0.4); }
+
+  function update(dt) {
+    T += dt;
+    heroS.swing = Math.max(0, heroS.swing - dt); heroS.cd -= dt; heroS.hurt = Math.max(0, heroS.hurt - dt);
+    shake = Math.max(0, shake - dt);
+    if (scene.glitch && T < 0.9) return;                                  // the glitch plays first
+    if (scene.boss) { updateBoss(dt); return; }
+
+    if (scene.celebrate) {
+      heroS.moving = heroS.x < 128; if (heroS.moving) heroS.x += 46 * dt;
+      heroS.raise = !heroS.moving;
+      if (!heroS.moving && Math.floor(T * 1.4) !== Math.floor((T - dt) * 1.4)) {
+        burst(30 + rnd() * 200, 20 + rnd() * 30, 28, ["#ffd36b", "#ff7bff", "#7ef0ff", "#5ad85a"], 55, 1.1);
+      }
+      if (T > 3 && !won) { won = true; wonAt = T; }
+      return;
+    }
+
+    const target = nearest();
+    if (!target) {
+      if (!won && foes.every((f) => f.dead) && T > 1) { won = true; wonAt = T; burst(heroS.x, GROUND - 40, 22, ["#5ad85a", "#9bff9b", "#ffd36b"], 50, 1); }
+      heroS.moving = false; heroS.raise = won;
+      heroS.jump = won ? -Math.abs(Math.sin((T - wonAt) * 7)) * 5 : 0;
+    } else {
+      const reach = target.type === "brute" ? 26 : 22;
+      const tx = target.type === "dragon" ? target.x : target.x;
+      heroS.face = tx > heroS.x ? 1 : -1;
+      const close = Math.abs(tx - heroS.x) < reach;
+      heroS.moving = !close && Math.abs(tx - heroS.x) > reach - 2;
+      if (heroS.moving) heroS.x = Math.max(10, Math.min(W - 26, heroS.x + heroS.face * 46 * dt));
+      heroS.jump = target.type === "spirit" && close ? -8 : 0;
+      if (close && heroS.cd <= 0) {
+        heroS.swing = 0.25; heroS.cd = 0.42;
+        target.hp -= 1; target.hit = 0.15; shake = 0.12;
+        const hy = target.type === "spirit" ? target.anchor : GROUND - 26;
+        burst(target.x, hy, 8, ["#ffffff", "#bff6ff", scene.accent], 45, 0.4);
+        if (target.type !== "spirit") target.x += heroS.face * 8;
+        if (target.hp <= 0) {
+          target.dead = true; shake = 0.25;
+          const cols = { raider: ["#9aa0a6", "#3a3f47", "#5ad85a"], brute: ["#9aa0a6", "#3a3f47", "#5ad85a"], spirit: ["#ffd23d", "#ff9a2a", "#fff"], shadow: ["#0c0816", "#d06bff", "#fff"], dragon: ["#1a0b26", "#e879f9", "#fff", "#ffd36b"] }[target.type];
+          burst(target.x, target.type === "spirit" ? target.anchor : GROUND - 24, 30, cols, 60, 0.9);
+        }
+      }
+    }
+
+    for (const f of foes) {
+      f.hit = Math.max(0, f.hit - dt); f.attack = Math.max(0, f.attack - dt); f.blink = Math.max(0, f.blink - dt);
+      f.breath = Math.max(0, f.breath - dt);
+      if (f.dead || T < f.delay) continue;
+      f.cd -= dt;
+      const d = heroS.x - f.x;
+      if (f.type === "raider" || f.type === "brute") {
+        f.moving = Math.abs(d) > 18; if (f.moving) f.x += Math.sign(d) * (f.type === "brute" ? 16 : 24) * dt;
+        if (!f.moving && f.cd <= 0) { f.attack = 0.25; f.cd = f.type === "brute" ? 1.5 : 1.2; hurtHero(); }
+      } else if (f.type === "spirit") {
+        if (Math.abs(d) > 40) f.x += Math.sign(d) * 14 * dt;
+        if (f.cd <= 0) { f.cd = 1.6; bolts.push({ x: f.x, y: f.anchor, vx: Math.sign(d) * 70, vy: 14 }); }
+      } else if (f.type === "shadow") {
+        if (f.cd <= 0) {
+          f.cd = 1.4; f.blink = 0.3; burst(f.x, GROUND - 16, 10, ["#d06bff", "#3a1a5a"], 30, 0.5);
+          f.x = Math.max(16, Math.min(W - 16, heroS.x + (rnd() > 0.5 ? 1 : -1) * (18 + rnd() * 10)));
+          burst(f.x, GROUND - 16, 10, ["#d06bff", "#3a1a5a"], 30, 0.5);
+        }
+        if (Math.abs(d) < 26 && f.cd > 1.0 && f.cd < 1.05) hurtHero();
+      } else if (f.type === "dragon") {
+        f.phase += dt;
+        const swoop = (Math.sin(f.phase * 0.9) + 1) / 2;
+        f.x = 128 + Math.sin(f.phase * 0.7) * 90;
+        f.face = Math.cos(f.phase * 0.7) > 0 ? 1 : -1;
+        f.y = 34 + swoop * swoop * (GROUND - 60);
+        if (f.cd <= 0) { f.cd = 2.4; f.breath = 0.7; setTimeout(() => { if (!f.dead && Math.abs(heroS.x - f.x) < 60) hurtHero(); }, 300); }
+      }
+    }
+
+    bolts = bolts.filter((b) => {
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      if (Math.abs(b.x - heroS.x) < 7 && b.y > GROUND - 40) {
+        if (heroS.swing > 0) { burst(b.x, b.y, 6, ["#ff9a2a", "#fff"], 30, 0.3); } else hurtHero();
+        return false;
+      }
+      return b.y < GROUND && b.x > 0 && b.x < W;
+    });
+  }
+
+  function render(dt) {
+    backdrop(scene, T);
+    if (scene.celebrate) {
+      scene.villagers.forEach((v) => big(v.x, GROUND, () => villager(v, T)));
+      R(98, 34, 60, 14, "#2a1a0c"); g.fillStyle = "#ffd36b"; g.font = "bold 9px monospace"; g.textAlign = "center"; g.fillText("HERO!", 128, 44);
+      R(97, 34, 1, 40, "#6b4a2a"); R(158, 34, 1, 40, "#6b4a2a");
+    }
+    for (const f of foes) {
+      if (f.dead || T < f.delay) continue;
+      if (f.type === "raider") big(f.x, GROUND, () => raider(f, T, false));
+      if (f.type === "brute") big(f.x, GROUND, () => raider(f, T, true));
+      if (f.type === "spirit") { f.fy = f.anchor; big(f.x, f.anchor, () => spirit(f, T)); }
+      if (f.type === "shadow") big(f.x, GROUND, () => shadow(f, T));
+    }
+    for (const b of bolts) { R(b.x - 1, b.y - 1, 3, 3, "#ff9a2a"); R(b.x, b.y, 1, 1, "#fff2a0"); }
+    big(heroS.x, GROUND + heroS.jump, () => hero(heroS, T));
+    drawParts(dt);
+    if (scene.boss && boss) renderBoss();
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, W, H);
+    const sx = shake > 0 ? Math.round((rnd() - 0.5) * 4) : 0, sy = shake > 0 ? Math.round((rnd() - 0.5) * 3) : 0;
+    ctx.drawImage(buf, sx, sy);
+    if (scene.glitch && T < 1.2) glitch(T);
+  }
+
+  /* The arrival glitch: torn rows, split colour, static, then the world. */
+  function glitch(t) {
+    const strength = t < 0.9 ? 1 : 1 - (t - 0.9) / 0.3;
+    for (let i = 0; i < 9; i++) {
+      const y = Math.floor(rnd() * H), h = 2 + Math.floor(rnd() * 12), off = Math.round((rnd() - 0.5) * 40 * strength);
+      ctx.drawImage(buf, 0, y, W, h, off, y, W, h);
+    }
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.35 * strength; ctx.drawImage(buf, 3, 0); ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+    for (let i = 0; i < 40 * strength; i++) {
+      ctx.fillStyle = ["#ff00ff", "#00ffff", "#ffffff", "#000000"][i % 4];
+      ctx.fillRect(Math.floor(rnd() * W), Math.floor(rnd() * H), 1 + Math.floor(rnd() * 8), 1);
+    }
+    if (t < 0.15 || (t > 0.45 && t < 0.52)) { ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.fillRect(0, 0, W, H); }
+  }
+
+  /* ------------------------------------------------------------ loop and controls */
+  let last = 0;
+  function frame(now) {
+    const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now;
+    update(dt); render(dt);
+    const card = document.getElementById("card");
+    if (scene.boss) card.dataset.show = (T < 4 || (won && T - wonAt > 1.2)) ? "yes" : "no";
+    else if (won && T - wonAt > 0.6) card.dataset.show = "yes";
+    if (playingAll && won && T - wonAt > 5.5) { if (idx < SCENES.length - 1) start(idx + 1); else playingAll = false; }
+    requestAnimationFrame(frame);
+  }
+
+  const list = document.getElementById("chapters");
+  SCENES.forEach((s, i) => {
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chapter"; b.style.setProperty("--accent", s.accent);
+    const lv = document.createElement("span"); lv.className = "lv";
+    lv.innerHTML = s.level === 1 ? "<small>START</small>1" : "<small>LEVEL</small>" + s.level;
+    const name = document.createElement("b"); name.textContent = s.title;
+    const what = document.createElement("span"); what.className = "what";
+    what.textContent = s.what + (s.glitch ? " · " : "");
+    if (s.glitch) { const fx = document.createElement("span"); fx.className = "fx"; fx.textContent = "glitch arrival"; what.appendChild(fx); }
+    b.append(lv, name, what);
+    b.addEventListener("click", () => { playingAll = false; start(i); });
+    li.appendChild(b); list.appendChild(li);
+  });
+  document.querySelectorAll("[data-hit]").forEach((b) => b.addEventListener("click", () => bossHit(b.dataset.hit)));
+  document.querySelectorAll("[data-hurt]").forEach((b) => b.addEventListener("click", () => bossAttack(b.dataset.hurt)));
+  document.getElementById("replay").addEventListener("click", () => start(idx));
+  document.getElementById("playall").addEventListener("click", () => { playingAll = true; start(0); });
+
+  start(0);
+  if (REDUCED) {
+    // One still frame of the finished fight, and the story card, with no motion.
+    for (let i = 0; i < 400 && !won; i++) update(0.05);
+    T += 1; render(0); document.getElementById("card").dataset.show = "yes";
+    document.querySelectorAll(".chapter").forEach((b, i) => b.addEventListener("click", () => {
+      start(i); for (let k = 0; k < 400 && !won; k++) update(0.05); T += 1; render(0);
+      document.getElementById("card").dataset.show = "yes";
+    }));
+  } else {
+    requestAnimationFrame(frame);
+  }
+})();
+</script>
