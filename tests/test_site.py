@@ -136,3 +136,15 @@ def test_demo_reads_rankup_themes_as_text(tmp_path, monkeypatch):
     themes = build_demo.rankup_themes(tmp_path)
     assert [t["id"] for t in themes] == ["one", "two"]
     assert themes[1] == {"id": "two", "name": "Two", "icon": "💎", "bg": "#111111", "accent": "#00ff00"}
+
+
+def test_home_page_is_one_screen(client):
+    """The owner wants the home page on one screen with no scrolling: it is
+    all inside the .page frame, which is the height of the window, and the
+    Learn more lists open over the page rather than making it longer."""
+    page = client.get("/").text
+    assert '<div class="page">' in page
+    assert page.count('<details name="learn-more">') == 3
+    css = open("static/css/site.css", encoding="utf-8").read()
+    frame = css.split(".page {", 1)[1].split("}", 1)[0]
+    assert "height: 100dvh" in frame and "overflow: hidden" in frame
