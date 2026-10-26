@@ -119,3 +119,20 @@ def test_demo_build_links_each_app_and_leaves_out_the_knock(tmp_path, monkeypatc
     page = (out / "cyberlogix" / "index.html").read_text()
     assert page.startswith("<!doctype html>") and "MTRX Horizon</a>" in page
     assert 'href="/legal"' not in page
+
+
+def test_demo_reads_rankup_themes_as_text(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend("tools")
+    import build_demo
+
+    data = tmp_path / "src" / "data"
+    data.mkdir(parents=True)
+    (data / "kidThemes.js").write_text(
+        "export const KID_THEMES = [\n"
+        "  {\n    id: 'one',\n    name: 'One',\n    currency: { name: 'Coins', icon: '🪙' },\n"
+        "    colors: { bg: '#000000', accent: '#ff0000' },\n  },\n"
+        "  {\n    id: 'two',\n    name: 'Two',\n    currency: { name: 'Gems', icon: '💎' },\n"
+        "    colors: { bg: '#111111', accent: '#00ff00' },\n  },\n]\n")
+    themes = build_demo.rankup_themes(tmp_path)
+    assert [t["id"] for t in themes] == ["one", "two"]
+    assert themes[1] == {"id": "two", "name": "Two", "icon": "💎", "bg": "#111111", "accent": "#00ff00"}
