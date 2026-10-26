@@ -224,6 +224,19 @@ p { margin: 0; }
 }
 .tags i, .foot-values i { font-style: normal; opacity: 0.7; margin: 0 4px; }
 .app-lede { font-size: 16.5px; max-width: 62%; margin-bottom: 22px; color: #e6ecff; min-height: 3.1em; }
+.card-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+.card-actions details[open] { flex-basis: 100%; }
+.is-soon { opacity: .6; cursor: default; }
+.demo-note {
+  margin: 0; padding: 10px 16px; text-align: center; font-size: 13.5px; color: var(--text);
+  background: linear-gradient(90deg, rgba(34, 211, 238, .14), rgba(139, 92, 246, .14));
+  border-bottom: 1px solid var(--line);
+}
+.btn-solid {
+  min-height: 38px; padding: 0 18px; font-size: 14px; color: #06101f;
+  background: var(--accent, var(--cyan));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent, var(--cyan)) 45%, transparent);
+}
 .app-card details summary { list-style: none; width: fit-content; }
 .app-card details summary::-webkit-details-marker { display: none; }
 .app-card details[open] summary span { display: inline-block; transform: rotate(90deg); }

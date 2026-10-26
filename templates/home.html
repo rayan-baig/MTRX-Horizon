@@ -26,6 +26,7 @@
   </nav>
 </header>
 
+{% if demo %}<p class="demo-note">Demo: each app below opens its own working demo, filled with made-up sample data.</p>{% endif %}
 <main id="top">
   <section class="hero">
     <div class="hero-art" aria-hidden="true"></div>
@@ -53,16 +54,18 @@
         </div>
       </div>
       <p class="app-lede">Turn daily chores into achievements and build better habits.</p>
-      <details>
-        <summary class="btn btn-outline">Learn more <span aria-hidden="true">→</span></summary>
-        <ul>
-          <li>A parent sets a chore, the child does it and snaps a photo as proof.</li>
-          <li>A smart photo check gives its opinion. The parent always makes the call.</li>
-          <li>Approved chores earn points, levels and arcade tokens across 15 game worlds and 24 games.</li>
-          <li>Free for one child. Standard and Elite plans add more.</li>
-        </ul>
-        {% if urls.rankup %}<a class="btn btn-outline" href="{{ urls.rankup }}" rel="noopener">Open RankUp <span aria-hidden="true">↗</span></a>{% endif %}
-      </details>
+      <div class="card-actions">
+        {% if urls.rankup %}<a class="btn btn-solid" href="{{ urls.rankup }}" rel="noopener">Open RankUp <span aria-hidden="true">→</span></a>{% elif demo %}<span class="btn btn-outline is-soon">Demo coming soon</span>{% endif %}
+        <details>
+          <summary class="btn btn-outline">Learn more <span aria-hidden="true">→</span></summary>
+          <ul>
+            <li>A parent sets a chore, the child does it and snaps a photo as proof.</li>
+            <li>A smart photo check gives its opinion. The parent always makes the call.</li>
+            <li>Approved chores earn points, levels and arcade tokens across 15 game worlds and 24 games.</li>
+            <li>Free for one child. Standard and Elite plans add more.</li>
+          </ul>
+        </details>
+      </div>
     </article>
 
     <article class="app-card blue">
@@ -75,16 +78,18 @@
         </div>
       </div>
       <p class="app-lede">Watches the equipment you can't afford to lose, and wakes a real person when it fails.</p>
-      <details>
-        <summary class="btn btn-outline">Learn more <span aria-hidden="true">→</span></summary>
-        <ul>
-          <li>Wireless sensors watch freezers, server racks, vaccine fridges and more.</li>
-          <li>A problem sends a text, then a phone call, then the next person, until someone answers.</li>
-          <li>Every reading is kept in a sealed record, ready for an insurance claim.</li>
-          <li>Built for 12 industries, from restaurants to data centers.</li>
-        </ul>
-        {% if urls.cyberlogix %}<a class="btn btn-outline" href="{{ urls.cyberlogix }}" rel="noopener">Open CyberLogix AI <span aria-hidden="true">↗</span></a>{% endif %}
-      </details>
+      <div class="card-actions">
+        {% if urls.cyberlogix %}<a class="btn btn-solid" href="{{ urls.cyberlogix }}" rel="noopener">Open CyberLogix AI <span aria-hidden="true">→</span></a>{% elif demo %}<span class="btn btn-outline is-soon">Demo coming soon</span>{% endif %}
+        <details>
+          <summary class="btn btn-outline">Learn more <span aria-hidden="true">→</span></summary>
+          <ul>
+            <li>Wireless sensors watch freezers, server racks, vaccine fridges and more.</li>
+            <li>A problem sends a text, then a phone call, then the next person, until someone answers.</li>
+            <li>Every reading is kept in a sealed record, ready for an insurance claim.</li>
+            <li>Built for 12 industries, from restaurants to data centers.</li>
+          </ul>
+        </details>
+      </div>
     </article>
 
     <article class="app-card violet">
@@ -97,16 +102,18 @@
         </div>
       </div>
       <p class="app-lede">Catch the fine before it catches you.</p>
-      <details>
-        <summary class="btn btn-outline">Learn more <span aria-hidden="true">→</span></summary>
-        <ul>
-          <li>500 compliance checks across 50 industries, each naming the rule it comes from.</li>
-          <li>Counts the days by itself and emails the team before anything is due.</li>
-          <li>Keeps a record an inspector, auditor or insurer can be shown.</li>
-          <li>Includes the Future Owner Academy, a business course for the next generation.</li>
-        </ul>
-        {% if urls.omniarmor %}<a class="btn btn-outline" href="{{ urls.omniarmor }}" rel="noopener">Open OmniArmor.ai <span aria-hidden="true">↗</span></a>{% endif %}
-      </details>
+      <div class="card-actions">
+        {% if urls.omniarmor %}<a class="btn btn-solid" href="{{ urls.omniarmor }}" rel="noopener">Open OmniArmor.ai <span aria-hidden="true">→</span></a>{% elif demo %}<span class="btn btn-outline is-soon">Demo coming soon</span>{% endif %}
+        <details>
+          <summary class="btn btn-outline">Learn more <span aria-hidden="true">→</span></summary>
+          <ul>
+            <li>500 compliance checks across 50 industries, each naming the rule it comes from.</li>
+            <li>Counts the days by itself and emails the team before anything is due.</li>
+            <li>Keeps a record an inspector, auditor or insurer can be shown.</li>
+            <li>Includes the Future Owner Academy, a business course for the next generation.</li>
+          </ul>
+        </details>
+      </div>
     </article>
   </section>
 
@@ -147,6 +154,6 @@
   <span class="foot-copy">© 2026 MTRX Horizon. All rights reserved.</span>
 </footer>
 
-<script src="/static/js/knock.js" defer></script>
+{% if not demo %}<script src="/static/js/knock.js" defer></script>{% endif %}
 </body>
 </html>

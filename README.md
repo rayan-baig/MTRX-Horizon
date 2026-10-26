@@ -97,6 +97,18 @@ The lock tests try every way in that should fail: a stranger, a wrong or partial
 guessing, a copied cookie, a stolen session, a reused puzzle, an expired or reused QR code,
 a removed device, and requests from other websites.
 
+## The click-through demo
+
+`tools/build_demo.py` builds a demo folder: the home page, with each app's
+own offline demo behind its card. It only copies files the apps already
+ship (CyberLogix's `docs/` demo, OmniArmor's `dashboard/`, and a built RankUp
+preview folder if you give one). It never runs their code.
+
+```bash
+python tools/build_demo.py --out demo \
+  --cyberlogix ../cyberlogix-ai --omniarmor ../omniarmor.ai --rankup ../rankup/preview
+```
+
 ## Hosting
 
 `render.yaml` sets up Render with a small paid server and a disk for the database (the

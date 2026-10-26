@@ -90,3 +90,32 @@ def test_app_that_is_down_says_so(client, monkeypatch):
     owner(client)
     app = next(a for a in client.get("/api/console/overview").json()["apps"] if a["key"] == "omniarmor")
     assert app["connected"] is True and app["online"] is False
+
+
+def test_demo_build_links_each_app_and_leaves_out_the_knock(tmp_path, monkeypatch):
+    """The demo builder copies each app's own demo and never ships the lock."""
+    import sys
+    monkeypatch.syspath_prepend("tools")
+    import build_demo
+
+    clx = tmp_path / "clx" / "docs"
+    clx.mkdir(parents=True)
+    (clx / "index.html").write_text('<title>x</title><a href="/legal">t</a>')
+    (clx / "console.html").write_text("<title>y</title>")
+    omni = tmp_path / "omni" / "dashboard"
+    omni.mkdir(parents=True)
+    (omni / "index.html").write_text("<title>z</title>")
+    out = tmp_path / "out"
+    monkeypatch.setattr(sys, "argv", ["build_demo", "--out", str(out),
+                                      "--cyberlogix", str(clx.parent),
+                                      "--omniarmor", str(omni.parent)])
+    build_demo.main()
+
+    home = (out / "index.html").read_text()
+    assert 'href="cyberlogix/index.html"' in home and 'href="omniarmor/index.html"' in home
+    assert "Demo coming soon" in home  # RankUp was not given
+    assert "knock.js" not in home and "<html" not in home
+    assert not (out / "static" / "js").exists()
+    page = (out / "cyberlogix" / "index.html").read_text()
+    assert page.startswith("<!doctype html>") and "MTRX Horizon</a>" in page
+    assert 'href="/legal"' not in page
