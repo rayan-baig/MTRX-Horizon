@@ -7,6 +7,7 @@
 """
 
 import json
+import threading
 import os
 import shutil
 import time
@@ -147,3 +148,72 @@ def history(days: int = 30) -> dict:
             uptime = round(100 * sum(r["online"] for r in rows) / len(rows), 2) if rows else None
             out[key] = {"points": points, "uptime": uptime}
     return out
+
+
+# ---------------------------------------------------------------- the home page
+
+_refreshing = threading.Lock()
+
+
+def refresh_in_background():
+    """Fetch fresh app numbers without making anybody wait for them.
+
+    The home page shows the last saved numbers. If those are over an hour
+    old, one background fetch is started and the next visitor sees the
+    result. At most one runs at a time, and nothing happens when no app
+    is connected.
+    """
+    settings = config.get()
+    if not settings.stats_urls or not _refreshing.acquire(blocking=False):
+        return
+    try:
+        with db.connect() as conn:
+            (last,) = conn.execute("SELECT MAX(at) FROM app_snapshots").fetchone()
+    except Exception:
+        _refreshing.release()
+        return
+    if last is not None and time.time() - last < SNAPSHOT_EVERY:
+        _refreshing.release()
+        return
+
+    def run():
+        try:
+            snapshot([fetch_app(key) for key in APPS])
+        except Exception:
+            pass
+        finally:
+            _refreshing.release()
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+def public_numbers() -> dict:
+    """What the home page may say about the apps: real, or nothing.
+
+    Read from the saved snapshots only, so a slow or broken app can never
+    slow the home page down. Every figure is None until an app is
+    connected and has reported, and the page says so rather than guess.
+    """
+    latest = {}
+    with db.connect() as conn:
+        for key in APPS:
+            row = conn.execute(
+                "SELECT online, users, active_users FROM app_snapshots"
+                " WHERE app = ? ORDER BY at DESC LIMIT 1",
+                (key,),
+            ).fetchone()
+            if row is not None:
+                latest[key] = row
+    uptimes = [h["uptime"] for h in history(30).values() if h["uptime"] is not None]
+
+    def total(field):
+        values = [r[field] for r in latest.values() if r[field] is not None]
+        return sum(values) if values else None
+
+    return {
+        "users_online": total("active_users"),
+        "total_users": total("users"),
+        "apps_online": sum(1 for r in latest.values() if r["online"]) if latest else None,
+        "apps_total": len(APPS),
+        "uptime": round(sum(uptimes) / len(uptimes), 2) if uptimes else None,
+    }

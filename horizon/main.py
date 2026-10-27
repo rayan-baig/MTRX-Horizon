@@ -102,7 +102,12 @@ async def _404(request: Request, exc):
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     urls = config.get().app_urls
-    return templates.TemplateResponse(request, "home.html", {"urls": urls})
+    stats.refresh_in_background()
+    return templates.TemplateResponse(request, "home.html", {
+        "urls": urls,
+        "numbers": stats.public_numbers(),
+        "projects": stats.PROJECTS,
+    })
 
 
 @app.get("/healthz")

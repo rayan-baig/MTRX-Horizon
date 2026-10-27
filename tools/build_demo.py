@@ -20,11 +20,14 @@ import argparse
 import json
 import re
 import shutil
+import sys
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 HEAD = ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n')
@@ -42,7 +45,11 @@ BACK_LINK = (
 
 def render_home(urls: dict) -> str:
     env = Environment(loader=FileSystemLoader(ROOT / "templates"), autoescape=True)
-    html = env.get_template("home.html").render(urls=urls, demo=True)
+    # The real project list, and no app numbers: the demo has no apps
+    # reporting to it, so its activity panel says the numbers come at launch.
+    from horizon import stats
+    html = env.get_template("home.html").render(
+        urls=urls, demo=True, numbers=None, projects=stats.PROJECTS)
     html = html.replace('"/static/', '"static/')
     # Unwrap to the form an Artifact page takes.
     for pattern in (r"<!doctype html>\s*", r"<html[^>]*>\s*", r"</html>\s*",
@@ -57,6 +64,10 @@ def copy_static(out: Path):
     (out / "static" / "css").mkdir(parents=True)
     css = (ROOT / "static" / "css" / "site.css").read_text()
     (out / "static" / "css" / "site.css").write_text(css.replace('url("/static/img/', 'url("../img/'))
+    # The home page's own script, and only that: knock.js, the lock's way
+    # in, never leaves the real site.
+    (out / "static" / "js").mkdir(parents=True)
+    shutil.copy(ROOT / "static" / "js" / "home.js", out / "static" / "js" / "home.js")
 
 
 def as_document(html: str, link_position: str = "left:12px;bottom:12px") -> str:

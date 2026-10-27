@@ -17,7 +17,9 @@ def test_home_page_shows_all_three_apps(client):
 
 def test_home_page_has_no_made_up_numbers(client):
     page = client.get("/").text
-    for fake in ("4.3M", "12,482,391", "$2.8M", "99.98%"):
+    # The figures in the design were examples, and stay examples.
+    for fake in ("4.3M", "12,482,391", "$2.8M", "99.98%", "4,327,981", "1,248,392",
+                 "2.4 TB/s", "18.7%"):
         assert fake not in page
 
 
@@ -113,9 +115,10 @@ def test_demo_build_links_each_app_and_leaves_out_the_knock(tmp_path, monkeypatc
 
     home = (out / "index.html").read_text()
     assert 'href="cyberlogix/index.html"' in home and 'href="omniarmor/index.html"' in home
-    assert "Demo coming soon" in home  # RankUp was not given
+    assert "Coming soon" in home  # RankUp was not given
     assert "knock.js" not in home and "<html" not in home
-    assert not (out / "static" / "js").exists()
+    # The home page's own script goes along; the lock's never does.
+    assert sorted(p.name for p in (out / "static" / "js").iterdir()) == ["home.js"]
     page = (out / "cyberlogix" / "index.html").read_text()
     assert page.startswith("<!doctype html>") and "MTRX Horizon</a>" in page
     assert 'href="/legal"' not in page
@@ -144,7 +147,39 @@ def test_home_page_is_one_screen(client):
     Learn more lists open over the page rather than making it longer."""
     page = client.get("/").text
     assert '<div class="page">' in page
-    assert page.count('<details name="learn-more">') == 3
+    # Every pop-up is outside the frame, so opening one cannot move it.
+    frame_html = page.split('<div class="page">', 1)[1].split('<section class="sheet"', 1)[0]
+    assert 'class="sheet' not in frame_html
+    for sheet in ("projects", "team", "settings", "updates", "menu", "tour"):
+        assert f'<section class="sheet' in page and f'id="{sheet}"' in page
     css = open("static/css/site.css", encoding="utf-8").read()
     frame = css.split(".page {", 1)[1].split("}", 1)[0]
     assert "height: 100dvh" in frame and "overflow: hidden" in frame
+
+
+def test_home_page_numbers_are_real_or_say_they_are_coming(client):
+    page = client.get("/").text
+    assert "Live numbers appear here as soon as the apps launch." in page
+    assert "Soon" in page
+
+
+def test_home_page_shows_what_the_apps_reported(client):
+    """Once an app has reported, its own numbers are what the page shows."""
+    import time
+    from horizon import db
+
+    with db.connect() as conn:
+        conn.execute(
+            "INSERT INTO app_snapshots (app, at, online, users, active_users)"
+            " VALUES (?, ?, ?, ?, ?)", ("rankup", time.time(), 1, 1234, 56))
+    page = client.get("/").text
+    assert "1,234" in page and ">56<" in page and "1 / 3" in page
+    assert "Live numbers appear here" not in page
+
+
+def test_projects_on_the_home_page_are_the_real_list(client):
+    from horizon import stats
+
+    page = client.get("/").text
+    for project in stats.PROJECTS:
+        assert project["next"] in page

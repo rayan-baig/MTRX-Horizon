@@ -9,8 +9,16 @@
 <meta property="og:image" content="/static/img/logo-512.png">
 </head>
 <body class="home">
+{#- Numbers on this page are real or absent. `numbers` comes from the apps'
+    own saved reports (stats.public_numbers); anything not reported yet
+    says so instead of showing an example figure. -#}
+{%- set n = numbers or {"users_online": none, "total_users": none, "apps_online": none,
+                          "apps_total": 3, "uptime": none} -%}
+{%- macro count(value) -%}{{ "{:,}".format(value) if value is number else "—" }}{%- endmacro -%}
+<input type="checkbox" id="calm" class="calm-switch" aria-hidden="true" tabindex="-1">
 <div class="sky" aria-hidden="true"></div>
 <div class="page">
+<div class="hero-art" aria-hidden="true"></div>
 
 <header class="topbar">
   <div class="brand">
@@ -23,130 +31,126 @@
   <nav class="mainnav" aria-label="Main">
     <a href="#top" class="active">Home</a>
     <a href="#apps">Apps</a>
-    <a href="#about">About</a>
+    <a href="#projects">Projects</a>
+    <a href="#activity">Analytics</a>
+    <a href="#team">Team</a>
+    <a href="#settings">Settings</a>
   </nav>
+  <div class="tools">
+    <form class="search" role="search" id="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input id="search-q" type="search" placeholder="Search anything..." aria-label="Search apps and pages" autocomplete="off">
+      <kbd>⌘ K</kbd>
+      <div class="search-results" id="search-results" role="listbox" hidden></div>
+    </form>
+    <a class="bell" href="#updates" aria-label="What's new: 3 updates">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+      <span class="bell-count">3</span>
+    </a>
+    <a class="me" href="#menu" aria-label="MTRX Horizon menu">
+      <span class="me-mark" aria-hidden="true"></span>
+      <span class="me-name">MTRX Horizon</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+    </a>
+  </div>
 </header>
 
-{% if demo %}<p class="demo-note">Demo: each app below opens its own working demo, filled with made-up sample data.</p>{% endif %}
+{% if demo %}<p class="demo-note">Demo: each Manage button opens that app's own working demo, filled with made-up sample data.</p>{% endif %}
 <main id="top">
   <section class="hero">
-    <div class="hero-art" aria-hidden="true"></div>
     <div class="hero-copy">
       <p class="eyebrow">Welcome to MTRX Horizon</p>
       <h1><span class="line">One Vision.</span> <span class="line gradient-text">Infinite Possibilities.</span></h1>
-      <p class="lede">MTRX Horizon builds software that quietly does the hard part for you:
-        watching the things that can break, catching deadlines before they turn into fines,
-        and turning everyday chores into a game worth winning.</p>
+      <p class="lede">MTRX HORIZON is the next generation ecosystem for innovation, creativity,
+        and impact. We build digital solutions that empower people, businesses, and
+        communities — without limits.</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="#apps">Explore Our Apps <span aria-hidden="true">→</span></a>
-        <a class="btn btn-ghost" href="#about">About Us</a>
+        <a class="btn btn-ghost" href="#tour">
+          <svg class="play" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg>
+          Watch Video</a>
       </div>
     </div>
   </section>
 
   <section id="apps" class="apps" aria-label="Our apps">
-    <article class="app-card green">
+    {% for key, name, full, tags, lede in [
+      ("rankup", "RankUp", "RankUp", ["Gamification", "Growth", "Rewards"],
+       "Turn daily chores into achievements and build better habits."),
+      ("cyberlogix", "CyberLogix", "CyberLogix AI", ["Enterprise", "Security", "Solutions"],
+       "Secure, intelligent solutions for your business."),
+      ("omniarmor", "OmniArmor", "OmniArmor.ai", ["Business", "Protection", "Platform"],
+       "Protect what matters with advanced security."),
+    ] %}
+    <article class="app-card {{ {'rankup': 'green', 'cyberlogix': 'blue', 'omniarmor': 'violet'}[key] }}" data-app="{{ key }}">
       <div class="app-art" aria-hidden="true"></div>
       <div class="app-head">
-        <span class="app-icon" data-knock="rankup"><img src="/static/img/rankup-icon.webp" alt="" width="64" height="64"></span>
+        <span class="app-icon" data-knock="{{ key }}"><img src="/static/img/{{ key }}-icon.webp" alt="{{ full }}" width="64" height="64"></span>
         <div>
-          <h2>RankUp</h2>
-          <p class="tags">Gamification <i>•</i> Family <i>•</i> Rewards</p>
+          <h2>{{ name }}</h2>
+          <p class="tags">{% for t in tags %}{{ t }}{% if not loop.last %} <i>•</i> {% endif %}{% endfor %}</p>
         </div>
       </div>
-      <p class="app-lede">Turn daily chores into achievements and build better habits.</p>
+      <p class="app-lede">{{ lede }}</p>
       <div class="card-actions">
-        {% if urls.rankup %}<a class="btn btn-solid" href="{{ urls.rankup }}" rel="noopener" aria-label="Open RankUp"><span>Open<span class="app-name"> RankUp</span></span> <span aria-hidden="true">→</span></a>{% elif demo %}<span class="btn btn-outline is-soon">Demo coming soon</span>{% endif %}
-        <details name="learn-more">
-          <summary class="btn btn-outline"><span><span class="learn-word">Learn </span>more</span> <span aria-hidden="true">→</span></summary>
-          <ul>
-            <li class="sheet-lede">Turn daily chores into achievements and build better habits.</li>
-            <li>A parent sets a chore, the child does it and snaps a photo as proof.</li>
-            <li>A smart photo check gives its opinion. The parent always makes the call.</li>
-            <li>Approved chores earn points, levels and arcade tokens across 15 game worlds and 24 games.</li>
-            <li>Free for one child. Standard and Elite plans add more.</li>
-          </ul>
-        </details>
+        {% if urls[key] %}<a class="btn btn-outline" href="{{ urls[key] }}" rel="noopener" aria-label="Open {{ full }}">Manage <span aria-hidden="true">→</span></a>
+        {% else %}<span class="btn btn-outline is-soon">Coming soon</span>{% endif %}
       </div>
     </article>
-
-    <article class="app-card blue">
-      <div class="app-art" aria-hidden="true"></div>
-      <div class="app-head">
-        <span class="app-icon" data-knock="cyberlogix"><img src="/static/img/cyberlogix-icon.webp" alt="" width="64" height="64"></span>
-        <div>
-          <h2>CyberLogix AI</h2>
-          <p class="tags">Monitoring <i>•</i> Alerts <i>•</i> Proof</p>
-        </div>
-      </div>
-      <p class="app-lede">Watches the equipment you can't afford to lose, and wakes a real person when it fails.</p>
-      <div class="card-actions">
-        {% if urls.cyberlogix %}<a class="btn btn-solid" href="{{ urls.cyberlogix }}" rel="noopener" aria-label="Open CyberLogix AI"><span>Open<span class="app-name"> CyberLogix AI</span></span> <span aria-hidden="true">→</span></a>{% elif demo %}<span class="btn btn-outline is-soon">Demo coming soon</span>{% endif %}
-        <details name="learn-more">
-          <summary class="btn btn-outline"><span><span class="learn-word">Learn </span>more</span> <span aria-hidden="true">→</span></summary>
-          <ul>
-            <li class="sheet-lede">Watches the equipment you can't afford to lose, and wakes a real person when it fails.</li>
-            <li>Wireless sensors watch freezers, server racks, vaccine fridges and more.</li>
-            <li>A problem sends a text, then a phone call, then the next person, until someone answers.</li>
-            <li>Every reading is kept in a sealed record, ready for an insurance claim.</li>
-            <li>Built for 12 industries, from restaurants to data centers.</li>
-          </ul>
-        </details>
-      </div>
-    </article>
-
-    <article class="app-card violet">
-      <div class="app-art" aria-hidden="true"></div>
-      <div class="app-head">
-        <span class="app-icon" data-knock="omniarmor"><img src="/static/img/omniarmor-icon.webp" alt="" width="64" height="64"></span>
-        <div>
-          <h2>OmniArmor.ai</h2>
-          <p class="tags">Compliance <i>•</i> Deadlines <i>•</i> Records</p>
-        </div>
-      </div>
-      <p class="app-lede">Catch the fine before it catches you.</p>
-      <div class="card-actions">
-        {% if urls.omniarmor %}<a class="btn btn-solid" href="{{ urls.omniarmor }}" rel="noopener" aria-label="Open OmniArmor.ai"><span>Open<span class="app-name"> OmniArmor.ai</span></span> <span aria-hidden="true">→</span></a>{% elif demo %}<span class="btn btn-outline is-soon">Demo coming soon</span>{% endif %}
-        <details name="learn-more">
-          <summary class="btn btn-outline"><span><span class="learn-word">Learn </span>more</span> <span aria-hidden="true">→</span></summary>
-          <ul>
-            <li class="sheet-lede">Catch the fine before it catches you.</li>
-            <li>500 compliance checks across 50 industries, each naming the rule it comes from.</li>
-            <li>Counts the days by itself and emails the team before anything is due.</li>
-            <li>Keeps a record an inspector, auditor or insurer can be shown.</li>
-            <li>Includes the Future Owner Academy, a business course for the next generation.</li>
-          </ul>
-        </details>
-      </div>
-    </article>
+    {% endfor %}
   </section>
 
-  <section id="about" class="about">
-    <div class="panel about-card">
-      <div class="about-brand">
-        <span class="about-mark" data-knock="mark" role="img" aria-label="MTRX Horizon logo"></span>
-        <div>
-          <p class="wordmark">MTRX <b>HORIZON</b></p>
-          <p class="tagline">One vision. Infinite possibilities.</p>
+  <section class="bottom">
+    <div class="panel about" id="about">
+      <div class="about-side">
+        <div class="about-brand">
+          <span class="about-mark" data-knock="mark" role="img" aria-label="MTRX Horizon logo"></span>
+          <div>
+            <p class="wordmark">MTRX <b>HORIZON</b></p>
+            <p class="tagline">One vision. Infinite possibilities.</p>
+          </div>
         </div>
+        <p class="about-text">A global ecosystem of intelligent solutions, connecting people,
+          technology, and ideas — across every industry and beyond.</p>
+        <a class="btn btn-outline" href="#team">Learn More <span aria-hidden="true">→</span></a>
       </div>
-      <p class="about-text">A family of software products, each built to take one worry off
-        someone's plate, from a family's chore list to a business's freezer at 3am.</p>
       <dl class="facts">
-        <div><dt>Apps</dt><dd>3</dd><span>and growing</span></div>
-        <div><dt>Compliance checks</dt><dd>500</dd><span>OmniArmor.ai</span></div>
-        <div><dt>Industries watched</dt><dd>12</dd><span>CyberLogix AI</span></div>
-        <div><dt>Game worlds</dt><dd>15</dd><span>RankUp</span></div>
+        <div>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+          <dt>Global Reach</dt><dd>12</dd><span>Industries</span>
+        </div>
+        <div>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 6 5"/></svg>
+          <dt>Active Users</dt>
+          {% if n.total_users is not none %}<dd>{{ count(n.total_users) }}</dd><span>Across all apps</span>
+          {% else %}<dd class="soon">Soon</dd><span>Counted from launch</span>{% endif %}
+        </div>
+        <div>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c1-4 3-6 6-7m-3 3 3 3m-2.5-6.5C11 7 15 3 21 3c0 6-4 10-8.5 11.5z"/><circle cx="15" cy="9" r="1.5"/></svg>
+          <dt>Projects</dt><dd>{{ projects | length if projects else 4 }}</dd><span>Underway</span>
+        </div>
+        <div>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 4.5 9-4.5"/></svg>
+          <dt>Total Apps</dt><dd>3</dd><span>Available</span>
+        </div>
       </dl>
     </div>
-    <div class="panel values">
-      <p class="eyebrow">What we stand for</p>
-      <ul>
-        <li><b class="dot cyan"></b><span>Real numbers only</span><em>No made-up stats, ever.</em></li>
-        <li><b class="dot blue"></b><span>People decide</span><em>Software helps. Humans choose.</em></li>
-        <li><b class="dot violet"></b><span>Proof you can show</span><em>Records that hold up.</em></li>
-        <li><b class="dot pink"></b><span>Your data is yours</span><em>Kept private, kept safe.</em></li>
-      </ul>
+
+    <div class="panel activity" id="activity">
+      <p class="eyebrow">Real-time global activity</p>
+      <div class="activity-body">
+        <div class="map" aria-hidden="true">
+          <span class="ping p1"></span><span class="ping p2"></span><span class="ping p3"></span>
+          <span class="ping p4"></span><span class="ping p5"></span>
+        </div>
+        <ul class="live">
+          <li><b class="dot cyan"></b><span>Users Online</span><em>{{ count(n.users_online) }}</em></li>
+          <li><b class="dot blue"></b><span>Total Users</span><em>{{ count(n.total_users) }}</em></li>
+          <li><b class="dot violet"></b><span>Apps Online</span><em>{% if n.apps_online is not none %}{{ n.apps_online }} / {{ n.apps_total }}{% else %}—{% endif %}</em></li>
+          <li><b class="ring"></b><span>Uptime</span><em>{% if n.uptime is not none %}{{ n.uptime }}%{% else %}—{% endif %}</em></li>
+        </ul>
+      </div>
+      {% if n.total_users is none %}<p class="live-note">Live numbers appear here as soon as the apps launch.</p>{% endif %}
     </div>
   </section>
 </main>
@@ -155,11 +159,100 @@
   <span class="foot-brand">MTRX HORIZON</span>
   <span class="foot-values">Innovation <i>•</i> Creativity <i>•</i> Impact</span>
   <span class="foot-line">Technology for a stronger tomorrow.</span>
-  <span class="foot-copy">© 2026 MTRX Horizon. All rights reserved.</span>
+  <span class="foot-copy">© 2026 MTRX HORIZON. All rights reserved.</span>
 </footer>
-
 </div>
 
+{#- Pop-up cards. Each opens when the address ends in its id (#projects,
+    #team, ...), so they work with no script at all; the dimmed backdrop
+    and the × both close by going back to plain #. -#}
+<section class="sheet" id="projects" aria-label="Projects">
+  <a class="sheet-shut" href="#" aria-label="Close"></a>
+  <div class="sheet-card">
+    <a class="sheet-x" href="#" aria-label="Close">×</a>
+    <p class="eyebrow">Projects</p>
+    <h2>Where everything stands</h2>
+    <ul class="project-rows">
+      {% for p in projects or [] %}
+      <li><span><b>{{ p.name }}</b><small>{{ p.kind }}</small></span>
+        <em class="status">{{ p.status }}</em><span class="next">Next: {{ p.next }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+<section class="sheet" id="team" aria-label="Team">
+  <a class="sheet-shut" href="#" aria-label="Close"></a>
+  <div class="sheet-card">
+    <a class="sheet-x" href="#" aria-label="Close">×</a>
+    <p class="eyebrow">Team</p>
+    <h2>About MTRX Horizon</h2>
+    <p>A small studio building software that takes one worry off someone's plate,
+      from a family's chore list to a business's freezer at 3am.</p>
+    <p class="eyebrow small">What we stand for</p>
+    <ul class="values">
+      <li><b class="dot cyan"></b><span>Real numbers only</span><em>No made-up stats, ever.</em></li>
+      <li><b class="dot blue"></b><span>People decide</span><em>Software helps. Humans choose.</em></li>
+      <li><b class="dot violet"></b><span>Proof you can show</span><em>Records that hold up.</em></li>
+      <li><b class="dot pink"></b><span>Your data is yours</span><em>Kept private, kept safe.</em></li>
+    </ul>
+  </div>
+</section>
+
+<section class="sheet" id="settings" aria-label="Settings">
+  <a class="sheet-shut" href="#" aria-label="Close"></a>
+  <div class="sheet-card">
+    <a class="sheet-x" href="#" aria-label="Close">×</a>
+    <p class="eyebrow">Settings</p>
+    <h2>Display</h2>
+    <label class="toggle" for="calm">
+      <span><b>Calm mode</b><small>Stops the drifting stars and moving pictures.</small></span>
+      <span class="toggle-ui" aria-hidden="true"></span>
+    </label>
+  </div>
+</section>
+
+<section class="sheet" id="updates" aria-label="What's new">
+  <a class="sheet-shut" href="#" aria-label="Close"></a>
+  <div class="sheet-card">
+    <a class="sheet-x" href="#" aria-label="Close">×</a>
+    <p class="eyebrow">What's new</p>
+    <h2>Latest updates</h2>
+    <ul class="news">
+      <li><b class="dot green-dot"></b><span><b>RankUp</b> Block Craft now tells a story, with battle scenes and a dragon fought with chores.</span></li>
+      <li><b class="dot blue"></b><span><b>CyberLogix AI</b> Run several businesses from one sign-in and switch between them.</span></li>
+      <li><b class="dot violet"></b><span><b>MTRX Horizon</b> A new home page, all on one screen.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="sheet menu-sheet" id="menu" aria-label="Menu">
+  <a class="sheet-shut" href="#" aria-label="Close"></a>
+  <nav class="sheet-card menu" aria-label="MTRX Horizon menu">
+    <a href="#apps">Our apps</a>
+    <a href="#projects">Projects</a>
+    <a href="#team">Team</a>
+    <a href="#updates">What's new</a>
+    <a href="#tour">Watch the video</a>
+    <a href="#settings">Settings</a>
+  </nav>
+</section>
+
+<section class="sheet" id="tour" aria-label="Video: a quick tour">
+  <a class="sheet-shut" href="#" aria-label="Close"></a>
+  <div class="sheet-card tour-card">
+    <a class="sheet-x" href="#" aria-label="Close">×</a>
+    <div class="tour">
+      <div class="slide s1"><p class="eyebrow">MTRX Horizon</p><h3>One vision. Three apps.</h3></div>
+      <div class="slide s2"><p class="eyebrow">RankUp</p><h3>Chores become achievements.</h3><p>Kids level up by getting things done.</p></div>
+      <div class="slide s3"><p class="eyebrow">CyberLogix AI</p><h3>The freezer fails at two.</h3><p>Someone knows by two past two.</p></div>
+      <div class="slide s4"><p class="eyebrow">OmniArmor.ai</p><h3>Catch the fine first.</h3><p>Deadlines counted before they cost money.</p></div>
+      <div class="tour-bar" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    </div>
+  </div>
+</section>
+
+<script src="/static/js/home.js" defer></script>
 {% if not demo %}<script src="/static/js/knock.js" defer></script>{% endif %}
 </body>
 </html>
