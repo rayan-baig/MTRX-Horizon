@@ -209,32 +209,14 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
   --pad: clamp(16px, 3.7vw, 64px);
 }
 
-/* The city: behind the top bar and the headline, fading into the night
-   on the left and under the cards at the bottom. */
-.page > .hero-art {
-  position: absolute; z-index: 0; top: 0; right: 0;
-  width: min(100%, max(64%, 900px)); height: 54%;
-  background: url("/static/img/hero.webp") 60% 40% / cover no-repeat;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 26%),
-                      linear-gradient(180deg, #000 72%, transparent);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(90deg, transparent, #000 26%),
-              linear-gradient(180deg, #000 72%, transparent);
-  mask-composite: intersect;
-  animation: breathe 18s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-@keyframes breathe { from { transform: scale(1); } to { transform: scale(1.04); } }
-.page > :not(.hero-art) { position: relative; z-index: 1; }
-
 /* ---------- top bar ---------- */
 .page .topbar {
   position: relative; flex: none; gap: clamp(16px, 2.4vw, 40px);
-  padding: clamp(8px, 1.4vh, 14px) clamp(16px, 2vw, 34px);
+  padding: clamp(6px, 1vh, 10px) clamp(16px, 2vw, 34px);
   background: linear-gradient(180deg, rgba(5, 8, 22, 0.78), rgba(5, 8, 22, 0.25));
   border-bottom-color: rgba(86, 140, 255, 0.18);
 }
-.page .brand-mark { width: clamp(64px, 6.6vw, 112px); height: clamp(46px, 4.2vw, 64px); }
+.page .brand-mark { width: clamp(60px, 6vw, 100px); height: clamp(42px, 3.6vw, 56px); }
 .page .mainnav { margin-left: clamp(8px, 3vw, 60px); gap: clamp(0px, 0.6vw, 14px); }
 .page .mainnav a { font-size: 14px; padding: 10px 12px; }
 .page .mainnav a.active::after {
@@ -306,7 +288,21 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
   display: flex; flex-direction: column; gap: clamp(8px, 2.1vh, 26px);
   padding: 0 var(--pad) clamp(8px, 1.6vh, 22px);
 }
+/* The city and the planet, whole: the full picture, as large as the space
+   between the top bar and the cards allows, anchored to the right edge.
+   Never cropped and never under the cards; only empty sky on its far left
+   fades (that fade is in the picture itself, hero-wide.webp). */
+.page .hero-art {
+  position: absolute; z-index: 0; top: 0; bottom: 0;
+  right: calc(-1 * var(--pad)); left: 30%;
+  background: url("/static/img/hero-wide.webp") right center / contain no-repeat;
+  animation: breathe 18s ease-in-out infinite alternate; transform-origin: right center;
+  pointer-events: none;
+}
+@keyframes breathe { from { transform: scale(1); } to { transform: scale(1.02); } }
+.page .hero-copy { position: relative; z-index: 1; }
 .page .hero {
+  position: relative;
   flex: 1; min-height: 0; display: flex; align-items: center;
   /* The words size themselves to the space the hero is left with (cqh is
      a hundredth of its own height), so they always fit inside it. */
@@ -321,7 +317,7 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
   font-family: var(--head); font-weight: 800; letter-spacing: -0.02em; line-height: 0.98;
   font-size: clamp(20px, min(4.4vw, 17cqh), 66px); margin: 0 0 clamp(4px, 5cqh, 26px);
 }
-.page .hero h1 .line { display: block; white-space: nowrap; }
+.page .hero h1 .line { display: block; width: max-content; white-space: nowrap; }
 .page .gradient-text {
   background: linear-gradient(90deg, #22d3ee, #3b82f6 45%, #8b5cf6 75%, #d946ef);
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -410,17 +406,17 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 }
 .page .about {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr); align-items: center;
-  padding: clamp(8px, 1.5vh, 18px) clamp(14px, 1.5vw, 24px); gap: 0 clamp(12px, 1.5vw, 24px);
+  padding: clamp(6px, 1.2vh, 14px) clamp(14px, 1.5vw, 24px); gap: 0 clamp(12px, 1.5vw, 24px);
 }
-.page .about-brand { display: flex; align-items: center; gap: 14px; margin-bottom: clamp(4px, 1vh, 12px); }
+.page .about-brand { display: flex; align-items: center; gap: 12px; margin-bottom: clamp(2px, 0.6vh, 8px); }
 .page .about-mark {
-  width: clamp(54px, 6vw, 92px); height: clamp(40px, 4.4vw, 62px); flex: none;
+  width: clamp(48px, 5vw, 80px); height: clamp(34px, 3.4vw, 52px); flex: none;
   background: url("/static/img/logo-mark.webp") center / contain no-repeat;
   -webkit-tap-highlight-color: transparent; user-select: none;
 }
 .page .about-brand .wordmark { font-size: clamp(13px, 1.2vw, 18px); margin: 0; }
 .page .about-brand .tagline { color: var(--muted); font-size: clamp(7.5px, 0.6vw, 9.5px); margin: 6px 0 0; }
-.page .about-text { color: var(--muted); font-size: clamp(12px, 1.45vh, 13.5px); line-height: 1.4; margin: 0 0 clamp(6px, 1.2vh, 14px); }
+.page .about-text { color: var(--muted); font-size: clamp(12px, 1.4vh, 13px); line-height: 1.38; margin: 0 0 clamp(4px, 0.9vh, 10px); }
 .page .about .btn-outline { --accent: var(--cyan); }
 .page .facts {
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; align-self: stretch;
@@ -435,8 +431,8 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 .page .facts dd.soon { font-size: clamp(16px, 2.4vh, 22px); color: #6ee7b7; }
 .page .facts span { font-size: clamp(10.5px, 1.3vh, 12px); color: var(--faint); }
 
-.page .activity { padding: clamp(10px, 1.8vh, 18px) clamp(14px, 1.3vw, 22px); display: flex; flex-direction: column; min-width: 0; }
-.page .activity .eyebrow { font-size: clamp(9.5px, 1.25vh, 12px); margin-bottom: clamp(6px, 1.2vh, 12px); }
+.page .activity { padding: clamp(8px, 1.3vh, 14px) clamp(14px, 1.3vw, 22px); display: flex; flex-direction: column; min-width: 0; }
+.page .activity .eyebrow { font-size: clamp(9.5px, 1.25vh, 12px); margin-bottom: clamp(4px, 0.8vh, 8px); }
 .activity-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: clamp(10px, 1vw, 18px); align-items: center; min-height: 0; }
 .map {
   position: relative; aspect-ratio: 1200 / 560; width: 100%;
@@ -465,13 +461,13 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 .live { list-style: none; margin: 0; padding: 0; display: grid; }
 .live li {
   display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; align-items: center; gap: 10px;
-  padding: clamp(3px, 0.75vh, 8px) 0; border-bottom: 1px solid rgba(86, 140, 255, 0.18);
+  padding: clamp(2px, 0.5vh, 6px) 0; border-bottom: 1px solid rgba(86, 140, 255, 0.18);
   font-size: clamp(11px, 1.35vh, 12.5px);
 }
 .live li:last-child { border-bottom: 0; }
 .live span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .live em { font-style: normal; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
-.live-note { margin: 6px 0 0; font-size: clamp(10.5px, 1.25vh, 12px); color: var(--faint); }
+.live-note { margin: 4px 0 0; font-size: clamp(10.5px, 1.25vh, 12px); color: var(--faint); }
 .dot { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
 .dot.cyan { background: var(--cyan); color: var(--cyan); }
 .dot.blue { background: var(--blue); color: var(--blue); }
@@ -582,6 +578,7 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 }
 @media (max-width: 1100px) {
   .page .mainnav { display: none; }
+  .page .hero-art { left: 44%; }
   /* Side by side still, with the company blurb and the map left out:
      the four figures and the live numbers are what the panels are for. */
   .page .bottom { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
@@ -593,6 +590,8 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 }
 /* Tablets and phones: each app is one slim row. */
 @media (max-width: 900px) {
+  .page .hero-art { left: 50%; }
+  .page .hero-copy { max-width: 48%; }
   .page .apps { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .page .app-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2px 14px; padding: 10px 14px; }
   .page .app-head { display: contents; }
@@ -605,11 +604,22 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .live { grid-template-columns: 1fr 1fr; column-gap: 14px; }
 }
 @media (max-width: 720px) {
-  .page > .hero-art {
-    width: 100%; height: 40%; opacity: .6;
-    -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent);
-    mask-image: linear-gradient(180deg, #000 45%, transparent);
+  /* No room beside the words: the whole picture goes above them instead. */
+  .page .hero { flex-direction: column; align-items: stretch; justify-content: center; gap: 6px; }
+  .page .hero-art {
+    position: relative; inset: auto; flex: none; width: calc(100% + 24px); margin: 0 -12px;
+    aspect-ratio: 1111 / 400; background-position: center;
   }
+  /* The words size against the room left under the picture. */
+  .page .hero-copy { max-width: none; flex: 1; min-height: 0; container-type: size; display: flex; flex-direction: column; justify-content: center; }
+  /* Three small tiles across: icon, name and Manage. */
+  .page .apps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .page .app-card { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 8px; }
+  .page .app-head { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 0; }
+  .page .app-head > div { grid-column: auto; grid-row: auto; }
+  .page .app-card .tags, .page .app-card .app-lede { display: none; }
+  .page .card-actions { grid-column: auto; grid-row: auto; }
+  .page .card-actions .btn { width: 100%; justify-content: center; }
   .tools { gap: 6px; }
   .me-name, .me svg { display: none; }
   .me { padding: 2px; }
@@ -642,8 +652,9 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .topbar { padding-block: 6px; }
   .page .brand-mark { width: 40px; height: 31px; }
   .page .live-note { display: none; }
-  /* Both buttons point at things already on screen, or in the menu. */
-  .page .cta-row { display: none; }
+  /* Both buttons point at things already on screen, or in the menu; the
+     paragraph makes way so the city and the planet can stay whole. */
+  .page .cta-row, .page .lede { display: none; }
 }
 
 /* Too short to fit everything: let it scroll rather than cut anything off. */
