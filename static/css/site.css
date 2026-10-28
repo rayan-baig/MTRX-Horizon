@@ -394,6 +394,13 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
   color: var(--text); border-color: color-mix(in srgb, var(--accent, var(--cyan)) 75%, transparent);
   background: rgba(5, 10, 30, 0.55);
 }
+.btn-solid {
+  min-height: clamp(30px, 3.9vh, 36px); padding: 0 clamp(14px, 1.2vw, 20px); font-size: 13.5px; gap: 12px;
+  color: #04101f; font-weight: 600; background: var(--accent, var(--cyan));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent, var(--cyan)) 45%, transparent);
+}
+.btn-solid:hover { box-shadow: 0 0 26px color-mix(in srgb, var(--accent, var(--cyan)) 65%, transparent); }
+.btn-solid small { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; opacity: .75; }
 .page .btn-outline:hover { box-shadow: 0 0 16px color-mix(in srgb, var(--accent, var(--cyan)) 45%, transparent); }
 .page .is-soon { opacity: .6; cursor: default; }
 
@@ -541,6 +548,21 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 .menu a { padding: 10px 12px; border-radius: 8px; text-decoration: none; font-size: 14px; }
 .menu a:hover { background: rgba(59, 130, 246, .16); }
 
+/* Learn more, one per app, in the app's own colour. */
+.sheet.learn.green { --accent: #2ee59d; }
+.sheet.learn.blue { --accent: #3b8bff; }
+.sheet.learn.violet { --accent: #a66bff; }
+.learn .sheet-card { border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .65), 0 0 40px color-mix(in srgb, var(--accent) 30%, transparent); }
+.learn-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.learn-head img { border-radius: 12px; box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 55%, transparent); }
+.learn-head h2 { margin: 0; }
+.learn-head .eyebrow { margin-bottom: 6px; color: var(--accent); }
+.learn-points { margin: 0 0 18px; padding-left: 20px; display: grid; gap: 8px; color: var(--muted); font-size: 14.5px; }
+.learn-points li::marker { color: var(--accent); }
+.learn .btn-solid { min-height: 40px; }
+.learn-soon { color: var(--faint); font-size: 13.5px; margin: 0; }
+
 /* The video: a sixteen-second tour, one picture per app, on a loop. */
 .tour-card { width: min(860px, 100%); padding: 0; overflow: hidden; }
 .tour-card .sheet-x { z-index: 3; color: #fff; background: rgba(0, 0, 0, .35); }
@@ -588,6 +610,13 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .activity-body { grid-template-columns: minmax(0, 1fr); }
   .page .tags { white-space: normal; letter-spacing: .08em; }
 }
+/* Narrower cards: the two buttons stay on one line each. */
+@media (min-width: 901px) and (max-width: 1280px) {
+  .page .card-actions { gap: 8px; }
+  .page .card-actions .btn { padding: 0 11px; font-size: 12.5px; gap: 6px; white-space: nowrap; }
+  .page .card-actions .arrow { display: none; }
+}
+
 /* Tablets and phones: each app is one slim row. */
 @media (max-width: 900px) {
   .page .hero-art { left: 50%; }
@@ -618,8 +647,10 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .app-head { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 0; }
   .page .app-head > div { grid-column: auto; grid-row: auto; }
   .page .app-card .tags, .page .app-card .app-lede { display: none; }
-  .page .card-actions { grid-column: auto; grid-row: auto; }
-  .page .card-actions .btn { width: 100%; justify-content: center; }
+  .page .card-actions { grid-column: auto; grid-row: auto; flex-direction: column; gap: 5px; }
+  .page .card-actions .btn { width: 100%; justify-content: center; min-height: 28px; padding: 0 6px; font-size: 12px; gap: 6px; }
+  /* The tile already says which app it is. */
+  .page .card-actions .app-name, .page .card-actions .arrow { display: none; }
   .tools { gap: 6px; }
   .me-name, .me svg { display: none; }
   .me { padding: 2px; }

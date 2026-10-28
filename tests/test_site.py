@@ -183,3 +183,13 @@ def test_projects_on_the_home_page_are_the_real_list(client):
     page = client.get("/").text
     for project in stats.PROJECTS:
         assert project["next"] in page
+
+
+def test_each_app_has_open_and_learn_more(client, monkeypatch):
+    monkeypatch.setenv("CYBERLOGIX_URL", "https://cyberlogix.example")
+    page = client.get("/").text
+    for key in ("rankup", "cyberlogix", "omniarmor"):
+        assert f'href="#learn-{key}"' in page and f'id="learn-{key}"' in page
+    # An app with an address opens; one without says it is coming.
+    assert 'aria-label="Open CyberLogix AI"' in page and "https://cyberlogix.example" in page
+    assert 'aria-label="Open RankUp"' not in page and "RankUp opens to the public soon." in page

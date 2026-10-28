@@ -54,7 +54,7 @@
   </div>
 </header>
 
-{% if demo %}<p class="demo-note">Demo: each Manage button opens that app's own working demo, filled with made-up sample data.</p>{% endif %}
+{% if demo %}<p class="demo-note">Demo: each Open button opens that app's own working demo, filled with made-up sample data.</p>{% endif %}
 <main id="top">
   <section class="hero">
     <div class="hero-art" role="img" aria-label="The MTRX Horizon city under a ringed planet"></div>
@@ -93,8 +93,9 @@
       </div>
       <p class="app-lede">{{ lede }}</p>
       <div class="card-actions">
-        {% if urls[key] %}<a class="btn btn-outline" href="{{ urls[key] }}" rel="noopener" aria-label="Open {{ full }}">Manage <span aria-hidden="true">→</span></a>
-        {% else %}<span class="btn btn-outline is-soon">Coming soon</span>{% endif %}
+        {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener" aria-label="Open {{ full }}"><span>Open<span class="app-name"> {{ name }}</span></span> <span class="arrow" aria-hidden="true">→</span></a>
+        {% else %}<span class="btn btn-solid is-soon" aria-disabled="true" title="Opening soon"><span>Open<span class="app-name"> {{ name }}</span></span> <small>soon</small></span>{% endif %}
+        <a class="btn btn-outline" href="#learn-{{ key }}" aria-label="Learn more about {{ full }}">Learn more <span class="arrow" aria-hidden="true">→</span></a>
       </div>
     </article>
     {% endfor %}
@@ -166,6 +167,41 @@
 {#- Pop-up cards. Each opens when the address ends in its id (#projects,
     #team, ...), so they work with no script at all; the dimmed backdrop
     and the × both close by going back to plain #. -#}
+{%- for key, name, full, lede, points in [
+  ("rankup", "RankUp", "RankUp", "Turn daily chores into achievements and build better habits.", [
+    "A parent sets a chore, the child does it and snaps a photo as proof.",
+    "A smart photo check gives its opinion. The parent always makes the call.",
+    "Approved chores earn points, levels and arcade tokens across 15 game worlds and 24 games.",
+    "Free for one child. Standard and Elite plans add more."]),
+  ("cyberlogix", "CyberLogix", "CyberLogix AI", "Secure, intelligent solutions for your business.", [
+    "Wireless sensors watch freezers, server racks, vaccine fridges and more.",
+    "A problem sends a text, then a phone call, then the next person, until someone answers.",
+    "Every reading is kept in a sealed record, ready for an insurance claim.",
+    "Built for 12 industries, from restaurants to data centers."]),
+  ("omniarmor", "OmniArmor", "OmniArmor.ai", "Protect what matters with advanced security.", [
+    "500 compliance checks across 50 industries, each naming the rule it comes from.",
+    "Counts the days by itself and emails the team before anything is due.",
+    "Keeps a record an inspector, auditor or insurer can be shown.",
+    "Includes the Future Owner Academy, a business course for the next generation."]),
+] %}
+<section class="sheet learn {{ {'rankup': 'green', 'cyberlogix': 'blue', 'omniarmor': 'violet'}[key] }}" id="learn-{{ key }}" aria-label="About {{ full }}">
+  <a class="sheet-shut" href="#" aria-label="Close"></a>
+  <div class="sheet-card">
+    <a class="sheet-x" href="#" aria-label="Close">×</a>
+    <div class="learn-head">
+      <img src="/static/img/{{ key }}-icon.webp" alt="" width="52" height="52">
+      <div><p class="eyebrow">Learn more</p><h2>{{ full }}</h2></div>
+    </div>
+    <p>{{ lede }}</p>
+    <ul class="learn-points">
+      {% for point in points %}<li>{{ point }}</li>{% endfor %}
+    </ul>
+    {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener">Open {{ name }} <span aria-hidden="true">→</span></a>
+    {% else %}<p class="learn-soon">{{ name }} opens to the public soon.</p>{% endif %}
+  </div>
+</section>
+{% endfor %}
+
 <section class="sheet" id="projects" aria-label="Projects">
   <a class="sheet-shut" href="#" aria-label="Close"></a>
   <div class="sheet-card">
