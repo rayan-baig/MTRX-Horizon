@@ -115,7 +115,7 @@ def test_demo_build_links_each_app_and_leaves_out_the_knock(tmp_path, monkeypatc
 
     home = (out / "index.html").read_text()
     assert 'href="cyberlogix/index.html"' in home and 'href="omniarmor/index.html"' in home
-    assert "Coming soon" in home  # RankUp was not given
+    assert "RankUp opens to the public soon." in home  # RankUp was not given
     assert "knock.js" not in home and "<html" not in home
     # The home page's own script goes along; the lock's never does.
     assert sorted(p.name for p in (out / "static" / "js").iterdir()) == ["home.js"]
@@ -148,7 +148,7 @@ def test_home_page_is_one_screen(client):
     page = client.get("/").text
     assert '<div class="page">' in page
     # Every pop-up is outside the frame, so opening one cannot move it.
-    frame_html = page.split('<div class="page">', 1)[1].split('<section class="sheet"', 1)[0]
+    frame_html = page.split('<div class="page">', 1)[1].split('<section class="sheet', 1)[0]
     assert 'class="sheet' not in frame_html
     for sheet in ("projects", "team", "settings", "updates", "menu", "tour"):
         assert f'<section class="sheet' in page and f'id="{sheet}"' in page
