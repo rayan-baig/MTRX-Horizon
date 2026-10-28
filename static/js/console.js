@@ -82,7 +82,7 @@
       else if (app.online) state = el("span", { class: "pill ok", text: "Online" });
       else state = el("span", { class: "pill down", text: "Not answering" });
       list.append(el("li", { class: `platform ${app.color}` },
-        el("img", { src: `/static/img/${ICONS[app.key]}-icon.webp`, alt: "" }),
+        el("img", { src: `/static/img/${ICONS[app.key]}-icon.svg`, alt: "" }),
         el("div", { class: "pname" }, el("b", { text: app.name }), state),
         el("span", { class: "ptags", text: app.tags.join(" • ") }),
         el("div", { class: "pnums" },

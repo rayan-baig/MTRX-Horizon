@@ -85,7 +85,7 @@
     <article class="app-card {{ {'rankup': 'green', 'cyberlogix': 'blue', 'omniarmor': 'violet'}[key] }}" data-app="{{ key }}">
       <div class="app-art" aria-hidden="true"></div>
       <div class="app-head">
-        <span class="app-icon" data-knock="{{ key }}"><img src="/static/img/{{ key }}-icon.webp" alt="{{ full }}" width="64" height="64"></span>
+        <span class="app-icon" data-knock="{{ key }}"><img src="/static/img/{{ key }}-icon.svg" alt="{{ full }}" width="64" height="64"></span>
         <div>
           <h2>{{ name }}</h2>
           <p class="tags">{% for t in tags %}{{ t }}{% if not loop.last %} <i>•</i> {% endif %}{% endfor %}</p>
@@ -189,7 +189,7 @@
   <div class="sheet-card">
     <a class="sheet-x" href="#" aria-label="Close">×</a>
     <div class="learn-head">
-      <img src="/static/img/{{ key }}-icon.webp" alt="" width="52" height="52">
+      <img src="/static/img/{{ key }}-icon.svg" alt="" width="52" height="52">
       <div><p class="eyebrow">Learn more</p><h2>{{ full }}</h2></div>
     </div>
     <p>{{ lede }}</p>
