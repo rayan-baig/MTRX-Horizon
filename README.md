@@ -39,6 +39,11 @@ Anyone who fails any lock sees the normal "page not found".
 3. In the console, press **Approve a device** and scan the QR code with your phone.
 
 The setup code works once. After that, new devices are approved by QR.
+**Then delete `MTRX_SETUP_TOKEN` from the hosting settings.** "Used once" is
+remembered in the database, so if the database were ever lost (a disk reset, a
+move to a plan without a disk) the same code would work again for whoever had
+it. With the setting gone there is no code to reuse. If you ever need to set up
+from scratch, put a new random one in, use it, and delete it again.
 
 ### Every day
 
