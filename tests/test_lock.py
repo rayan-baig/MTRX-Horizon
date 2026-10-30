@@ -149,7 +149,7 @@ def test_setup_code_approves_first_device_once(client, make_client):
     first = Device()
     assert enroll(client, first, SETUP).status_code == 200
     other = make_client()
-    assert enroll(other, Device(), SETUP).status_code == 400
+    assert enroll(other, Device(), SETUP).status_code == 404
 
 
 def test_setup_page_is_404_after_use(client):
@@ -160,7 +160,7 @@ def test_setup_page_is_404_after_use(client):
 
 def test_short_setup_code_is_refused(client, monkeypatch):
     monkeypatch.setenv("MTRX_SETUP_TOKEN", "short")
-    assert enroll(client, Device(), "short").status_code == 400
+    assert enroll(client, Device(), "short").status_code == 404
 
 
 def test_enroll_needs_proof_of_the_key(client):
@@ -169,7 +169,7 @@ def test_enroll_needs_proof_of_the_key(client):
         "token": SETUP, "name": "x", "public_key": device.public,
         "signature": impostor.sign("mtrx-enroll:" + SETUP),
     })
-    assert response.status_code == 400
+    assert response.status_code == 404
 
 
 def test_new_device_by_qr_invite(client, make_client):
@@ -183,7 +183,7 @@ def test_new_device_by_qr_invite(client, make_client):
     assert unlock(phone_client, phone).status_code == 200
     assert phone_client.get("/console").status_code == 200
     # The invite works only once.
-    assert enroll(make_client(), Device(), token).status_code == 400
+    assert enroll(make_client(), Device(), token).status_code == 404
 
 
 def test_invite_expires(client, make_client, monkeypatch):
@@ -191,7 +191,7 @@ def test_invite_expires(client, make_client, monkeypatch):
     token = client.post("/api/console/invite", headers=ORIGIN).json()["url"].rsplit("/", 1)[1]
     real = time.time
     monkeypatch.setattr(time, "time", lambda: real() + 11 * 60)
-    assert enroll(make_client(), Device(), token).status_code == 400
+    assert enroll(make_client(), Device(), token).status_code == 404
 
 
 def test_invite_from_removed_device_is_dead(client, make_client):
@@ -204,7 +204,7 @@ def test_invite_from_removed_device_is_dead(client, make_client):
     t2 = phone_client.post("/api/console/invite", headers=ORIGIN).json()["url"].rsplit("/", 1)[1]
     phone_id = next(d["id"] for d in client.get("/api/console/overview").json()["devices"] if not d["this"])
     assert client.post(f"/api/console/devices/{phone_id}/remove", headers=ORIGIN).status_code == 200
-    assert enroll(make_client(), Device(), t2).status_code == 400
+    assert enroll(make_client(), Device(), t2).status_code == 404
 
 
 # ---------------------------------------------------------------- signing in
@@ -317,3 +317,70 @@ def test_session_cannot_move_to_another_approved_device(client, make_client):
     # The phone is approved but not signed in. Hand it the laptop's session.
     phone_client.cookies.set("mh_s", client.cookies.get("mh_s"))
     assert phone_client.get("/api/console/overview").status_code == 404
+
+
+# ---------------------------------------------------------------- after review
+
+def test_one_tap_holding_the_whole_knock_is_not_a_knock(client):
+    # The order joined into one "tap" used to open the door, and was never
+    # counted as a wrong try, so the knock could be guessed for free.
+    assert knock(client, [" ".join(KNOCK)]).json()["go"] is None
+
+
+def test_every_wrong_knock_costs_a_try_whatever_its_shape(client):
+    for taps in (["logo"], ["logo logo logo logo"], "logo", [1, 2, 3, 4], ["nope"] * 5,
+                 ["logo"] * 4, ["logo"] * 5, ["logo"] * 6):
+        knock(client, taps)
+    # Eight wrong tries: the right knock is now refused too.
+    assert knock(client).json()["go"] is None
+
+
+def test_a_refused_caller_adds_nothing_to_the_database(client):
+    from horizon import db
+    for _ in range(8):
+        knock(client, ["logo"] * 4)
+    with db.connect() as conn:
+        (before,) = conn.execute("SELECT COUNT(*) FROM attempts").fetchone()
+    for _ in range(20):
+        knock(client, ["logo"] * 4)
+    with db.connect() as conn:
+        (after,) = conn.execute("SELECT COUNT(*) FROM attempts").fetchone()
+    assert after == before
+
+
+def test_nothing_tells_a_stranger_the_console_exists(client):
+    stranger_404 = client.get("/no-such-page")
+    for response in (
+        client.get("/api/console/overview"),
+        client.get("/api/console/overview?days=x"),   # used to be a 422 naming the field
+        client.get("/api/knock"),                       # used to be 405 "allow: POST"
+        client.post("/console", headers=ORIGIN),
+        client.post("/api/enroll", json={}, headers=ORIGIN),
+        client.post("/api/unlock", json={}, headers=ORIGIN),
+        client.post("/api/unlock/challenge", headers=ORIGIN),
+        client.get("/console/assets/console.js"),
+        client.get("/console/assets/unlock.js"),
+        client.get("/console/assets/manifest.webmanifest"),
+        client.get("/static/js/console.js"),
+        client.get("/static/manifest.webmanifest"),
+    ):
+        assert response.status_code == 404
+        assert response.text == stranger_404.text
+        assert response.headers.get("cache-control") == stranger_404.headers.get("cache-control")
+
+
+def test_the_console_files_come_to_the_console(client):
+    owner(client)
+    for name in ("console.js", "console.css", "manifest.webmanifest", "unlock.js"):
+        assert client.get(f"/console/assets/{name}").status_code == 200
+
+
+def test_setup_links_stay_out_of_the_log():
+    import logging
+    from horizon.main import _HideSecretLinks
+    keep = _HideSecretLinks()
+    def line(path):
+        return logging.LogRecord("uvicorn.access", logging.INFO, __file__, 1,
+                                 '%s - "%s %s HTTP/1.1" %d', ("1.2.3.4", "GET", path, 200), None)
+    assert not keep.filter(line("/console/add/the-secret-setup-code"))
+    assert keep.filter(line("/"))

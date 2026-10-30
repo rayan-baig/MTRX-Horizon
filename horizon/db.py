@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS attempts (
     at REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS attempts_lookup ON attempts (kind, who, at);
+-- For the clean-up of old tries, which otherwise read the whole table.
+CREATE INDEX IF NOT EXISTS attempts_age ON attempts (at);
 CREATE TABLE IF NOT EXISTS activity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     at REAL NOT NULL,

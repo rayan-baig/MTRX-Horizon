@@ -38,8 +38,9 @@ def test_open_app_button_only_when_a_url_is_set(client, monkeypatch):
     assert "Open RankUp" in page and "https://rankup.example" in page
 
 
-def test_robots_hides_the_console(client):
-    assert "Disallow: /console" in client.get("/robots.txt").text
+def test_robots_does_not_point_at_the_console(client):
+    # Listing /console under Disallow told every visitor where to look.
+    assert "console" not in client.get("/robots.txt").text
 
 
 @pytest.fixture

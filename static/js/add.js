@@ -32,7 +32,9 @@
         window.location.replace(result.data.go);
         return;
       }
-      status.textContent = result.data.error || "That didn't work.";
+      // The server answers a failed approval like any missing page, so the
+      // explanation lives here rather than in its reply.
+      status.textContent = "That link has expired or was already used. Make a new one from the console.";
     } catch (_) {
       status.textContent = "This browser couldn't make a device key. Use an up-to-date browser over https.";
     }

@@ -76,11 +76,18 @@ def record_failure(kind: str, who: str):
 # ---------------------------------------------------------------- the knock
 
 def knock_matches(taps: list) -> bool:
+    """Whether these taps are the secret knock, tap by tap.
+
+    Each tap has to be exactly one of the names on the page. Joining whatever
+    arrived with spaces and comparing the string used to accept a single "tap"
+    that held the whole order, which also slipped past the counting of wrong
+    tries.
+    """
     secret = config.get().knock
-    if not secret or not isinstance(taps, list) or len(taps) > 40:
+    if (not secret or not isinstance(taps, list) or not 4 <= len(taps) <= 40
+            or not all(isinstance(t, str) and t in config.KNOCK_TARGETS for t in taps)):
         return False
-    given = " ".join(str(t).lower() for t in taps)
-    return hmac.compare_digest(given.encode(), " ".join(secret).encode())
+    return hmac.compare_digest(" ".join(taps).encode(), " ".join(secret).encode())
 
 
 def open_door() -> str:

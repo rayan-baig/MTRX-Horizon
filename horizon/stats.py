@@ -92,6 +92,21 @@ def _int_or_none(value):
     return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
 
 
+class _NoRedirects(urllib.request.HTTPRedirectHandler):
+    """Refuse to follow a redirect.
+
+    urllib copies the Authorization header onto a redirect, even to another
+    host or from https to plain http, so an app's stats address that answered
+    with a redirect would have handed the stats key to wherever it pointed.
+    """
+
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirects)
+
+
 def fetch_app(key: str) -> dict:
     """Ask one app for its numbers. Never raises."""
     settings = config.get()
@@ -104,7 +119,7 @@ def fetch_app(key: str) -> dict:
     if settings.stats_key:
         request.add_header("Authorization", "Bearer " + settings.stats_key)
     try:
-        with urllib.request.urlopen(request, timeout=4) as response:
+        with _OPENER.open(request, timeout=4) as response:
             body = json.loads(response.read(64_000))
         result["online"] = True
         if isinstance(body, dict):
