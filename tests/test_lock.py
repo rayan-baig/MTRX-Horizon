@@ -478,3 +478,19 @@ def test_deeply_nested_json_gets_the_plain_404(make_client):
     response = client.post("/api/enroll", content=b"[" * 200_000,
                            headers={**ORIGIN, "Content-Type": "application/json"})
     assert response.status_code == 404 and response.text == stranger_404.text
+
+
+def test_console_manifest_is_fetched_with_the_owners_cookies(client):
+    """Browsers fetch a web app manifest without cookies unless its link
+    says crossorigin="use-credentials", and the console's manifest is only
+    served to a signed-in device, so the browser always got the 404 page:
+    the Home Screen app lost its name, icon, start page and full-screen
+    look without any error."""
+    owner(client)
+    page = client.get("/console").text
+    link = next(tag for tag in page.split("<link")[1:] if 'rel="manifest"' in tag)
+    assert 'crossorigin="use-credentials"' in link.split(">", 1)[0]
+    # And without the cookies it is the plain 404, so the attribute is needed.
+    from fastapi.testclient import TestClient as Fresh
+    assert Fresh(client.app, base_url="https://testserver").get(
+        "/console/assets/manifest.webmanifest").status_code == 404
