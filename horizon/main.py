@@ -3,6 +3,7 @@
 import base64
 import io
 import ipaddress
+import json
 import logging
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
@@ -187,10 +188,28 @@ def robots():
     return Response("User-agent: *\nAllow: /\n", media_type="text/plain")
 
 
+# Every body the site accepts is a few short fields.
+MAX_BODY = 16_384
+
+
 async def _json(request: Request):
+    """The request's JSON object, or {} for anything else.
+
+    Bodies used to be read whole however big they were, so anyone could
+    make the server hold as much as they cared to send, and JSON nested
+    thousands deep crashed the parser with a 500.
+    """
+    size = request.headers.get("content-length", "")
+    if size and (not size.isdigit() or int(size) > MAX_BODY):
+        return {}
+    raw = b""
+    async for chunk in request.stream():
+        raw += chunk
+        if len(raw) > MAX_BODY:
+            return {}
     try:
-        body = await request.json()
-    except ValueError:
+        body = json.loads(raw)
+    except (ValueError, RecursionError):
         return {}
     return body if isinstance(body, dict) else {}
 

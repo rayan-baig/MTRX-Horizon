@@ -459,3 +459,22 @@ def test_removing_a_device_that_is_already_gone_keeps_the_owner_in(client, make_
     assert again.status_code != 404 and again.status_code >= 400
     assert again.json()["error"]
     assert client.get("/api/console/overview").status_code == 200
+
+
+def test_a_huge_request_is_not_read(client):
+    """Bodies were read whole, however big, so anyone could make the
+    server hold as much as they cared to send. A knock is a few words."""
+    response = client.post("/api/knock", headers=ORIGIN,
+                           json={"taps": KNOCK, "padding": "x" * 1_000_000})
+    assert response.json() == {"go": None}
+
+
+def test_deeply_nested_json_gets_the_plain_404(make_client):
+    """JSON nested thousands deep crashed the parser, and the 500 "Internal
+    Server Error" told a stranger that /api/enroll is something real."""
+    client = TestClient(make_client().app, base_url="https://testserver",
+                        raise_server_exceptions=False)
+    stranger_404 = client.get("/no-such-page")
+    response = client.post("/api/enroll", content=b"[" * 200_000,
+                           headers={**ORIGIN, "Content-Type": "application/json"})
+    assert response.status_code == 404 and response.text == stranger_404.text
