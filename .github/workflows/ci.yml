@@ -1,0 +1,25 @@
+# Every push runs the tests and builds the production image.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'   # what the Dockerfile ships
+          cache: pip
+      - run: pip install -r requirements.txt pytest httpx pip-audit
+      - name: Tests
+        run: python -m pytest -q
+      - name: Known security holes in dependencies
+        run: pip-audit -r requirements.txt
+      - name: The production image builds
+        run: docker build -t horizon:ci .
