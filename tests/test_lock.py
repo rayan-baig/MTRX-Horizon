@@ -435,6 +435,24 @@ def test_knock_limit_covers_a_whole_ipv6_block(client, monkeypatch):
     assert other.json()["go"] == "/console"
 
 
+def test_tries_are_counted_for_ipv4_visitors(client, monkeypatch):
+    """Grouping IPv6 addresses by block must leave IPv4 working: real
+    visitors have real addresses, not the test client's made-up name."""
+    monkeypatch.setenv("MTRX_TRUST_PROXY", "1")
+    for n in range(8):
+        response = client.post("/api/knock", json={"taps": ["rankup"] * 5}, headers={
+            **ORIGIN, "X-Forwarded-For": "203.0.113.7"})
+        assert response.json() == {"go": None}
+    right = {"taps": KNOCK}
+    assert client.post("/api/knock", json=right, headers={
+        **ORIGIN, "X-Forwarded-For": "203.0.113.7"}).json()["go"] is None
+    assert client.post("/api/knock", json=right, headers={
+        **ORIGIN, "X-Forwarded-For": "203.0.113.8"}).json()["go"] == "/console"
+    # An IPv4 address written the IPv6 way counts as the same visitor.
+    assert client.post("/api/knock", json=right, headers={
+        **ORIGIN, "X-Forwarded-For": "::ffff:203.0.113.7"}).json()["go"] is None
+
+
 def test_guessing_codes_through_the_approval_page_is_limited(client):
     """The approval page answers differently for a live code and a wrong
     one, and had no limit, so the setup code could be guessed through it

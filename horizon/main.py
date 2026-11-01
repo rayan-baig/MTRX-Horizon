@@ -78,9 +78,11 @@ def client_ip(request: Request) -> str:
         ip = ipaddress.ip_address(address)
     except ValueError:
         return address
-    if ip.version == 6 and ip.ipv4_mapped is None:
-        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
-    return str(ip.ipv4_mapped or ip)
+    if ip.version == 4:
+        return str(ip)
+    if ip.ipv4_mapped is not None:
+        return str(ip.ipv4_mapped)
+    return str(ipaddress.ip_network(f"{ip}/64", strict=False))
 
 
 def set_cookie(response: Response, name: str, value: str, max_age: int):
