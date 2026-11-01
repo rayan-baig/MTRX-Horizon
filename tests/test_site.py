@@ -273,3 +273,18 @@ def test_home_page_starts_no_refresh_when_no_app_is_connected(client, monkeypatc
     ours = [k for k in started
             if getattr(k.get("target"), "__qualname__", "").startswith("refresh_in_background")]
     assert ours == []
+
+
+def test_active_users_on_the_home_page_are_the_active_ones(client):
+    """The "Active Users" figure showed the total number of users, so with
+    1,234 users of whom 56 were active, the page said 1,234 were active."""
+    import time
+    from horizon import db
+
+    with db.connect() as conn:
+        conn.execute(
+            "INSERT INTO app_snapshots (app, at, online, users, active_users)"
+            " VALUES (?, ?, ?, ?, ?)", ("rankup", time.time(), 1, 1234, 56))
+    page = client.get("/").text
+    fact = page.split("<dt>Active Users</dt>", 1)[1].split("</div>", 1)[0]
+    assert "56" in fact and "1,234" not in fact
