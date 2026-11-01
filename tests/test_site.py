@@ -329,3 +329,21 @@ def test_a_disconnected_app_drops_off_the_home_page(client, monkeypatch, stats_s
     assert numbers["total_users"] is None
     assert numbers["apps_online"] is None
     assert numbers["uptime"] is None
+
+
+def test_a_mistyped_stats_address_does_not_break_the_console(client, monkeypatch, stats_server):
+    """A stats address without its https:// (an easy slip in the hosting
+    settings) made building the request fail before any error was caught,
+    so the whole console failed to load for as long as the setting stayed."""
+    url, _ = stats_server
+    monkeypatch.setenv("RANKUP_STATS_URL", "rankup.example/api/stats")
+    monkeypatch.setenv("CYBERLOGIX_STATS_URL", "file:///etc/hostname")
+    monkeypatch.setenv("OMNIARMOR_STATS_URL", url)
+    owner(client)
+    response = client.get("/api/console/overview")
+    assert response.status_code == 200
+    apps = {a["key"]: a for a in response.json()["apps"]}
+    assert apps["rankup"]["connected"] is True and apps["rankup"]["online"] is False
+    assert apps["cyberlogix"]["online"] is False
+    # The other apps still report.
+    assert apps["omniarmor"]["online"] is True and apps["omniarmor"]["users"] == 120

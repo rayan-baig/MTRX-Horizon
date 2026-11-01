@@ -11,6 +11,7 @@ import threading
 import os
 import shutil
 import time
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, wait
 
@@ -147,11 +148,16 @@ def fetch_app(key: str) -> dict:
     result = _blank(key)
     if not url:
         return result
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
-    if settings.stats_key:
-        request.add_header("Authorization", "Bearer " + settings.stats_key)
     deadline = time.monotonic() + FETCH_SECONDS
     try:
+        # Building the request was outside the try, so an address missing
+        # its https:// raised here and took the whole console down. And
+        # only web addresses: urllib would also read file:// and ftp://.
+        if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
+            raise ValueError("not a web address")
+        request = urllib.request.Request(url, headers={"Accept": "application/json"})
+        if settings.stats_key:
+            request.add_header("Authorization", "Bearer " + settings.stats_key)
         with _OPENER.open(request, timeout=FETCH_SECONDS) as response:
             body = json.loads(_read(response, deadline))
         result["online"] = True
