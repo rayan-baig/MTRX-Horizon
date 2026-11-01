@@ -135,9 +135,10 @@ sites.
 `MTRX_TRUST_PROXY=1` (set in `render.yaml`) has the site take each visitor's address from
 the last entry in `X-Forwarded-For`, the one Render's proxy added. If you ever put a
 second proxy in front, such as Cloudflare, that entry becomes Cloudflare's address and
-every visitor looks the same, so strangers' wrong approval codes would count against you
-too. Change how the address is read (`client_ip` in `horizon/main.py`) before adding one.
-(The knock is counted per approved device, so it is not affected.)
+every visitor looks the same, so strangers' wrong codes could hold back your setup code
+for an hour. Change how the address is read (`client_ip` in `horizon/main.py`) before
+adding one. (The knock is counted per approved device, and a live QR code works even from
+an address that is out of tries, so neither is affected.)
 
 ## What's where
 

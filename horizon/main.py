@@ -275,11 +275,17 @@ def add_device_page(request: Request, token: str):
     # This page says whether a code is live, so a wrong code here costs a
     # try just as it does at /api/enroll; with no limit, the setup code
     # could be guessed here as fast as a computer could ask.
+    #
+    # An address that is out of tries can still open a live QR code: many
+    # people share one address (a phone network, an office), and a stranger's
+    # wrong codes used to block the owner's new phone for an hour. A QR code
+    # is 256 random bits, so letting it through helps no guesser. The setup
+    # code, which the owner may have typed in themselves, still waits.
     who = client_ip(request)
-    if not lock.allowed("enroll", who):
-        return not_found(request)
-    if not lock.token_usable(token):
-        lock.record_failure("enroll", who)
+    tries_left = lock.allowed("enroll", who)
+    if not lock.token_usable(token, setup_ok=tries_left):
+        if tries_left:
+            lock.record_failure("enroll", who)
         return not_found(request)
     return templates.TemplateResponse(request, "add.html", {"token": token})
 
@@ -290,17 +296,19 @@ async def enroll(request: Request):
 
 
 def _enroll(request: Request, who: str, body: dict):
-    if not lock.allowed("enroll", who):
-        return not_found(request)
+    # Out of tries: only a QR code is still accepted (see add_device_page).
+    tries_left = lock.allowed("enroll", who)
     try:
         device_id = lock.enroll(
             str(body["token"]), str(body.get("name", "")),
             str(body["public_key"]), str(body["signature"]),
+            setup_ok=tries_left,
         )
     except (ValueError, KeyError, TypeError):
         device_id = None
     if device_id is None:
-        lock.record_failure("enroll", who)
+        if tries_left:
+            lock.record_failure("enroll", who)
         # The same page as any other address that does not exist: a JSON
         # "that link has expired" told anyone that device approval lives here.
         return not_found(request)

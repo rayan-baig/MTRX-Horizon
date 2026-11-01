@@ -187,14 +187,16 @@ def make_invite(created_by: str) -> str:
     return token
 
 
-def token_usable(token: str) -> bool:
+def token_usable(token: str, setup_ok: bool = True) -> bool:
     """True if this invite or setup code could still approve a device.
-    Only looks; does not use it up."""
+    Only looks; does not use it up. With setup_ok False, only a QR invite
+    counts."""
     if not token:
         return False
     setup = config.get().setup_token
     with db.connect() as conn:
-        if len(setup) >= 16 and hmac.compare_digest(token.encode(), setup.encode()):
+        if (setup_ok and len(setup) >= 16
+                and hmac.compare_digest(token.encode(), setup.encode())):
             used = conn.execute(
                 "SELECT 1 FROM used_setup_tokens WHERE token_hash = ?", (_hash(token),)
             ).fetchone()
@@ -244,11 +246,13 @@ def _claim_invite(conn, token: str) -> str | None:
     return row["created_by"] if used else None
 
 
-def enroll(token: str, name: str, public_key_b64: str, signature_b64: str) -> str | None:
+def enroll(token: str, name: str, public_key_b64: str, signature_b64: str,
+           setup_ok: bool = True) -> str | None:
     """Approve a new device. Returns its id, or None if anything is wrong.
 
     The device must sign the invite or setup code with its new key, which
-    proves it really holds that key.
+    proves it really holds that key. With setup_ok False, only a QR invite
+    is accepted.
     """
     try:
         public_key = base64.b64decode(public_key_b64, validate=True)
@@ -260,7 +264,7 @@ def enroll(token: str, name: str, public_key_b64: str, signature_b64: str) -> st
     name = " ".join(str(name).split())[:60] or "Unnamed device"
     device_id = new_token()
     with db.connect() as conn:
-        via = "setup code" if _claim_setup_token(conn, token) else None
+        via = "setup code" if setup_ok and _claim_setup_token(conn, token) else None
         if via is None:
             maker = _claim_invite(conn, token)
             if maker is None:

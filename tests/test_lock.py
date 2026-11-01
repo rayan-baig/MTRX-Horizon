@@ -553,3 +553,28 @@ def test_strangers_wrong_knocks_do_not_lock_the_owner_out(client, make_client, m
         stranger.post("/api/knock", json={"taps": ["rankup"] * 5}, headers=same_place)
     response = client.post("/api/knock", json={"taps": KNOCK}, headers=same_place)
     assert response.json() == {"go": "/console"}
+
+
+def test_a_qr_code_works_from_an_address_strangers_used_up(client, make_client, monkeypatch):
+    """Approval tries are counted per address, and a phone on a mobile
+    network shares its address with many strangers. Once any of them had
+    tried ten wrong codes, the owner's fresh QR code said "page not found"
+    for an hour. A live QR code is 256 random bits, far past guessing, so
+    it still works; only the setup code waits out the limit."""
+    monkeypatch.setenv("MTRX_TRUST_PROXY", "1")
+    shared = {"X-Forwarded-For": "203.0.113.7"}
+    owner(client)
+    url = client.post("/api/console/invite", headers=ORIGIN).json()["url"]
+    token = url.rsplit("/", 1)[1]
+    stranger = make_client()
+    for n in range(10):
+        stranger.get(f"/console/add/wrong-{n}", headers=shared)
+    phone = make_client()
+    assert phone.get(f"/console/add/{token}", headers=shared).status_code == 200
+    phone.headers.update(shared)
+    assert enroll(phone, Device(), token, name="Phone").status_code == 200
+    # A setup code is still held back from that address.
+    monkeypatch.setenv("MTRX_SETUP_TOKEN", "another-setup-code-long-enough-456")
+    page = "/console/add/another-setup-code-long-enough-456"
+    assert phone.get(page, headers=shared).status_code == 404
+    assert phone.get(page, headers={"X-Forwarded-For": "203.0.113.8"}).status_code == 200
