@@ -347,3 +347,19 @@ def test_a_mistyped_stats_address_does_not_break_the_console(client, monkeypatch
     assert apps["cyberlogix"]["online"] is False
     # The other apps still report.
     assert apps["omniarmor"]["online"] is True and apps["omniarmor"]["users"] == 120
+
+
+def test_a_typo_in_a_number_setting_does_not_take_the_site_down(client, monkeypatch):
+    """Every request reads the settings, and "12h" for MTRX_SESSION_HOURS
+    (or a blank or 0) crashed each one, the public home page included.
+    A setting that isn't a whole number above 0 now uses the default."""
+    from horizon import config
+
+    for bad in ("12h", "", "0", "-3", "1.5"):
+        monkeypatch.setenv("MTRX_SESSION_HOURS", bad)
+        monkeypatch.setenv("MTRX_KNOCK_MINUTES", bad)
+        assert client.get("/").status_code == 200, bad
+        settings = config.get()
+        assert settings.session_hours == 12 and settings.knock_minutes == 5
+    monkeypatch.setenv("MTRX_SESSION_HOURS", " 24 ")
+    assert config.get().session_hours == 24

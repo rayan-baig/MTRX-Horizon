@@ -48,6 +48,19 @@ def parse_knock(raw: str) -> tuple[str, ...]:
     return taps
 
 
+def _whole_number(raw: str | None, default: int) -> int:
+    """A setting that should be a whole number above 0.
+
+    Every request reads the settings, so int() on a typo such as "12h"
+    crashed every page, the public home page included.
+    """
+    try:
+        value = int((raw or "").strip())
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
 def get() -> Settings:
     env = os.environ
     return Settings(
@@ -59,7 +72,7 @@ def get() -> Settings:
         stats_key=env.get("MTRX_STATS_KEY", "").strip(),
         app_urls={k: env.get(f"{k.upper()}_URL", "").strip() for k in APP_KEYS},
         stats_urls={k: env.get(f"{k.upper()}_STATS_URL", "").strip() for k in APP_KEYS},
-        session_hours=int(env.get("MTRX_SESSION_HOURS", "12")),
-        knock_minutes=int(env.get("MTRX_KNOCK_MINUTES", "5")),
+        session_hours=_whole_number(env.get("MTRX_SESSION_HOURS"), 12),
+        knock_minutes=_whole_number(env.get("MTRX_KNOCK_MINUTES"), 5),
         public_url=env.get("MTRX_PUBLIC_URL", "").strip().rstrip("/"),
     )
