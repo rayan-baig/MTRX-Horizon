@@ -443,3 +443,19 @@ def test_guessing_codes_through_the_approval_page_is_limited(client):
         assert client.get(f"/console/add/wrong-guess-{n}").status_code == 404
     assert client.get(f"/console/add/{SETUP}").status_code == 404
     assert enroll(client, Device(), SETUP).status_code == 404
+
+
+def test_removing_a_device_that_is_already_gone_keeps_the_owner_in(client, make_client):
+    """The console reads a 404 as "signed out" and goes to the home page,
+    and removing a device that was already removed (say from another
+    device a moment before) answered 404, which threw the owner out."""
+    owner(client)
+    phone_client, phone = make_client(), Device()
+    token = client.post("/api/console/invite", headers=ORIGIN).json()["url"].rsplit("/", 1)[1]
+    enroll(phone_client, phone, token, "Phone")
+    phone_id = next(d["id"] for d in client.get("/api/console/overview").json()["devices"] if not d["this"])
+    assert client.post(f"/api/console/devices/{phone_id}/remove", headers=ORIGIN).status_code == 200
+    again = client.post(f"/api/console/devices/{phone_id}/remove", headers=ORIGIN)
+    assert again.status_code != 404 and again.status_code >= 400
+    assert again.json()["error"]
+    assert client.get("/api/console/overview").status_code == 200

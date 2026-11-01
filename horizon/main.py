@@ -395,7 +395,8 @@ def remove(request: Request, device_id: str):
                             status_code=400)
     target = lock.device(device_id)
     if target is None or not lock.remove_device(device_id):
-        return JSONResponse({"error": "No such device."}, status_code=404)
+        # Not 404: the console takes a 404 to mean "signed out" and leaves.
+        return JSONResponse({"error": "That device was already removed."}, status_code=409)
     db.log("Device removed", f"{target['name']} (by {dev['name']})")
     return {"ok": True}
 
