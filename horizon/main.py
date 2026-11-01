@@ -169,7 +169,8 @@ async def _bad_request(request: Request, exc):
 
 # ---------------------------------------------------------------- public pages
 
-@app.get("/", response_class=HTMLResponse)
+# HEAD too: many uptime monitors ask with HEAD, and got "page not found".
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def home(request: Request):
     urls = config.get().app_urls
     stats.refresh_in_background()
@@ -180,12 +181,12 @@ def home(request: Request):
     })
 
 
-@app.get("/healthz")
+@app.api_route("/healthz", methods=["GET", "HEAD"])
 def healthz():
     return {"ok": True}
 
 
-@app.get("/robots.txt", response_class=Response)
+@app.api_route("/robots.txt", methods=["GET", "HEAD"], response_class=Response)
 def robots():
     # Naming /console here told every visitor where to look. The console
     # pages already say noindex themselves.

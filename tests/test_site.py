@@ -288,3 +288,15 @@ def test_active_users_on_the_home_page_are_the_active_ones(client):
     page = client.get("/").text
     fact = page.split("<dt>Active Users</dt>", 1)[1].split("</div>", 1)[0]
     assert "56" in fact and "1,234" not in fact
+
+
+def test_uptime_checks_that_ask_with_head_see_the_site_up(client):
+    """Many uptime monitors ask with HEAD rather than GET. The home page and
+    /healthz only answered GET, so a HEAD got "page not found" and the
+    monitor reported a working site as down."""
+    for path in ("/", "/healthz", "/robots.txt"):
+        response = client.head(path)
+        assert response.status_code == 200, path
+        assert response.content == b""
+    # Hidden pages stay hidden whatever the method.
+    assert client.head("/console").status_code == 404
