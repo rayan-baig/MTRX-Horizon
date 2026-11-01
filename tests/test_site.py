@@ -255,3 +255,21 @@ def test_an_impossible_number_from_an_app_does_not_break_the_console(client, mon
     assert response.status_code == 200
     rankup = next(a for a in response.json()["apps"] if a["key"] == "rankup")
     assert rankup["online"] is True and rankup["users"] is None and rankup["active_users"] == 3
+
+
+def test_home_page_starts_no_refresh_when_no_app_is_connected(client, monkeypatch):
+    """The check for "no app connected" looked at a list that always has
+    all three apps in it, so it never stopped anything: with nothing
+    connected nothing was ever saved, and every visit to the home page
+    started another background fetch."""
+    from horizon import stats
+
+    started = []
+    real_thread = threading.Thread
+    monkeypatch.setattr(stats.threading, "Thread",
+                        lambda *a, **k: started.append(k) or real_thread(*a, **k))
+    for _ in range(3):
+        assert client.get("/").status_code == 200
+    ours = [k for k in started
+            if getattr(k.get("target"), "__qualname__", "").startswith("refresh_in_background")]
+    assert ours == []

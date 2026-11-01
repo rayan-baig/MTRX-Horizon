@@ -233,7 +233,9 @@ def refresh_in_background():
     is connected.
     """
     settings = config.get()
-    if not settings.stats_urls or not _refreshing.acquire(blocking=False):
+    # stats_urls always names all three apps; what matters is whether any
+    # of them has an address.
+    if not any(settings.stats_urls.values()) or not _refreshing.acquire(blocking=False):
         return
     try:
         with db.connect() as conn:
