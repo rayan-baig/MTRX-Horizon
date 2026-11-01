@@ -92,7 +92,10 @@ def server():
 # ---------------------------------------------------------------- the apps
 
 def _int_or_none(value):
-    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+    # Above 2**63 - 1 the database cannot store it, and saving the snapshot
+    # failed, which took the whole console down with it.
+    ok = isinstance(value, int) and not isinstance(value, bool) and 0 <= value < 2 ** 63
+    return value if ok else None
 
 
 class _NoRedirects(urllib.request.HTTPRedirectHandler):

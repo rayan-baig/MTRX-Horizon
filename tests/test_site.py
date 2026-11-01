@@ -241,3 +241,17 @@ def test_a_slow_app_cannot_hold_up_the_console(client, monkeypatch, slow_server)
     assert time.monotonic() - started < 4
     rankup = next(a for a in data["apps"] if a["key"] == "rankup")
     assert rankup["connected"] is True and rankup["online"] is False
+
+
+def test_an_impossible_number_from_an_app_does_not_break_the_console(client, monkeypatch, stats_server):
+    """A count too big for the database made saving the snapshot fail, so
+    the whole console failed to load ("Couldn't refresh") for as long as
+    the app kept sending it, and the home page's numbers stopped updating."""
+    url, answers = stats_server
+    answers["body"] = {"users": 10 ** 20, "active_users": 3}
+    monkeypatch.setenv("RANKUP_STATS_URL", url)
+    owner(client)
+    response = client.get("/api/console/overview")
+    assert response.status_code == 200
+    rankup = next(a for a in response.json()["apps"] if a["key"] == "rankup")
+    assert rankup["online"] is True and rankup["users"] is None and rankup["active_users"] == 3
