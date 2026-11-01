@@ -20,6 +20,8 @@ from fastapi.templating import Jinja2Templates
 from . import config, db, lock, stats
 
 DEVICE_COOKIE = "mh_d"
+# Browsers keep a cookie for 400 days at most.
+DEVICE_COOKIE_DAYS = 400
 DOOR_COOKIE = "mh_k"
 SESSION_COOKIE = "mh_s"
 
@@ -246,7 +248,7 @@ def _enroll(request: Request, who: str, body: dict):
         # "that link has expired" told anyone that device approval lives here.
         return not_found(request)
     response = JSONResponse({"go": "/console"})
-    set_cookie(response, DEVICE_COOKIE, device_id, 400 * 86400)
+    set_cookie(response, DEVICE_COOKIE, device_id, DEVICE_COOKIE_DAYS * 86400)
     # The device just proved itself, so let it straight in this once.
     set_cookie(response, DOOR_COOKIE, lock.open_door(), config.get().knock_minutes * 60)
     return response
@@ -280,6 +282,9 @@ def _unlock(request: Request, who: str, body: dict):
     lock.close_door(door)
     response = JSONResponse({"go": "/console"})
     set_cookie(response, SESSION_COOKIE, token, config.get().session_hours * 3600)
+    # Set only on approval, the device cookie ran out 400 days later however
+    # often the device was used, and the owner was locked out. Renew it.
+    set_cookie(response, DEVICE_COOKIE, device_id, DEVICE_COOKIE_DAYS * 86400)
     response.delete_cookie(DOOR_COOKIE, path="/")
     return response
 

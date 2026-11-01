@@ -400,3 +400,18 @@ def test_approval_link_is_https_behind_the_hosts_proxy(client, make_client):
                                  headers={"Origin": "http://testserver", "Cookie": cookies})
     assert response.status_code == 200
     assert response.json()["url"].startswith("https://testserver/console/add/")
+
+
+def test_signing_in_renews_the_device_cookie(client):
+    """Browsers keep a cookie for 400 days at most, and the device cookie
+    was only ever set on approval, so every device was forgotten 400 days
+    after it was approved, however often it was used: the owner was locked
+    out. Each sign-in now sets it again for another 400 days."""
+    device = owner(client)
+    client.post("/api/console/signout", headers=ORIGIN)
+    knock(client)
+    response = unlock(client, device)
+    assert response.status_code == 200
+    renewed = [h for h in response.headers.get_list("set-cookie") if h.startswith("mh_d=")]
+    assert renewed and f"max-age={400 * 86400}" in renewed[0].lower()
+    assert response.cookies.get("mh_d") == client.cookies.get("mh_d")
