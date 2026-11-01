@@ -225,13 +225,24 @@ async def _json(request: Request):
 async def knock(request: Request):
     # The database work runs in a worker thread: done here, on the event loop,
     # every knock held up every other visitor while it ran.
-    return await run_in_threadpool(_knock, client_ip(request), (await _json(request)).get("taps"))
+    taps = (await _json(request)).get("taps")
+    return await run_in_threadpool(_knock, request.cookies.get(DEVICE_COOKIE), taps)
 
 
-def _knock(who: str, taps) -> JSONResponse:
+def _knock(device_id: str | None, taps) -> JSONResponse:
+    # Only an approved device can use the knock, so only its knock is looked
+    # at. Anyone else's is ignored without a word: the right order used to
+    # answer "go to /console" to anybody, so a stranger could try every
+    # order from as many addresses as they had and learn it.
+    dev = lock.device(device_id)
+    if dev is None:
+        return JSONResponse({"go": None})
+    # Tries are counted per device, not per address. Many people can share
+    # one address (a phone network, an office, the host's own proxies), and
+    # a stranger's wrong knocks there used to lock the owner out.
+    who = "device:" + dev["id"]
     # Out of tries: refused without even looking, and without writing another
-    # row (writing one per refused request let a stranger grow the database
-    # without limit).
+    # row.
     if not lock.allowed("knock", who):
         return JSONResponse({"go": None})
     if lock.knock_matches(taps):

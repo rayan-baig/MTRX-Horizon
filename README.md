@@ -21,8 +21,9 @@ all checked by the server:
    code works once, for 10 minutes.
 3. **The secret knock.** On the home page, tap the logo and the app icons in your own
    secret order. The right order opens the console for 5 minutes. The order is kept
-   only in the server's settings, never in the page, and guessing is limited to 8 tries
-   per 15 minutes.
+   only in the server's settings, never in the page. Only an approved device's knock
+   is looked at (anyone else is never told whether theirs was right), and each device
+   gets 8 tries per 15 minutes.
 
 Anyone who fails any lock sees the normal "page not found".
 
@@ -133,9 +134,10 @@ sites.
 
 `MTRX_TRUST_PROXY=1` (set in `render.yaml`) has the site take each visitor's address from
 the last entry in `X-Forwarded-For`, the one Render's proxy added. If you ever put a
-second proxy in front, such as Cloudflare, that entry becomes Cloudflare's address, every
-visitor looks the same, and a stranger's wrong knocks could lock you out. Change how the
-address is read (`client_ip` in `horizon/main.py`) before adding one.
+second proxy in front, such as Cloudflare, that entry becomes Cloudflare's address and
+every visitor looks the same, so strangers' wrong approval codes would count against you
+too. Change how the address is read (`client_ip` in `horizon/main.py`) before adding one.
+(The knock is counted per approved device, so it is not affected.)
 
 ## What's where
 

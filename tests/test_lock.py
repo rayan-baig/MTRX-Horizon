@@ -80,6 +80,14 @@ def unlock(client, device):
                        json={"challenge": c, "signature": device.sign("mtrx-unlock:" + c)})
 
 
+def approved(client):
+    """Approve this browser with the setup code, without signing in."""
+    device = Device()
+    assert enroll(client, device, SETUP).status_code == 200
+    client.cookies.delete("mh_k")
+    return device
+
+
 def owner(client):
     """Set up the first device and sign in. Returns the device."""
     device = Device()
@@ -112,6 +120,7 @@ def test_home_page_never_contains_the_knock(client):
 # ---------------------------------------------------------------- the knock
 
 def test_right_knock_opens_the_door(client):
+    approved(client)
     response = knock(client)
     assert response.json() == {"go": "/console"}
     assert "mh_k" in response.cookies
@@ -130,6 +139,7 @@ def test_knock_alone_is_not_enough(client):
 
 
 def test_knock_guessing_is_rate_limited(client):
+    approved(client)
     for _ in range(8):
         knock(client, ["rankup"] * 5)
     # Even the right knock fails once the limit is hit.
@@ -297,6 +307,7 @@ def test_posts_from_other_sites_are_refused(client):
 
 
 def test_cookies_are_locked_down(client):
+    approved(client)
     response = knock(client)
     cookie = response.headers["set-cookie"].lower()
     assert "httponly" in cookie and "samesite=strict" in cookie and "secure" in cookie
@@ -322,12 +333,14 @@ def test_session_cannot_move_to_another_approved_device(client, make_client):
 # ---------------------------------------------------------------- after review
 
 def test_one_tap_holding_the_whole_knock_is_not_a_knock(client):
+    approved(client)
     # The order joined into one "tap" used to open the door, and was never
     # counted as a wrong try, so the knock could be guessed for free.
     assert knock(client, [" ".join(KNOCK)]).json()["go"] is None
 
 
 def test_every_wrong_knock_costs_a_try_whatever_its_shape(client):
+    approved(client)
     for taps in (["logo"], ["logo logo logo logo"], "logo", [1, 2, 3, 4], ["nope"] * 5,
                  ["logo"] * 4, ["logo"] * 5, ["logo"] * 6):
         knock(client, taps)
@@ -337,6 +350,7 @@ def test_every_wrong_knock_costs_a_try_whatever_its_shape(client):
 
 def test_a_refused_caller_adds_nothing_to_the_database(client):
     from horizon import db
+    approved(client)
     for _ in range(8):
         knock(client, ["logo"] * 4)
     with db.connect() as conn:
@@ -417,40 +431,34 @@ def test_signing_in_renews_the_device_cookie(client):
     assert response.cookies.get("mh_d") == client.cookies.get("mh_d")
 
 
-def test_knock_limit_covers_a_whole_ipv6_block(client, monkeypatch):
+def test_approval_limit_covers_a_whole_ipv6_block(client, monkeypatch):
     """One IPv6 home or server is normally given a whole /64 block of
     addresses, so counting tries per exact address let a guesser use a new
     address for every try and never run out."""
     monkeypatch.setenv("MTRX_TRUST_PROXY", "1")
-    for n in range(8):
-        response = client.post("/api/knock", json={"taps": ["rankup"] * 5}, headers={
-            **ORIGIN, "X-Forwarded-For": f"2001:db8:1:2::{n + 1:x}"})
-        assert response.json() == {"go": None}
-    right = client.post("/api/knock", json={"taps": KNOCK}, headers={
-        **ORIGIN, "X-Forwarded-For": "2001:db8:1:2:ffff::9"})
-    assert right.json()["go"] is None
+    for n in range(10):
+        response = client.get(f"/console/add/wrong-{n}", headers={
+            "X-Forwarded-For": f"2001:db8:1:2::{n + 1:x}"})
+        assert response.status_code == 404
+    assert client.get(f"/console/add/{SETUP}", headers={
+        "X-Forwarded-For": "2001:db8:1:2:ffff::9"}).status_code == 404
     # Another network still has its own tries.
-    other = client.post("/api/knock", json={"taps": KNOCK}, headers={
-        **ORIGIN, "X-Forwarded-For": "2001:db8:1:3::1"})
-    assert other.json()["go"] == "/console"
+    assert client.get(f"/console/add/{SETUP}", headers={
+        "X-Forwarded-For": "2001:db8:1:3::1"}).status_code == 200
 
 
 def test_tries_are_counted_for_ipv4_visitors(client, monkeypatch):
     """Grouping IPv6 addresses by block must leave IPv4 working: real
     visitors have real addresses, not the test client's made-up name."""
     monkeypatch.setenv("MTRX_TRUST_PROXY", "1")
-    for n in range(8):
-        response = client.post("/api/knock", json={"taps": ["rankup"] * 5}, headers={
-            **ORIGIN, "X-Forwarded-For": "203.0.113.7"})
-        assert response.json() == {"go": None}
-    right = {"taps": KNOCK}
-    assert client.post("/api/knock", json=right, headers={
-        **ORIGIN, "X-Forwarded-For": "203.0.113.7"}).json()["go"] is None
-    assert client.post("/api/knock", json=right, headers={
-        **ORIGIN, "X-Forwarded-For": "203.0.113.8"}).json()["go"] == "/console"
+    for n in range(10):
+        assert client.get(f"/console/add/wrong-{n}", headers={
+            "X-Forwarded-For": "203.0.113.7"}).status_code == 404
+    page = f"/console/add/{SETUP}"
+    assert client.get(page, headers={"X-Forwarded-For": "203.0.113.7"}).status_code == 404
+    assert client.get(page, headers={"X-Forwarded-For": "203.0.113.8"}).status_code == 200
     # An IPv4 address written the IPv6 way counts as the same visitor.
-    assert client.post("/api/knock", json=right, headers={
-        **ORIGIN, "X-Forwarded-For": "::ffff:203.0.113.7"}).json()["go"] is None
+    assert client.get(page, headers={"X-Forwarded-For": "::ffff:203.0.113.7"}).status_code == 404
 
 
 def test_guessing_codes_through_the_approval_page_is_limited(client):
@@ -521,3 +529,27 @@ def test_a_malformed_origin_is_refused_not_a_crash(make_client):
                         raise_server_exceptions=False)
     response = client.post("/api/knock", json={"taps": KNOCK}, headers={"Origin": "https://[::1"})
     assert response.status_code == 403
+
+
+def test_a_stranger_cannot_find_out_the_knock(client):
+    """The right knock answered "go to /console" to anyone, so a stranger
+    could try every order (from as many addresses as they had) and learn
+    it. Only a browser holding an approved device is told anything."""
+    response = knock(client)
+    assert response.json() == {"go": None}
+    assert "mh_k" not in response.cookies
+
+
+def test_strangers_wrong_knocks_do_not_lock_the_owner_out(client, make_client, monkeypatch):
+    """Tries were counted per address, and many people can share one: a
+    phone network, an office, or the host's own proxies. Eight wrong knocks
+    from a stranger there kept the owner out for 15 minutes, again and
+    again. An approved device now has its own tries."""
+    monkeypatch.setenv("MTRX_TRUST_PROXY", "1")
+    same_place = {**ORIGIN, "X-Forwarded-For": "203.0.113.7"}
+    approved(client)
+    stranger = make_client()
+    for _ in range(20):
+        stranger.post("/api/knock", json={"taps": ["rankup"] * 5}, headers=same_place)
+    response = client.post("/api/knock", json={"taps": KNOCK}, headers=same_place)
+    assert response.json() == {"go": "/console"}
