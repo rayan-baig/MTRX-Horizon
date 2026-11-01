@@ -235,7 +235,14 @@ def console(request: Request):
 
 @app.get("/console/add/{token}", response_class=HTMLResponse)
 def add_device_page(request: Request, token: str):
+    # This page says whether a code is live, so a wrong code here costs a
+    # try just as it does at /api/enroll; with no limit, the setup code
+    # could be guessed here as fast as a computer could ask.
+    who = client_ip(request)
+    if not lock.allowed("enroll", who):
+        return not_found(request)
     if not lock.token_usable(token):
+        lock.record_failure("enroll", who)
         return not_found(request)
     return templates.TemplateResponse(request, "add.html", {"token": token})
 

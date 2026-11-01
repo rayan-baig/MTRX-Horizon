@@ -433,3 +433,13 @@ def test_knock_limit_covers_a_whole_ipv6_block(client, monkeypatch):
     other = client.post("/api/knock", json={"taps": KNOCK}, headers={
         **ORIGIN, "X-Forwarded-For": "2001:db8:1:3::1"})
     assert other.json()["go"] == "/console"
+
+
+def test_guessing_codes_through_the_approval_page_is_limited(client):
+    """The approval page answers differently for a live code and a wrong
+    one, and had no limit, so the setup code could be guessed through it
+    as fast as a computer could ask, skipping the limit on /api/enroll."""
+    for n in range(10):
+        assert client.get(f"/console/add/wrong-guess-{n}").status_code == 404
+    assert client.get(f"/console/add/{SETUP}").status_code == 404
+    assert enroll(client, Device(), SETUP).status_code == 404
