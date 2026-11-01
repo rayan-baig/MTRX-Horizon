@@ -63,7 +63,11 @@
     const connected = data.apps.filter((a) => a.connected).length;
     $("ov-connected").textContent = `${connected} of ${data.apps.length}`;
     const counts = data.apps.map((a) => a.users).filter((n) => n != null);
-    $("ov-users").textContent = counts.length ? number(counts.reduce((a, b) => a + b, 0)) : "Not connected";
+    // No numbers can mean no app is connected, or that every connected app
+    // is down right now; say which.
+    $("ov-users").textContent = counts.length
+      ? number(counts.reduce((a, b) => a + b, 0))
+      : connected ? "No answer" : "Not connected";
     $("ov-devices").textContent = number(data.devices.length);
     $("ov-uptime").textContent = duration(data.server.uptime);
     const me = data.devices.find((d) => d.this);

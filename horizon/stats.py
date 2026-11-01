@@ -71,12 +71,14 @@ def _cpu():
         return None
 
 
+# When this server process started. The console's "Server running for" used
+# /proc/uptime, which on a hosting platform is how long the host machine has
+# been up (often weeks), not how long this site has been running.
+_STARTED = time.monotonic()
+
+
 def _uptime_seconds():
-    try:
-        with open("/proc/uptime") as f:
-            return int(float(f.read().split()[0]))
-    except (OSError, ValueError, IndexError):
-        return None
+    return int(time.monotonic() - _STARTED)
 
 
 def server():
@@ -265,9 +267,12 @@ def public_numbers() -> dict:
     slow the home page down. Every figure is None until an app is
     connected and has reported, and the page says so rather than guess.
     """
+    # Only apps that are connected now. An app whose stats address was taken
+    # away kept its old numbers on the home page forever.
+    connected = [key for key in APPS if config.get().stats_urls.get(key)]
     latest = {}
     with db.connect() as conn:
-        for key in APPS:
+        for key in connected:
             row = conn.execute(
                 "SELECT online, users, active_users FROM app_snapshots"
                 " WHERE app = ? ORDER BY at DESC LIMIT 1",
@@ -275,7 +280,8 @@ def public_numbers() -> dict:
             ).fetchone()
             if row is not None:
                 latest[key] = row
-    uptimes = [h["uptime"] for h in history(30).values() if h["uptime"] is not None]
+    recent = history(30)
+    uptimes = [recent[k]["uptime"] for k in connected if recent[k]["uptime"] is not None]
 
     def total(field):
         values = [r[field] for r in latest.values() if r[field] is not None]

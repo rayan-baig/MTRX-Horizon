@@ -164,11 +164,13 @@ def test_home_page_numbers_are_real_or_say_they_are_coming(client):
     assert "Soon" in page
 
 
-def test_home_page_shows_what_the_apps_reported(client):
+def test_home_page_shows_what_the_apps_reported(client, monkeypatch):
     """Once an app has reported, its own numbers are what the page shows."""
     import time
     from horizon import db
 
+    # The numbers only count while the app is connected.
+    monkeypatch.setenv("RANKUP_STATS_URL", "http://127.0.0.1:9/stats")
     with db.connect() as conn:
         conn.execute(
             "INSERT INTO app_snapshots (app, at, online, users, active_users)"
@@ -275,12 +277,14 @@ def test_home_page_starts_no_refresh_when_no_app_is_connected(client, monkeypatc
     assert ours == []
 
 
-def test_active_users_on_the_home_page_are_the_active_ones(client):
+def test_active_users_on_the_home_page_are_the_active_ones(client, monkeypatch):
     """The "Active Users" figure showed the total number of users, so with
     1,234 users of whom 56 were active, the page said 1,234 were active."""
     import time
     from horizon import db
 
+    # The numbers only count while the app is connected.
+    monkeypatch.setenv("RANKUP_STATS_URL", "http://127.0.0.1:9/stats")
     with db.connect() as conn:
         conn.execute(
             "INSERT INTO app_snapshots (app, at, online, users, active_users)"
@@ -300,3 +304,28 @@ def test_uptime_checks_that_ask_with_head_see_the_site_up(client):
         assert response.content == b""
     # Hidden pages stay hidden whatever the method.
     assert client.head("/console").status_code == 404
+
+
+def test_server_running_for_is_this_process_not_the_host(monkeypatch):
+    """/proc/uptime is the host's uptime; the console means this site's."""
+    from horizon import stats
+
+    monkeypatch.setattr(stats, "_STARTED", stats.time.monotonic() - 90)
+    assert 90 <= stats.server()["uptime"] < 100
+
+
+def test_a_disconnected_app_drops_off_the_home_page(client, monkeypatch, stats_server):
+    """Taking an app's stats address away used to leave its old numbers up for good."""
+    from horizon import stats
+
+    url, _ = stats_server
+    monkeypatch.setenv("RANKUP_STATS_URL", url)
+    owner(client)
+    client.get("/api/console/overview")  # saves a snapshot
+    assert stats.public_numbers()["total_users"] == 120
+
+    monkeypatch.delenv("RANKUP_STATS_URL")
+    numbers = stats.public_numbers()
+    assert numbers["total_users"] is None
+    assert numbers["apps_online"] is None
+    assert numbers["uptime"] is None
