@@ -494,3 +494,12 @@ def test_console_manifest_is_fetched_with_the_owners_cookies(client):
     from fastapi.testclient import TestClient as Fresh
     assert Fresh(client.app, base_url="https://testserver").get(
         "/console/assets/manifest.webmanifest").status_code == 404
+
+
+def test_a_malformed_origin_is_refused_not_a_crash(make_client):
+    """An Origin header that is not a valid address (here a broken IPv6
+    one) crashed the check that refuses other sites, with a 500."""
+    client = TestClient(make_client().app, base_url="https://testserver",
+                        raise_server_exceptions=False)
+    response = client.post("/api/knock", json={"taps": KNOCK}, headers={"Origin": "https://[::1"})
+    assert response.status_code == 403

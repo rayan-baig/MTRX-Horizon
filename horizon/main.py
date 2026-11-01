@@ -128,7 +128,11 @@ async def guard(request: Request, call_next):
     # "same site only", so this is a second wall against other sites.
     if request.method != "GET" and request.url.path.startswith("/api/"):
         origin = request.headers.get("origin", "")
-        if not origin or urlsplit(origin).netloc != request.url.netloc:
+        try:
+            same_site = bool(origin) and urlsplit(origin).netloc == request.url.netloc
+        except ValueError:  # not an address at all, such as "https://[::1"
+            same_site = False
+        if not same_site:
             return JSONResponse({"error": "Bad origin"}, status_code=403)
     response = await call_next(request)
     response.headers["Content-Security-Policy"] = CSP
