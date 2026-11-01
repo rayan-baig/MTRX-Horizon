@@ -415,3 +415,21 @@ def test_signing_in_renews_the_device_cookie(client):
     renewed = [h for h in response.headers.get_list("set-cookie") if h.startswith("mh_d=")]
     assert renewed and f"max-age={400 * 86400}" in renewed[0].lower()
     assert response.cookies.get("mh_d") == client.cookies.get("mh_d")
+
+
+def test_knock_limit_covers_a_whole_ipv6_block(client, monkeypatch):
+    """One IPv6 home or server is normally given a whole /64 block of
+    addresses, so counting tries per exact address let a guesser use a new
+    address for every try and never run out."""
+    monkeypatch.setenv("MTRX_TRUST_PROXY", "1")
+    for n in range(8):
+        response = client.post("/api/knock", json={"taps": ["rankup"] * 5}, headers={
+            **ORIGIN, "X-Forwarded-For": f"2001:db8:1:2::{n + 1:x}"})
+        assert response.json() == {"go": None}
+    right = client.post("/api/knock", json={"taps": KNOCK}, headers={
+        **ORIGIN, "X-Forwarded-For": "2001:db8:1:2:ffff::9"})
+    assert right.json()["go"] is None
+    # Another network still has its own tries.
+    other = client.post("/api/knock", json={"taps": KNOCK}, headers={
+        **ORIGIN, "X-Forwarded-For": "2001:db8:1:3::1"})
+    assert other.json()["go"] == "/console"

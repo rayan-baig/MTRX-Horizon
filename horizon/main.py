@@ -2,6 +2,7 @@
 
 import base64
 import io
+import ipaddress
 import logging
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
@@ -59,13 +60,26 @@ templates = Jinja2Templates(directory=config.ROOT / "templates")
 # ---------------------------------------------------------------- helpers
 
 def client_ip(request: Request) -> str:
+    """Who is asking, for counting tries.
+
+    An IPv6 address counts as its whole /64 block: one home or server is
+    normally given the whole block, so counting each address on its own
+    let a guesser use a fresh one for every try.
+    """
+    address = request.client.host if request.client else "unknown"
     if config.get().trust_proxy:
         forwarded = request.headers.get("x-forwarded-for", "")
         if forwarded:
             # The last entry is the one our own host's proxy added; the
             # ones before it were sent by the visitor and can be made up.
-            return forwarded.split(",")[-1].strip()
-    return request.client.host if request.client else "unknown"
+            address = forwarded.split(",")[-1].strip()
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return address
+    if ip.version == 6 and ip.ipv4_mapped is None:
+        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    return str(ip.ipv4_mapped or ip)
 
 
 def set_cookie(response: Response, name: str, value: str, max_age: int):
