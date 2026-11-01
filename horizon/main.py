@@ -87,7 +87,17 @@ def not_found(request: Request) -> HTMLResponse:
 
 
 def base_url(request: Request) -> str:
-    return config.get().public_url or str(request.base_url).rstrip("/")
+    settings = config.get()
+    if settings.public_url:
+        return settings.public_url
+    url = request.base_url
+    # The host ends https at its own proxy and hands the request on as plain
+    # http, so the address seen here says http even though the site is
+    # https. A QR code with http:// in it sent the one-time code unencrypted,
+    # and a plain-http page cannot make a device key.
+    if not settings.dev and url.scheme == "http":
+        url = url.replace(scheme="https")
+    return str(url).rstrip("/")
 
 
 def signed_in(request: Request):

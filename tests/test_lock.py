@@ -384,3 +384,19 @@ def test_setup_links_stay_out_of_the_log():
                                  '%s - "%s %s HTTP/1.1" %d', ("1.2.3.4", "GET", path, 200), None)
     assert not keep.filter(line("/console/add/the-secret-setup-code"))
     assert keep.filter(line("/"))
+
+
+# ---------------------------------------------------------------- more fixes
+
+def test_approval_link_is_https_behind_the_hosts_proxy(client, make_client):
+    """The host ends https at its proxy and passes the request on as plain
+    http, so the link in the QR code used to start with http://. The new
+    phone then sent the one-time code unencrypted, and on a plain-http page
+    the browser cannot make a device key at all."""
+    owner(client)
+    behind_proxy = TestClient(client.app, base_url="http://testserver")
+    cookies = "; ".join(f"{k}={v}" for k, v in client.cookies.items())
+    response = behind_proxy.post("/api/console/invite",
+                                 headers={"Origin": "http://testserver", "Cookie": cookies})
+    assert response.status_code == 200
+    assert response.json()["url"].startswith("https://testserver/console/add/")
