@@ -3,7 +3,6 @@
 import base64
 import io
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
@@ -331,8 +330,7 @@ def overview(request: Request, days: int = 30):
     dev, denied = _owner_only(request)
     if denied:
         return denied
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        apps = list(pool.map(stats.fetch_app, stats.APPS))
+    apps = stats.fetch_all()
     stats.snapshot(apps)
     with db.connect() as conn:
         activity = [dict(r) for r in conn.execute(

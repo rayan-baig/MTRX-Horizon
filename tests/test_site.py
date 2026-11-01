@@ -194,3 +194,50 @@ def test_each_app_has_open_and_learn_more(client, monkeypatch):
     # An app with an address opens; one without says it is coming.
     assert 'aria-label="Open CyberLogix AI"' in page and "https://cyberlogix.example" in page
     assert 'aria-label="Open RankUp"' not in page and "RankUp opens to the public soon." in page
+
+
+@pytest.fixture
+def slow_server():
+    """An app that answers, but a byte at a time: up, yet very slow."""
+    from http.server import ThreadingHTTPServer
+    import time as _time
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = b'{"users": 1, "active_users": 1}' + b" " * 20
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            try:
+                for i in range(len(body)):
+                    self.wfile.write(body[i:i + 1])
+                    self.wfile.flush()
+                    _time.sleep(0.3)
+            except OSError:
+                pass
+
+        def log_message(self, *args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_port}/stats"
+    server.shutdown()
+
+
+def test_a_slow_app_cannot_hold_up_the_console(client, monkeypatch, slow_server):
+    """The time limit on an app's stats used to be per read, not for the
+    whole answer, so an app sending a byte every so often held the console
+    for as long as it liked (here 15 seconds)."""
+    import time
+    from horizon import stats
+
+    monkeypatch.setattr(stats, "FETCH_SECONDS", 1)
+    monkeypatch.setenv("RANKUP_STATS_URL", slow_server)
+    owner(client)
+    started = time.monotonic()
+    data = client.get("/api/console/overview").json()
+    assert time.monotonic() - started < 4
+    rankup = next(a for a in data["apps"] if a["key"] == "rankup")
+    assert rankup["connected"] is True and rankup["online"] is False

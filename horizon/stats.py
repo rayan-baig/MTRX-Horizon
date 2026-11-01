@@ -12,10 +12,13 @@ import os
 import shutil
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, wait
 
 from . import config, db
 
 SNAPSHOT_EVERY = 3600
+# The longest an app gets to answer, start to finish.
+FETCH_SECONDS = 4
 
 APPS = {
     "rankup": {
@@ -107,20 +110,45 @@ class _NoRedirects(urllib.request.HTTPRedirectHandler):
 _OPENER = urllib.request.build_opener(_NoRedirects)
 
 
+def _blank(key: str) -> dict:
+    settings = config.get()
+    return {"key": key, **APPS[key], "connected": bool(settings.stats_urls.get(key)),
+            "online": None, "users": None, "active_users": None,
+            "url": settings.app_urls.get(key) or None}
+
+
+def _read(response, deadline: float, limit: int = 64_000) -> bytes:
+    """Read the answer, giving up at the deadline.
+
+    The timeout given to open() is per read, not for the whole answer, so
+    an app sending a byte every few seconds could hold the console for as
+    long as it liked.
+    """
+    body = b""
+    while len(body) < limit:
+        if time.monotonic() > deadline:
+            raise TimeoutError("the app took too long to answer")
+        chunk = response.read1(limit - len(body))
+        if not chunk:
+            break
+        body += chunk
+    return body
+
+
 def fetch_app(key: str) -> dict:
     """Ask one app for its numbers. Never raises."""
     settings = config.get()
     url = settings.stats_urls.get(key)
-    result = {"key": key, **APPS[key], "connected": bool(url), "online": None,
-              "users": None, "active_users": None, "url": settings.app_urls.get(key) or None}
+    result = _blank(key)
     if not url:
         return result
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
     if settings.stats_key:
         request.add_header("Authorization", "Bearer " + settings.stats_key)
+    deadline = time.monotonic() + FETCH_SECONDS
     try:
-        with _OPENER.open(request, timeout=4) as response:
-            body = json.loads(response.read(64_000))
+        with _OPENER.open(request, timeout=FETCH_SECONDS) as response:
+            body = json.loads(_read(response, deadline))
         result["online"] = True
         if isinstance(body, dict):
             result["users"] = _int_or_none(body.get("users"))
@@ -128,6 +156,29 @@ def fetch_app(key: str) -> dict:
     except Exception:
         result["online"] = False
     return result
+
+
+def fetch_all() -> list:
+    """Ask every app at once, and stop waiting after FETCH_SECONDS.
+
+    fetch_app keeps to its own deadline once an app starts answering, but
+    an app can also be slow to send its headers, or its name slow to look
+    up. Whatever has not answered in time counts as not answering, and the
+    page goes ahead without it.
+    """
+    pool = ThreadPoolExecutor(max_workers=len(APPS))
+    futures = {key: pool.submit(fetch_app, key) for key in APPS}
+    done, _ = wait(futures.values(), timeout=FETCH_SECONDS + 1)
+    pool.shutdown(wait=False)
+    apps = []
+    for key, future in futures.items():
+        if future in done:
+            apps.append(future.result())
+        else:
+            late = _blank(key)
+            late["online"] = False
+            apps.append(late)
+    return apps
 
 
 def snapshot(apps: list):
@@ -193,7 +244,7 @@ def refresh_in_background():
 
     def run():
         try:
-            snapshot([fetch_app(key) for key in APPS])
+            snapshot(fetch_all())
         except Exception:
             pass
         finally:
