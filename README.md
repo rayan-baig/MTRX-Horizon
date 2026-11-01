@@ -83,7 +83,7 @@ To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_U
 ## Running it on a computer
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt -c constraints.txt
 cp .env.example .env        # then fill it in
 MTRX_DEV=1 MTRX_KNOCK="logo logo omniarmor rankup" MTRX_SETUP_TOKEN=local-setup-code-1234567890 \
   python -m uvicorn horizon.main:app --port 8000

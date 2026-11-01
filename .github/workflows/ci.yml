@@ -16,10 +16,10 @@ jobs:
         with:
           python-version: '3.13'   # what the Dockerfile ships
           cache: pip
-      - run: pip install -r requirements.txt pytest httpx pip-audit
+      - run: pip install -r requirements.txt -c constraints.txt pytest httpx pip-audit
       - name: Tests
         run: python -m pytest -q
       - name: Known security holes in dependencies
-        run: pip-audit -r requirements.txt
+        run: pip-audit -r constraints.txt
       - name: The production image builds
         run: docker build -t horizon:ci .
