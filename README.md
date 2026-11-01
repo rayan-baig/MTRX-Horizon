@@ -131,6 +131,12 @@ free plan has no disk, so devices would be forgotten). The `Dockerfile` works on
 The site must be served over **https**, because browsers only make device keys on secure
 sites.
 
+`MTRX_TRUST_PROXY=1` (set in `render.yaml`) has the site take each visitor's address from
+the last entry in `X-Forwarded-For`, the one Render's proxy added. If you ever put a
+second proxy in front, such as Cloudflare, that entry becomes Cloudflare's address, every
+visitor looks the same, and a stranger's wrong knocks could lock you out. Change how the
+address is read (`client_ip` in `horizon/main.py`) before adding one.
+
 ## What's where
 
 - `horizon/main.py`: the web pages and the console's API
