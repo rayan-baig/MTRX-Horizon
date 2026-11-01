@@ -50,9 +50,16 @@ from scratch, put a new random one in, use it, and delete it again.
 Go to the home page, do the knock, and wait a second. Your device unlocks itself.
 Sessions last 12 hours, and **Sign out** ends one early.
 
-On iPhone, add the console to your Home Screen (Share → Add to Home Screen). Safari can
-clear a website's saved data if you don't visit for a while, and that would wipe the key.
-Home Screen apps keep it.
+**Keep at least two devices approved** (say, your laptop and your phone). A device's
+key lives in that browser's saved data, and a browser can lose it: clearing history
+does, and Safari on iPhone can clear a site's data after about a week without a
+visit. If one device loses its key, open the console on the other and approve it
+again with a new QR code. With only one device approved, losing its key means
+setting up from scratch with a new setup code.
+
+On iPhone, use the console in Safari. Don't rely on adding it to the Home Screen:
+a Home Screen app has its own storage, separate from Safari, so a phone approved in
+Safari is not approved inside the Home Screen app.
 
 ### If a device is lost or stolen
 
