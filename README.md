@@ -84,17 +84,20 @@ To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_U
 
 ```bash
 pip install -r requirements.txt -c constraints.txt
-cp .env.example .env        # then fill it in
 MTRX_DEV=1 MTRX_KNOCK="logo logo omniarmor rankup" MTRX_SETUP_TOKEN=local-setup-code-1234567890 \
   python -m uvicorn horizon.main:app --port 8000
 ```
+
+The site reads its settings from the environment, not from a file. To keep them
+in one, copy `.env.example` to `.env`, fill it in, and load it into the shell
+first with `set -a; . ./.env; set +a`.
 
 `MTRX_DEV=1` lets cookies work over plain `http://localhost`. Never set it on the real site.
 
 ## Tests
 
 ```bash
-pip install pytest httpx
+pip install -r requirements.txt -c constraints.txt pytest httpx
 python -m pytest -q
 ```
 
