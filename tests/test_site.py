@@ -395,3 +395,18 @@ def test_the_proxy_check_logs_shape_once_and_no_addresses(monkeypatch, caplog):
     assert len(lines) == 1
     assert "2 entries" in lines[0] and "does not match" in lines[0]
     assert "198.51.100.7" not in lines[0] and "203.0.113.9" not in lines[0]
+
+
+def test_old_snapshots_and_invites_are_cleaned_up(client):
+    import time
+    from horizon import db, lock, stats
+
+    old = time.time() - 500 * 86400
+    with db.connect() as conn:
+        conn.execute("INSERT INTO app_snapshots (app, at, online, users, active_users) VALUES ('rankup', ?, 1, 5, 1)", (old,))
+        conn.execute("INSERT INTO invites (token_hash, created_by, expires_at) VALUES ('old', 'x', ?)", (old,))
+    stats.snapshot([])
+    lock.make_invite("someone")
+    with db.connect() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM app_snapshots WHERE at = ?", (old,)).fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM invites WHERE token_hash = 'old'").fetchone()[0] == 0

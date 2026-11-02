@@ -180,6 +180,8 @@ def remove_device(device_id: str) -> bool:
 def make_invite(created_by: str) -> str:
     token = new_token()
     with db.connect() as conn:
+        # Old invites are of no use once expired; nothing else removed them.
+        conn.execute("DELETE FROM invites WHERE expires_at < ?", (time.time() - 24 * 3600,))
         conn.execute(
             "INSERT INTO invites (token_hash, created_by, expires_at) VALUES (?, ?, ?)",
             (_hash(token), created_by, time.time() + INVITE_MINUTES * 60),

@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, wait
 from . import config, db
 
 SNAPSHOT_EVERY = 3600
+KEEP_DAYS = 400  # a little over the console's longest range (366 days)
 # The longest an app gets to answer, start to finish.
 FETCH_SECONDS = 4
 
@@ -196,6 +197,9 @@ def snapshot(apps: list):
     """Save each connected app's numbers, at most once an hour."""
     now = time.time()
     with db.connect() as conn:
+        # The console shows at most the last 366 days; older snapshots only
+        # made the database grow for ever.
+        conn.execute("DELETE FROM app_snapshots WHERE at < ?", (now - KEEP_DAYS * 86400,))
         for app in apps:
             if not app["connected"]:
                 continue
