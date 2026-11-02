@@ -29,3 +29,18 @@ jobs:
         run: pip-audit -r constraints.txt
       - name: The production image builds
         run: docker build -t horizon:ci .
+      - name: Every script parses
+        run: for f in static/js/*.js horizon/private/*.js; do node --check "$f"; done
+      - name: The image starts, answers, and runs as the horizon user
+        run: |
+          docker volume create horizon-data
+          docker run -d --name horizon -p 8000:8000 -v horizon-data:/app/data \
+            -e MTRX_SETUP_TOKEN=ci-setup-token-1234567890 horizon:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8000/healthz && break
+            sleep 1
+          done
+          curl -fsS http://localhost:8000/healthz
+          test "$(docker exec horizon sh -c 'ps -o user= -p 1 2>/dev/null || stat -c %U /proc/1')" = horizon
+          docker exec -u horizon horizon test -O /app/data/horizon.db
+          docker logs horizon | tail -20
