@@ -128,7 +128,7 @@
         </div>
         <div>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c1-4 3-6 6-7m-3 3 3 3m-2.5-6.5C11 7 15 3 21 3c0 6-4 10-8.5 11.5z"/><circle cx="15" cy="9" r="1.5"/></svg>
-          <dt>Projects</dt><dd>{{ projects | length if projects else 4 }}</dd><span>Underway</span>
+          <dt>Projects</dt><dd>{{ (projects or []) | length }}</dd><span>Underway</span>
         </div>
         <div>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 4.5 9-4.5"/></svg>

@@ -99,7 +99,8 @@ else. A wrong or missing key gets "unauthorized"; an app without `STATS_KEY` act
 the address does not exist.
 
 To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_URL` or
-`OMNIARMOR_URL`.
+`OMNIARMOR_URL` to the app's whole address, starting with `https://`. An address without
+it shows no button, rather than a link to nowhere.
 
 ## Running it on a computer
 

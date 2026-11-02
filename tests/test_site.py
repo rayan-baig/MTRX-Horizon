@@ -38,6 +38,16 @@ def test_open_app_button_only_when_a_url_is_set(client, monkeypatch):
     assert "Open RankUp" in page and "https://rankup.example" in page
 
 
+@pytest.mark.parametrize("typed", ["   ", "rankup.example", "javascript:alert(1)", "https://", "http://[::1"])
+def test_no_open_app_button_for_an_address_that_is_not_one(client, monkeypatch, typed):
+    """A blank or half-typed address gives no button, rather than a link to
+    nowhere on this site."""
+    monkeypatch.setenv("RANKUP_URL", typed)
+    page = client.get("/").text
+    assert 'aria-label="Open RankUp"' not in page and 'href="rankup.example"' not in page
+    assert "RankUp opens to the public soon." in page
+
+
 def test_robots_does_not_point_at_the_console(client):
     # Listing /console under Disallow told every visitor where to look.
     assert "console" not in client.get("/robots.txt").text
@@ -181,11 +191,16 @@ def test_home_page_shows_what_the_apps_reported(client, monkeypatch):
 
 
 def test_projects_on_the_home_page_are_the_real_list(client):
+    import re
     from horizon import stats
 
     page = client.get("/").text
-    for project in stats.PROJECTS:
-        assert project["next"] in page
+    sheet = page.split('id="projects"', 1)[1].split("</section>", 1)[0]
+    rows = re.findall(r"<li><span><b>(.*?)</b><small>(.*?)</small></span>\s*"
+                      r'<em class="status">(.*?)</em><span class="next">Next: (.*?)</span></li>', sheet)
+    assert rows == [(p["name"], p["kind"], p["status"], p["next"]) for p in stats.PROJECTS]
+    # The count in the panel is the length of that same list.
+    assert f"<dt>Projects</dt><dd>{len(stats.PROJECTS)}</dd>" in page
 
 
 def test_each_app_has_open_and_learn_more(client, monkeypatch):

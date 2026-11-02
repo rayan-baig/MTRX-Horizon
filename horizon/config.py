@@ -7,6 +7,7 @@ Nothing secret is ever sent to the browser.
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -61,6 +62,21 @@ def _whole_number(raw: str | None, default: int) -> int:
     return value if value > 0 else default
 
 
+def _web_address(raw: str | None) -> str:
+    """An app's public address, or "" if it isn't a whole web address.
+
+    The home page shows an "Open" button for each app with an address. One
+    typed without its https:// ("rankup.example") became a link to a page
+    on this site that does not exist.
+    """
+    value = (raw or "").strip()
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        return ""
+    return value if parts.scheme in ("http", "https") and parts.netloc else ""
+
+
 def get() -> Settings:
     env = os.environ
     return Settings(
@@ -70,7 +86,7 @@ def get() -> Settings:
         dev=env.get("MTRX_DEV", "") == "1",
         trust_proxy=env.get("MTRX_TRUST_PROXY", "") == "1",
         stats_key=env.get("MTRX_STATS_KEY", "").strip(),
-        app_urls={k: env.get(f"{k.upper()}_URL", "").strip() for k in APP_KEYS},
+        app_urls={k: _web_address(env.get(f"{k.upper()}_URL")) for k in APP_KEYS},
         stats_urls={k: env.get(f"{k.upper()}_STATS_URL", "").strip() for k in APP_KEYS},
         session_hours=_whole_number(env.get("MTRX_SESSION_HOURS"), 12),
         knock_minutes=_whole_number(env.get("MTRX_KNOCK_MINUTES"), 5),
