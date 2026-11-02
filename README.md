@@ -67,9 +67,12 @@ Safari is not approved inside the Home Screen app.
 - From another approved device, open **Approved devices** and press **Remove**. It's
   locked out straight away, even if it was signed in.
 - A thief would also need your knock, and your phone's own lock screen protects it.
-- **If every device is lost:** change `MTRX_SETUP_TOKEN` in the hosting settings to a
-  new code and use step 2 above again. Only someone with the hosting account can do
-  this, so keep that account safe.
+- **If every device is lost:** in the hosting settings, set `MTRX_SETUP_TOKEN` to a new
+  long random code (at least 16 characters) and save, which restarts the site. Then use
+  step 2 above with the new code. In the console, remove the lost devices under
+  **Approved devices**, and delete `MTRX_SETUP_TOKEN` again. The old code never works
+  again, and the new one works once. Only someone with the hosting account can do this,
+  so keep that account safe.
 
 ## Connecting the apps
 
@@ -125,7 +128,8 @@ python -m pytest -q
 
 The lock tests try every way in that should fail: a stranger, a wrong or partial knock,
 guessing, a copied cookie, a stolen session, a reused puzzle, an expired or reused QR code,
-a removed device, and requests from other websites.
+a removed device, and requests from other websites. `tests/test_live.py` starts the real
+server and walks the owner's whole way in from `127.0.0.1` and `::1`, restarts included.
 
 ## The click-through demo
 
@@ -143,6 +147,8 @@ python tools/build_demo.py --out demo \
 
 `render.yaml` sets up Render with a small paid server and a disk for the database (the
 free plan has no disk, so devices would be forgotten). The `Dockerfile` works on any host.
+
+**Uptime monitor:** check `https://<your site>/healthz` (answers `{"ok":true}` to GET or HEAD).
 The site must be served over **https**, because browsers only make device keys on secure
 sites.
 
