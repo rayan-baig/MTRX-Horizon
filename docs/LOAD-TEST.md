@@ -27,9 +27,9 @@ the same instant each page waits its turn. 200 people loading the page in
 the same second is far more than a company home page sees.
 
 The console is used by one person, so it has no load problem of its own.
-The console's numbers come from the apps over the network, each with a few
-seconds' limit, and are fetched at most once a minute, so many console
-refreshes don't multiply the calls to the apps.
+Each time it loads or refreshes, it asks each app for its numbers and its
+health once, each with a few seconds' limit; only approved, signed-in
+devices can make it do that.
 
 ## If it is ever too slow
 
