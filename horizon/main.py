@@ -217,6 +217,10 @@ def signed_in(request: Request):
 async def guard(request: Request, call_next):
     # Every change has to come from this site's own pages. Cookies are also
     # "same site only", so this is a second wall against other sites.
+    # It is the main wall against the apps on this domain's subdomains
+    # (rankup., cyberlogix., omniarmor.): to a browser they are the "same
+    # site" as this one, so SameSite lets their requests carry our cookies.
+    # The exact host compared here does not.
     if request.method != "GET" and request.url.path.startswith("/api/"):
         origin = request.headers.get("origin", "")
         try:

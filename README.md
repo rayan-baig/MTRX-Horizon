@@ -74,6 +74,67 @@ Safari is not approved inside the Home Screen app.
   again, and the new one works once. Only someone with the hosting account can do this,
   so keep that account safe.
 
+## The domain, and the apps' subdomains
+
+MTRX Horizon is the company, and it has the one domain. RankUp, CyberLogix and
+OmniArmor are its products: they have no domains of their own, and each lives on a
+subdomain of MTRX Horizon's. The name isn't chosen yet, so `example.com` stands for it
+below.
+
+| Address | What is there |
+|---|---|
+| `example.com` and `www.example.com` | This site: the home page and the console |
+| `rankup.example.com` | RankUp |
+| `cyberlogix.example.com` | CyberLogix |
+| `omniarmor.example.com` | OmniArmor |
+
+**Subdomains, not folders** (`example.com/rankup`). A browser treats each subdomain as
+a separate site for cookies, saved data and installed web apps, so a sign-in on one
+app never reaches another, and none of them reaches the console. To keep it that way:
+
+- No site sets a cookie with a `Domain` (each cookie belongs to its own exact
+  address). This site's cookies have none, and the tests check it.
+- No site lets another one read its answers (no CORS for siblings), and this site only
+  accepts changes from its own pages. The other subdomains count as "the same site" to
+  a browser, so the console checks the exact address, not just the site.
+- No page can be shown inside another site's frame.
+
+**Setting it up**, on the host that runs each one (Render here):
+
+1. **This site:** in Render, the service's Settings, Custom Domains, add `example.com`
+   and `www.example.com`. At whoever manages the domain's DNS, add the records Render
+   shows (for the bare domain usually an `A` record or an `ALIAS`/`ANAME`; for `www` a
+   `CNAME` to the service's `onrender.com` address). Render redirects one to the other
+   and gets the HTTPS certificate itself. Then set `MTRX_PUBLIC_URL=https://example.com`
+   so QR codes use it.
+2. **Each app:** add a `CNAME` named `rankup`, `cyberlogix` or `omniarmor` pointing at
+   that app's own host, add the same name in that host's custom-domain settings, wait
+   for HTTPS, and set the app's own address setting to it: CyberLogix's
+   `PUBLIC_BASE_URL`, OmniArmor's `BASE_URL`, and RankUp's equivalent. Leave each app's
+   allowed-origins setting (such as CyberLogix's `CYBERLOGIX_ALLOWED_ORIGINS`) unset:
+   never `*`, and never this domain or a sibling. Each app's deploy guide has the steps.
+3. **Here:** point the settings below at the subdomains, always starting with `https://`:
+
+   | Setting | Value |
+   |---|---|
+   | `RANKUP_URL` | `https://rankup.example.com` |
+   | `CYBERLOGIX_URL` | `https://cyberlogix.example.com` |
+   | `OMNIARMOR_URL` | `https://omniarmor.example.com` |
+   | `RANKUP_STATS_URL` | `https://rankup.example.com/api/stats` |
+   | `CYBERLOGIX_STATS_URL` | `https://cyberlogix.example.com/api/stats` |
+   | `OMNIARMOR_STATS_URL` | `https://omniarmor.example.com/api/stats` |
+
+**Email.** Everything is sent from the one domain, so the records that keep mail out of
+spam are set up once, on `example.com`, at whoever manages its DNS, using the values the
+email provider gives: **SPF** (which servers may send for the domain), **DKIM** (a
+signature on each message) and **DMARC** (what to do with mail that fails those two).
+Each app then sends from an address of its own, such as `no-reply@cyberlogix.example.com`
+or `no-reply@omniarmor.example.com`, so people can tell them apart. A sending subdomain
+must be verified with the provider as well (it adds a DKIM record for it), and the
+parent domain's DMARC covers it. Check the records with any free DMARC checker before
+real customers depend on the mail. Every app's terms, privacy page and emails name
+MTRX Horizon as the company behind it.
+
 ## Connecting the apps
 
 The console shows "Not connected" until an app is connected. Nothing is ever made up.
@@ -83,7 +144,7 @@ To connect an app, give it a small private stats address that answers with JSON:
 { "users": 120, "active_users": 30 }
 ```
 
-Then set, for example, `RANKUP_STATS_URL=https://rankup.example/api/stats`. If
+Then set, for example, `RANKUP_STATS_URL=https://rankup.example.com/api/stats`. If
 `MTRX_STATS_KEY` is set, the console sends it as `Authorization: Bearer <key>`, and the
 app should refuse requests without it. The console saves each app's numbers once an hour
 to draw the chart and work out uptime.
@@ -93,17 +154,18 @@ Pick one long random key, then:
 
 | App | In that app's hosting settings | In this site's settings |
 |---|---|---|
-| RankUp | `STATS_KEY=<the key>` | `RANKUP_STATS_URL=https://<rankup site>/api/stats` |
-| CyberLogix | `STATS_KEY=<the key>` | `CYBERLOGIX_STATS_URL=https://<cyberlogix site>/api/stats` |
-| OmniArmor | `STATS_KEY=<the key>` | `OMNIARMOR_STATS_URL=https://<omniarmor site>/api/stats` |
+| RankUp | `STATS_KEY=<the key>` | `RANKUP_STATS_URL=https://rankup.<your domain>/api/stats` |
+| CyberLogix | `STATS_KEY=<the key>` | `CYBERLOGIX_STATS_URL=https://cyberlogix.<your domain>/api/stats` |
+| OmniArmor | `STATS_KEY=<the key>` | `OMNIARMOR_STATS_URL=https://omniarmor.<your domain>/api/stats` |
 
 and `MTRX_STATS_KEY=<the key>` here once. Each app answers with two counts and nothing
 else. A wrong or missing key gets "unauthorized"; an app without `STATS_KEY` acts as if
 the address does not exist.
 
 To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_URL` or
-`OMNIARMOR_URL` to the app's whole address, starting with `https://`. An address without
-it shows no button, rather than a link to nowhere.
+`OMNIARMOR_URL` to the app's whole address on its subdomain, such as
+`https://rankup.<your domain>`. An address without `https://` shows no button, rather
+than a link to nowhere.
 
 ## Running it on a computer
 
@@ -158,7 +220,10 @@ python tools/build_demo.py --out demo \
 `render.yaml` sets up Render with a small paid server and a disk for the database (the
 free plan has no disk, so devices would be forgotten). The `Dockerfile` works on any host.
 
-**Uptime monitor:** check `https://<your site>/healthz` (answers `{"ok":true}` to GET or HEAD).
+The domain and the apps' subdomains are set up as in
+[The domain, and the apps' subdomains](#the-domain-and-the-apps-subdomains).
+
+**Uptime monitor:** check `https://<your domain>/healthz` (answers `{"ok":true}` to GET or HEAD).
 The site must be served over **https**, because browsers only make device keys on secure
 sites.
 
