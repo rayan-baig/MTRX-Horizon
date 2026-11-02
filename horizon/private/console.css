@@ -25,7 +25,7 @@
 .who { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .who-mark {
   width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-strong);
-  background: url("/static/img/logo-mark.webp") center / 70% no-repeat, #070d24;
+  background: url("/static/img/logo-mark-sm.webp") center / 70% no-repeat, #070d24;
 }
 .who-name { font-size: 14px; color: var(--muted); }
 .btn-small { min-height: 34px; padding: 0 14px; font-size: 13px; }
@@ -54,7 +54,7 @@
 }
 .side-mark {
   display: block; width: 72px; height: 56px; margin: 0 auto 10px;
-  background: url("/static/img/logo-mark.webp") center / contain no-repeat;
+  background: url("/static/img/logo-mark-sm.webp") center / contain no-repeat;
 }
 .side-card .wordmark { font-size: 13px; letter-spacing: 0.22em; }
 .side-title { color: var(--cyan); font-size: 13px; margin-top: 6px; }

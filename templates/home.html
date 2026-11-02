@@ -189,7 +189,7 @@
   <div class="sheet-card">
     <a class="sheet-x" href="#" aria-label="Close">×</a>
     <div class="learn-head">
-      <img src="/static/img/{{ key }}-icon.svg" alt="" width="52" height="52">
+      <img src="/static/img/{{ key }}-icon.svg" alt="" width="52" height="52" loading="lazy">
       <div><p class="eyebrow">Learn more</p><h2>{{ full }}</h2></div>
     </div>
     <p>{{ lede }}</p>
@@ -288,7 +288,7 @@
   </div>
 </section>
 
-<script src="/static/js/home.js" defer></script>
-{% if not demo %}<script src="/static/js/knock.js" defer></script>{% endif %}
+<script src="{{ asset('js/home.js') }}" defer></script>
+{% if not demo %}<script src="{{ asset('js/knock.js') }}" defer></script>{% endif %}
 </body>
 </html>

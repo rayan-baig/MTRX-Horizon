@@ -1,6 +1,7 @@
 """The MTRX Horizon web app: the public home page and the owner's console."""
 
 import base64
+import hashlib
 import io
 import ipaddress
 import json
@@ -15,6 +16,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
@@ -28,7 +30,7 @@ SESSION_COOKIE = "mh_s"
 
 CSP = (
     "default-src 'self'; img-src 'self' data:; "
-    "style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; "
+    "style-src 'self'; font-src 'self'; "
     "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; "
     "base-uri 'none'; form-action 'self'"
 )
@@ -56,6 +58,54 @@ logging.getLogger("uvicorn.access").addFilter(_HideSecretLinks())
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=config.ROOT / "static"), name="static")
 templates = Jinja2Templates(directory=config.ROOT / "templates")
+
+STATIC = config.ROOT / "static"
+_asset_versions: dict = {}
+
+
+def asset(path: str) -> str:
+    """The address of a file in /static, with a short fingerprint of its contents.
+
+    A fingerprinted address never changes its contents, so a phone may keep
+    the file for a year and not ask again (see `guard`); after a deploy that
+    changes the file, the page names a new address and the phone fetches it.
+    """
+    file = STATIC / path
+    try:
+        mtime = file.stat().st_mtime_ns
+    except OSError:
+        return "/static/" + path
+    known = _asset_versions.get(path)
+    if known is None or known[0] != mtime:
+        known = (mtime, hashlib.sha256(file.read_bytes()).hexdigest()[:10])
+        _asset_versions[path] = known
+    return f"/static/{path}?v={known[1]}"
+
+
+templates.env.globals["asset"] = asset
+
+
+class _GzipText(GZipMiddleware):
+    """Compress the home page and the text files, and nothing else.
+
+    On a phone, the stylesheet and the page shrink to about a quarter. Pictures
+    and fonts are already compressed. Pages that carry a one-time code or
+    a device's details are left alone on purpose: compressing a secret next
+    to text a visitor can choose is how some attacks read it back.
+    """
+
+    TEXT = (".css", ".js", ".svg", ".webmanifest", ".txt")
+
+    async def __call__(self, scope, receive, send):
+        path = scope.get("path", "") if scope["type"] == "http" else ""
+        if path == "/" or (path.startswith(("/static/", "/console/assets/"))
+                           and path.endswith(self.TEXT)):
+            await super().__call__(scope, receive, send)
+        else:
+            await self.app(scope, receive, send)
+
+
+app.add_middleware(_GzipText, minimum_size=512)
 
 
 # ---------------------------------------------------------------- helpers
@@ -173,6 +223,14 @@ async def guard(request: Request, call_next):
     if not config.get().dev:
         response.headers["Strict-Transport-Security"] = "max-age=31536000"
     path = request.url.path
+    if path.startswith("/static/") and response.status_code in (200, 304):
+        # A fingerprinted address (see `asset`) never changes. The rest
+        # (pictures and fonts named in the stylesheet) can, after a deploy,
+        # so they are kept a day and then checked again.
+        if request.query_params.get("v"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "public, max-age=86400"
     if path.startswith(("/console", "/api/")):
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Robots-Tag"] = "noindex"

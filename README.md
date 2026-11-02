@@ -164,5 +164,6 @@ needs changing. The line shows counts only, never anyone's address.
 - `horizon/lock.py`: the three locks
 - `horizon/stats.py`: the console's numbers, and the project list
 - `templates/`: the pages
-- `static/`: styles, scripts and pictures (cut from the supplied design artwork)
+- `static/`: styles, scripts, pictures (cut from the supplied design artwork) and the two
+  fonts (Inter and Montserrat, under the SIL Open Font License; the licences are beside them)
 - `tests/`: the tests

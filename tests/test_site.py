@@ -410,3 +410,48 @@ def test_old_snapshots_and_invites_are_cleaned_up(client):
     with db.connect() as conn:
         assert conn.execute("SELECT COUNT(*) FROM app_snapshots WHERE at = ?", (old,)).fetchone()[0] == 0
         assert conn.execute("SELECT COUNT(*) FROM invites WHERE token_hash = 'old'").fetchone()[0] == 0
+
+
+def test_pages_need_no_other_website_to_draw(client):
+    """The fonts come from this site, so a phone opens no other connection
+    before the words can appear, and the security policy allows no other."""
+    page = client.get("/")
+    assert "fonts.googleapis.com" not in page.text and "gstatic" not in page.text
+    csp = page.headers["content-security-policy"]
+    assert "font-src 'self'" in csp and "googleapis" not in csp and "gstatic" not in csp
+    css = open("static/css/site.css", encoding="utf-8").read()
+    for name in ("inter-latin", "montserrat-latin"):
+        assert f'/static/fonts/{name}.woff2' in css and f'href="/static/fonts/{name}.woff2"' in page.text
+        assert client.get(f"/static/fonts/{name}.woff2").status_code == 200
+
+
+def test_text_files_are_compressed_but_secret_pages_are_not(client):
+    gz = {"Accept-Encoding": "gzip"}
+    assert client.get("/", headers=gz).headers.get("content-encoding") == "gzip"
+    css = client.get("/static/css/site.css", headers=gz)
+    assert css.headers.get("content-encoding") == "gzip" and ".page {" in css.text
+    # The page holding the one-time setup code stays as it is.
+    from tests.test_lock import SETUP
+    add = client.get(f"/console/add/{SETUP}", headers=gz)
+    assert add.status_code == 200 and "content-encoding" not in add.headers
+    # Pictures are compressed already.
+    assert "content-encoding" not in client.get("/static/img/hero-wide.webp", headers=gz).headers
+
+
+def test_the_console_numbers_are_not_compressed(client):
+    owner(client)
+    gz = {"Accept-Encoding": "gzip"}
+    overview = client.get("/api/console/overview", headers=gz)
+    assert overview.status_code == 200 and "content-encoding" not in overview.headers
+
+
+def test_fingerprinted_files_are_kept_and_change_address_with_their_contents(client):
+    import re
+    page = client.get("/").text
+    css_url = re.search(r'href="(/static/css/site\.css\?v=[0-9a-f]{10})"', page).group(1)
+    assert re.search(r'src="/static/js/home\.js\?v=[0-9a-f]{10}"', page)
+    assert "immutable" in client.get(css_url).headers["cache-control"]
+    # Files named in the stylesheet keep their plain address and are checked daily.
+    assert client.get("/static/img/hero-wide.webp").headers["cache-control"] == "public, max-age=86400"
+    # A missing file is not kept, so it can appear after a deploy.
+    assert "max-age" not in client.get("/static/img/no-such.webp").headers.get("cache-control", "")

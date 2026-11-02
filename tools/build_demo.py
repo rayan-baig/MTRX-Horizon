@@ -45,6 +45,9 @@ BACK_LINK = (
 
 def render_home(urls: dict) -> str:
     env = Environment(loader=FileSystemLoader(ROOT / "templates"), autoescape=True)
+    # The real site adds a fingerprint to each file's address; a demo
+    # folder is copied whole, so plain addresses do.
+    env.globals["asset"] = lambda path: "/static/" + path
     # The real project list, and no app numbers: the demo has no apps
     # reporting to it, so its activity panel says the numbers come at launch.
     from horizon import stats
@@ -61,9 +64,11 @@ def render_home(urls: dict) -> str:
 def copy_static(out: Path):
     """Only what the home page uses: the console's files stay out."""
     shutil.copytree(ROOT / "static" / "img", out / "static" / "img")
+    shutil.copytree(ROOT / "static" / "fonts", out / "static" / "fonts")
     (out / "static" / "css").mkdir(parents=True)
     css = (ROOT / "static" / "css" / "site.css").read_text()
-    (out / "static" / "css" / "site.css").write_text(css.replace('url("/static/img/', 'url("../img/'))
+    css = css.replace('url("/static/img/', 'url("../img/').replace('url("/static/fonts/', 'url("../fonts/')
+    (out / "static" / "css" / "site.css").write_text(css)
     # The home page's own script, and only that: knock.js, the lock's way
     # in, never leaves the real site.
     (out / "static" / "js").mkdir(parents=True)

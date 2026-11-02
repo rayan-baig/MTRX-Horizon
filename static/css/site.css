@@ -1,6 +1,31 @@
 /* MTRX Horizon: shared look for the home page and the console's doors.
    Colours come from the logo: deep navy, then cyan → blue → violet → pink. */
 
+/* The two typefaces, served from this site (SIL Open Font License, see
+   static/fonts/). Each file holds every weight; a phone downloads only the
+   Latin one, and the -ext file only if a page shows a letter that needs it.
+   Served from here, the page needs no other website before it can draw. */
+@font-face {
+  font-family: "Inter"; font-style: normal; font-weight: 400 600; font-display: swap;
+  src: url("/static/fonts/inter-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter"; font-style: normal; font-weight: 400 600; font-display: swap;
+  src: url("/static/fonts/inter-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Montserrat"; font-style: normal; font-weight: 500 800; font-display: swap;
+  src: url("/static/fonts/montserrat-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Montserrat"; font-style: normal; font-weight: 500 800; font-display: swap;
+  src: url("/static/fonts/montserrat-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 :root {
   --bg: #050816;
   --bg-2: #08102a;
@@ -78,7 +103,7 @@ p { margin: 0; }
 .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .brand-mark, .about-mark {
   width: 64px; height: 50px; flex: none;
-  background: url("/static/img/logo-mark.webp") center / contain no-repeat;
+  background: url("/static/img/logo-mark-sm.webp") center / contain no-repeat;
   cursor: default;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -167,7 +192,12 @@ p { margin: 0; }
   min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; text-align: center;
 }
 .door .panel { width: min(440px, 100%); padding: 36px 28px; }
-.door .brand-mark { display: block; width: 96px; height: 76px; margin: 0 auto 18px; }
+/* The only place the mark is shown large: the small copy is for the top bar
+   and the panels, where it is never more than 72px wide. */
+.door .brand-mark {
+  display: block; width: 96px; height: 76px; margin: 0 auto 18px;
+  background-image: url("/static/img/logo-mark.webp");
+}
 .door h1 { font-size: 26px; margin-bottom: 10px; }
 .door p { color: var(--muted); margin-bottom: 18px; }
 .door .status { min-height: 1.5em; font-size: 14px; color: var(--muted); margin: 16px 0 0; }
@@ -272,7 +302,7 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 }
 .me-mark {
   width: 34px; height: 34px; border-radius: 50%; flex: none;
-  background: #050a1e url("/static/img/logo-mark.webp") center / 76% no-repeat;
+  background: #050a1e url("/static/img/logo-mark-sm.webp") center / 76% no-repeat;
   border: 1px solid rgba(120, 160, 255, 0.4); box-shadow: 0 0 12px rgba(59, 130, 246, .35);
 }
 .me svg { width: 16px; height: 16px; color: var(--muted); }
@@ -418,7 +448,7 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 .page .about-brand { display: flex; align-items: center; gap: 12px; margin-bottom: clamp(2px, 0.6vh, 8px); }
 .page .about-mark {
   width: clamp(48px, 5vw, 80px); height: clamp(34px, 3.4vw, 52px); flex: none;
-  background: url("/static/img/logo-mark.webp") center / contain no-repeat;
+  background: url("/static/img/logo-mark-sm.webp") center / contain no-repeat;
   -webkit-tap-highlight-color: transparent; user-select: none;
 }
 .page .about-brand .wordmark { font-size: clamp(13px, 1.2vw, 18px); margin: 0; }
