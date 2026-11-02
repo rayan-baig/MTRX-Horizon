@@ -237,6 +237,8 @@ free plan has no disk, so devices would be forgotten). The `Dockerfile` works on
 The domain and the apps' subdomains are set up as in
 [The domain, and the apps' subdomains](#the-domain-and-the-apps-subdomains).
 
+**Running all four apps** (uptime checks, releasing, backups, what to do when something breaks, support, costs): [docs/RUNNING-MTRX-HORIZON.md](docs/RUNNING-MTRX-HORIZON.md).
+
 **Uptime monitor:** check `https://<your domain>/healthz` (answers `{"ok":true}` to GET or HEAD).
 The site must be served over **https**, because browsers only make device keys on secure
 sites.
