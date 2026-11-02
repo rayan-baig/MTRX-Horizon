@@ -171,6 +171,16 @@ def set_cookie(response: Response, name: str, value: str, max_age: int):
     )
 
 
+def clear_cookie(response: Response, name: str):
+    """Delete a cookie with the same locks it was set with.
+
+    Starlette's own delete sent it without Secure or HttpOnly and as
+    SameSite=Lax, unlike every cookie the site sets.
+    """
+    response.delete_cookie(name, path="/", secure=not config.get().dev,
+                           httponly=True, samesite="strict")
+
+
 def not_found(request: Request) -> HTMLResponse:
     """The one answer to everything a stranger may not see.
 
@@ -439,7 +449,7 @@ def _unlock(request: Request, who: str, body: dict):
     # Set only on approval, the device cookie ran out 400 days later however
     # often the device was used, and the owner was locked out. Renew it.
     set_cookie(response, DEVICE_COOKIE, device_id, DEVICE_COOKIE_DAYS * 86400)
-    response.delete_cookie(DOOR_COOKIE, path="/")
+    clear_cookie(response, DOOR_COOKIE)
     return response
 
 
@@ -491,7 +501,7 @@ def overview(request: Request, days: int = 30):
         activity = [dict(r) for r in conn.execute(
             "SELECT at, event, detail FROM activity ORDER BY id DESC LIMIT 12")]
     devices = [
-        {"id": d["id"], "name": d["name"], "created_at": d["created_at"],
+        {"id": lock.handle(d["id"]), "name": d["name"], "created_at": d["created_at"],
          "last_seen": d["last_seen"], "this": d["id"] == dev["id"]}
         for d in lock.list_devices()
     ]
@@ -519,16 +529,17 @@ def invite(request: Request):
     return {"url": url, "qr": qr, "minutes": lock.INVITE_MINUTES}
 
 
-@app.post("/api/console/devices/{device_id}/remove")
-def remove(request: Request, device_id: str):
+# The address names a device by its handle (see lock.handle), never by its id.
+@app.post("/api/console/devices/{name}/remove")
+def remove(request: Request, name: str):
     dev, denied = _owner_only(request)
     if denied:
         return denied
-    if device_id == dev["id"]:
+    target = lock.device_by_handle(name)
+    if target is not None and target["id"] == dev["id"]:
         return JSONResponse({"error": "You can't remove the device you're using."},
                             status_code=400)
-    target = lock.device(device_id)
-    if target is None or not lock.remove_device(device_id):
+    if target is None or not lock.remove_device(target["id"]):
         # Not 404: the console takes a 404 to mean "signed out" and leaves.
         return JSONResponse({"error": "That device was already removed."}, status_code=409)
     db.log("Device removed", f"{target['name']} (by {dev['name']})")
@@ -543,5 +554,5 @@ def signout(request: Request):
     lock.end_session(request.cookies.get(SESSION_COOKIE))
     db.log("Signed out", dev["name"])
     response = JSONResponse({"go": "/"})
-    response.delete_cookie(SESSION_COOKIE, path="/")
+    clear_cookie(response, SESSION_COOKIE)
     return response

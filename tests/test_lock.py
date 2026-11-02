@@ -3,6 +3,7 @@ or checks that the owner's own way in works."""
 
 import base64
 import time
+from http.cookies import SimpleCookie
 
 import pytest
 from cryptography.hazmat.primitives import hashes, serialization
@@ -311,6 +312,58 @@ def test_cookies_are_locked_down(client):
     response = knock(client)
     cookie = response.headers["set-cookie"].lower()
     assert "httponly" in cookie and "samesite=strict" in cookie and "secure" in cookie
+
+
+def test_every_cookie_the_site_sets_is_locked_down(client, make_client):
+    """Every cookie, the deletions included, across the owner's whole way in:
+    https only, out of the page's reach, never sent from another site, and
+    kept no longer than it is needed. And no cookie's value is ever handed
+    to the page some other way, such as in a JSON answer."""
+    headers, bodies = [], []
+
+    def seen(response):
+        assert response.status_code < 500, response.text
+        headers.extend(response.headers.get_list("set-cookie"))
+        bodies.append(response.text)
+        return response
+
+    laptop = Device()
+    seen(enroll(client, laptop, SETUP))
+    challenge = seen(client.post("/api/unlock/challenge", headers=ORIGIN)).json()["challenge"]
+    seen(client.post("/api/unlock", headers=ORIGIN, json={
+        "challenge": challenge, "signature": laptop.sign("mtrx-unlock:" + challenge)}))
+    seen(client.get("/console"))
+    seen(client.get("/api/console/overview"))
+    token = seen(client.post("/api/console/invite", headers=ORIGIN)).json()["url"].rsplit("/", 1)[1]
+    phone_client, phone = make_client(), Device()
+    seen(phone_client.get(f"/console/add/{token}"))
+    seen(enroll(phone_client, phone, token, "Phone"))
+    devices = seen(client.get("/api/console/overview")).json()["devices"]
+    phone_id = next(d["id"] for d in devices if not d["this"])
+    seen(client.post(f"/api/console/devices/{phone_id}/remove", headers=ORIGIN))
+    seen(client.post("/api/console/signout", headers=ORIGIN))
+    seen(knock(client))
+
+    # How long each one may last, at most.
+    longest = {"mh_d": 400 * 86400, "mh_s": 24 * 3600, "mh_k": 10 * 60}
+    values = set()
+    names = set()
+    for line in headers:
+        jar = SimpleCookie()
+        jar.load(line)
+        (name, morsel), = jar.items()
+        names.add(name)
+        assert morsel["secure"] and morsel["httponly"], line
+        assert morsel["samesite"].lower() == "strict" and morsel["path"] == "/", line
+        assert morsel["max-age"], line
+        assert 0 <= int(morsel["max-age"]) <= longest[name], line
+        if int(morsel["max-age"]) > 0:
+            assert len(morsel.value) >= 32, line
+            values.add(morsel.value)
+    assert names == {"mh_d", "mh_s", "mh_k"}
+    for value in values:
+        for body in bodies:
+            assert value not in body
 
 
 def test_security_headers(client):

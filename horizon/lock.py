@@ -165,6 +165,26 @@ def list_devices():
         ).fetchall()
 
 
+def handle(device_id: str) -> str:
+    """The name the console page uses for a device.
+
+    A device's id is also its cookie, which is kept out of the page's reach.
+    Handing the ids to the page put every device's cookie within reach of
+    the page's code, and removing a device put its id in the address, so the
+    server log kept it. This handle is made from the id one way and cannot
+    be turned back into it.
+    """
+    return hashlib.sha256(("mtrx-device:" + device_id).encode()).hexdigest()[:32]
+
+
+def device_by_handle(name: str):
+    """The approved device the page calls `name`, or None."""
+    for row in list_devices():
+        if hmac.compare_digest(handle(row["id"]), str(name)):
+            return device(row["id"])
+    return None
+
+
 def remove_device(device_id: str) -> bool:
     with db.connect() as conn:
         changed = conn.execute(

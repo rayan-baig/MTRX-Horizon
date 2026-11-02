@@ -482,3 +482,19 @@ def test_search_folded_to_its_icon_can_still_be_opened():
     for rule in re.findall(r"([^{}]*)\{([^}]*)\}", narrow):
         if ".search input" in rule[0] and "focus-within" not in rule[0]:
             assert "display: none" not in rule[1]
+
+
+def test_the_server_keeps_every_time_as_utc_seconds():
+    """Every time the server stores or compares is time.time(): seconds
+    since 1970 in UTC, the same whatever the server's own time zone. A
+    local-time call (datetime.now(), date.today(), time.localtime()...)
+    would make "expired" depend on where the server happens to run. The
+    console page turns the seconds into the viewer's own local time."""
+    import re
+    from pathlib import Path
+    naive = re.compile(r"\b(datetime|date)\.(now|utcnow|today|fromtimestamp|utcfromtimestamp)\("
+                       r"|\btime\.(localtime|mktime|strftime|ctime)\(")
+    files = sorted((Path(__file__).resolve().parent.parent / "horizon").glob("*.py"))
+    assert files
+    for file in files:
+        assert not naive.search(file.read_text()), file

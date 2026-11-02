@@ -121,6 +121,9 @@ class Browser:
     def __init__(self, server: Server):
         self.base = server.url
         self.cookies: dict[str, str] = {}
+        # Every cookie value and puzzle this browser was given, to look for
+        # in the server's log afterwards.
+        self.secrets: set[str] = set()
         self.http = httpx.Client(base_url=server.url, trust_env=False, timeout=10)
 
     def _send(self, method, path, body=None):
@@ -140,6 +143,7 @@ class Browser:
                 else:
                     assert morsel["httponly"] and morsel["samesite"].lower() == "strict", line
                     self.cookies[name] = morsel.value
+                    self.secrets.add(morsel.value)
         return response
 
     def get(self, path):
@@ -161,6 +165,7 @@ class Browser:
         challenge = self.post("/api/unlock/challenge")
         assert challenge.status_code == 200, challenge.text
         c = challenge.json()["challenge"]
+        self.secrets.add(c)
         return self.post("/api/unlock", {"challenge": c,
                                          "signature": device.sign("mtrx-unlock:" + c)})
 
@@ -251,6 +256,16 @@ def test_the_whole_owner_flow_from_a_real_address(start, host, counted_as):
     assert laptop.unlock(key).status_code == 200
     assert laptop.get("/console").status_code == 200
     assert laptop.post("/api/console/signout").status_code == 200
+
+    # The server's log (uvicorn's access lines and the site's own) holds no
+    # code, cookie, device id or puzzle from any of that.
+    server.stop()
+    log = server.log_path.read_text()
+    assert '"GET / HTTP/1.1" 200' in log  # the access log was on
+    secrets = laptop.secrets | phone.secrets | {SETUP, token}
+    assert len(secrets) >= 8
+    for secret in secrets:
+        assert secret not in log, (secret, log)
 
 
 def test_setup_code_stays_used_after_a_restart_and_a_new_one_works_once(start):
