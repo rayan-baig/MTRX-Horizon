@@ -455,3 +455,15 @@ def test_fingerprinted_files_are_kept_and_change_address_with_their_contents(cli
     assert client.get("/static/img/hero-wide.webp").headers["cache-control"] == "public, max-age=86400"
     # A missing file is not kept, so it can appear after a deploy.
     assert "max-age" not in client.get("/static/img/no-such.webp").headers.get("cache-control", "")
+
+
+def test_search_folded_to_its_icon_can_still_be_opened():
+    """On narrower screens the search box folds to its icon. It used to be
+    hidden outright there, and a hidden box cannot take a tap or ⌘K, so
+    search could not be opened at all on a phone."""
+    import re
+    css = open("static/css/site.css", encoding="utf-8").read()
+    narrow = css.split("@media (max-width: 1280px) {", 1)[1].split("\n}\n", 1)[0]
+    for rule in re.findall(r"([^{}]*)\{([^}]*)\}", narrow):
+        if ".search input" in rule[0] and "focus-within" not in rule[0]:
+            assert "display: none" not in rule[1]

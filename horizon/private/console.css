@@ -272,8 +272,12 @@ dialog form .btn { width: 100%; justify-content: center; }
 }
 @media (max-width: 720px) {
   .who-name { display: none; }
+  .btn-small { white-space: nowrap; }
+  /* A heading and its controls share a line only while both fit. */
+  .panel-head { flex-wrap: wrap; }
   .who-mark { display: none; }
   .welcome { padding: 22px 18px; min-height: 0; }
+  .wordmark.big { font-size: clamp(22px, 7.4vw, 28px); }
   .welcome-art { inset: 0; opacity: 0.35; -webkit-mask-image: none; mask-image: none; }
   .platform { grid-template-columns: 40px 1fr; }
   .platform img { width: 40px; height: 40px; }
