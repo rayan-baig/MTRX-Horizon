@@ -107,7 +107,13 @@ it shows no button, rather than a link to nowhere.
 
 ## Running it on a computer
 
+You need Python 3 (the live site runs 3.13). Install into a virtual environment:
+on many systems (Ubuntu 24.04, Homebrew's Python) a plain `pip install` is refused,
+and there may be no `python` command outside one.
+
 ```bash
+python3 -m venv .venv
+. .venv/bin/activate
 pip install -r requirements.txt -c constraints.txt
 MTRX_DEV=1 MTRX_KNOCK="logo logo omniarmor rankup" MTRX_SETUP_TOKEN=local-setup-code-1234567890 \
   python -m uvicorn horizon.main:app --port 8000
@@ -117,9 +123,12 @@ The site reads its settings from the environment, not from a file. To keep them
 in one, copy `.env.example` to `.env`, fill it in, and load it into the shell
 first with `set -a; . ./.env; set +a`.
 
-`MTRX_DEV=1` lets cookies work over plain `http://localhost`. Never set it on the real site.
+Then open `http://localhost:8000`. `MTRX_DEV=1` lets cookies work over plain
+`http://localhost`. Never set it on the real site.
 
 ## Tests
+
+In the same virtual environment:
 
 ```bash
 pip install -r requirements.txt -c constraints.txt pytest httpx
@@ -129,7 +138,8 @@ python -m pytest -q
 The lock tests try every way in that should fail: a stranger, a wrong or partial knock,
 guessing, a copied cookie, a stolen session, a reused puzzle, an expired or reused QR code,
 a removed device, and requests from other websites. `tests/test_live.py` starts the real
-server and walks the owner's whole way in from `127.0.0.1` and `::1`, restarts included.
+server and walks the owner's whole way in from `127.0.0.1` and `::1`, restarts included,
+then checks that no code, cookie, device id or puzzle reached the server's log.
 
 ## The click-through demo
 
