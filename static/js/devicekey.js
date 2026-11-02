@@ -31,14 +31,19 @@ const DeviceKey = (() => {
     return run("readonly", (s) => s.get(ID));
   }
 
+  // Makes a key but does not keep it. save() keeps it, and is called only
+  // once the server has accepted the key: saving first replaced a working
+  // device's key with one the server then refused, locking that device out.
   async function create() {
-    const pair = await crypto.subtle.generateKey(
+    return crypto.subtle.generateKey(
       { name: "ECDSA", namedCurve: "P-256" },
       false, // the private key can never be exported
       ["sign", "verify"],
     );
+  }
+
+  async function save(pair) {
     await run("readwrite", (s) => s.put(pair, ID));
-    return pair;
   }
 
   async function publicKey(pair) {
@@ -63,5 +68,5 @@ const DeviceKey = (() => {
     return { ok: res.ok, data };
   }
 
-  return { load, create, publicKey, sign, post };
+  return { load, create, save, publicKey, sign, post };
 })();

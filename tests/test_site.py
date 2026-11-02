@@ -363,3 +363,17 @@ def test_a_typo_in_a_number_setting_does_not_take_the_site_down(client, monkeypa
         assert settings.session_hours == 12 and settings.knock_minutes == 5
     monkeypatch.setenv("MTRX_SESSION_HOURS", " 24 ")
     assert config.get().session_hours == 24
+
+
+def test_a_new_device_key_is_kept_only_after_approval():
+    """Saving the key before the server answered replaced a working device's
+    key with one the server then refused, locking that device out. (Checked
+    in a real browser when fixed; this keeps the order from sliding back.)"""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent / "static" / "js"
+    devicekey = (root / "devicekey.js").read_text()
+    create = devicekey.split("async function create()", 1)[1].split("async function", 1)[0]
+    assert ".put(" not in create, "create() must not store the key"
+    add = (root / "add.js").read_text()
+    assert add.index("DeviceKey.save(pair)") > add.index('if (result.ok && result.data.go)')

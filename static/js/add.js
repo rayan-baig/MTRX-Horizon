@@ -28,6 +28,9 @@
         signature: await DeviceKey.sign(pair, "mtrx-enroll:" + token),
       });
       if (result.ok && result.data.go) {
+        // Kept only now the server has it, so a refused approval leaves the
+        // device's existing key alone.
+        await DeviceKey.save(pair);
         status.textContent = "Approved. Opening the console…";
         window.location.replace(result.data.go);
         return;
