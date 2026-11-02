@@ -6,7 +6,14 @@
 <meta name="description" content="MTRX Horizyn is the parent company of RankUp, CyberLogix AI and OmniArmor.ai: software that watches, warns and motivates, so people can get on with the work that matters.">
 <meta property="og:title" content="MTRX Horizyn">
 <meta property="og:description" content="One vision. Infinite possibilities. MTRX Horizyn, the company behind RankUp, CyberLogix AI and OmniArmor.ai.">
-<meta property="og:image" content="/static/img/logo-512.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MTRX Horizyn">
+<meta property="og:url" content="{{ base }}/">
+<meta property="og:image" content="{{ base }}/static/img/logo-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="{{ base }}/">
 </head>
 <body class="home">
 {#- Numbers on this page are real or absent. `numbers` comes from the apps'
@@ -161,9 +168,9 @@
   <span class="foot-brand">MTRX HORIZYN</span>
   <span class="foot-values">Innovation <i>•</i> Creativity <i>•</i> Impact</span>
   <span class="foot-line">Technology for a stronger tomorrow.</span>
-  <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
+  <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.{% if not demo %} <span class="foot-version">Version {{ version }}</span>{% endif %}</span>
   {% if not demo %}<nav class="foot-links" aria-label="About this site">
-    <a href="#company">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a>
+    <a href="#company">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
     {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>{% endif %}
 </footer>

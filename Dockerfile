@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt -c constraints.txt
 COPY horizon horizon
 COPY templates templates
 COPY static static
+COPY VERSION ./
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 ENV MTRX_DB_PATH=/app/data/horizon.db
 # The site runs as "horizon", not root. The entrypoint starts as root only to

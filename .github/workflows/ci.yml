@@ -45,7 +45,7 @@ jobs:
             curl -fsS http://localhost:8000/healthz && break
             sleep 1
           done
-          curl -fsS http://localhost:8000/healthz
+          curl -fsS http://localhost:8000/healthz | grep -F "\"version\":\"$(cat VERSION)\""
           test "$(docker exec horizon sh -c 'ps -o user= -p 1 2>/dev/null || stat -c %U /proc/1')" = horizon
           docker exec -u horizon horizon test -O /app/data/horizon.db
           docker logs horizon | tail -20

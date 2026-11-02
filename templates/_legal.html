@@ -19,6 +19,7 @@
     <a href="/">Home</a>
     <a href="/privacy"{% if page == "privacy" %} class="active" aria-current="page"{% endif %}>Privacy</a>
     <a href="/terms"{% if page == "terms" %} class="active" aria-current="page"{% endif %}>Terms</a>
+    <a href="/brand"{% if page == "brand" %} class="active" aria-current="page"{% endif %}>Brand</a>
   </nav>
 </header>
 
@@ -26,7 +27,7 @@
   <article class="panel">
     <p class="eyebrow">MTRX Horizyn</p>
     <h1>{{ self.title() }}</h1>
-    <p class="legal-date">Last updated {{ updated }}</p>
+    {% if updated %}<p class="legal-date">Last updated {{ updated }}</p>{% endif %}
     {% block body %}{% endblock %}
     {% if contact %}<h2>Questions</h2>
     <p>Write to <a href="mailto:{{ contact }}">{{ contact }}</a>.</p>{% endif %}
@@ -37,7 +38,7 @@
   <span class="foot-brand">MTRX HORIZYN</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
   <nav class="foot-links" aria-label="About this site">
-    <a href="/#company">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a>
+    <a href="/#company">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
     {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>
 </footer>

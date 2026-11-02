@@ -37,6 +37,7 @@ class Settings:
     public_url: str
     contact_email: str
     health_urls: dict
+    admin_urls: dict
     alert_minutes: int
     alert_email: str
     alert_from: str
@@ -99,8 +100,24 @@ def _email(raw: str | None) -> str:
     return value if len(value) <= 254 and _EMAIL.fullmatch(value) else ""
 
 
+# Where each app's own admin page is, from its public address, when no
+# {APP}_ADMIN_URL is set. OmniArmor has no separate admin page: its owner
+# signs in to the app itself.
+ADMIN_PATHS = {"rankup": "/#/operator", "cyberlogix": "/console", "omniarmor": "/"}
+
+
+def _admin_urls(env, app_urls: dict) -> dict:
+    urls = {}
+    for key in APP_KEYS:
+        own = _web_address(env.get(f"{key.upper()}_ADMIN_URL"))
+        base = app_urls.get(key, "")
+        urls[key] = own or (base.rstrip("/") + ADMIN_PATHS[key] if base else "")
+    return urls
+
+
 def get() -> Settings:
     env = os.environ
+    app_urls = {k: _web_address(env.get(f"{k.upper()}_URL")) for k in APP_KEYS}
     return Settings(
         db_path=Path(env.get("MTRX_DB_PATH", str(ROOT / "data" / "horizon.db"))),
         knock=parse_knock(env.get("MTRX_KNOCK", "")),
@@ -108,7 +125,7 @@ def get() -> Settings:
         dev=env.get("MTRX_DEV", "") == "1",
         trust_proxy=env.get("MTRX_TRUST_PROXY", "") == "1",
         stats_key=env.get("MTRX_STATS_KEY", "").strip(),
-        app_urls={k: _web_address(env.get(f"{k.upper()}_URL")) for k in APP_KEYS},
+        app_urls=app_urls,
         stats_urls={k: env.get(f"{k.upper()}_STATS_URL", "").strip() for k in APP_KEYS},
         session_hours=_whole_number(env.get("MTRX_SESSION_HOURS"), 12),
         knock_minutes=_whole_number(env.get("MTRX_KNOCK_MINUTES"), 5),
@@ -116,6 +133,7 @@ def get() -> Settings:
         contact_email=_email(env.get("MTRX_CONTACT_EMAIL")),
         # Each app's public "am I up?" address, asked once a minute.
         health_urls={k: _web_address(env.get(f"{k.upper()}_HEALTH_URL")) for k in APP_KEYS},
+        admin_urls=_admin_urls(env, app_urls),
         # Down this long before the owner is told.
         alert_minutes=_whole_number(env.get("MTRX_ALERT_MINUTES"), 5),
         alert_email=_email(env.get("MTRX_ALERT_EMAIL")),

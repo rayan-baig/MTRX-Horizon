@@ -805,3 +805,17 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   html { scroll-behavior: auto; }
 }
+
+/* ---------- brand page ---------- */
+.brand-logos { list-style: none; padding: 0 !important; display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px !important; }
+.brand-logos li { display: grid; justify-items: start; gap: 8px; }
+.brand-logos img { width: 96px; height: 96px; border-radius: 18px; background: var(--bg); padding: 8px; }
+.brand-logos span { display: grid; gap: 2px; color: var(--text); }
+.brand-colours { list-style: none; padding: 0 !important; }
+.brand-colours li { display: flex; align-items: center; gap: 10px; }
+.brand-colours b { color: var(--text); min-width: 4.5em; }
+.sw { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); flex: none; }
+.sw-bg { background: #050816; } .sw-cyan { background: #22d3ee; } .sw-blue { background: #3b82f6; }
+.sw-violet { background: #8b5cf6; } .sw-pink { background: #d946ef; } .sw-text { background: #eef3ff; }
+.foot-version { color: var(--faint); margin-left: 6px; }

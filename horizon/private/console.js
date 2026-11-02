@@ -141,7 +141,10 @@
       const uptime = health.configured ? health.uptime_week : data.history[app.key]?.uptime;
       list.append(el("li", { class: `platform ${app.color}` },
         el("img", { src: `/static/img/${ICONS[app.key]}-icon.svg`, alt: "" }),
-        el("div", { class: "pname" }, el("b", { text: app.name }), statePill(app, health)),
+        el("div", { class: "pname" }, el("b", { text: app.name }), statePill(app, health),
+          data.admin_urls[app.key]
+            ? el("a", { class: "padmin", href: data.admin_urls[app.key], target: "_blank", rel: "noopener", text: "Admin →" })
+            : null),
         el("span", { class: "ptags", text: app.tags.join(" • ") }),
         el("div", { class: "pnums" },
           el("span", {}, el("strong", { text: number(app.users) }), "Users"),
@@ -244,6 +247,30 @@
     }
   }
 
+  function money(low, high) {
+    if (low === high) return low ? `$${low}` : "Free";
+    return `$${low}–${high}`;
+  }
+
+  function drawCosts(data) {
+    const c = data.costs;
+    $("cost-total").textContent = `About ${money(c.total_low, c.total_high)} a month`;
+    const list = $("cost-list");
+    list.replaceChildren();
+    for (const item of c.monthly) {
+      list.append(el("li", {},
+        el("b", { text: item.what }),
+        item.note ? el("small", { text: item.note }) : null,
+        el("span", { class: "cost", text: money(item.low, item.high) })));
+    }
+    for (const item of c.per_use) {
+      list.append(el("li", {},
+        el("b", { text: item.what }),
+        el("small", { text: item.note }),
+        el("span", { class: "cost", text: "Per use" })));
+    }
+  }
+
   function drawDevices(data) {
     const list = $("device-list");
     list.replaceChildren();
@@ -274,7 +301,7 @@
       if (res.status === 404) { window.location.replace("/"); return; }
       const data = await res.json();
       drawOverview(data); drawPlatforms(data); drawChart(data); drawFeed(data);
-      drawDials(data); drawProjects(data); drawDevices(data);
+      drawDials(data); drawProjects(data); drawCosts(data); drawDevices(data);
     } catch (_) {
       $("updated").textContent = "Couldn't refresh";
       $("updated").classList.add("stale");

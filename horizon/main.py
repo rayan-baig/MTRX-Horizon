@@ -9,6 +9,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
+from xml.sax.saxutils import escape as xml_escape
 
 import qrcode
 import qrcode.image.svg
@@ -21,7 +22,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
-from . import config, db, health, lock, stats, upkeep
+from . import config, costs, db, health, lock, stats, upkeep
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -90,6 +91,19 @@ def asset(path: str) -> str:
 templates.env.globals["asset"] = asset
 
 
+def _read_version() -> str:
+    try:
+        return (config.ROOT / "VERSION").read_text().strip() or "dev"
+    except OSError:
+        return "dev"
+
+
+# Shown at the foot of the home page and the console, and by /healthz, so
+# the owner can see which version is live. CHANGELOG.md says what is in it.
+VERSION = _read_version()
+templates.env.globals["version"] = VERSION
+
+
 class _GzipText(GZipMiddleware):
     """Compress the home page and the text files, and nothing else.
 
@@ -103,7 +117,7 @@ class _GzipText(GZipMiddleware):
 
     async def __call__(self, scope, receive, send):
         path = scope.get("path", "") if scope["type"] == "http" else ""
-        if path in ("/", "/privacy", "/terms") or (path.startswith(("/static/", "/console/assets/"))
+        if path in ("/", "/privacy", "/terms", "/brand", "/sitemap.xml") or (path.startswith(("/static/", "/console/assets/"))
                            and path.endswith(self.TEXT)):
             await super().__call__(scope, receive, send)
         else:
@@ -218,6 +232,16 @@ def signed_in(request: Request):
     )
 
 
+def _lock_down(response: Response) -> None:
+    """The security headers every answer carries."""
+    response.headers["Content-Security-Policy"] = CSP
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if not config.get().dev:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
+
+
 @app.middleware("http")
 async def guard(request: Request, call_next):
     # Every change has to come from this site's own pages. Cookies are also
@@ -235,12 +259,7 @@ async def guard(request: Request, call_next):
         if not same_site:
             return JSONResponse({"error": "Bad origin"}, status_code=403)
     response = await call_next(request)
-    response.headers["Content-Security-Policy"] = CSP
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "no-referrer"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    if not config.get().dev:
-        response.headers["Strict-Transport-Security"] = "max-age=31536000"
+    _lock_down(response)
     path = request.url.path
     if path.startswith("/static/") and response.status_code in (200, 304):
         # A fingerprinted address (see `asset`) never changes. The rest
@@ -268,6 +287,25 @@ async def _http_error(request: Request, exc):
     return not_found(request)
 
 
+@app.exception_handler(Exception)
+async def _server_error(request: Request, exc: Exception):
+    # A friendly page instead of a bare "Internal Server Error". The error
+    # itself still goes to the server log. It says nothing about what broke,
+    # so the page tells a stranger nothing.
+    logging.getLogger("horizon").exception("Server error on %s", request.url.path)
+    # This answer is made outside the `guard` middleware, so it adds the
+    # security headers itself.
+    if request.url.path.startswith("/api/"):
+        response = JSONResponse({"error": "Something went wrong. Please try again."},
+                                status_code=500)
+    else:
+        response = templates.TemplateResponse(request, "500.html", status_code=500)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Robots-Tag"] = "noindex"
+    _lock_down(response)
+    return response
+
+
 @app.exception_handler(RequestValidationError)
 async def _bad_request(request: Request, exc):
     # Checked before the owner check runs, so a 422 with field names used to
@@ -287,6 +325,7 @@ def home(request: Request):
         "contact": settings.contact_email,
         "numbers": stats.public_numbers(),
         "projects": stats.PROJECTS,
+        "base": base_url(request),
     })
 
 
@@ -318,16 +357,38 @@ def terms(request: Request):
     return _legal(request, "terms")
 
 
+@app.api_route("/brand", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def brand(request: Request):
+    return templates.TemplateResponse(request, "brand.html", {"page": "brand"})
+
+
 @app.api_route("/healthz", methods=["GET", "HEAD"])
 def healthz():
-    return {"ok": True}
+    return {"ok": True, "version": VERSION}
+
+
+# The pages a search engine may list. The console is never one of them.
+PUBLIC_PAGES = ("/", "/privacy", "/terms", "/brand")
 
 
 @app.api_route("/robots.txt", methods=["GET", "HEAD"], response_class=Response)
-def robots():
+def robots(request: Request):
     # Naming /console here told every visitor where to look. The console
     # pages already say noindex themselves.
-    return Response("User-agent: *\nAllow: /\n", media_type="text/plain")
+    return Response(f"User-agent: *\nAllow: /\n\nSitemap: {base_url(request)}/sitemap.xml\n",
+                    media_type="text/plain")
+
+
+@app.api_route("/sitemap.xml", methods=["GET", "HEAD"], response_class=Response)
+def sitemap(request: Request):
+    # Set MTRX_PUBLIC_URL on the live site: without it the address comes
+    # from the request, and is escaped since the visitor chose it.
+    base = xml_escape(base_url(request))
+    urls = "".join(f"  <url><loc>{base}{page}</loc></url>\n" for page in PUBLIC_PAGES)
+    body = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            f"{urls}</urlset>\n")
+    return Response(body, media_type="application/xml")
 
 
 # Every body the site accepts is a few short fields.
@@ -557,6 +618,8 @@ def overview(request: Request, days: int = 30):
         "activity": activity,
         "devices": devices,
         "projects": stats.PROJECTS,
+        "admin_urls": config.get().admin_urls,
+        "costs": costs.summary(),
     }
 
 

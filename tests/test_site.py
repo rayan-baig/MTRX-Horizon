@@ -692,3 +692,86 @@ def test_the_company_name_is_spelled_horizyn_everywhere_people_see_it():
     old = re.compile(r"MTRX\s+(<b>)?horizon", re.IGNORECASE)
     hits = [str(p.relative_to(root)) for p in places if p.exists() and old.search(p.read_text())]
     assert hits == [], hits
+
+
+def test_the_live_version_is_shown_and_matches_the_version_file(client):
+    from horizon import config
+    version = (config.ROOT / "VERSION").read_text().strip()
+    assert version and client.get("/healthz").json() == {"ok": True, "version": version}
+    assert f"Version {version}" in client.get("/").text
+    changelog = (config.ROOT / "CHANGELOG.md").read_text()
+    assert f"## {version} " in changelog, "every version has a line in CHANGELOG.md"
+
+
+def test_a_server_error_gets_a_friendly_page_that_says_nothing(make_client):
+    from fastapi.testclient import TestClient
+    from horizon import main
+
+    def broken():
+        raise RuntimeError("secret detail")
+
+    main.app.add_api_route("/test-broken", broken)
+    main.app.add_api_route("/api/test-broken", broken)
+    try:
+        with TestClient(main.app, raise_server_exceptions=False) as c:
+            page = c.get("/test-broken")
+            assert page.status_code == 500
+            assert "Something went wrong" in page.text and "secret detail" not in page.text
+            assert page.headers["content-security-policy"] == main.CSP
+            api = c.get("/api/test-broken")
+            assert api.status_code == 500 and "secret" not in api.text
+            assert api.json()["error"]
+    finally:
+        main.app.router.routes[:] = [r for r in main.app.router.routes
+                                     if getattr(r, "path", "") not in ("/test-broken", "/api/test-broken")]
+
+
+def test_sitemap_lists_the_public_pages_and_never_the_console(client, monkeypatch):
+    monkeypatch.setenv("MTRX_PUBLIC_URL", "https://mtrx.example")
+    body = client.get("/sitemap.xml").text
+    for page in ("/", "/privacy", "/terms", "/brand"):
+        assert f"<loc>https://mtrx.example{page}</loc>" in body
+    assert "console" not in body
+    assert "Sitemap: https://mtrx.example/sitemap.xml" in client.get("/robots.txt").text
+    for page in ("/privacy", "/terms", "/brand"):
+        assert client.get(page).status_code == 200
+
+
+def test_share_previews_use_whole_addresses(client, monkeypatch):
+    """Chat apps cannot fetch a picture named as "/static/...": the preview
+    showed no image."""
+    monkeypatch.setenv("MTRX_PUBLIC_URL", "https://mtrx.example")
+    page = client.get("/").text
+    assert '<meta property="og:image" content="https://mtrx.example/static/img/logo-512.png">' in page
+    assert '<meta property="og:url" content="https://mtrx.example/">' in page
+
+
+def test_brand_page_has_the_name_logos_and_colours(client):
+    page = client.get("/brand").text
+    assert "MTRX Horizyn" in page and "Horizyn with a <b>y</b>" in page
+    for logo in ("logo-512.png", "rankup-icon.svg", "cyberlogix-icon.svg", "omniarmor-icon.svg"):
+        assert logo in page
+    assert "#22D3EE" in page
+
+
+def test_console_shows_costs_and_each_apps_admin_page(client, monkeypatch):
+    from horizon import costs
+    monkeypatch.setenv("RANKUP_URL", "https://rankup.mtrx.example")
+    monkeypatch.setenv("CYBERLOGIX_URL", "https://cyberlogix.mtrx.example/")
+    monkeypatch.setenv("OMNIARMOR_ADMIN_URL", "https://omniarmor.mtrx.example/settings")
+    owner(client)
+    data = client.get("/api/console/overview").json()
+    assert data["admin_urls"] == {
+        "rankup": "https://rankup.mtrx.example/#/operator",
+        "cyberlogix": "https://cyberlogix.mtrx.example/console",
+        "omniarmor": "https://omniarmor.mtrx.example/settings",
+    }
+    c = data["costs"]
+    assert c["total_low"] == sum(i["low"] for i in c["monthly"]) == costs.summary()["total_low"]
+    assert 35 <= c["total_low"] <= c["total_high"] <= 60
+
+
+def test_no_admin_link_for_an_app_with_no_address(client, monkeypatch):
+    monkeypatch.setenv("OMNIARMOR_ADMIN_URL", "javascript:alert(1)")
+    owner(client)
+    assert client.get("/api/console/overview").json()["admin_urls"]["omniarmor"] == ""

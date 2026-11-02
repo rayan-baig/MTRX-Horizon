@@ -106,7 +106,7 @@ app never reaches another, and none of them reaches the console. To keep it that
    shows (for the bare domain usually an `A` record or an `ALIAS`/`ANAME`; for `www` a
    `CNAME` to the service's `onrender.com` address). Render redirects one to the other
    and gets the HTTPS certificate itself. Then set `MTRX_PUBLIC_URL=https://example.com`
-   so QR codes use it.
+   so QR codes, the sitemap and link previews use it.
 2. **Each app:** add a `CNAME` named `rankup`, `cyberlogix` or `omniarmor` pointing at
    that app's own host, add the same name in that host's custom-domain settings, wait
    for HTTPS, and set the app's own address setting to it: CyberLogix's
@@ -166,6 +166,24 @@ To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_U
 `OMNIARMOR_URL` to the app's whole address on its subdomain, such as
 `https://rankup.<your domain>`. An address without `https://` shows no button, rather
 than a link to nowhere.
+
+## Admin links and costs in the console
+
+Each app's card in **Our platforms** has an **Admin →** link to that app's own admin
+page, made from its address (`RANKUP_URL` and so on): RankUp's operator page
+(`/#/operator`), CyberLogix's console (`/console`) and OmniArmor's front page (its owner
+signs in to the app itself). Set `RANKUP_ADMIN_URL`, `CYBERLOGIX_ADMIN_URL` or
+`OMNIARMOR_ADMIN_URL` to send a link somewhere else.
+
+The **Monthly costs** panel lists what each part costs to run each month. The figures
+live in `horizon/costs.py` and match `docs/RUNNING-MTRX-HORIZYN.md`; change both
+together when a price changes.
+
+## Versions
+
+`VERSION` holds the version number. It shows at the foot of the home page and the
+console, and in `/healthz`. Each new version gets a short entry at the top of
+`CHANGELOG.md`; a test fails if the number has no entry.
 
 ## App health, and being told when an app is down
 
