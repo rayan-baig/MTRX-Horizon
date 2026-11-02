@@ -60,6 +60,34 @@ templates = Jinja2Templates(directory=config.ROOT / "templates")
 
 # ---------------------------------------------------------------- helpers
 
+_proxy_shape_logged = False
+
+
+def _log_proxy_shape_once(request: Request, forwarded: str) -> None:
+    """Say once, in the server log, what the host's proxy headers look like.
+
+    Whether the last X-Forwarded-For entry is the visitor depends on how many
+    proxies sit in front (Render alone, or Render behind Cloudflare). This
+    line lets the owner check on the live site without guessing. It gives
+    counts and yes/no answers only, never an address.
+    """
+    global _proxy_shape_logged
+    if _proxy_shape_logged:
+        return
+    _proxy_shape_logged = True
+    entries = [e.strip() for e in forwarded.split(",") if e.strip()]
+    cf = request.headers.get("cf-connecting-ip", "").strip()
+    logging.getLogger("horizon").warning(
+        "Proxy check: X-Forwarded-For has %d entr%s; CF-Connecting-IP %s; "
+        "the last entry %s CF-Connecting-IP. If it does not match, visitors "
+        "are being counted by a proxy's address: see the README's note on a "
+        "second proxy.",
+        len(entries), "y" if len(entries) == 1 else "ies",
+        "present" if cf else "absent",
+        "matches" if cf and entries and entries[-1] == cf else ("does not match" if cf else "cannot be compared with"),
+    )
+
+
 def client_ip(request: Request) -> str:
     """Who is asking, for counting tries.
 
@@ -71,6 +99,7 @@ def client_ip(request: Request) -> str:
     if config.get().trust_proxy:
         forwarded = request.headers.get("x-forwarded-for", "")
         if forwarded:
+            _log_proxy_shape_once(request, forwarded)
             # The last entry is the one our own host's proxy added; the
             # ones before it were sent by the visitor and can be made up.
             address = forwarded.split(",")[-1].strip()

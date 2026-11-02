@@ -377,3 +377,21 @@ def test_a_new_device_key_is_kept_only_after_approval():
     assert ".put(" not in create, "create() must not store the key"
     add = (root / "add.js").read_text()
     assert add.index("DeviceKey.save(pair)") > add.index('if (result.ok && result.data.go)')
+
+
+def test_the_proxy_check_logs_shape_once_and_no_addresses(monkeypatch, caplog):
+    from horizon import main
+    from starlette.requests import Request
+
+    monkeypatch.setattr(main, "_proxy_shape_logged", False)
+    monkeypatch.setenv("MTRX_TRUST_PROXY", "1")
+    scope = {"type": "http", "headers": [(b"x-forwarded-for", b"198.51.100.7, 203.0.113.9"),
+                                         (b"cf-connecting-ip", b"198.51.100.7")],
+             "client": ("10.0.0.1", 1234)}
+    with caplog.at_level("WARNING", logger="horizon"):
+        main.client_ip(Request(scope))
+        main.client_ip(Request(scope))
+    lines = [r.getMessage() for r in caplog.records if r.name == "horizon"]
+    assert len(lines) == 1
+    assert "2 entries" in lines[0] and "does not match" in lines[0]
+    assert "198.51.100.7" not in lines[0] and "203.0.113.9" not in lines[0]
