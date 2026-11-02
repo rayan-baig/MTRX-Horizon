@@ -69,6 +69,10 @@
       ? number(counts.reduce((a, b) => a + b, 0))
       : connected ? "No answer" : "Not connected";
     $("ov-devices").textContent = number(data.devices.length);
+    const checked = data.apps.map((a) => data.health[a.key]).filter((h) => h.configured && h.up != null);
+    $("ov-up").textContent = checked.length
+      ? `${checked.filter((h) => h.up).length} of ${checked.length}`
+      : "Not set up";
     $("ov-uptime").textContent = duration(data.server.uptime);
     const me = data.devices.find((d) => d.this);
     if (me) $("who-name").textContent = me.name;
@@ -76,22 +80,74 @@
     $("updated").classList.remove("stale");
   }
 
+  // How long something lasted, to the minute.
+  function span(seconds) {
+    const s = Math.max(60, seconds);
+    if (s < 3600) return `${Math.round(s / 60)}m`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+    return `${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h`;
+  }
+  const since = (at) => span(Date.now() / 1000 - at);
+
+  // Up or down: the health check when the app has one, else whether its
+  // stats address answered.
+  function statePill(app, health) {
+    if (health.configured) {
+      if (health.up == null) return el("span", { class: "pill off", text: "Not checked yet" });
+      if (health.up) return el("span", { class: "pill ok", text: health.ms == null ? "Up" : `Up · ${health.ms} ms` });
+      return el("span", { class: "pill down", text: `Down for ${since(health.down_since)}` });
+    }
+    if (!app.connected) return el("span", { class: "pill off", text: "Not connected" });
+    if (app.online) return el("span", { class: "pill ok", text: "Online" });
+    return el("span", { class: "pill down", text: "Not answering" });
+  }
+
+  // The last 24 hours in half hours: green all up, amber some down, red
+  // all down, grey not checked.
+  function strip(health) {
+    const bars = el("div", { class: "bars", role: "img" });
+    const down = health.bars.filter((b) => b != null && b < 1).length;
+    bars.setAttribute("aria-label", health.configured
+      ? `Last 24 hours: ${down ? `${down} half hour${down === 1 ? "" : "s"} with failed checks` : "no failed checks"}`
+      : "No health checks");
+    for (const b of health.bars) {
+      bars.append(el("i", { class: b == null ? "none" : b >= 1 ? "up" : b <= 0 ? "down" : "part" }));
+    }
+    let note;
+    if (!health.configured) note = "No health address set, so no up/down history.";
+    else if (!health.outages.length) note = health.checked_at ? "No outages in the last 7 days." : "Checked once a minute.";
+    else {
+      const o = health.outages[0];
+      const length = o.end == null ? "still down" : `down ${span(o.end - o.start)}`;
+      note = `${health.outages.length === 5 ? "5+" : health.outages.length} outage${health.outages.length === 1 ? "" : "s"} in 7 days · last ${ago(o.start)}, ${length}`;
+    }
+    return el("div", { class: "pstrip" },
+      bars,
+      el("p", { class: "pnote" },
+        el("span", { text: "Last 24 hours" }),
+        el("span", { text: health.uptime_day == null ? "" : `${health.uptime_day}% up` }),
+        el("span", { class: "pnote-wide", text: note })));
+  }
+
   function drawPlatforms(data) {
     const list = $("platform-list");
     list.replaceChildren();
+    const a = data.alerts;
+    $("alert-hint").textContent = a.email
+      ? `Emails you after ${a.minutes} min down`
+      : `Alerts here after ${a.minutes} min down`;
     for (const app of data.apps) {
-      const uptime = data.history[app.key]?.uptime;
-      let state;
-      if (!app.connected) state = el("span", { class: "pill off", text: "Not connected" });
-      else if (app.online) state = el("span", { class: "pill ok", text: "Online" });
-      else state = el("span", { class: "pill down", text: "Not answering" });
+      const health = data.health[app.key];
+      const uptime = health.configured ? health.uptime_week : data.history[app.key]?.uptime;
       list.append(el("li", { class: `platform ${app.color}` },
         el("img", { src: `/static/img/${ICONS[app.key]}-icon.svg`, alt: "" }),
-        el("div", { class: "pname" }, el("b", { text: app.name }), state),
+        el("div", { class: "pname" }, el("b", { text: app.name }), statePill(app, health)),
         el("span", { class: "ptags", text: app.tags.join(" • ") }),
         el("div", { class: "pnums" },
           el("span", {}, el("strong", { text: number(app.users) }), "Users"),
-          el("span", {}, el("strong", { text: uptime == null ? "–" : `${uptime}%` }), "Uptime")),
+          el("span", {}, el("strong", { text: uptime == null ? "–" : `${uptime}%` }),
+            health.configured ? "Uptime 7d" : "Uptime")),
+        strip(health),
       ));
     }
   }
@@ -135,6 +191,7 @@
   const FEED_ICONS = {
     "Signed in": "ico-key", "Signed out": "ico-door", "Device approved": "ico-plus",
     "Device removed": "ico-devices", "Door opened": "ico-door", "Approval code made": "ico-plus",
+    "App down": "ico-activity", "App back up": "ico-apps", "Alert email failed": "ico-activity",
   };
 
   function drawFeed(data) {

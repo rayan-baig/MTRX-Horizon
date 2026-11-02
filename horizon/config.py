@@ -36,6 +36,14 @@ class Settings:
     knock_minutes: int
     public_url: str
     contact_email: str
+    health_urls: dict
+    alert_minutes: int
+    alert_email: str
+    alert_from: str
+    smtp_host: str
+    smtp_port: int
+    smtp_user: str
+    smtp_password: str
 
 
 def parse_knock(raw: str) -> tuple[str, ...]:
@@ -106,4 +114,14 @@ def get() -> Settings:
         knock_minutes=_whole_number(env.get("MTRX_KNOCK_MINUTES"), 5),
         public_url=env.get("MTRX_PUBLIC_URL", "").strip().rstrip("/"),
         contact_email=_email(env.get("MTRX_CONTACT_EMAIL")),
+        # Each app's public "am I up?" address, asked once a minute.
+        health_urls={k: _web_address(env.get(f"{k.upper()}_HEALTH_URL")) for k in APP_KEYS},
+        # Down this long before the owner is told.
+        alert_minutes=_whole_number(env.get("MTRX_ALERT_MINUTES"), 5),
+        alert_email=_email(env.get("MTRX_ALERT_EMAIL")),
+        alert_from=_email(env.get("MTRX_ALERT_FROM")) or _email(env.get("MTRX_SMTP_USER")),
+        smtp_host=env.get("MTRX_SMTP_HOST", "").strip(),
+        smtp_port=_whole_number(env.get("MTRX_SMTP_PORT"), 587),
+        smtp_user=env.get("MTRX_SMTP_USER", "").strip(),
+        smtp_password=env.get("MTRX_SMTP_PASSWORD", ""),
     )

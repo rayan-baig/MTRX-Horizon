@@ -140,6 +140,16 @@ button { font: inherit; }
 .platform .pnums { grid-column: 3; grid-row: 1 / span 2; display: flex; gap: 16px; text-align: right; }
 .platform .pnums span { display: grid; font-size: 11px; color: var(--faint); }
 .platform .pnums strong { font: 600 15px/1.3 var(--body); color: var(--text); }
+/* Health: the last 24 hours, one bar per half hour. */
+.platform .pstrip { grid-column: 1 / -1; display: grid; gap: 6px; padding-top: 8px; min-width: 0; }
+.bars { display: grid; grid-template-columns: repeat(48, minmax(0, 1fr)); gap: 2px; height: 16px; }
+.bars i { border-radius: 2px; background: rgba(120, 150, 220, 0.16); }
+.bars i.up { background: color-mix(in srgb, var(--green) 80%, transparent); }
+.bars i.part { background: var(--amber); }
+.bars i.down { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.pnote { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 11.5px; color: var(--faint); }
+.pnote span:nth-child(2) { color: var(--muted); }
+.pnote-wide { flex-basis: 100%; }
 .pill {
   display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);
   white-space: nowrap;

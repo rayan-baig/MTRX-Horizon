@@ -167,6 +167,41 @@ To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_U
 `https://rankup.<your domain>`. An address without `https://` shows no button, rather
 than a link to nowhere.
 
+## App health, and being told when an app is down
+
+The console's **Our platforms** panel shows, for each app on one screen: up or down
+right now (with how long it took to answer, or how long it has been down), its users,
+its uptime over 7 days, the last 24 hours as one bar per half hour, and its outages in
+the last week. It needs each app's public health address:
+
+| Setting | Value |
+|---|---|
+| `RANKUP_HEALTH_URL` | `https://rankup.<your domain>/api/health` |
+| `CYBERLOGIX_HEALTH_URL` | that app's public health address |
+| `OMNIARMOR_HEALTH_URL` | that app's public health address |
+
+The server asks each one once a minute, whether or not the console is open, with a
+4-second limit and no key. Any 2xx answer is up; anything else, a redirect, or no answer
+in time is down. Use the final address, starting `https://`. Checks are kept for 31 days.
+
+When an app has been down for `MTRX_ALERT_MINUTES` (5 if unset), the console's
+**Recent activity** says so, and, if email is set up, you get an email. Then:
+one "back up" email when it recovers, a reminder every 6 hours while it stays down,
+never two "down" emails for the same app within an hour, and at most 12 emails a day.
+To set up email, use any email provider's SMTP details:
+
+| Setting | Value |
+|---|---|
+| `MTRX_ALERT_EMAIL` | where alerts go |
+| `MTRX_SMTP_HOST` | the provider's SMTP server |
+| `MTRX_SMTP_PORT` | `587` (STARTTLS, the default) or `465` |
+| `MTRX_SMTP_USER`, `MTRX_SMTP_PASSWORD` | the login the provider gives you |
+| `MTRX_ALERT_FROM` | the sender, such as `alerts@<your domain>` (defaults to the login) |
+
+Mail is only sent encrypted. A server that offers no encryption is refused (except one
+on the same machine), and the console shows "Alert email failed". The console shows
+whether email is set up, never the address or the login.
+
 ## Business enquiries
 
 Set `MTRX_CONTACT_EMAIL` to the address business enquiries should go to, such as
@@ -261,6 +296,7 @@ needs changing. The line shows counts only, never anyone's address.
 - `horizon/main.py`: the web pages and the console's API
 - `horizon/lock.py`: the three locks
 - `horizon/stats.py`: the console's numbers, and the project list
+- `horizon/health.py`: the apps' health checks, and the alerts when one is down
 - `horizon/upkeep.py`: the jobs the server runs on its own once a minute
 - `templates/`: the pages
 - `static/`: styles, scripts, pictures (cut from the supplied design artwork) and the two

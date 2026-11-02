@@ -66,6 +66,23 @@ CREATE TABLE IF NOT EXISTS app_snapshots (
     active_users INTEGER
 );
 CREATE INDEX IF NOT EXISTS snapshots_lookup ON app_snapshots (app, at);
+-- One row per health check of an app: up or not, and how long it took.
+CREATE TABLE IF NOT EXISTS health_checks (
+    app TEXT NOT NULL,
+    at REAL NOT NULL,
+    up INTEGER NOT NULL,
+    ms INTEGER,
+    status INTEGER
+);
+CREATE INDEX IF NOT EXISTS health_lookup ON health_checks (app, at);
+-- Every alert about an app, sent or not, so they can be kept to a few.
+CREATE TABLE IF NOT EXISTS health_alerts (
+    app TEXT NOT NULL,
+    at REAL NOT NULL,
+    kind TEXT NOT NULL,
+    sent INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS alerts_lookup ON health_alerts (app, at);
 """
 
 

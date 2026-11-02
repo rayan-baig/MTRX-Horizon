@@ -9,7 +9,7 @@ others or the site.
 import logging
 import threading
 
-from . import lock
+from . import health, lock
 
 EVERY_SECONDS = 60
 
@@ -19,7 +19,7 @@ _thread: threading.Thread | None = None
 
 def run_once():
     """Every job, once. The loop calls this; so can a test."""
-    for job in (lock.forget_old_tries,):
+    for job in (lock.forget_old_tries, health.run_checks):
         try:
             job()
         except Exception:

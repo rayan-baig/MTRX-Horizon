@@ -6,6 +6,7 @@ import io
 import ipaddress
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
@@ -20,7 +21,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
-from . import config, db, lock, stats, upkeep
+from . import config, db, health, lock, stats, upkeep
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -532,8 +533,13 @@ def overview(request: Request, days: int = 30):
     dev, denied = _owner_only(request)
     if denied:
         return denied
-    apps = stats.fetch_all()
+    # The numbers and the health checks at once: each keeps to its own
+    # few seconds, so the page waits for the slower of the two, not both.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        numbers, checks = pool.submit(stats.fetch_all), pool.submit(health.check_all)
+        apps, checks = numbers.result(), checks.result()
     stats.snapshot(apps)
+    health.record(checks)
     with db.connect() as conn:
         activity = [dict(r) for r in conn.execute(
             "SELECT at, event, detail FROM activity ORDER BY id DESC LIMIT 12")]
@@ -546,10 +552,20 @@ def overview(request: Request, days: int = 30):
         "apps": apps,
         "server": stats.server(),
         "history": stats.history(max(1, min(days, 366))),
+        "health": health.summary(),
+        "alerts": _alert_setup(),
         "activity": activity,
         "devices": devices,
         "projects": stats.PROJECTS,
     }
+
+
+def _alert_setup() -> dict:
+    """How the owner hears about an app that is down, for the console to
+    say. Whether email is set up, never the address or the login."""
+    settings = config.get()
+    return {"minutes": settings.alert_minutes,
+            "email": bool(settings.alert_email and settings.smtp_host)}
 
 
 @app.post("/api/console/invite")
