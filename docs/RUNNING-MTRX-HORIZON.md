@@ -34,7 +34,11 @@ monitor email or text you.
 Check every 5 minutes. Most free monitors allow that.
 
 Your MTRX Horizon console also shows each app's users, and whether each one
-answered its last check.
+answered its last check. Give it the same addresses (`RANKUP_HEALTH_URL`,
+`CYBERLOGIX_HEALTH_URL`, `OMNIARMOR_HEALTH_URL`) and it checks them once a
+minute, draws the last day's ups and downs, and tells you when an app has
+been down for 5 minutes: in the console, and by email once `MTRX_ALERT_EMAIL`
+and the `MTRX_SMTP_*` settings are set (see the README).
 
 ---
 

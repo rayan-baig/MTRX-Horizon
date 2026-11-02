@@ -177,8 +177,8 @@ the last week. It needs each app's public health address:
 | Setting | Value |
 |---|---|
 | `RANKUP_HEALTH_URL` | `https://rankup.<your domain>/api/health` |
-| `CYBERLOGIX_HEALTH_URL` | that app's public health address |
-| `OMNIARMOR_HEALTH_URL` | that app's public health address |
+| `CYBERLOGIX_HEALTH_URL` | `https://cyberlogix.<your domain>/api/health` |
+| `OMNIARMOR_HEALTH_URL` | `https://omniarmor.<your domain>/healthz` |
 
 The server asks each one once a minute, whether or not the console is open, with a
 4-second limit and no key. Any 2xx answer is up; anything else, a redirect, or no answer
