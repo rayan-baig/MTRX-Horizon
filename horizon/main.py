@@ -1,4 +1,4 @@
-"""The MTRX Horizon web app: the public home page and the owner's console."""
+"""The MTRX Horizyn web app: the public home page and the owner's console."""
 
 import base64
 import hashlib
@@ -499,7 +499,7 @@ def _owner_only(request: Request):
 
 
 # The console's own files. They used to sit in /static where anyone could
-# fetch them, and a manifest saying "MTRX Horizon Console, start at /console"
+# fetch them, and a manifest saying "MTRX Horizyn Console, start at /console"
 # rather gave the game away. Now only a device that may see the page that
 # uses a file can fetch it.
 PRIVATE = config.ROOT / "horizon" / "private"

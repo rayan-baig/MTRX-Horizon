@@ -230,10 +230,10 @@ def _wording(key: str, kind: str, state: dict, now: float) -> tuple[str, str]:
                 f"{name} has failed its health check for {_minutes(now - since)}, since "
                 f"{_clock(since)}. The last time it was asked, {answer}.\n\n"
                 f"You will hear again when it is back up, or in {REMIND_SECONDS // 3600} hours "
-                f"if it is still down.\n\n- MTRX Horizon")
+                f"if it is still down.\n\n- MTRX Horizyn")
     return (f"{name} is back up",
             f"{name} is answering its health check again (checked {_clock(state['at'])}).\n\n"
-            f"- MTRX Horizon")
+            f"- MTRX Horizyn")
 
 
 def _due(conn, key: str, state: dict, now: float) -> str | None:

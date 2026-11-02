@@ -42,7 +42,7 @@ APPS = {
 
 # Where each project really stands. Update this by hand as things move.
 PROJECTS = [
-    {"name": "MTRX Horizon", "kind": "Website and console",
+    {"name": "MTRX Horizyn", "kind": "Website and console",
      "status": "In progress", "next": "Choose hosting and a domain"},
     {"name": "CyberLogix AI", "kind": "Equipment monitoring",
      "status": "Built", "next": "First real sensor reading at a test site"},

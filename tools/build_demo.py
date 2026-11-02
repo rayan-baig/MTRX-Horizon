@@ -1,4 +1,4 @@
-"""Build a click-through demo: the MTRX Horizon home page with each app's
+"""Build a click-through demo: the MTRX Horizyn home page with each app's
 own offline demo behind its card.
 
 Nothing here runs any app's code. It renders this site's home page and
@@ -39,7 +39,7 @@ BACK_LINK = (
     'padding:8px 14px;border-radius:999px;background:#0a1434;color:#eef3ff;'
     'border:1px solid rgba(96,165,250,.6);font:600 13px/1.2 system-ui,sans-serif;'
     'text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.5)">'
-    '&larr; MTRX Horizon</a>\n'
+    '&larr; MTRX Horizyn</a>\n'
 )
 
 

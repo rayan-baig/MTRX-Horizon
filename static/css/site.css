@@ -1,4 +1,4 @@
-/* MTRX Horizon: shared look for the home page and the console's doors.
+/* MTRX Horizyn: shared look for the home page and the console's doors.
    Colours come from the logo: deep navy, then cyan → blue → violet → pink. */
 
 /* The two typefaces, served from this site (SIL Open Font License, see
@@ -620,7 +620,7 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 .learn .btn-solid { min-height: 40px; }
 .learn-soon { color: var(--faint); font-size: 13.5px; margin: 0; }
 
-/* About MTRX Horizon: the company and the three apps it makes. */
+/* About MTRX Horizyn: the company and the three apps it makes. */
 .company-apps { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 10px; }
 .company-apps li {
   display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: center;

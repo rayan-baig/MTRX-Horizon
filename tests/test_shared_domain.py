@@ -1,4 +1,4 @@
-"""MTRX Horizon owns the domain; its apps live on subdomains of it.
+"""MTRX Horizyn owns the domain; its apps live on subdomains of it.
 
 The site is on the domain itself (and www), and RankUp, CyberLogix and
 OmniArmor each on their own subdomain. Each is its own origin, so nothing

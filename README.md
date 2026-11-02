@@ -1,6 +1,6 @@
-# MTRX Horizon
+# MTRX Horizyn
 
-The website for MTRX Horizon, the parent company of **RankUp**, **CyberLogix AI** and
+The website for MTRX Horizyn, the parent company of **RankUp**, **CyberLogix AI** and
 **OmniArmor.ai**, plus a private control console that only the owner can open.
 
 - **The home page** (`/`) shows the three apps, what each one does, and what the company
@@ -76,9 +76,9 @@ Safari is not approved inside the Home Screen app.
 
 ## The domain, and the apps' subdomains
 
-MTRX Horizon is the company, and it has the one domain. RankUp, CyberLogix and
+MTRX Horizyn is the company, and it has the one domain. RankUp, CyberLogix and
 OmniArmor are its products: they have no domains of their own, and each lives on a
-subdomain of MTRX Horizon's. The name isn't chosen yet, so `example.com` stands for it
+subdomain of MTRX Horizyn's. The name isn't chosen yet, so `example.com` stands for it
 below.
 
 | Address | What is there |
@@ -133,7 +133,7 @@ or `no-reply@omniarmor.example.com`, so people can tell them apart. A sending su
 must be verified with the provider as well (it adds a DKIM record for it), and the
 parent domain's DMARC covers it. Check the records with any free DMARC checker before
 real customers depend on the mail. Every app's terms, privacy page and emails name
-MTRX Horizon as the company behind it.
+MTRX Horizyn as the company behind it.
 
 ## Connecting the apps
 
@@ -272,7 +272,7 @@ free plan has no disk, so devices would be forgotten). The `Dockerfile` works on
 The domain and the apps' subdomains are set up as in
 [The domain, and the apps' subdomains](#the-domain-and-the-apps-subdomains).
 
-**Running all four apps** (uptime checks, releasing, backups, what to do when something breaks, support, costs): [docs/RUNNING-MTRX-HORIZON.md](docs/RUNNING-MTRX-HORIZON.md).
+**Running all four apps** (uptime checks, releasing, backups, what to do when something breaks, support, costs): [docs/RUNNING-MTRX-HORIZYN.md](docs/RUNNING-MTRX-HORIZYN.md).
 
 **Uptime monitor:** check `https://<your domain>/healthz` (answers `{"ok":true}` to GET or HEAD).
 The site must be served over **https**, because browsers only make device keys on secure

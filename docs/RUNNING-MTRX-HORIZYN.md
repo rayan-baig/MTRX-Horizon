@@ -1,16 +1,16 @@
-# Running MTRX Horizon and its three apps
+# Running MTRX Horizyn and its three apps
 
 One page for the boring, important jobs: knowing when something is down,
 putting out a new version safely, what to do first when something breaks,
 answering customers, and what it all costs. Each app's own docs have the
 detail; this page tells you where.
 
-MTRX Horizon is the parent company and owns the one domain. The apps live
+MTRX Horizyn is the parent company and owns the one domain. The apps live
 on parts of it:
 
 | What | Address | Its own docs |
 |---|---|---|
-| MTRX Horizon (site + your console) | `https://<your domain>` | this repo's README |
+| MTRX Horizyn (site + your console) | `https://<your domain>` | this repo's README |
 | RankUp (kids' chores) | `https://rankup.<your domain>` | RankUp `docs/LAUNCH.md`, `docs/IF-SOMETHING-BREAKS.md` |
 | CyberLogix (fridge and freezer alerts) | `https://cyberlogix.<your domain>` | CyberLogix `DEPLOY.md`, `docs/OPERATIONS.md` |
 | OmniArmor (compliance checks + Academy) | `https://omniarmor.<your domain>` | OmniArmor `docs/OPERATIONS.md`, `docs/COSTS.md` |
@@ -25,7 +25,7 @@ monitor email or text you.
 
 | App | Check this address | Notes |
 |---|---|---|
-| MTRX Horizon | `https://<your domain>/healthz` | Answers GET and HEAD |
+| MTRX Horizyn | `https://<your domain>/healthz` | Answers GET and HEAD |
 | RankUp | `https://rankup.<your domain>/api/health` | Shallow and public. With `Authorization: Bearer <CRON_SECRET>` it lists every scheduled job and answers 503 if one is late |
 | CyberLogix | `https://cyberlogix.<your domain>/api/health` | Use this for the host's health check |
 | CyberLogix, second check | `https://cyberlogix.<your domain>/api/watchdog` | Answers 503 when the alert sweep has stopped. Put this in the uptime monitor only, never in the host's health check (the host would restart the server and hide the problem) |
@@ -33,7 +33,7 @@ monitor email or text you.
 
 Check every 5 minutes. Most free monitors allow that.
 
-Your MTRX Horizon console also shows each app's users, and whether each one
+Your MTRX Horizyn console also shows each app's users, and whether each one
 answered its last check. Give it the same addresses (`RANKUP_HEALTH_URL`,
 `CYBERLOGIX_HEALTH_URL`, `OMNIARMOR_HEALTH_URL`) and it checks them once a
 minute, draws the last day's ups and downs, and tells you when an app has
@@ -58,14 +58,14 @@ Do these in order. If any step fails, stop and fix it before going on.
 5. Open `https://rankup.<your domain>/api/health` with the secret: every
    check should say ok.
 
-**CyberLogix, OmniArmor, MTRX Horizon** (their database is a file on the
+**CyberLogix, OmniArmor, MTRX Horizyn** (their database is a file on the
 server, and updates itself when the new version starts):
 3. Let the new version deploy (pushing to the main branch deploys it).
 4. Open the app's health address (section 1). It should answer OK within a
    few minutes.
 5. Sign in and look at one main screen.
 
-**MTRX Horizon only:** after it deploys, look once in Render's logs for the
+**MTRX Horizyn only:** after it deploys, look once in Render's logs for the
 line starting "Proxy check:". If it says "does not match", visitors are
 being counted by the wrong address; tell me and I will fix it.
 
@@ -95,7 +95,7 @@ RankUp has a fuller guide for this: `docs/IF-SOMETHING-BREAKS.md`.
 | RankUp | Supabase (Postgres) | Supabase's daily backups on the paid plan; RankUp `docs/BACKUPS.md` has the drill to prove a restore works |
 | CyberLogix | A file on the Render disk | Daily automatic backups, checked before they are kept; see CyberLogix `docs/OPERATIONS.md` |
 | OmniArmor | A file on the server disk | Daily automatic backups, checked before they are kept; see OmniArmor `docs/OPERATIONS.md` |
-| MTRX Horizon | A file on the Render disk | Only approved devices and app numbers. If it is lost, set a new setup code and approve your devices again (README, "If every device is lost") |
+| MTRX Horizyn | A file on the Render disk | Only approved devices and app numbers. If it is lost, set a new setup code and approve your devices again (README, "If every device is lost") |
 
 Once a month, try a restore on a copy. A backup you have never restored is
 a hope, not a backup.
@@ -112,7 +112,7 @@ a glance which app a message is about:
 | RankUp | `help@rankup.<your domain>` |
 | CyberLogix | `help@cyberlogix.<your domain>` |
 | OmniArmor | `help@omniarmor.<your domain>` |
-| MTRX Horizon (business enquiries) | set `MTRX_CONTACT_EMAIL` |
+| MTRX Horizyn (business enquiries) | set `MTRX_CONTACT_EMAIL` |
 
 Rules of thumb:
 - Answer within one working day. CyberLogix customers with a freezer
@@ -133,8 +133,8 @@ page before you sign up.
 
 | What | Roughly | Notes |
 |---|---|---|
-| Domain | about $10–15 a year | One domain, for MTRX Horizon. The apps use parts of it for free |
-| MTRX Horizon server (Render starter + small disk) | about $7 a month | The free plan has no disk, so approved devices would be forgotten |
+| Domain | about $10–15 a year | One domain, for MTRX Horizyn. The apps use parts of it for free |
+| MTRX Horizyn server (Render starter + small disk) | about $7 a month | The free plan has no disk, so approved devices would be forgotten |
 | CyberLogix server (Render starter + disk) | about $7 a month | Must not sleep: a sleeping server watches no freezers |
 | OmniArmor server | $0–7 a month | A free-tier server works (OmniArmor `docs/COSTS.md`) |
 | RankUp hosting (Cloudflare Pages) | $0 | |

@@ -131,7 +131,7 @@ def test_demo_build_links_each_app_and_leaves_out_the_knock(tmp_path, monkeypatc
     # The home page's own script goes along; the lock's never does.
     assert sorted(p.name for p in (out / "static" / "js").iterdir()) == ["home.js"]
     page = (out / "cyberlogix" / "index.html").read_text()
-    assert page.startswith("<!doctype html>") and "MTRX Horizon</a>" in page
+    assert page.startswith("<!doctype html>") and "MTRX Horizyn</a>" in page
     assert 'href="/legal"' not in page
 
 
@@ -508,14 +508,14 @@ def _sheet(page: str, sheet_id: str) -> str:
 
 def test_home_page_presents_mtrx_horizon_as_the_parent_company(client):
     page = client.get("/").text
-    assert "MTRX Horizon is the parent company of RankUp, CyberLogix AI and OmniArmor.ai" in page
+    assert "MTRX Horizyn is the parent company of RankUp, CyberLogix AI and OmniArmor.ai" in page
     hero = page.split('class="hero-copy"', 1)[1].split("</section>", 1)[0]
-    assert "MTRX Horizon is the parent company of three apps" in hero
+    assert "MTRX Horizyn is the parent company of three apps" in hero
     # Each app is named in that first paragraph, and each name opens its card.
     for key, name in (("rankup", "RankUp"), ("cyberlogix", "CyberLogix AI"),
                       ("omniarmor", "OmniArmor.ai")):
         assert f'<a href="#learn-{key}">{name}</a>' in hero
-        assert "An MTRX Horizon app" in _sheet(page, f"learn-{key}")
+        assert "An MTRX Horizyn app" in _sheet(page, f"learn-{key}")
     nav = page.split('class="mainnav"', 1)[1].split("</nav>", 1)[0]
     assert '<a href="#company">About</a>' in nav
 
@@ -523,7 +523,7 @@ def test_home_page_presents_mtrx_horizon_as_the_parent_company(client):
 def test_about_lists_the_three_apps_with_their_links(client, monkeypatch):
     monkeypatch.setenv("OMNIARMOR_URL", "https://omniarmor.example.com")
     about = _sheet(client.get("/").text, "company")
-    assert "MTRX Horizon is a software company" in about and "parent company of three apps" in about
+    assert "MTRX Horizyn is a software company" in about and "parent company of three apps" in about
     for key in ("rankup", "cyberlogix", "omniarmor"):
         assert f'href="#learn-{key}"' in about
     # Open only for the app that has a real address.
@@ -677,3 +677,18 @@ def test_legal_pages_say_nothing_about_the_console_a_stranger_could_use(client):
         page = client.get(path).text.lower()
         for clue in ("/console", "knock", "/api/", "tap the", "setup code"):
             assert clue not in page, (path, clue)
+
+
+def test_the_company_name_is_spelled_horizyn_everywhere_people_see_it():
+    """The company is MTRX Horizyn. The old spelling must not come back in
+    anything a visitor or the owner reads."""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    places = [root / "README.md", *root.glob("docs/*.md"), *root.glob("templates/*.html"),
+              *root.glob("static/js/*.js"), *root.glob("horizon/*.py"),
+              root / "horizon/private/manifest.webmanifest"]
+    old = re.compile(r"MTRX\s+(<b>)?horizon", re.IGNORECASE)
+    hits = [str(p.relative_to(root)) for p in places if p.exists() and old.search(p.read_text())]
+    assert hits == [], hits
