@@ -578,3 +578,18 @@ def test_a_qr_code_works_from_an_address_strangers_used_up(client, make_client, 
     page = "/console/add/another-setup-code-long-enough-456"
     assert phone.get(page, headers=shared).status_code == 404
     assert phone.get(page, headers={"X-Forwarded-For": "203.0.113.8"}).status_code == 200
+
+
+def test_a_setup_code_made_by_the_host_works_whatever_its_characters(client, monkeypatch):
+    """render.yaml has Render make the setup code (generateValue), which is
+    base64 and so can hold "/", "+" and "=". With a "/" in it the approval
+    page was a missing page, and the owner could not approve the first
+    device with the code the host gave them."""
+    code = "q8J/0c3V+2bGRpZmFzZGZh/c2RmYXNkZmFzZGY="
+    monkeypatch.setenv("MTRX_SETUP_TOKEN", code)
+    page = client.get(f"/console/add/{code}")
+    assert page.status_code == 200 and f'data-token="{code}"' in page.text
+    device = Device()
+    assert enroll(client, device, code).status_code == 200
+    assert unlock(client, device).status_code == 200
+    assert client.get(f"/console/add/{code}").status_code == 404

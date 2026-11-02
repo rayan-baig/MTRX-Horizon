@@ -357,7 +357,9 @@ def console(request: Request):
     return not_found(request)
 
 
-@app.get("/console/add/{token}", response_class=HTMLResponse)
+# ":path" lets the code hold a "/": render.yaml has Render make the setup
+# code, which is base64 and can have one, and the page was then missing.
+@app.get("/console/add/{token:path}", response_class=HTMLResponse)
 def add_device_page(request: Request, token: str):
     # This page says whether a code is live, so a wrong code here costs a
     # try just as it does at /api/enroll; with no limit, the setup code

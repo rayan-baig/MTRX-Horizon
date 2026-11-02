@@ -15,6 +15,6 @@ services:
       - key: MTRX_DB_PATH
         value: /app/data/horizon.db
       - key: MTRX_SETUP_TOKEN
-        generateValue: true
+        generateValue: true  # base64, so it may hold "/", "+" or "="; the approval page takes them
       - key: MTRX_KNOCK
         sync: false          # you type this in yourself; it is never stored in the code
