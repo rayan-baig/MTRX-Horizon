@@ -140,6 +140,11 @@ for an hour. Change how the address is read (`client_ip` in `horizon/main.py`) b
 adding one. (The knock is counted per approved device, and a live QR code works even from
 an address that is out of tries, so neither is affected.)
 
+To check what your host really sends, open the site once after a deploy and look in the
+host's logs for the line starting **"Proxy check:"**. If it says the last entry "does not
+match" CF-Connecting-IP, visitors are being counted by a proxy's address, and `client_ip`
+needs changing. The line shows counts only, never anyone's address.
+
 ## What's where
 
 - `horizon/main.py`: the web pages and the console's API
