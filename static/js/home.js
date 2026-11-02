@@ -24,11 +24,14 @@
   [
     ["Projects", "Where everything stands", "#projects", "projects status roadmap"],
     ["Analytics", "Live activity across the apps", "#activity", "analytics numbers users uptime activity"],
-    ["Team", "About MTRX Horizon and what we stand for", "#team", "team about values company"],
+    ["About", "What MTRX Horizon is and the apps it makes", "#company", "about company parent apps values team contact business"],
     ["What's new", "Latest updates", "#updates", "news updates notifications new"],
     ["Watch the video", "A quick tour of the three apps", "#tour", "video tour watch"],
     ["Settings", "Display and calm mode", "#settings", "settings calm motion display"],
-  ].forEach(([title, hint, href, words]) => {
+  ].concat(document.querySelector('a[href="/privacy"]') ? [
+    ["Privacy", "What this site keeps, and what it doesn't", "/privacy", "privacy data cookies logs"],
+    ["Terms", "The terms of using this site", "/terms", "terms legal rules"],
+  ] : []).forEach(([title, hint, href, words]) => {
     items.push({ title, hint, href, words: (title + " " + words).toLowerCase() });
   });
 

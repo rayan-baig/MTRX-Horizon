@@ -1,0 +1,59 @@
+{% extends "_legal.html" %}
+{#- Every sentence here has to stay true to the code. If what the site keeps,
+    logs or sets changes, change this page in the same commit; the tests
+    check the parts that can be checked. -#}
+{% block title %}Privacy{% endblock %}
+{% block description %}What the MTRX Horizon website keeps about visitors, and what it doesn't.{% endblock %}
+{% block body %}
+<p>This page is about the MTRX Horizon website only: the home page and the pages beside it.
+  RankUp, CyberLogix AI and OmniArmor.ai each have their own privacy page, which applies
+  when you use that app.</p>
+
+<h2>The short version</h2>
+<ul>
+  <li>No accounts, no sign-up and no forms. The site never asks for your name, email or anything else.</li>
+  <li>No cookies for visitors.</li>
+  <li>No tracking: no analytics, no ads, no "like" buttons, and nothing loaded from any other
+    company. Every picture, font and script comes from this site, and the site's security
+    settings tell your browser to refuse anything else.</li>
+  <li>Like every website, the server notes each request it answers (see below).</li>
+</ul>
+
+<h2>What the server logs</h2>
+<p>For each request the server writes one line: the time, the network address the request came
+  from, the page asked for and whether it worked. Behind our hosting provider, that address is
+  usually the provider's own rather than yours. Our hosting provider keeps its own records of the
+  requests it passes on, which can include your IP address, for as long as its own policy says.
+  We use these lines only to keep the site working and safe, and never to work out who anyone is.</p>
+
+<h2>Failed sign-ins</h2>
+<p>Parts of the site are private. If someone tries a code or a sign-in there and it fails, the
+  address it came from (for an IPv6 address, the block it belongs to) and the time are kept for 24 hours, so
+  nobody can try codes without limit. Then they are deleted.</p>
+
+<h2>Cookies</h2>
+<p>Visitors get none. The site sets cookies only on the owner's own approved devices, to keep the
+  private console locked. They are needed for that and for nothing else, are never readable by the
+  page's own scripts, never go to any other site, and are not used to track anyone:</p>
+<ul>
+  <li><code>mh_d</code> remembers that a device is approved, for up to {{ cookies.device_days }} days.</li>
+  <li><code>mh_k</code> lasts {{ cookies.door_minutes }} minutes, for one step of signing in.</li>
+  <li><code>mh_s</code> keeps the owner signed in, for up to {{ cookies.session_hours }} hours.</li>
+</ul>
+
+<h2>What stays in your browser</h2>
+<p>If you turn on calm mode in Settings, your browser remembers that choice on your device. It is
+  never sent to us. The search box searches this page inside your browser; what you type is not
+  sent anywhere.</p>
+
+<h2>The numbers on the home page</h2>
+<p>The user counts and uptime on the home page are totals that the apps report to this site. They
+  contain no one's name, email or other details.</p>
+
+{% if contact %}<h2>If you email us</h2>
+<p>If you write to the business enquiries address, we receive your email address and your message,
+  and use them only to answer you. Nothing you send is added to this website.</p>{% endif %}
+
+<h2>Changes</h2>
+<p>If this page changes, the date at the top changes with it.</p>
+{% endblock %}

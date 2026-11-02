@@ -161,7 +161,7 @@ def test_home_page_is_one_screen(client):
     # Every pop-up is outside the frame, so opening one cannot move it.
     frame_html = page.split('<div class="page">', 1)[1].split('<section class="sheet', 1)[0]
     assert 'class="sheet' not in frame_html
-    for sheet in ("projects", "team", "settings", "updates", "menu", "tour"):
+    for sheet in ("projects", "company", "settings", "updates", "menu", "tour"):
         assert f'<section class="sheet' in page and f'id="{sheet}"' in page
     css = open("static/css/site.css", encoding="utf-8").read()
     frame = css.split(".page {", 1)[1].split("}", 1)[0]
@@ -498,3 +498,182 @@ def test_the_server_keeps_every_time_as_utc_seconds():
     assert files
     for file in files:
         assert not naive.search(file.read_text()), file
+
+
+# ---------------------------------------------------------------- the company
+
+def _sheet(page: str, sheet_id: str) -> str:
+    return page.split(f'id="{sheet_id}"', 1)[1].split("</section>", 1)[0]
+
+
+def test_home_page_presents_mtrx_horizon_as_the_parent_company(client):
+    page = client.get("/").text
+    assert "MTRX Horizon is the parent company of RankUp, CyberLogix AI and OmniArmor.ai" in page
+    hero = page.split('class="hero-copy"', 1)[1].split("</section>", 1)[0]
+    assert "MTRX Horizon is the parent company of three apps" in hero
+    # Each app is named in that first paragraph, and each name opens its card.
+    for key, name in (("rankup", "RankUp"), ("cyberlogix", "CyberLogix AI"),
+                      ("omniarmor", "OmniArmor.ai")):
+        assert f'<a href="#learn-{key}">{name}</a>' in hero
+        assert "An MTRX Horizon app" in _sheet(page, f"learn-{key}")
+    nav = page.split('class="mainnav"', 1)[1].split("</nav>", 1)[0]
+    assert '<a href="#company">About</a>' in nav
+
+
+def test_about_lists_the_three_apps_with_their_links(client, monkeypatch):
+    monkeypatch.setenv("OMNIARMOR_URL", "https://omniarmor.example.com")
+    about = _sheet(client.get("/").text, "company")
+    assert "MTRX Horizon is a software company" in about and "parent company of three apps" in about
+    for key in ("rankup", "cyberlogix", "omniarmor"):
+        assert f'href="#learn-{key}"' in about
+    # Open only for the app that has a real address.
+    assert 'href="https://omniarmor.example.com"' in about and 'aria-label="Open OmniArmor.ai"' in about
+    assert 'aria-label="Open RankUp"' not in about and 'aria-label="Open CyberLogix AI"' not in about
+
+
+def test_about_is_about_the_company_not_a_person(client):
+    """The repository is public, and so is the page: the About section says
+    what the company is and makes, and nothing about whoever runs it."""
+    import re
+    about = re.sub(r"<[^>]+>", " ", _sheet(client.get("/").text, "company")).lower()
+    words = set(re.findall(r"[a-z']+", about))
+    for personal in ("i", "i'm", "me", "my", "founder", "founded", "ceo", "owner", "age", "aged",
+                     "old", "born", "school", "student", "grade", "parents", "mum", "dad", "mom",
+                     "brother", "sister", "lives", "based", "hometown", "he", "she", "his", "her"):
+        assert personal not in words, personal
+
+
+def test_business_enquiries_only_when_an_address_is_set(client, monkeypatch):
+    page = client.get("/").text
+    assert "mailto:" not in page and "Business enquiries" not in page
+    monkeypatch.setenv("MTRX_CONTACT_EMAIL", "  hello@example.com ")
+    page = client.get("/").text
+    assert 'href="mailto:hello@example.com"' in page
+    assert "Business enquiries" in _sheet(page, "company")
+    footer = page.split('<footer class="footer">', 1)[1].split("</footer>", 1)[0]
+    assert '<a href="mailto:hello@example.com">Business enquiries</a>' in footer
+
+
+@pytest.mark.parametrize("typed", ["not-an-address", "a@b", "x@example.com?bcc=y@evil.example",
+                                   "<x@example.com>", "x y@example.com", '"x"@example.com'])
+def test_a_contact_setting_that_is_not_a_plain_address_shows_nothing(client, monkeypatch, typed):
+    monkeypatch.setenv("MTRX_CONTACT_EMAIL", typed)
+    page = client.get("/").text
+    assert "mailto:" not in page and "Business enquiries" not in page
+
+
+def test_no_email_address_is_written_into_the_site():
+    """The contact address comes only from the setting: none is typed into a
+    page, a script or the code."""
+    import re
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    email = re.compile(r"[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
+    for folder in ("templates", "static/js", "static/css", "horizon"):
+        for path in (root / folder).rglob("*"):
+            if path.suffix in (".html", ".js", ".css", ".py", ".webmanifest"):
+                found = email.findall(path.read_text(encoding="utf-8"))
+                assert found == [], (path, found)
+
+
+def test_no_page_has_a_form_that_sends_anything(client, monkeypatch):
+    """Business enquiries are an email link, not a form the site would have
+    to store. The search box filters the page in the browser and has no
+    address to send to."""
+    import re
+    monkeypatch.setenv("MTRX_CONTACT_EMAIL", "hello@example.com")
+    for path in ("/", "/privacy", "/terms"):
+        page = client.get(path).text
+        for form in re.findall(r"<form[^>]*>", page):
+            assert "action=" not in form and "method=" not in form, (path, form)
+        assert "<textarea" not in page
+
+
+# ---------------------------------------------------------------- privacy and terms
+
+def test_privacy_and_terms_are_linked_from_the_home_page(client):
+    page = client.get("/").text
+    footer = page.split('<footer class="footer">', 1)[1].split("</footer>", 1)[0]
+    assert 'href="/privacy"' in footer and 'href="/terms"' in footer
+    for path, heading in (("/privacy", "<h1>Privacy</h1>"), ("/terms", "<h1>Terms</h1>")):
+        response = client.get(path)
+        assert response.status_code == 200 and heading in response.text
+        assert client.head(path).status_code == 200
+        # Public pages, so search engines may list them.
+        assert "noindex" not in response.text and "x-robots-tag" not in response.headers
+
+
+def test_privacy_page_matches_what_the_code_does(client, monkeypatch):
+    """The cookie names and how long each lasts are read from the same
+    settings the code uses, and every cookie the page names is one the site
+    really sets on the owner's devices."""
+    from horizon import lock, main
+    from tests.test_lock import Device, SETUP, enroll, unlock
+
+    monkeypatch.setenv("MTRX_SESSION_HOURS", "7")
+    monkeypatch.setenv("MTRX_KNOCK_MINUTES", "3")
+    page = client.get("/privacy").text
+    assert "No cookies for visitors." in page
+    assert "<code>mh_d</code> remembers that a device is approved, for up to 400 days." in page
+    assert "<code>mh_k</code> lasts 3 minutes" in page
+    assert "<code>mh_s</code> keeps the owner signed in, for up to 7 hours." in page
+    assert main.DEVICE_COOKIE_DAYS == 400
+    assert lock.KEEP_TRIES_SECONDS == 24 * 3600 and "kept for 24 hours" in page
+    # A visitor really gets no cookie from any public page...
+    for path in ("/", "/privacy", "/terms", "/healthz", "/no-such-page"):
+        assert "set-cookie" not in client.get(path).headers, path
+    # ...and the owner's devices get exactly the three named.
+    named = {"mh_d", "mh_k", "mh_s"}
+    assert {main.DEVICE_COOKIE, main.DOOR_COOKIE, main.SESSION_COOKIE} == named
+    device = Device()
+    set_names = set(enroll(client, device, SETUP).cookies.keys())
+    set_names |= set(unlock(client, device).cookies.keys())
+    assert set_names <= named and main.SESSION_COOKIE in set_names
+
+
+def test_privacy_page_tells_the_truth_about_tracking(client):
+    """No tracking, nothing from another company: the security policy every
+    page is sent with refuses anything not from this site."""
+    from horizon import main
+    response = client.get("/privacy")
+    assert "No tracking" in response.text
+    assert response.headers["content-security-policy"] == main.CSP
+    for rule in ("default-src 'self'", "script-src 'self'", "connect-src 'self'",
+                 "font-src 'self'", "img-src 'self' data:"):
+        assert rule in main.CSP
+    for path in ("/", "/privacy", "/terms"):
+        page = client.get(path).text
+        # Nothing on the page is fetched from another address.
+        assert 'src="http' not in page and "@import" not in page
+        assert '<link rel="stylesheet" href="http' not in page
+
+
+def test_failed_tries_are_deleted_after_a_day_even_if_nobody_tries_again(client):
+    import time
+    from horizon import db, upkeep
+    with db.connect() as conn:
+        conn.execute("INSERT INTO attempts (kind, who, at) VALUES ('enroll', '203.0.113.9', ?)",
+                     (time.time() - 25 * 3600,))
+        conn.execute("INSERT INTO attempts (kind, who, at) VALUES ('enroll', '203.0.113.8', ?)",
+                     (time.time() - 3600,))
+    upkeep.run_once()
+    with db.connect() as conn:
+        left = [r[0] for r in conn.execute("SELECT who FROM attempts")]
+    assert left == ["203.0.113.8"]
+
+
+def test_legal_pages_name_the_contact_only_when_set(client, monkeypatch):
+    for path in ("/privacy", "/terms"):
+        assert "mailto:" not in client.get(path).text
+    monkeypatch.setenv("MTRX_CONTACT_EMAIL", "hello@example.com")
+    for path in ("/privacy", "/terms"):
+        assert 'href="mailto:hello@example.com"' in client.get(path).text
+
+
+def test_legal_pages_say_nothing_about_the_console_a_stranger_could_use(client):
+    """The privacy page has to mention the owner's cookies, but not where
+    the console is or how it opens."""
+    for path in ("/privacy", "/terms"):
+        page = client.get(path).text.lower()
+        for clue in ("/console", "knock", "/api/", "tap the", "setup code"):
+            assert clue not in page, (path, clue)

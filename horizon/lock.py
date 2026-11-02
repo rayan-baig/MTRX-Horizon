@@ -54,11 +54,23 @@ def new_token() -> str:
 
 # ---------------------------------------------------------------- rate limits
 
+# Failed tries hold the address they came from, so they are kept no longer
+# than the longest window needs, and the privacy page says so.
+KEEP_TRIES_SECONDS = 24 * 3600
+
+
+def forget_old_tries():
+    """Delete failed tries older than a day. Also run by the upkeep loop, so
+    they go even if nobody tries again."""
+    with db.connect() as conn:
+        conn.execute("DELETE FROM attempts WHERE at < ?", (time.time() - KEEP_TRIES_SECONDS,))
+
+
 def allowed(kind: str, who: str) -> bool:
     """True if this caller still has tries left. Does not use one up."""
     limit, window = LIMITS[kind]
     with db.connect() as conn:
-        conn.execute("DELETE FROM attempts WHERE at < ?", (time.time() - 24 * 3600,))
+        conn.execute("DELETE FROM attempts WHERE at < ?", (time.time() - KEEP_TRIES_SECONDS,))
         (count,) = conn.execute(
             "SELECT COUNT(*) FROM attempts WHERE kind = ? AND who = ? AND at > ?",
             (kind, who, time.time() - window),

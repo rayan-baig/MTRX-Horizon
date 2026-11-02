@@ -3,9 +3,9 @@
 <head>
 {% include "_head.html" %}
 <title>MTRX Horizon</title>
-<meta name="description" content="MTRX Horizon builds RankUp, CyberLogix AI and OmniArmor.ai: software that watches, warns and motivates, so people can get on with the work that matters.">
+<meta name="description" content="MTRX Horizon is the parent company of RankUp, CyberLogix AI and OmniArmor.ai: software that watches, warns and motivates, so people can get on with the work that matters.">
 <meta property="og:title" content="MTRX Horizon">
-<meta property="og:description" content="One vision. Infinite possibilities. The home of RankUp, CyberLogix AI and OmniArmor.ai.">
+<meta property="og:description" content="One vision. Infinite possibilities. MTRX Horizon, the company behind RankUp, CyberLogix AI and OmniArmor.ai.">
 <meta property="og:image" content="/static/img/logo-512.png">
 </head>
 <body class="home">
@@ -32,7 +32,7 @@
     <a href="#apps">Apps</a>
     <a href="#projects">Projects</a>
     <a href="#activity">Analytics</a>
-    <a href="#team">Team</a>
+    <a href="#company">About</a>
     <a href="#settings">Settings</a>
   </nav>
   <div class="tools">
@@ -61,9 +61,10 @@
     <div class="hero-copy">
       <p class="eyebrow">Welcome to MTRX Horizon</p>
       <h1><span class="line">One Vision.</span> <span class="line gradient-text">Infinite Possibilities.</span></h1>
-      <p class="lede">MTRX HORIZON is the next generation ecosystem for innovation, creativity,
-        and impact. We build digital solutions that empower people, businesses, and
-        communities — without limits.</p>
+      <p class="lede">MTRX Horizon is the parent company of three apps:
+        <a href="#learn-rankup">RankUp</a>, <a href="#learn-cyberlogix">CyberLogix AI</a> and
+        <a href="#learn-omniarmor">OmniArmor.ai</a>. We build digital solutions that empower
+        people, businesses, and communities.</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="#apps">Explore Our Apps <span aria-hidden="true">→</span></a>
         <a class="btn btn-ghost" href="#tour">
@@ -73,7 +74,7 @@
     </div>
   </section>
 
-  <section id="apps" class="apps" aria-label="Our apps">
+  <section id="apps" class="apps" aria-label="The apps MTRX Horizon makes">
     {% for key, name, full, tags, lede in [
       ("rankup", "RankUp", "RankUp", ["Gamification", "Growth", "Rewards"],
        "Turn daily chores into achievements and build better habits."),
@@ -111,9 +112,9 @@
             <p class="tagline">One vision. Infinite possibilities.</p>
           </div>
         </div>
-        <p class="about-text">A global ecosystem of intelligent solutions, connecting people,
-          technology, and ideas — across every industry and beyond.</p>
-        <a class="btn btn-outline" href="#team">Learn More <span aria-hidden="true">→</span></a>
+        <p class="about-text">The parent company of RankUp, CyberLogix AI and OmniArmor.ai:
+          software that watches, warns and motivates, across every industry.</p>
+        <a class="btn btn-outline" href="#company">About us <span aria-hidden="true">→</span></a>
       </div>
       <dl class="facts">
         <div>
@@ -161,11 +162,15 @@
   <span class="foot-values">Innovation <i>•</i> Creativity <i>•</i> Impact</span>
   <span class="foot-line">Technology for a stronger tomorrow.</span>
   <span class="foot-copy">© 2026 MTRX HORIZON. All rights reserved.</span>
+  {% if not demo %}<nav class="foot-links" aria-label="About this site">
+    <a href="#company">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a>
+    {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
+  </nav>{% endif %}
 </footer>
 </div>
 
 {#- Pop-up cards. Each opens when the address ends in its id (#projects,
-    #team, ...), so they work with no script at all; the dimmed backdrop
+    #company, ...), so they work with no script at all; the dimmed backdrop
     and the × both close by going back to plain #. -#}
 {%- for key, name, full, lede, points in [
   ("rankup", "RankUp", "RankUp", "Turn daily chores into achievements and build better habits.", [
@@ -190,7 +195,7 @@
     <a class="sheet-x" href="#" aria-label="Close">×</a>
     <div class="learn-head">
       <img src="/static/img/{{ key }}-icon.svg" alt="" width="52" height="52" loading="lazy">
-      <div><p class="eyebrow">Learn more</p><h2>{{ full }}</h2></div>
+      <div><p class="eyebrow">An MTRX Horizon app</p><h2>{{ full }}</h2></div>
     </div>
     <p>{{ lede }}</p>
     <ul class="learn-points">
@@ -217,14 +222,30 @@
   </div>
 </section>
 
-<section class="sheet" id="team" aria-label="Team">
+{#- About the company, and only the company: what it is and what it makes.
+    Nothing here (or anywhere on the site) is about the person who runs it. -#}
+<section class="sheet" id="company" aria-label="About MTRX Horizon">
   <a class="sheet-shut" href="#" aria-label="Close"></a>
   <div class="sheet-card">
     <a class="sheet-x" href="#" aria-label="Close">×</a>
-    <p class="eyebrow">Team</p>
+    <p class="eyebrow">About</p>
     <h2>About MTRX Horizon</h2>
-    <p>A small studio building software that takes one worry off someone's plate,
-      from a family's chore list to a business's freezer at 3am.</p>
+    <p>MTRX Horizon is a software company. It is the parent company of three apps, and
+      each one takes a worry off someone's plate, from a family's chore list to a
+      business's freezer at 3am.</p>
+    <ul class="company-apps">
+      {% for key, full, what in [
+        ("rankup", "RankUp", "A chores game for families: jobs done become points, levels and games."),
+        ("cyberlogix", "CyberLogix AI", "Equipment monitoring for businesses: sensors, alerts and a sealed record."),
+        ("omniarmor", "OmniArmor.ai", "Compliance for businesses: the checks that apply, deadlines counted, records kept."),
+      ] %}
+      <li class="{{ {'rankup': 'green', 'cyberlogix': 'blue', 'omniarmor': 'violet'}[key] }}">
+        <img src="/static/img/{{ key }}-icon.svg" alt="" width="36" height="36" loading="lazy">
+        <span><a href="#learn-{{ key }}"><b>{{ full }}</b></a><small>{{ what }}</small></span>
+        {% if urls[key] %}<a class="company-open" href="{{ urls[key] }}" rel="noopener" aria-label="Open {{ full }}">Open <span aria-hidden="true">→</span></a>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
     <p class="eyebrow small">What we stand for</p>
     <ul class="values">
       <li><b class="dot cyan"></b><span>Real numbers only</span><em>No made-up stats, ever.</em></li>
@@ -232,6 +253,9 @@
       <li><b class="dot violet"></b><span>Proof you can show</span><em>Records that hold up.</em></li>
       <li><b class="dot pink"></b><span>Your data is yours</span><em>Kept private, kept safe.</em></li>
     </ul>
+    {% if contact %}<p class="eyebrow small">Business enquiries</p>
+    <p class="company-contact">Write to <a href="mailto:{{ contact }}">{{ contact }}</a>.</p>{% endif %}
+    {% if not demo %}<p class="company-legal"><a href="/privacy">Privacy</a> <i>•</i> <a href="/terms">Terms</a></p>{% endif %}
   </div>
 </section>
 
@@ -267,10 +291,13 @@
   <nav class="sheet-card menu" aria-label="MTRX Horizon menu">
     <a href="#apps">Our apps</a>
     <a href="#projects">Projects</a>
-    <a href="#team">Team</a>
+    <a href="#company">About MTRX Horizon</a>
     <a href="#updates">What's new</a>
     <a href="#tour">Watch the video</a>
     <a href="#settings">Settings</a>
+    {% if not demo %}<a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>{% endif %}
+    {% if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>
 </section>
 

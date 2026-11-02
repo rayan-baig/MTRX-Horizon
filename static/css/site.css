@@ -186,6 +186,12 @@ p { margin: 0; }
 }
 .foot-line { margin: 0 auto; }
 .foot-copy { font-size: 12px; color: var(--faint); }
+.foot-links { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; }
+.foot-links a { color: var(--muted); text-decoration: none; }
+.foot-links a:hover { color: var(--text); text-decoration: underline; }
+/* The first paragraph names the three apps; each name opens its card. */
+.lede a { color: var(--text); text-decoration-color: rgba(34, 211, 238, .6); text-underline-offset: 3px; }
+.lede a:hover { color: var(--cyan); }
 
 /* ---------- doors: unlock, add device, not found ---------- */
 .door {
@@ -212,6 +218,21 @@ p { margin: 0; }
   font: 800 96px/1 var(--head); margin-bottom: 8px;
   background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
+
+/* ---------- privacy and terms: one readable column ---------- */
+.legal-page .brand { text-decoration: none; }
+.legal { width: min(780px, 100%); margin: 0 auto; padding: 32px 16px 48px; }
+.legal .panel { padding: clamp(22px, 4vw, 44px); }
+.legal .eyebrow { margin-bottom: 12px; }
+.legal h1 { font-size: clamp(28px, 5vw, 40px); margin-bottom: 6px; }
+.legal h2 { font-size: 19px; margin: 28px 0 8px; }
+.legal p, .legal li { color: var(--muted); }
+.legal p + p { margin-top: 10px; }
+.legal ul { margin: 8px 0 0; padding-left: 22px; display: grid; gap: 6px; }
+.legal li::marker { color: var(--cyan); }
+.legal a { color: var(--cyan); overflow-wrap: anywhere; }
+.legal code { font-size: .92em; color: var(--text); background: rgba(59, 130, 246, .14); padding: 1px 6px; border-radius: 6px; }
+.legal-date { font-size: 13.5px; color: var(--faint) !important; }
 
 /* ---------- shared narrow-screen rules (home and console) ---------- */
 @media (max-width: 720px) {
@@ -598,6 +619,25 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 .learn-points li::marker { color: var(--accent); }
 .learn .btn-solid { min-height: 40px; }
 .learn-soon { color: var(--faint); font-size: 13.5px; margin: 0; }
+
+/* About MTRX Horizon: the company and the three apps it makes. */
+.company-apps { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 10px; }
+.company-apps li {
+  display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  padding: 10px 12px; border-radius: 10px; background: rgba(59, 130, 246, .07); border: 1px solid var(--line);
+}
+.company-apps li.green { --accent: #2ee59d; }
+.company-apps li.blue { --accent: #3b8bff; }
+.company-apps li.violet { --accent: #a66bff; }
+.company-apps img { border-radius: 9px; box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent); }
+.company-apps a { text-decoration: none; }
+.company-apps span a:hover b { text-decoration: underline; }
+.company-apps small { display: block; color: var(--faint); font-size: 12.5px; }
+.company-open { font-size: 13px; color: var(--accent); white-space: nowrap; }
+.company-contact { color: var(--muted); font-size: 14.5px; margin: 0; }
+.company-contact a { color: var(--cyan); overflow-wrap: anywhere; }
+.company-legal { color: var(--muted); margin: 16px 0 0; font-size: 13px; }
+.company-legal i { color: var(--faint); margin: 0 6px; font-style: normal; }
 
 /* The video: a sixteen-second tour, one picture per app, on a loop. */
 .tour-card { width: min(860px, 100%); padding: 0; overflow: hidden; }

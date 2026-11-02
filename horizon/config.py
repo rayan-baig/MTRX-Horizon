@@ -5,6 +5,7 @@ Nothing secret is ever sent to the browser.
 """
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -34,6 +35,7 @@ class Settings:
     session_hours: int
     knock_minutes: int
     public_url: str
+    contact_email: str
 
 
 def parse_knock(raw: str) -> tuple[str, ...]:
@@ -77,6 +79,18 @@ def _web_address(raw: str | None) -> str:
     return value if parts.scheme in ("http", "https") and parts.netloc else ""
 
 
+# A plain address: letters, digits and . _ + - only, one @, and a dot in the
+# part after it. Nothing that means something in a mailto: link ("?" starts
+# extra headers, such as a hidden copy to someone else).
+_EMAIL = re.compile(r"[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+")
+
+
+def _email(raw: str | None) -> str:
+    """An email address, or "" if the setting is not one."""
+    value = (raw or "").strip()
+    return value if len(value) <= 254 and _EMAIL.fullmatch(value) else ""
+
+
 def get() -> Settings:
     env = os.environ
     return Settings(
@@ -91,4 +105,5 @@ def get() -> Settings:
         session_hours=_whole_number(env.get("MTRX_SESSION_HOURS"), 12),
         knock_minutes=_whole_number(env.get("MTRX_KNOCK_MINUTES"), 5),
         public_url=env.get("MTRX_PUBLIC_URL", "").strip().rstrip("/"),
+        contact_email=_email(env.get("MTRX_CONTACT_EMAIL")),
     )

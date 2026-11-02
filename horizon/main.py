@@ -20,7 +20,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
-from . import config, db, lock, stats
+from . import config, db, lock, stats, upkeep
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -38,7 +38,11 @@ CSP = (
 @asynccontextmanager
 async def lifespan(_app):
     db.init()
-    yield
+    upkeep.start()
+    try:
+        yield
+    finally:
+        upkeep.stop()
 
 
 class _HideSecretLinks(logging.Filter):
@@ -98,7 +102,7 @@ class _GzipText(GZipMiddleware):
 
     async def __call__(self, scope, receive, send):
         path = scope.get("path", "") if scope["type"] == "http" else ""
-        if path == "/" or (path.startswith(("/static/", "/console/assets/"))
+        if path in ("/", "/privacy", "/terms") or (path.startswith(("/static/", "/console/assets/"))
                            and path.endswith(self.TEXT)):
             await super().__call__(scope, receive, send)
         else:
@@ -275,13 +279,42 @@ async def _bad_request(request: Request, exc):
 # HEAD too: many uptime monitors ask with HEAD, and got "page not found".
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def home(request: Request):
-    urls = config.get().app_urls
+    settings = config.get()
     stats.refresh_in_background()
     return templates.TemplateResponse(request, "home.html", {
-        "urls": urls,
+        "urls": settings.app_urls,
+        "contact": settings.contact_email,
         "numbers": stats.public_numbers(),
         "projects": stats.PROJECTS,
     })
+
+
+# The date the privacy page and the terms last changed in substance.
+LEGAL_UPDATED = "2 November 2026"
+
+
+def _legal(request: Request, page: str) -> HTMLResponse:
+    settings = config.get()
+    return templates.TemplateResponse(request, f"{page}.html", {
+        "page": page,
+        "updated": LEGAL_UPDATED,
+        "contact": settings.contact_email,
+        # Read from the same settings the cookies are set with, so the page
+        # cannot say one thing while the code does another.
+        "cookies": {"device_days": DEVICE_COOKIE_DAYS,
+                    "door_minutes": settings.knock_minutes,
+                    "session_hours": settings.session_hours},
+    })
+
+
+@app.api_route("/privacy", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def privacy(request: Request):
+    return _legal(request, "privacy")
+
+
+@app.api_route("/terms", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def terms(request: Request):
+    return _legal(request, "terms")
 
 
 @app.api_route("/healthz", methods=["GET", "HEAD"])

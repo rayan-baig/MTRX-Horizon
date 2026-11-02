@@ -167,6 +167,20 @@ To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_U
 `https://rankup.<your domain>`. An address without `https://` shows no button, rather
 than a link to nowhere.
 
+## Business enquiries
+
+Set `MTRX_CONTACT_EMAIL` to the address business enquiries should go to, such as
+`hello@<your domain>`. The home page's About card, its footer and menu, and the privacy
+and terms pages then show it as an email link. Unset (or not a plain address), nothing is
+shown. There is no contact form: the site stores nothing anyone sends.
+
+## Privacy and terms
+
+`/privacy` and `/terms` are this site's own, in plain words. Each app has its own. The
+privacy page has to stay true to the code: if the site starts keeping, logging or setting
+something new, change the page in the same commit (the tests check the cookie names and how
+long each lasts, that visitors get no cookies, and that failed tries go after a day).
+
 ## Running it on a computer
 
 You need Python 3 (the live site runs 3.13). Install into a virtual environment:
@@ -245,6 +259,7 @@ needs changing. The line shows counts only, never anyone's address.
 - `horizon/main.py`: the web pages and the console's API
 - `horizon/lock.py`: the three locks
 - `horizon/stats.py`: the console's numbers, and the project list
+- `horizon/upkeep.py`: the jobs the server runs on its own once a minute
 - `templates/`: the pages
 - `static/`: styles, scripts, pictures (cut from the supplied design artwork) and the two
   fonts (Inter and Montserrat, under the SIL Open Font License; the licences are beside them)
