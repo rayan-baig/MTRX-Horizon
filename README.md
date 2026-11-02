@@ -85,6 +85,19 @@ Then set, for example, `RANKUP_STATS_URL=https://rankup.example/api/stats`. If
 app should refuse requests without it. The console saves each app's numbers once an hour
 to draw the chart and work out uptime.
 
+All three apps already have this address built in, off until they are given the key.
+Pick one long random key, then:
+
+| App | In that app's hosting settings | In this site's settings |
+|---|---|---|
+| RankUp | `STATS_KEY=<the key>` | `RANKUP_STATS_URL=https://<rankup site>/api/stats` |
+| CyberLogix | `STATS_KEY=<the key>` | `CYBERLOGIX_STATS_URL=https://<cyberlogix site>/api/stats` |
+| OmniArmor | `STATS_KEY=<the key>` | `OMNIARMOR_STATS_URL=https://<omniarmor site>/api/stats` |
+
+and `MTRX_STATS_KEY=<the key>` here once. Each app answers with two counts and nothing
+else. A wrong or missing key gets "unauthorized"; an app without `STATS_KEY` acts as if
+the address does not exist.
+
 To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_URL` or
 `OMNIARMOR_URL`.
 
