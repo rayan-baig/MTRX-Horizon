@@ -22,7 +22,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
-from . import config, costs, db, health, lock, stats, upkeep
+from . import config, costs, db, errors, health, lock, stats, upkeep
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -292,7 +292,8 @@ async def _server_error(request: Request, exc: Exception):
     # A friendly page instead of a bare "Internal Server Error". The error
     # itself still goes to the server log. It says nothing about what broke,
     # so the page tells a stranger nothing.
-    logging.getLogger("horizon").exception("Server error on %s", request.url.path)
+    logging.getLogger("horizon").exception("Server error on %s", errors.scrub(request.url.path))
+    errors.report(request.method, request.url.path, exc, VERSION)
     # This answer is made outside the `guard` middleware, so it adds the
     # security headers itself.
     if request.url.path.startswith("/api/"):

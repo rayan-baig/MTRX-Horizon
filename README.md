@@ -220,6 +220,13 @@ Mail is only sent encrypted. A server that offers no encryption is refused (exce
 on the same machine), and the console shows "Alert email failed". The console shows
 whether email is set up, never the address or the login.
 
+The same email also tells you when the site itself hits an error it did not expect:
+when, which version, the method and path, the kind of error and where in the code. It
+never includes anything about the visitor (no query string, cookies, headers or
+address), and words in the error that look like an email address or a code are
+blanked out. At most one email an hour for each error, and 20 a day. Every error also
+shows in the console's **Recent activity**.
+
 ## Business enquiries
 
 Set `MTRX_CONTACT_EMAIL` to the address business enquiries should go to, such as

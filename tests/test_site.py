@@ -775,3 +775,83 @@ def test_no_admin_link_for_an_app_with_no_address(client, monkeypatch):
     monkeypatch.setenv("OMNIARMOR_ADMIN_URL", "javascript:alert(1)")
     owner(client)
     assert client.get("/api/console/overview").json()["admin_urls"]["omniarmor"] == ""
+
+
+def _broken_routes(main, message):
+    def broken():
+        raise RuntimeError(message)
+    main.app.add_api_route("/test-broken", broken)
+
+
+def _drop_broken_routes(main):
+    main.app.router.routes[:] = [r for r in main.app.router.routes
+                                 if getattr(r, "path", "") != "/test-broken"]
+
+
+def test_a_server_error_is_emailed_without_anything_about_the_visitor(make_client, monkeypatch):
+    from fastapi.testclient import TestClient
+    from horizon import errors, health, main
+
+    sent = []
+    monkeypatch.setattr(health, "send_email", lambda subject, body: sent.append((subject, body)) or True)
+    real_report = errors.report
+    monkeypatch.setattr(errors, "report", lambda *a, **k: real_report(*a, **{**k, "wait": True}))
+    monkeypatch.setenv("MTRX_ALERT_EMAIL", "owner@example.com")
+    monkeypatch.setenv("MTRX_SMTP_HOST", "smtp.example.com")
+    secret_token = "Zx9" * 12
+    _broken_routes(main, f"could not save visitor@example.org with {secret_token}")
+    try:
+        with TestClient(main.app, raise_server_exceptions=False) as c:
+            c.cookies.set("mh_d", "cookie-visitor@example.net")
+            r = c.get("/test-broken?email=query-visitor@example.com&token=" + secret_token,
+                      headers={"User-Agent": "agent-visitor@example.com"})
+            assert r.status_code == 500
+    finally:
+        _drop_broken_routes(main)
+    assert len(sent) == 1
+    subject, body = sent[0]
+    assert "RuntimeError" in subject and "GET /test-broken" in body and main.VERSION in body
+    for leak in ("visitor@example", "query-visitor", "cookie-visitor", "agent-visitor",
+                 secret_token, "email=", "?"):
+        assert leak not in body, leak
+    assert "[email]" in body and "[hidden]" in body
+    assert "tests/test_site.py" in body and str(errors.config.ROOT) not in body
+
+
+def test_error_emails_are_kept_to_one_an_hour_per_error_and_twenty_a_day(client, monkeypatch):
+    from horizon import errors, health
+
+    sent = []
+    monkeypatch.setattr(health, "send_email", lambda s, b: sent.append(s) or True)
+    monkeypatch.setenv("MTRX_ALERT_EMAIL", "owner@example.com")
+    monkeypatch.setenv("MTRX_SMTP_HOST", "smtp.example.com")
+
+    def fail(n):
+        try:
+            exec(f"raise ValueError('kind {n}')", {})
+        except ValueError as exc:
+            return exc
+
+    same = fail(0)
+    for _ in range(3):
+        errors.report("GET", "/x", same, "1", wait=True)
+    assert len(sent) == 1, "the same error is emailed once an hour"
+    # Different places in the code are different errors, up to 20 a day.
+    for n in range(40):
+        try:
+            exec("\n" * n + "raise KeyError('k')", {})
+        except KeyError as exc:
+            errors.report("GET", "/x", exc, "1", wait=True)
+    assert len(sent) == errors.PER_DAY
+
+
+def test_no_error_email_when_email_is_not_set_up(client, monkeypatch):
+    from horizon import errors, health
+    sent = []
+    monkeypatch.setattr(health, "send_email", lambda s, b: sent.append(s) or True)
+    monkeypatch.delenv("MTRX_ALERT_EMAIL", raising=False)
+    try:
+        raise RuntimeError("x")
+    except RuntimeError as exc:
+        errors.report("GET", "/x", exc, "1", wait=True)
+    assert sent == []

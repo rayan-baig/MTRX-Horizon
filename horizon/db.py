@@ -83,6 +83,14 @@ CREATE TABLE IF NOT EXISTS health_alerts (
     sent INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS alerts_lookup ON health_alerts (app, at);
+-- Server errors, so the owner gets at most one email an hour for each
+-- and a few a day (see errors.py). Kept two days.
+CREATE TABLE IF NOT EXISTS error_reports (
+    fingerprint TEXT NOT NULL,
+    at REAL NOT NULL,
+    sent INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS error_reports_at ON error_reports (at);
 """
 
 

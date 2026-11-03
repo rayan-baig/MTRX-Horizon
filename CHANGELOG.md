@@ -4,6 +4,13 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.2.0 (3 November 2026)
+
+- When the site hits an error it did not expect, you get a short email (at
+  the same address as the "app is down" alerts) with nothing about the
+  visitor in it, and the console's activity list shows it.
+- A load test tool and its results (`docs/LOAD-TEST.md`).
+
 ## 1.1.0 (2 November 2026)
 
 - The company is now spelled **MTRX Horizyn** everywhere people see it.
