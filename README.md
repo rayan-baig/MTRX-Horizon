@@ -297,6 +297,8 @@ free plan has no disk, so devices would be forgotten). The `Dockerfile` works on
 The domain and the apps' subdomains are set up as in
 [The domain, and the apps' subdomains](#the-domain-and-the-apps-subdomains).
 
+**A staging copy** to try a change on before live: [docs/STAGING.md](docs/STAGING.md).
+
 **Running all four apps** (uptime checks, releasing, backups, what to do when something breaks, support, costs): [docs/RUNNING-MTRX-HORIZYN.md](docs/RUNNING-MTRX-HORIZYN.md).
 
 **Uptime monitor:** check `https://<your domain>/healthz` (answers `{"ok":true}` to GET or HEAD).

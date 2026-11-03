@@ -45,6 +45,7 @@ class Settings:
     smtp_port: int
     smtp_user: str
     smtp_password: str
+    noindex: bool
 
 
 def parse_knock(raw: str) -> tuple[str, ...]:
@@ -142,4 +143,8 @@ def get() -> Settings:
         smtp_port=_whole_number(env.get("MTRX_SMTP_PORT"), 587),
         smtp_user=env.get("MTRX_SMTP_USER", "").strip(),
         smtp_password=env.get("MTRX_SMTP_PASSWORD", ""),
+        # A copy that is not the live site (staging) asks to be left out of
+        # search results: every answer says noindex, robots.txt closes the
+        # site and the sitemap is empty (docs/STAGING.md). Never on live.
+        noindex=env.get("MTRX_NOINDEX", "") == "1",
     )

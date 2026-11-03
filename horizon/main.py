@@ -272,6 +272,8 @@ async def guard(request: Request, call_next):
     if path.startswith(("/console", "/api/")):
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Robots-Tag"] = "noindex"
+    if config.get().noindex:
+        response.headers["X-Robots-Tag"] = "noindex"
     return response
 
 
@@ -376,6 +378,8 @@ PUBLIC_PAGES = ("/", "/privacy", "/terms", "/brand")
 def robots(request: Request):
     # Naming /console here told every visitor where to look. The console
     # pages already say noindex themselves.
+    if config.get().noindex:
+        return Response("User-agent: *\nDisallow: /\n", media_type="text/plain")
     return Response(f"User-agent: *\nAllow: /\n\nSitemap: {base_url(request)}/sitemap.xml\n",
                     media_type="text/plain")
 
@@ -385,7 +389,8 @@ def sitemap(request: Request):
     # Set MTRX_PUBLIC_URL on the live site: without it the address comes
     # from the request, and is escaped since the visitor chose it.
     base = xml_escape(base_url(request))
-    urls = "".join(f"  <url><loc>{base}{page}</loc></url>\n" for page in PUBLIC_PAGES)
+    pages = () if config.get().noindex else PUBLIC_PAGES
+    urls = "".join(f"  <url><loc>{base}{page}</loc></url>\n" for page in pages)
     body = ('<?xml version="1.0" encoding="UTF-8"?>\n'
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
             f"{urls}</urlset>\n")

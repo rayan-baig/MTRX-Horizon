@@ -737,6 +737,24 @@ def test_sitemap_lists_the_public_pages_and_never_the_console(client, monkeypatc
         assert client.get(page).status_code == 200
 
 
+def test_a_staging_copy_with_noindex_is_never_listed(client, monkeypatch):
+    """MTRX_NOINDEX=1, for a copy that is not the live site (docs/STAGING.md):
+    every answer says noindex, robots.txt closes the site, the sitemap is
+    empty. It still names no console address."""
+    monkeypatch.setenv("MTRX_PUBLIC_URL", "https://mtrx.example")
+    monkeypatch.setenv("MTRX_NOINDEX", "1")
+    for path in ("/", "/privacy", "/terms", "/brand", "/healthz", "/robots.txt", "/sitemap.xml",
+                 "/no-such-page", "/console"):
+        assert client.get(path).headers.get("x-robots-tag") == "noindex", path
+    robots = client.get("/robots.txt").text
+    assert robots == "User-agent: *\nDisallow: /\n"
+    assert "<loc>" not in client.get("/sitemap.xml").text
+    # The same page, with or without the setting: only the header differs.
+    monkeypatch.setenv("MTRX_NOINDEX", "0")
+    assert "x-robots-tag" not in client.get("/").headers
+    assert "<loc>https://mtrx.example/</loc>" in client.get("/sitemap.xml").text
+
+
 def test_share_previews_use_whole_addresses(client, monkeypatch):
     """Chat apps cannot fetch a picture named as "/static/...": the preview
     showed no image."""

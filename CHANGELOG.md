@@ -4,6 +4,17 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.2.1 (3 November 2026)
+
+- `docs/STAGING.md`: how to run a second copy at `staging.<your domain>` on
+  its own Render service and disk, with its own setup code, knock and stats
+  key, mail off or to a test inbox, and a checklist for taking a tested
+  commit to live. It is set up by hand, not in `render.yaml`, so syncing
+  the live Blueprint never touches it.
+- `MTRX_NOINDEX=1`, for that copy only: every answer says noindex,
+  robots.txt closes the site and the sitemap is empty. Unset, nothing
+  changes. Leave it unset on live.
+
 ## 1.2.0 (3 November 2026)
 
 - When the site hits an error it did not expect, you get a short email (at
