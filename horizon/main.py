@@ -16,13 +16,13 @@ import qrcode.image.svg
 from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
-from . import config, costs, db, errors, genesis_ai, health, lock, stats, upkeep
+from . import config, costs, db, errors, genesis_ai, health, lock, stats, upkeep, vortex
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -117,7 +117,7 @@ class _GzipText(GZipMiddleware):
 
     async def __call__(self, scope, receive, send):
         path = scope.get("path", "") if scope["type"] == "http" else ""
-        if path in ("/", "/privacy", "/terms", "/brand", "/genesis", "/sitemap.xml") or (path.startswith(("/static/", "/console/assets/"))
+        if path in ("/", "/privacy", "/terms", "/brand", "/genesis", "/vortex", "/sitemap.xml") or (path.startswith(("/static/", "/console/assets/"))
                            and path.endswith(self.TEXT)):
             await super().__call__(scope, receive, send)
         else:
@@ -344,6 +344,7 @@ def _legal(request: Request, page: str) -> HTMLResponse:
         "contact": settings.contact_email,
         # Read from the same settings the cookies are set with, so the page
         # cannot say one thing while the code does another.
+        "vortex_days": vortex.KEEP_DAYS,
         "cookies": {"device_days": DEVICE_COOKIE_DAYS,
                     "door_minutes": settings.knock_minutes,
                     "session_hours": settings.session_hours},
@@ -379,13 +380,34 @@ def genesis(request: Request):
     })
 
 
+# Chroma Vortex: the official place to partner with MTRX Horizyn, pitch an
+# idea or reach the company as an investor (vortex.py). It keeps what the
+# visitor chooses to send, for the owner to reply to, and nothing else.
+@app.api_route("/vortex", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def vortex_page(request: Request):
+    return templates.TemplateResponse(request, "vortex.html", {
+        "page": "vortex",
+        "contact": config.get().contact_email,
+        "base": base_url(request),
+        "apps": vortex.APPS,
+        "partnerships": vortex.PARTNERSHIPS,
+        "limits": vortex.LIMITS,
+        "keep_days": vortex.KEEP_DAYS,
+    })
+
+
+@app.api_route("/chroma-vortex", methods=["GET", "HEAD"])
+def chroma_vortex():
+    return RedirectResponse("/vortex", status_code=301)
+
+
 @app.api_route("/healthz", methods=["GET", "HEAD"])
 def healthz():
     return {"ok": True, "version": VERSION}
 
 
 # The pages a search engine may list. The console is never one of them.
-PUBLIC_PAGES = ("/", "/genesis", "/privacy", "/terms", "/brand")
+PUBLIC_PAGES = ("/", "/genesis", "/vortex", "/privacy", "/terms", "/brand")
 
 
 @app.api_route("/robots.txt", methods=["GET", "HEAD"], response_class=Response)
@@ -444,6 +466,16 @@ async def genesis_ask(request: Request):
     it only comes from this site's own pages (see `guard`)."""
     body = await _json(request)
     status, answer = await run_in_threadpool(genesis_ai.answer, client_ip(request), body)
+    return JSONResponse(answer, status_code=status)
+
+
+@app.post("/api/vortex/send")
+async def vortex_send(request: Request):
+    """A Chroma Vortex message. Open to every visitor, with no cookie: each
+    address may send a few (see vortex.claim). Like every change, it only
+    comes from this site's own pages (see `guard`)."""
+    body = await _json(request)
+    status, answer = await run_in_threadpool(vortex.send, client_ip(request), body)
     return JSONResponse(answer, status_code=status)
 
 
@@ -702,3 +734,28 @@ def signout(request: Request):
     response = JSONResponse({"go": "/"})
     clear_cookie(response, SESSION_COOKIE)
     return response
+
+
+# ---------------------------------------------------------------- Chroma Vortex, for the owner
+
+@app.get("/api/console/vortex")
+def vortex_inbox(request: Request, box: str = "inbox"):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    return vortex.inbox("archived" if box == "archived" else "inbox")
+
+
+@app.post("/api/console/vortex/{message_id}/{action}")
+def vortex_act(request: Request, message_id: str, action: str):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    if action not in vortex.ACTIONS or not message_id.isdigit() or len(message_id) > 12:
+        return JSONResponse({"error": "That isn't something the console can do."}, status_code=400)
+    if not vortex.act(int(message_id), action):
+        # Not 404: the console takes a 404 to mean "signed out" and leaves.
+        return JSONResponse({"error": "That message is already gone."}, status_code=409)
+    if action == "delete":
+        db.log("Vortex message deleted", f"by {dev['name']}")
+    return {"ok": True, "unread": vortex.unread()}

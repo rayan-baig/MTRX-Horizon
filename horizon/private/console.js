@@ -195,6 +195,7 @@
     "Signed in": "ico-key", "Signed out": "ico-door", "Device approved": "ico-plus",
     "Device removed": "ico-devices", "Door opened": "ico-door", "Approval code made": "ico-plus",
     "App down": "ico-activity", "App back up": "ico-apps", "Alert email failed": "ico-activity",
+    "Vortex message": "ico-vortex", "Vortex message deleted": "ico-vortex",
   };
 
   function drawFeed(data) {
@@ -293,6 +294,122 @@
     }
   }
 
+  // ---------------------------------------------------------------- Chroma Vortex
+  // Messages visitors sent from /vortex. Everything they wrote is placed
+  // with textContent. The reply address is shown as text to copy and as a
+  // mailto link; the server only accepts plain addresses, with nothing in
+  // them that means something in a link.
+
+  let vxBox = "inbox";
+
+  function drawUnread(count) {
+    const badge = $("vx-unread");
+    badge.textContent = count > 99 ? "99+" : String(count);
+    badge.hidden = !count;
+    $("vx-count-inbox").textContent = count ? `· ${count} new` : "";
+  }
+
+  function vxField(label, value) {
+    return value ? el("div", {}, el("dt", { text: label }), el("dd", { text: value })) : null;
+  }
+
+  async function vxAct(m, action, item) {
+    const result = await post(`/api/console/vortex/${encodeURIComponent(m.id)}/${action}`);
+    if (!result.ok) { toast(result.data.error || "Couldn't do that.", true); loadVortex(); return false; }
+    if (typeof result.data.unread === "number") drawUnread(result.data.unread);
+    return true;
+  }
+
+  function vxMessage(m) {
+    const title = m.kind === "pitch" ? m.idea : m.organisation || m.name;
+    const from = m.kind === "pitch" || !m.organisation ? `from ${m.name}` : `from ${m.name}, ${m.organisation}`;
+    const item = el("li", { class: `vx-msg kind-${m.kind}${m.read ? "" : " unread"}` });
+    const details = el("details", {});
+    const summary = el("summary", {},
+      el("span", { class: "vx-dot" }),
+      el("span", { class: "vx-kind", text: m.kind_name }),
+      el("span", { class: "vx-title" }, el("b", { text: title }), el("small", { text: from })),
+      el("time", { text: ago(m.at) }));
+
+    const mailto = `mailto:${m.email}?subject=${encodeURIComponent(
+      m.kind === "pitch" ? `Your idea: ${m.idea}` : "Your message to MTRX Horizyn")}`;
+    const reply = el("div", { class: "vx-reply" },
+      el("span", { class: "vx-reply-label", text: "Reply to" }),
+      el("span", { class: "vx-addr", text: m.email }),
+      el("a", { class: "btn btn-primary btn-small", href: mailto, text: "Reply by email" }));
+
+    const fields = el("dl", { class: "vx-fields" },
+      vxField("Name", m.name), vxField("Organisation", m.organisation),
+      vxField("Apps", m.apps.join(", ")), vxField("Kind of partnership", m.partnership),
+      vxField("Idea", m.idea), vxField("One-line pitch", m.pitch), vxField("Who it's for", m.audience));
+
+    const actions = el("div", { class: "vx-actions" });
+    const readButton = el("button", { type: "button", text: m.read ? "Mark unread" : "Mark read" });
+    readButton.addEventListener("click", async () => {
+      if (!(await vxAct(m, m.read ? "unread" : "read"))) return;
+      m.read = !m.read;
+      item.classList.toggle("unread", !m.read);
+      readButton.textContent = m.read ? "Mark unread" : "Mark read";
+    });
+    const archive = el("button", { type: "button", text: m.archived ? "Move to inbox" : "Archive" });
+    archive.addEventListener("click", async () => {
+      if (!(await vxAct(m, m.archived ? "unarchive" : "archive"))) return;
+      toast(m.archived ? "Moved to the inbox." : "Archived.");
+      loadVortex();
+    });
+    const remove = el("button", { type: "button", class: "danger", text: "Delete" });
+    remove.addEventListener("click", async () => {
+      if (!confirm(`Delete this message from ${m.name}? It can't be brought back.`)) return;
+      if (!(await vxAct(m, "delete"))) return;
+      toast("Message deleted.");
+      loadVortex();
+    });
+    actions.append(readButton, archive, remove);
+
+    details.append(summary, el("div", { class: "vx-body" },
+      el("p", { class: "vx-when", text: `Received ${new Date(m.at * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}` }),
+      fields,
+      m.message ? el("p", { class: "vx-text", text: m.message }) : null,
+      reply, actions));
+    // Opening a message marks it read.
+    details.addEventListener("toggle", async () => {
+      if (!details.open || m.read) return;
+      if (!(await vxAct(m, "read"))) return;
+      m.read = true;
+      item.classList.remove("unread");
+      readButton.textContent = "Mark unread";
+    });
+    item.append(details);
+    return item;
+  }
+
+  async function loadVortex() {
+    try {
+      const res = await fetch(`/api/console/vortex?box=${vxBox}`, { credentials: "same-origin" });
+      if (res.status === 404) { window.location.replace("/"); return; }
+      const data = await res.json();
+      drawUnread(data.unread);
+      $("vx-count-archived").textContent = data.archived ? `· ${data.archived}` : "";
+      $("vx-keep").textContent = data.keep_days;
+      const list = $("vx-list");
+      list.replaceChildren(...data.messages.map(vxMessage));
+      if (!data.messages.length) {
+        list.append(el("li", { class: "vx-empty", text: vxBox === "archived"
+          ? "Nothing archived." : "No messages yet. They appear here when someone sends one from Chroma Vortex." }));
+      }
+    } catch (_) {
+      /* the overview says when the console can't refresh */
+    }
+  }
+
+  document.querySelectorAll(".vx-boxes button").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".vx-boxes button").forEach((b) => b.classList.toggle("on", b === button));
+      vxBox = button.dataset.box;
+      loadVortex();
+    });
+  });
+
   // ---------------------------------------------------------------- loading
 
   async function load() {
@@ -302,6 +419,9 @@
       const data = await res.json();
       drawOverview(data); drawPlatforms(data); drawChart(data); drawFeed(data);
       drawDials(data); drawProjects(data); drawCosts(data); drawDevices(data);
+      // The inbox redraws only when nothing in it is open, so a message
+      // being read doesn't close under the owner.
+      if (!document.querySelector("#vx-list details[open]")) loadVortex();
     } catch (_) {
       $("updated").textContent = "Couldn't refresh";
       $("updated").classList.add("stale");
@@ -333,9 +453,9 @@
     if (action === "refresh") { load(); toast("Refreshed."); }
   });
 
-  document.querySelectorAll(".range button").forEach((button) => {
+  document.querySelectorAll(".range button[data-days]").forEach((button) => {
     button.addEventListener("click", () => {
-      document.querySelectorAll(".range button").forEach((b) => b.classList.toggle("on", b === button));
+      document.querySelectorAll(".range button[data-days]").forEach((b) => b.classList.toggle("on", b === button));
       days = Number(button.dataset.days);
       load();
     });

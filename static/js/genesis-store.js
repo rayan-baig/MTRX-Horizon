@@ -253,9 +253,49 @@
     return { get usable() { return usable; }, load, save, clear };
   }
 
+  // ---------------------------------------------------------------- Chroma Vortex
+  // "Pitch this in Chroma Vortex" hands a project to /vortex through this
+  // tab's sessionStorage. Only the project's id goes, never its words, so
+  // the idea is never in an address or a server log; the Vortex page reads
+  // the project back from this browser's own Genesis storage. The offer is
+  // used once and lasts a few minutes. Nothing is sent until the visitor
+  // presses Send there.
+
+  const HANDOFF_KEY = "mtrx-vortex-handoff";
+  const HANDOFF_MS = 10 * 60 * 1000;
+  const ID = /^[A-Za-z0-9-]{1,64}$/;
+
+  function offerToVortex(session, id, now) {
+    if (!session || typeof id !== "string" || !ID.test(id)) return false;
+    try {
+      session.setItem(HANDOFF_KEY, JSON.stringify({ id, at: now || Date.now() }));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // The offered project's id, or null. Reading it removes it.
+  function takeVortexOffer(session, now) {
+    if (!session) return null;
+    let raw = null;
+    try {
+      raw = session.getItem(HANDOFF_KEY);
+      session.removeItem(HANDOFF_KEY);
+    } catch (_) {
+      return null;
+    }
+    let offer;
+    try { offer = JSON.parse(raw); } catch (_) { return null; }
+    if (!offer || typeof offer.id !== "string" || !ID.test(offer.id) || !Number.isFinite(offer.at)) return null;
+    const age = (now || Date.now()) - offer.at;
+    return age >= -60000 && age <= HANDOFF_MS ? offer.id : null;
+  }
+
   const api = {
     KEY, LIMITS, STAGES, CHECKLIST, line, block, addressProblem, suggestAddress, nameWarning,
     check, create, progress, clean, cleanList, exportText, importText, open,
+    HANDOFF_KEY, offerToVortex, takeVortexOffer,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.GenesisStore = api;

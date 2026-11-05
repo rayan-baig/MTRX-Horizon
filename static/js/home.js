@@ -31,6 +31,10 @@
   ].concat(document.querySelector('a[href="/privacy"]') ? [
     ["Privacy", "What this site keeps, and what it doesn't", "/privacy", "privacy data cookies logs"],
     ["Terms", "The terms of using this site", "/terms", "terms legal rules"],
+  ] : []).concat(document.querySelector('a[href="/vortex"]') ? [
+    ["Genesis", "Turn your idea into a launch", "/genesis", "genesis idea start project launch"],
+    ["Chroma Vortex", "Partner with us, pitch an idea, or talk to us as an investor", "/vortex",
+      "vortex partner partnership business resell integrate pitch idea investor invest contact"],
   ] : []).forEach(([title, hint, href, words]) => {
     items.push({ title, hint, href, words: (title + " " + words).toLowerCase() });
   });

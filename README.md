@@ -234,7 +234,7 @@ shows in the console's **Recent activity**.
 Set `MTRX_CONTACT_EMAIL` to the address business enquiries should go to, such as
 `hello@<your domain>`. The home page's About card, its footer and menu, and the privacy
 and terms pages then show it as an email link. Unset (or not a plain address), nothing is
-shown. There is no contact form: the site stores nothing anyone sends.
+shown. Partners, ideas and investors have their own place: [Chroma Vortex](#chroma-vortex).
 
 ## Privacy and terms
 
@@ -260,7 +260,8 @@ and says so. **Download** saves every project as a JSON file, **Import** reads o
 move to another device), and **Delete all** clears them. The privacy page says the same.
 
 The rules and the saving are in `static/js/genesis-store.js`, which has no page code in it, so
-Node can test it: `node --test tests/js/genesis_store.test.js` (the Python tests run it too).
+Node can test it: `node --test tests/js/genesis_store.test.js` (the Python tests run it too,
+with `tests/js/vortex_handoff.test.js` for the hand-off to Chroma Vortex).
 
 ### Ask Genesis: free AI help
 
@@ -301,6 +302,45 @@ tokens and each request a few hundred words. A visitor over their limit, or ever
 cap is reached, gets a friendly message, and the provider is not called. Timeouts (30 seconds)
 and provider errors also get a friendly message. Set a monthly spend limit in the Anthropic
 Console as well, as a second fence.
+
+## Chroma Vortex
+
+`/vortex` (and `/chroma-vortex`, which redirects there) is the official place to work with MTRX
+Horizyn, linked from the home page's menu and footer, the other pages and the sitemap. It has
+three paths, each a short form:
+
+- **Partner with us**: name, organisation, email, which apps (RankUp, CyberLogix AI,
+  OmniArmor.ai), the kind of partnership (resell, integrate, refer customers, co-marketing,
+  something else) and a message.
+- **Pitch an idea**: name, email, the idea's name, a one-line pitch, who it's for, and an
+  optional message. **Bring a project from Genesis** lists the visitor's Genesis projects from
+  their own browser and fills in the idea fields. On a Genesis project, **Pitch this in Chroma
+  Vortex** opens `/vortex#pitch` with that project filled in: only the project's id is handed
+  over, through the tab's `sessionStorage`, so the idea never appears in an address or a log.
+  Nothing is sent until the visitor presses Send. The path asks anyone under 13 to have a parent
+  or guardian send it.
+- **Investors**: name, organisation (optional), email and message, under a clear notice that
+  the page is not an offer of shares or any investment and the company is not raising money
+  through the site.
+
+A form goes to `POST /api/vortex/send` (same-site only, like every change, and within the usual
+16 KB body limit). Every field is checked on the server: lengths, a plain email address, and the
+path, apps and partnership kind against fixed lists; fields that belong to another path are
+dropped. Messages are kept in the `vortex_messages` table with the time, the path and the
+fields: **never the sender's address or a cookie**. They are deleted 365 days after they
+arrive by the upkeep job, and the privacy page says so.
+
+Against abuse: each address may send `VORTEX_PER_HOUR` (5) messages an hour and
+`VORTEX_PER_DAY` (20) a day, counted like failed sign-ins (the address and time, gone after a
+day); a hidden field catches simple bots, which are told "sent" and dropped; and a message that
+is mostly links is refused.
+
+When alert email is set up (`MTRX_ALERT_EMAIL` and the SMTP settings), the owner gets a short
+notice from a background thread: the path and the organisation or idea name, nothing else (no
+email address, no message), at most 30 a day. Everything is read in the console's **Chroma
+Vortex** section: an inbox and an archive, an unread count on the sidebar, each message's
+fields, the reply address to copy and a **Reply by email** link, and buttons to mark read or
+unread, archive and delete. Opening a message marks it read.
 
 ## Running it on a computer
 
@@ -388,6 +428,8 @@ needs changing. The line shows counts only, never anyone's address.
 - `horizon/upkeep.py`: the jobs the server runs on its own once a minute
 - `horizon/genesis_ai.py`: Ask Genesis, its limits and its system prompt
 - `templates/genesis.html`, `static/js/genesis*.js`, `static/css/genesis.css`: Genesis
+- `horizon/vortex.py`, `templates/vortex.html`, `static/js/vortex*.js`, `static/css/vortex.css`:
+  Chroma Vortex
 - `templates/`: the pages
 - `static/`: styles, scripts, pictures (cut from the supplied design artwork) and the two
   fonts (Inter and Montserrat, under the SIL Open Font License; the licences are beside them)

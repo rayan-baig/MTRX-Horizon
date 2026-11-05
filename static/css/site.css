@@ -676,6 +676,11 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 @media (min-width: 1101px) and (max-width: 1240px) {
   .page .mainnav a { padding: 10px 6px; font-size: 13px; }
 }
+/* Eight links fit from here up; a little narrower, Vortex waits in the menu
+   and the footer. */
+@media (max-width: 1320px) {
+  .page .mainnav .nav-vortex { display: none; }
+}
 /* Below this the links no longer fit beside the brand; the menu has them all. */
 @media (max-width: 1180px) {
   .page .mainnav { display: none; }

@@ -24,3 +24,7 @@ services:
         sync: false          # a current model id from Anthropic's model list
       - key: GENESIS_AI_DAILY_CAP_USD
         value: "2"
+      - key: VORTEX_PER_HOUR
+        value: "5"           # Chroma Vortex messages each visitor may send an hour
+      - key: VORTEX_PER_DAY
+        value: "20"

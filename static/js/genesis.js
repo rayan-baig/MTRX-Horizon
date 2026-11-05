@@ -199,7 +199,8 @@
       el("h1", { class: "g-name", text: p.name }),
       el("p", { class: "g-pitch", text: p.pitch }),
       el("p", { class: "g-for" }, el("span", { text: "For " }), el("b", { text: p.audience })),
-      el("p", { class: "g-started", text: `Started ${when(p.created)}` }));
+      el("p", { class: "g-started", text: `Started ${when(p.created)}` }),
+      vortexLink(p));
 
     const moves = el("div", { class: "g-moves" });
     if (here > 0) {
@@ -285,6 +286,24 @@
     $("g-detail").replaceChildren(head, el("div", { class: "g-columns" },
       el("div", { class: "g-main" }, checklist),
       el("div", { class: "g-side" }, stagePanel, ask, notes, danger)));
+  }
+
+  // ---------------------------------------------------------------- Chroma Vortex
+  // Opens /vortex with this project ready to pitch. Only its id is handed
+  // over, through this tab's sessionStorage (GenesisStore.offerToVortex),
+  // so the idea never goes into the address. Nothing is sent from here.
+
+  function vortexLink(p) {
+    const link = el("a", { class: "g-vortex", href: "/vortex#pitch" },
+      el("span", { class: "g-vortex-swirl", "aria-hidden": "true" }),
+      el("span", { text: "Pitch this in Chroma Vortex" }), el("span", { "aria-hidden": "true", text: " →" }));
+    link.addEventListener("click", () => {
+      flushNotes();
+      let session = null;
+      try { session = window.sessionStorage; } catch (_) { session = null; }
+      S.offerToVortex(session, p.id);
+    });
+    return link;
   }
 
   // ---------------------------------------------------------------- Ask Genesis

@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+<link rel="stylesheet" href="{{ asset('css/vortex.css') }}">
+<title>Chroma Vortex · MTRX Horizyn</title>
+<meta name="description" content="Chroma Vortex, the official place to work with MTRX Horizyn: partner with RankUp, CyberLogix AI or OmniArmor.ai, pitch a business or app idea, or get in touch as an investor.">
+<meta property="og:title" content="Chroma Vortex · MTRX Horizyn">
+<meta property="og:description" content="Partner with us, pitch an idea, or get in touch as an investor.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MTRX Horizyn">
+<meta property="og:url" content="{{ base }}/vortex">
+<meta property="og:image" content="{{ base }}/static/img/logo-512.png">
+<link rel="canonical" href="{{ base }}/vortex">
+</head>
+<body class="legal-page vortex-page">
+{#- Chroma Vortex keeps what a visitor chooses to send here, so the owner can
+    reply (horizon/vortex.py). The forms have no action: the page's script
+    sends them, and only when Send is pressed. Every word a visitor typed is
+    placed with textContent, never as HTML. -#}
+{%- macro field(kind, name, label, limit, auto="off", wide=false, kind_of="text", placeholder="", optional=false) -%}
+<label class="v-field{% if wide %} v-wide{% endif %}">
+  <span class="v-label">{{ label }}{% if optional %} <em class="v-optional">optional</em>{% endif %}{% if limit > 100 %} <small class="v-count" data-count-for="{{ name }}"></small>{% endif %}</span>
+  <input name="{{ name }}" type="{{ kind_of }}" maxlength="{{ limit }}" autocomplete="{{ auto }}"
+    {%- if placeholder %} placeholder="{{ placeholder }}"{% endif %}
+    {%- if kind_of == "email" %} autocapitalize="off" spellcheck="false" inputmode="email"{% endif %}>
+  <small class="v-msg" data-msg-for="{{ name }}"></small>
+</label>
+{%- endmacro -%}
+{%- macro message(label, placeholder, required=true) -%}
+<label class="v-field v-wide">
+  <span class="v-label">{{ label }}{% if not required %} <em class="v-optional">optional</em>{% endif %} <small class="v-count" data-count-for="message"></small></span>
+  <textarea name="message" rows="6" maxlength="{{ limits.message }}" placeholder="{{ placeholder }}"></textarea>
+  <small class="v-msg" data-msg-for="message"></small>
+</label>
+{%- endmacro -%}
+{%- macro send_row() -%}
+{#- The honeypot: hidden by a CSS class, so people never see it, while simple
+    bots fill it in. A message with it filled is answered "sent" and dropped. -#}
+<div class="v-trap" aria-hidden="true">
+  <label>Leave this empty <input name="website" type="text" tabindex="-1" autocomplete="off"></label>
+</div>
+<p class="v-error" data-error></p>
+<div class="v-send">
+  <button class="btn btn-vortex" type="submit">Send <span aria-hidden="true">→</span></button>
+  <p class="v-private">We keep what you send here only to reply to you, for up to {{ keep_days }} days, and
+    never share it. <a href="/privacy">Privacy</a></p>
+</div>
+{%- endmacro -%}
+<div class="sky" aria-hidden="true"></div>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="MTRX Horizyn home">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-text">
+      <span class="wordmark">MTRX <b>HORIZYN</b></span>
+      <span class="tagline">One vision. Infinite possibilities.</span>
+    </span>
+  </a>
+  <nav class="mainnav" aria-label="Main">
+    <a href="/">Home</a>
+    <a href="/genesis">Genesis</a>
+    <a href="/vortex" class="active" aria-current="page">Vortex</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/brand">Brand</a>
+  </nav>
+  <a class="v-home" href="/">Home</a>
+</header>
+
+<main class="vortex" id="vortex">
+  <noscript><p class="panel v-noscript">The forms on this page need JavaScript turned on to send.
+    {% if contact %}You can also write to <a href="mailto:{{ contact }}">{{ contact }}</a>.{% endif %}</p></noscript>
+
+  <section class="v-hero panel">
+    <div class="v-hero-art" aria-hidden="true">
+      <span class="v-swirl"><i class="v-ring r1"></i><i class="v-ring r2"></i><i class="v-ring r3"></i><i class="v-core"></i></span>
+    </div>
+    <div class="v-hero-copy">
+      <p class="eyebrow v-eyebrow">MTRX Horizyn</p>
+      <h1 class="v-title">Chroma <span>Vortex</span></h1>
+      <p class="v-line">Where partners, ideas and investors meet MTRX Horizyn.</p>
+      <p class="v-text">The official place to work with us. MTRX Horizyn is the parent company of
+        RankUp, CyberLogix AI and OmniArmor.ai. Choose a path, tell us a little, and we'll reply
+        by email.</p>
+    </div>
+  </section>
+
+  <nav class="v-paths" aria-label="Choose a path">
+    <a class="v-path path-partner" href="#partner" data-path="partner">
+      <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="12" r="5"/><circle cx="15.5" cy="12" r="5"/></svg></span>
+      <span class="v-path-text"><b>Partner with us</b>
+        <span>Resell, integrate with, or work alongside RankUp, CyberLogix AI or OmniArmor.ai.</span></span>
+      <em class="v-path-go">Partner <span aria-hidden="true">→</span></em>
+    </a>
+    <a class="v-path path-pitch" href="#pitch" data-path="pitch">
+      <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.2 6.6 6.8.2-5.4 4.2 1.9 6.6L12 16.2 6.5 20.1l1.9-6.6L3 9.3l6.8-.2z"/></svg></span>
+      <span class="v-path-text"><b>Pitch an idea</b>
+        <span>Have a business or app idea? Tell us about it, or bring one from Genesis.</span></span>
+      <em class="v-path-go">Pitch <span aria-hidden="true">→</span></em>
+    </a>
+    <a class="v-path path-invest" href="#invest" data-path="invest">
+      <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></svg></span>
+      <span class="v-path-text"><b>Investors</b>
+        <span>Interested in MTRX Horizyn? Leave your details and we'll get back to you.</span></span>
+      <em class="v-path-go">Get in touch <span aria-hidden="true">→</span></em>
+    </a>
+  </nav>
+
+  <p class="v-choose" id="v-choose">Choose a path above to begin.</p>
+
+  <section class="panel v-panel path-partner" id="v-partner" hidden>
+    <p class="eyebrow v-kicker">Partner with us</p>
+    <h2 class="v-h">Work with our apps</h2>
+    <p class="v-lede">For businesses that want to resell, integrate with, or work with RankUp,
+      CyberLogix AI or OmniArmor.ai. Tell us who you are and what you have in mind.</p>
+    <form class="v-form" data-kind="partner" novalidate>
+      <div class="v-grid">
+        {{ field("partner", "name", "Your name", limits.name, "name") }}
+        {{ field("partner", "organisation", "Organisation", limits.organisation, "organization") }}
+        {{ field("partner", "email", "Email", limits.email, "email", wide=true, kind_of="email") }}
+        <fieldset class="v-field v-wide v-apps">
+          <legend class="v-label">Which app or apps</legend>
+          <div class="v-chips">
+            {% for key, name in apps.items() %}
+            <label class="v-chip"><input type="checkbox" name="apps" value="{{ key }}">
+              <img src="/static/img/{{ key }}-icon.svg" alt="" width="22" height="22"><span>{{ name }}</span></label>
+            {% endfor %}
+          </div>
+          <small class="v-msg" data-msg-for="apps"></small>
+        </fieldset>
+        <label class="v-field v-wide">
+          <span class="v-label">Kind of partnership</span>
+          <select name="partnership">
+            <option value="">Choose one</option>
+            {% for key, name in partnerships.items() %}<option value="{{ key }}">{{ name }}</option>
+            {% endfor %}
+          </select>
+          <small class="v-msg" data-msg-for="partnership"></small>
+        </label>
+        {{ message("Message", "What you do, who your customers are, and how you'd like to work together.") }}
+      </div>
+      {{ send_row() }}
+    </form>
+  </section>
+
+  <section class="panel v-panel path-pitch" id="v-pitch" hidden>
+    <p class="eyebrow v-kicker">Pitch an idea</p>
+    <h2 class="v-h">Tell us your idea</h2>
+    <p class="v-lede">For anyone with a business or app idea. A name, one line on what it does and
+      who it's for is plenty to start.</p>
+    <p class="v-young">If you're under 13, ask a parent or guardian to send this for you.</p>
+    <div class="v-genesis">
+      <button class="btn btn-ghost btn-small v-genesis-btn" type="button" id="v-from-genesis">
+        <span class="v-genesis-spark" aria-hidden="true"></span>Bring a project from Genesis</button>
+      <p class="v-genesis-note" id="v-genesis-note" role="status"></p>
+      <div class="v-genesis-list" id="v-genesis-list" hidden></div>
+    </div>
+    <form class="v-form" data-kind="pitch" novalidate>
+      <div class="v-grid">
+        {{ field("pitch", "name", "Your name", limits.name, "name") }}
+        {{ field("pitch", "email", "Email", limits.email, "email", kind_of="email") }}
+        {{ field("pitch", "idea", "Idea name", limits.idea, wide=true, placeholder="Nova") }}
+        {{ field("pitch", "pitch", "One-line pitch", limits.pitch, wide=true, placeholder="Homework reminders that actually work") }}
+        {{ field("pitch", "audience", "Who it's for", limits.audience, wide=true, placeholder="Students who forget what's due") }}
+        {{ message("Message", "Anything else: what you've done so far, and what you'd like from us.", required=false) }}
+      </div>
+      {{ send_row() }}
+    </form>
+  </section>
+
+  <section class="panel v-panel path-invest" id="v-invest" hidden>
+    <p class="eyebrow v-kicker">Investors</p>
+    <h2 class="v-h">Talk to MTRX Horizyn</h2>
+    <p class="v-notice">This page is not an offer to sell or a request to buy any shares or other
+      investment. MTRX Horizyn is not raising money through this site. If you'd like to talk, leave
+      your details and we'll get back to you.</p>
+    <form class="v-form" data-kind="invest" novalidate>
+      <div class="v-grid">
+        {{ field("invest", "name", "Your name", limits.name, "name") }}
+        {{ field("invest", "organisation", "Organisation", limits.organisation, "organization", optional=true) }}
+        {{ field("invest", "email", "Email", limits.email, "email", wide=true, kind_of="email") }}
+        {{ message("Message", "Who you are, and what you'd like to talk about.") }}
+      </div>
+      {{ send_row() }}
+    </form>
+  </section>
+
+  <section class="panel v-sent" id="v-sent" hidden>
+    <span class="v-swirl v-swirl-small" aria-hidden="true"><i class="v-ring r1"></i><i class="v-ring r2"></i><i class="v-core"></i></span>
+    <h2 class="v-sent-title">Sent.</h2>
+    <p class="v-sent-line" id="v-sent-line" role="status"></p>
+    <p class="v-sent-small">Check your spam folder if you don't hear from us. We keep your message only to
+      reply, for up to {{ keep_days }} days.</p>
+    <div class="cta-row">
+      <a class="btn btn-ghost btn-small" href="#" id="v-again">Send another</a>
+      <a class="btn btn-ghost btn-small" href="/">Back to MTRX Horizyn</a>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span class="foot-brand">MTRX HORIZYN</span>
+  <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
+  <nav class="foot-links" aria-label="About this site">
+    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/vortex">Chroma Vortex</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
+    {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
+  </nav>
+</footer>
+
+<script src="{{ asset('js/genesis-store.js') }}" defer></script>
+<script src="{{ asset('js/vortex-form.js') }}" defer></script>
+<script src="{{ asset('js/vortex.js') }}" defer></script>
+</body>
+</html>

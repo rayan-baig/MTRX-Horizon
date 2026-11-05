@@ -4,6 +4,27 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.4.0 (5 November 2026)
+
+- **Chroma Vortex** (`/vortex`, and `/chroma-vortex` redirects there): the official place to
+  partner with MTRX Horizyn, pitch an idea, or get in touch as an investor, in its own swirl of
+  colour. Three paths, each a short form, linked from the home page's menu and footer, the other
+  pages and the sitemap.
+- Pitch an idea can **bring a project from Genesis**, read from the visitor's own browser, and
+  Genesis has **Pitch this in Chroma Vortex** on each project. Only the project's id is handed
+  over, in the tab's own storage, never in an address. Nothing is sent until Send is pressed.
+- The investors path says plainly that the page is not an offer of shares or any investment and
+  that the company is not raising money through the site.
+- Messages are checked field by field, kept in a new `vortex_messages` table without the
+  sender's address or any cookie, and deleted after 365 days. Each address may send 5 an hour
+  and 20 a day (`VORTEX_PER_HOUR`, `VORTEX_PER_DAY`); a hidden field catches bots; messages that
+  are mostly links are refused.
+- The owner gets a short email notice (path and organisation or idea name only) when email is
+  set up, and reads, replies to, archives and deletes messages in the console's new **Chroma
+  Vortex** section, with an unread count on the sidebar.
+- The privacy page says what Chroma Vortex keeps, why and for how long; the terms say a message
+  creates no agreement and nothing here is an investment offer.
+
 ## 1.3.0 (5 November 2026)
 
 - **Genesis** (`/genesis`), a new feature for every visitor: turn an idea into a project with

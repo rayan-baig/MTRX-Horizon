@@ -105,6 +105,26 @@ CREATE TABLE IF NOT EXISTS genesis_spend (
     at REAL NOT NULL,
     usd REAL NOT NULL
 );
+-- Chroma Vortex (vortex.py): what a visitor chose to send through the form,
+-- for the owner to read and reply to. Only the form's own fields, the time
+-- and the path; never the sender's address or a cookie. Deleted after 365 days.
+CREATE TABLE IF NOT EXISTS vortex_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at REAL NOT NULL,
+    kind TEXT NOT NULL,
+    name TEXT NOT NULL,
+    organisation TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL,
+    apps TEXT NOT NULL DEFAULT '',
+    partnership TEXT NOT NULL DEFAULT '',
+    idea TEXT NOT NULL DEFAULT '',
+    pitch TEXT NOT NULL DEFAULT '',
+    audience TEXT NOT NULL DEFAULT '',
+    message TEXT NOT NULL DEFAULT '',
+    read_at REAL,
+    archived_at REAL
+);
+CREATE INDEX IF NOT EXISTS vortex_messages_at ON vortex_messages (at);
 """
 
 
