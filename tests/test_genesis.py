@@ -86,7 +86,8 @@ def test_genesis_storage_rules_in_node():
     node = shutil.which("node")
     if node is None:
         pytest.skip("Node is not installed here (CI has it)")
-    result = subprocess.run([node, "--test", str(ROOT / "tests/js/genesis_store.test.js")],
+    result = subprocess.run([node, "--test", "--test-reporter=tap",
+                             str(ROOT / "tests/js/genesis_store.test.js")],
                             capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "# fail 0" in result.stdout
