@@ -22,7 +22,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
-from . import config, costs, db, errors, health, lock, stats, upkeep
+from . import config, costs, db, errors, genesis_ai, health, lock, stats, upkeep
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -117,7 +117,7 @@ class _GzipText(GZipMiddleware):
 
     async def __call__(self, scope, receive, send):
         path = scope.get("path", "") if scope["type"] == "http" else ""
-        if path in ("/", "/privacy", "/terms", "/brand", "/sitemap.xml") or (path.startswith(("/static/", "/console/assets/"))
+        if path in ("/", "/privacy", "/terms", "/brand", "/genesis", "/sitemap.xml") or (path.startswith(("/static/", "/console/assets/"))
                            and path.endswith(self.TEXT)):
             await super().__call__(scope, receive, send)
         else:
@@ -333,7 +333,7 @@ def home(request: Request):
 
 
 # The date the privacy page and the terms last changed in substance.
-LEGAL_UPDATED = "2 November 2026"
+LEGAL_UPDATED = "5 November 2026"
 
 
 def _legal(request: Request, page: str) -> HTMLResponse:
@@ -365,13 +365,27 @@ def brand(request: Request):
     return templates.TemplateResponse(request, "brand.html", {"page": "brand"})
 
 
+# Genesis: anyone can turn an idea into a project here. The projects are
+# kept in the visitor's own browser (static/js/genesis-store.js) and never
+# stored here. Only Ask Genesis sends anything: the few fields it needs, when
+# the visitor presses its button (genesis_ai.py).
+@app.api_route("/genesis", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def genesis(request: Request):
+    return templates.TemplateResponse(request, "genesis.html", {
+        "page": "genesis",
+        "contact": config.get().contact_email,
+        "base": base_url(request),
+        "ai": genesis_ai.enabled(),
+    })
+
+
 @app.api_route("/healthz", methods=["GET", "HEAD"])
 def healthz():
     return {"ok": True, "version": VERSION}
 
 
 # The pages a search engine may list. The console is never one of them.
-PUBLIC_PAGES = ("/", "/privacy", "/terms", "/brand")
+PUBLIC_PAGES = ("/", "/genesis", "/privacy", "/terms", "/brand")
 
 
 @app.api_route("/robots.txt", methods=["GET", "HEAD"], response_class=Response)
@@ -421,6 +435,16 @@ async def _json(request: Request):
     except (ValueError, RecursionError):
         return {}
     return body if isinstance(body, dict) else {}
+
+
+@app.post("/api/genesis/ask")
+async def genesis_ask(request: Request):
+    """Ask Genesis (genesis_ai.py). Open to every visitor, with no cookie:
+    each one is counted by address, as failed tries are. Like every change,
+    it only comes from this site's own pages (see `guard`)."""
+    body = await _json(request)
+    status, answer = await run_in_threadpool(genesis_ai.answer, client_ip(request), body)
+    return JSONResponse(answer, status_code=status)
 
 
 @app.post("/api/knock")

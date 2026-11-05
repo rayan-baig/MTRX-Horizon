@@ -4,6 +4,26 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.3.0 (5 November 2026)
+
+- **Genesis** (`/genesis`), a new feature for every visitor: turn an idea into a project with
+  a name, a one-line pitch, who it's for and a web address idea, then take it from Spark to
+  Plan, Build and Launch with a launch checklist in plain words, progress per stage and
+  overall, and notes. Projects are cards in a list, with an empty state for the first idea.
+  Linked from the home page's menu and footer, the other pages, the sitemap, and the console.
+- Genesis keeps projects only in the visitor's own browser. Download and Import move them
+  between devices; Delete all clears them. It still works, and says so, when the browser
+  blocks storage.
+- **Ask Genesis**: free, short AI help on a project (sharpen the pitch, who might use it, the
+  simplest first version, name ideas, what could go wrong, what's next, or a short question),
+  which can be saved to the project's notes. Off until `GENESIS_AI_KEY` and
+  `GENESIS_AI_MODEL` are set. Limited per visitor (10 an hour, 30 a day, by address, no
+  cookie) and by a daily spend cap (`GENESIS_AI_DAILY_CAP_USD`, 2 dollars by default). The
+  idea text is passed to the AI provider and never stored or logged.
+- The privacy page says what Genesis keeps (nothing on the server but counts) and what Ask
+  Genesis sends.
+- The home page's links close up a little on mid-sized screens so the new Genesis link fits.
+
 ## 1.2.1 (3 November 2026)
 
 - `docs/STAGING.md`: how to run a second copy at `staging.<your domain>` on

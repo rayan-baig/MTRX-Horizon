@@ -478,7 +478,7 @@ def test_search_folded_to_its_icon_can_still_be_opened():
     search could not be opened at all on a phone."""
     import re
     css = open("static/css/site.css", encoding="utf-8").read()
-    narrow = css.split("@media (max-width: 1280px) {", 1)[1].split("\n}\n", 1)[0]
+    narrow = css.split("@media (max-width: 1440px) {", 1)[1].split("\n}\n", 1)[0]
     for rule in re.findall(r"([^{}]*)\{([^}]*)\}", narrow):
         if ".search input" in rule[0] and "focus-within" not in rule[0]:
             assert "display: none" not in rule[1]

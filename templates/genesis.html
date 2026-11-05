@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+<link rel="stylesheet" href="{{ asset('css/genesis.css') }}">
+<title>Genesis · MTRX Horizyn</title>
+<meta name="description" content="Genesis, from MTRX Horizyn: turn your idea into a launch, from Spark to Plan, Build and Launch, with a checklist in plain words. Your projects stay in your own browser.">
+<meta property="og:title" content="Genesis · MTRX Horizyn">
+<meta property="og:description" content="Turn your idea into a launch. Your projects stay in your own browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MTRX Horizyn">
+<meta property="og:url" content="{{ base }}/genesis">
+<meta property="og:image" content="{{ base }}/static/img/logo-512.png">
+<link rel="canonical" href="{{ base }}/genesis">
+</head>
+<body class="legal-page genesis-page">
+<div class="sky" aria-hidden="true"></div>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="MTRX Horizyn home">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-text">
+      <span class="wordmark">MTRX <b>HORIZYN</b></span>
+      <span class="tagline">One vision. Infinite possibilities.</span>
+    </span>
+  </a>
+  <nav class="mainnav" aria-label="Main">
+    <a href="/">Home</a>
+    <a href="/genesis" class="active" aria-current="page">Genesis</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/brand">Brand</a>
+  </nav>
+  <a class="g-home" href="/">Home</a>
+</header>
+
+<main class="genesis" id="genesis" data-ai="{{ 'on' if ai else 'off' }}">
+  <noscript><p class="panel g-noscript">Genesis runs in your browser, so it needs JavaScript turned on.</p></noscript>
+
+  <div id="g-list-view">
+    <section class="g-hero panel">
+      <div class="g-hero-art" aria-hidden="true"><span class="g-spark"></span></div>
+      <div class="g-hero-copy">
+        <p class="eyebrow g-eyebrow">MTRX Horizyn</p>
+        <h1 class="g-title">Genesis</h1>
+        <p class="g-line">Where new ideas begin.</p>
+        <p class="g-text">Write your idea down, say who it's for, and take it from Spark to Launch with a
+          checklist in plain words. Your projects stay in this browser: nothing is sent to us.</p>
+        <div class="cta-row"><a class="btn btn-genesis" href="#new">Start a project <span aria-hidden="true">→</span></a></div>
+      </div>
+      <ol class="g-path" id="g-path"></ol>
+    </section>
+
+    <p class="g-storage-note" id="g-storage-note" hidden>Your browser is blocking saved data for this site,
+      so your projects last only until you close this tab. Use <b>Download</b> to keep a copy.</p>
+
+    <div class="g-list-head">
+      <h2>Your projects <span class="g-hint" id="g-count"></span></h2>
+      <div class="g-tools">
+        <span class="g-tools-data" id="g-tools-data">
+          <button class="g-tool" type="button" id="g-download">Download</button>
+          <button class="g-tool danger" type="button" id="g-delete-all">Delete all</button>
+        </span>
+        <button class="g-tool" type="button" id="g-import">Import</button>
+        <input type="file" id="g-file" accept=".json,application/json" hidden>
+      </div>
+    </div>
+    <ul class="g-cards" id="g-cards"></ul>
+    <section class="g-empty panel" id="g-empty">
+      <span class="g-spark g-spark-big" aria-hidden="true"></span>
+      <h2>Every big thing starts as a spark.</h2>
+      <p>RankUp, CyberLogix AI and OmniArmor.ai each began as one line. Write yours: a name, the
+        problem it solves in a sentence, and who it's for.</p>
+      <div class="cta-row">
+        <a class="btn btn-genesis" href="#new">Start your first project <span aria-hidden="true">→</span></a>
+        <button class="btn btn-ghost" type="button" id="g-import-empty">Import a file</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel g-form-panel" id="g-new" hidden>
+    <a class="g-back" href="#">← All projects</a>
+    <p class="eyebrow g-eyebrow">Spark</p>
+    <h1 class="g-form-title">Start a project</h1>
+    <p class="g-form-lede">Three lines and you're off. You can change your mind about all of it later.</p>
+    <form id="g-form" novalidate>
+      <label class="g-field">
+        <span class="g-label">Name <small class="g-count" id="g-name-count"></small></span>
+        <input id="g-name" autocomplete="off" placeholder="Nova">
+        <small class="g-msg" id="g-name-msg"></small>
+      </label>
+      <label class="g-field">
+        <span class="g-label">One-line pitch <small class="g-count" id="g-pitch-count"></small></span>
+        <input id="g-pitch" autocomplete="off" placeholder="Homework reminders that actually work">
+        <small class="g-msg" id="g-pitch-msg"></small>
+      </label>
+      <label class="g-field">
+        <span class="g-label">Who it's for <small class="g-count" id="g-audience-count"></small></span>
+        <input id="g-audience" autocomplete="off" placeholder="Students who forget what's due">
+        <small class="g-msg" id="g-audience-msg"></small>
+      </label>
+      <label class="g-field">
+        <span class="g-label">Web address idea <small class="g-count">suggested from the name</small></span>
+        <input id="g-address" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url" placeholder="nova.com">
+        <small class="g-msg" id="g-address-msg"></small>
+      </label>
+      <p class="g-error" id="g-form-error"></p>
+      <div class="cta-row">
+        <button class="btn btn-genesis" type="submit">Start project <span aria-hidden="true">→</span></button>
+        <a class="btn btn-ghost" href="#">Cancel</a>
+      </div>
+      <p class="g-private">Saved only in this browser. Nothing you type here is sent to MTRX Horizyn.</p>
+    </form>
+  </section>
+
+  <div class="g-detail" id="g-detail" hidden></div>
+</main>
+
+<footer class="footer">
+  <span class="foot-brand">MTRX HORIZYN</span>
+  <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
+  <nav class="foot-links" aria-label="About this site">
+    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
+    {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
+  </nav>
+</footer>
+
+<p class="g-toast" id="g-toast" role="status" aria-live="polite"></p>
+
+<script src="{{ asset('js/genesis-store.js') }}" defer></script>
+<script src="{{ asset('js/genesis.js') }}" defer></script>
+</body>
+</html>

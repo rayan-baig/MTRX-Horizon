@@ -5,6 +5,8 @@ The website for MTRX Horizyn, the parent company of **RankUp**, **CyberLogix AI*
 
 - **The home page** (`/`) shows the three apps, what each one does, and what the company
   stands for. Every number on it is true.
+- **Genesis** (`/genesis`) is where anyone can turn an idea into a project and take it
+  from Spark to Launch. See [Genesis](#genesis).
 - **The control console** (`/console`) shows how the apps and this server are doing. It has
   no link anywhere and looks like a missing page to everyone else.
 
@@ -241,6 +243,65 @@ privacy page has to stay true to the code: if the site starts keeping, logging o
 something new, change the page in the same commit (the tests check the cookie names and how
 long each lasts, that visitors get no cookies, and that failed tries go after a day).
 
+## Genesis
+
+`/genesis` is a feature for every visitor, linked from the home page's menu and footer: a
+place to turn an idea for an app or a small business into a project. A project has a name, a
+one-line pitch, who it's for and a web address idea (suggested from the name, and checked to
+be a real address shape). It moves through **Spark → Plan → Build → Launch**, forward or back,
+with a launch checklist in plain words grouped by stage (check the name is free, talk to
+people it's for, the simplest first version, try it with 3 real people, a privacy page, a way
+to contact you, backups, a launch day...), progress per stage and overall, and notes. The list
+shows every project as a card, with an empty state that invites the first idea.
+
+**Nothing about a project is kept on the server.** Projects live only in the visitor's own
+browser (`localStorage`). If the browser blocks storage, Genesis still works for that visit
+and says so. **Download** saves every project as a JSON file, **Import** reads one back (to
+move to another device), and **Delete all** clears them. The privacy page says the same.
+
+The rules and the saving are in `static/js/genesis-store.js`, which has no page code in it, so
+Node can test it: `node --test tests/js/genesis_store.test.js` (the Python tests run it too).
+
+### Ask Genesis: free AI help
+
+On a project, **Ask Genesis** offers a few helpers ("Sharpen my pitch", "Who might use this?",
+"Simplest first version", "Name ideas", "What could go wrong?", "What should I do next?") and
+one short question. The answer shows on the page and can be saved into the project's notes,
+which are still only in the browser.
+
+Only when a button is pressed, the page sends the project's name, pitch, who it's for and
+stage, and the question, to `POST /api/genesis/ask`, which passes exactly those to the AI
+provider (Anthropic, through its Python SDK) and returns the answer. The text is never stored
+or logged, and failures are logged by their kind only. A fixed system prompt keeps answers
+short, plain and on the idea, refuses unsafe or off-topic requests, and never asks for
+personal details. The panel tells people not to type any.
+
+It is **off until two settings are set**:
+
+| Setting | Value |
+|---|---|
+| `GENESIS_AI_KEY` | an API key from the Anthropic Console |
+| `GENESIS_AI_MODEL` | set GENESIS_AI_MODEL to a current model id from Anthropic's model list |
+
+No model id is written anywhere in this repository; change the setting to change the model.
+Without both, the panel says AI help isn't switched on yet and the rest of Genesis works.
+
+Free means the company pays, so it is fenced in:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `GENESIS_AI_PER_HOUR` / `GENESIS_AI_PER_DAY` | 10 / 30 | asks per visitor, counted by address (no cookie); the address and time are kept 24 hours |
+| `GENESIS_AI_DAILY_CAP_USD` | 2 | the most all asks together may cost in a UTC day |
+| `GENESIS_AI_INPUT_PRICE` / `GENESIS_AI_OUTPUT_PRICE` | 10 / 50 | the model's US dollars per million tokens, for the estimate; set them to the real prices |
+| `GENESIS_AI_EFFORT` | `low` | how hard the model thinks; empty sends nothing, for a model that doesn't take it |
+
+Before each ask, the most it could cost is set aside against the day's cap; when the answer
+arrives, that is replaced by its real cost from the token counts. Each answer is at most 1,200
+tokens and each request a few hundred words. A visitor over their limit, or everyone once the
+cap is reached, gets a friendly message, and the provider is not called. Timeouts (30 seconds)
+and provider errors also get a friendly message. Set a monthly spend limit in the Anthropic
+Console as well, as a second fence.
+
 ## Running it on a computer
 
 You need Python 3 (the live site runs 3.13). Install into a virtual environment:
@@ -325,6 +386,8 @@ needs changing. The line shows counts only, never anyone's address.
 - `horizon/stats.py`: the console's numbers, and the project list
 - `horizon/health.py`: the apps' health checks, and the alerts when one is down
 - `horizon/upkeep.py`: the jobs the server runs on its own once a minute
+- `horizon/genesis_ai.py`: Ask Genesis, its limits and its system prompt
+- `templates/genesis.html`, `static/js/genesis*.js`, `static/css/genesis.css`: Genesis
 - `templates/`: the pages
 - `static/`: styles, scripts, pictures (cut from the supplied design artwork) and the two
   fonts (Inter and Montserrat, under the SIL Open Font License; the licences are beside them)

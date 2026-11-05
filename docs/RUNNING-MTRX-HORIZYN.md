@@ -142,6 +142,7 @@ page before you sign up.
 | Email | $0 to start | Most email services have a free tier |
 | Text messages and calls (CyberLogix, Twilio) | pay per message | CyberLogix tracks this and has a spending cap per business |
 | Stripe | a fee per payment, no monthly fee | |
+| Ask Genesis (AI help on `/genesis`, Anthropic) | pay per answer | Off until set up; at most `GENESIS_AI_DAILY_CAP_USD` a day (2 dollars by default, so at most about $60 a month) |
 
 Before the first customer, that is roughly **$40–50 a month** plus the
 domain.

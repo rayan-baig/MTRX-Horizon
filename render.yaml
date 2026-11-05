@@ -18,3 +18,9 @@ services:
         generateValue: true  # base64, so it may hold "/", "+" or "="; the approval page takes them
       - key: MTRX_KNOCK
         sync: false          # you type this in yourself; it is never stored in the code
+      - key: GENESIS_AI_KEY
+        sync: false          # optional: Ask Genesis stays off until this and the model are set
+      - key: GENESIS_AI_MODEL
+        sync: false          # a current model id from Anthropic's model list
+      - key: GENESIS_AI_DAILY_CAP_USD
+        value: "2"

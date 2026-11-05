@@ -46,6 +46,14 @@ class Settings:
     smtp_user: str
     smtp_password: str
     noindex: bool
+    genesis_ai_key: str
+    genesis_ai_model: str
+    genesis_ai_effort: str
+    genesis_ai_daily_cap_usd: float
+    genesis_ai_per_hour: int
+    genesis_ai_per_day: int
+    genesis_ai_input_price: float
+    genesis_ai_output_price: float
 
 
 def parse_knock(raw: str) -> tuple[str, ...]:
@@ -72,6 +80,15 @@ def _whole_number(raw: str | None, default: int) -> int:
     except ValueError:
         return default
     return value if value > 0 else default
+
+
+def _money(raw: str | None, default: float) -> float:
+    """A setting that should be a number of dollars, 0 or more."""
+    try:
+        value = float((raw or "").strip())
+    except ValueError:
+        return default
+    return value if value >= 0 and value == value and value != float("inf") else default
 
 
 def _web_address(raw: str | None) -> str:
@@ -147,4 +164,18 @@ def get() -> Settings:
         # search results: every answer says noindex, robots.txt closes the
         # site and the sitemap is empty (docs/STAGING.md). Never on live.
         noindex=env.get("MTRX_NOINDEX", "") == "1",
+        # Ask Genesis (genesis_ai.py). Off until both the key and the model
+        # are set. The model is a setting so that no model name is written
+        # into this public code; it can change without a deploy.
+        genesis_ai_key=env.get("GENESIS_AI_KEY", "").strip(),
+        genesis_ai_model=env.get("GENESIS_AI_MODEL", "").strip(),
+        genesis_ai_effort=env.get("GENESIS_AI_EFFORT", "low").strip().lower(),
+        # What the AI may cost in a day, all visitors together. The prices
+        # are per million tokens and only used for that estimate; they
+        # default high, so the estimate errs on the safe side.
+        genesis_ai_daily_cap_usd=_money(env.get("GENESIS_AI_DAILY_CAP_USD"), 2.0),
+        genesis_ai_per_hour=_whole_number(env.get("GENESIS_AI_PER_HOUR"), 10),
+        genesis_ai_per_day=_whole_number(env.get("GENESIS_AI_PER_DAY"), 30),
+        genesis_ai_input_price=_money(env.get("GENESIS_AI_INPUT_PRICE"), 10.0),
+        genesis_ai_output_price=_money(env.get("GENESIS_AI_OUTPUT_PRICE"), 50.0),
     )

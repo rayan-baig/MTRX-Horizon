@@ -91,6 +91,20 @@ CREATE TABLE IF NOT EXISTS error_reports (
     sent INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS error_reports_at ON error_reports (at);
+-- Ask Genesis (genesis_ai.py): one row per question, so each visitor's asks
+-- can be counted. Only who (the address, as the failed-tries table keeps
+-- it) and when; never the question or the idea. Deleted after a day.
+CREATE TABLE IF NOT EXISTS genesis_asks (
+    who TEXT NOT NULL,
+    at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS genesis_asks_lookup ON genesis_asks (who, at);
+-- What each answer is estimated to have cost, for the daily cap. Kept two days.
+CREATE TABLE IF NOT EXISTS genesis_spend (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at REAL NOT NULL,
+    usd REAL NOT NULL
+);
 """
 
 

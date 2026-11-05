@@ -668,7 +668,19 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 @keyframes fill { 0% { transform: scaleX(0); } 25% { transform: scaleX(1); } 25.01%, 100% { transform: scaleX(0); } }
 
 /* ---------- narrower screens ---------- */
-@media (max-width: 1280px) {
+/* Seven links and the brand side by side: the links close up a little. */
+@media (min-width: 1101px) and (max-width: 1640px) {
+  .page .mainnav { margin-left: 8px; gap: 0; }
+  .page .mainnav a { padding: 10px 8px; font-size: 13.5px; }
+}
+@media (min-width: 1101px) and (max-width: 1240px) {
+  .page .mainnav a { padding: 10px 6px; font-size: 13px; }
+}
+/* Below this the links no longer fit beside the brand; the menu has them all. */
+@media (max-width: 1180px) {
+  .page .mainnav { display: none; }
+}
+@media (max-width: 1440px) {
   .search { width: 38px; padding: 0; justify-content: center; border-color: transparent; background: none; }
   /* Folded to its icon. The box is still there, unseen, over the icon:
      hidden outright it could not take a tap or ⌘K, so search never opened. */

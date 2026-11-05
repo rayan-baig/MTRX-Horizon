@@ -25,6 +25,8 @@ PER_USE = (
     ("Text messages and calls (CyberLogix, Twilio)",
      "Pay per message; CyberLogix caps spending per business."),
     ("Stripe", "A fee per payment, no monthly fee."),
+    ("Ask Genesis (AI help, Anthropic)",
+     "Pay per answer; off until set up, and capped per day by GENESIS_AI_DAILY_CAP_USD."),
 )
 
 
