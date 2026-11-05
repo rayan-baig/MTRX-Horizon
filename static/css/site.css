@@ -633,6 +633,19 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 .company-apps a { text-decoration: none; }
 .company-apps span a:hover b { text-decoration: underline; }
 .company-apps small { display: block; color: var(--faint); font-size: 12.5px; }
+/* A newer app from the catalog: its first letter in its colour. */
+.company-apps li.accent-green { --accent: #2ee59d; }
+.company-apps li.accent-blue { --accent: #3b8bff; }
+.company-apps li.accent-violet { --accent: #a66bff; }
+.company-apps li.accent-cyan { --accent: #22d3ee; }
+.company-apps li.accent-magenta { --accent: #ff4fb8; }
+.company-apps li.accent-amber { --accent: #fbbf24; }
+.company-badge {
+  width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center;
+  font: 700 17px/1 var(--head); color: #0d0820; background: var(--accent, var(--cyan));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent, var(--cyan)) 45%, transparent);
+}
+.company-apps b { overflow-wrap: anywhere; }
 .company-open { font-size: 13px; color: var(--accent); white-space: nowrap; }
 .company-contact { color: var(--muted); font-size: 14.5px; margin: 0; }
 .company-contact a { color: var(--cyan); overflow-wrap: anywhere; }

@@ -1,4 +1,4 @@
-/* Chroma Vortex: partners, ideas and investors. Builds on site.css. Its
+/* Chroma Vortex: partners, ideas, investors and buyers. Builds on site.css. Its
    own look is a swirl of the whole spectrum, turning slowly around a
    bright core; each path takes one colour from it. */
 
@@ -18,6 +18,14 @@
 .path-partner { --pc: var(--v-cyan); }
 .path-pitch { --pc: var(--v-magenta); }
 .path-invest { --pc: var(--v-green); }
+.path-buy { --pc: var(--v-violet); }
+/* The colours an app in the catalog can take (catalog.ACCENTS). */
+.accent-green { --ac: #2ee59d; }
+.accent-blue { --ac: #3b8bff; }
+.accent-violet { --ac: #a66bff; }
+.accent-cyan { --ac: #22d3ee; }
+.accent-magenta { --ac: #ff4fb8; }
+.accent-amber { --ac: #fbbf24; }
 
 .vortex { width: min(1180px, 100%); margin: 0 auto; padding: 28px 16px 56px; display: grid; gap: 18px; }
 .v-home { display: none; margin-left: auto; color: var(--muted); font-size: 14px; text-decoration: none; }
@@ -108,8 +116,9 @@
 .v-line { font-size: clamp(18px, 2.4vw, 22px); margin-bottom: 10px; }
 .v-text { color: var(--muted); font-size: 15px; }
 
-/* ---------- the three paths ---------- */
-.v-paths { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+/* ---------- the four paths ---------- */
+/* Four across, or two by two: never one card on a row of its own. */
+.v-paths { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .v-path {
   position: relative; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; gap: 12px;
   padding: 20px; border-radius: var(--radius); color: var(--text); text-decoration: none;
@@ -198,6 +207,14 @@
 }
 .v-chip:has(input:checked)::after { content: "✓"; color: var(--pc); font-weight: 700; }
 .v-chip:has(input:focus-visible) { outline: 2px solid var(--pc); outline-offset: 2px; }
+.v-chip span { overflow-wrap: anywhere; }
+.v-none { margin: 0; font-size: 14px; color: var(--faint); }
+/* A new app has no picture yet: its first letter, in its colour. */
+.v-badge {
+  width: 22px; height: 22px; flex: none; border-radius: 6px; display: inline-grid; place-items: center;
+  font: 700 12px/1 var(--head); color: #0d0820; background: var(--ac, var(--v-cyan));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ac, var(--v-cyan)) 45%, transparent);
+}
 
 /* The honeypot: off the page for people, there for simple bots. */
 .v-trap { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
@@ -239,6 +256,34 @@
 .v-genesis-pick b { font-weight: 600; overflow-wrap: anywhere; }
 .v-genesis-pick span { color: var(--faint); font-size: 12.5px; overflow-wrap: anywhere; }
 
+/* ---------- our apps ---------- */
+.v-catalog { display: grid; gap: 14px; margin-top: 10px; scroll-margin-top: 96px; }
+.v-catalog-head .v-lede { margin-bottom: 0; }
+.v-app-list {
+  list-style: none; margin: 0; padding: 0; display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+}
+.v-app {
+  display: grid; grid-template-rows: auto 1fr auto; gap: 10px; padding: 18px; border-radius: var(--radius); min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--ac) 45%, var(--line));
+  background: radial-gradient(ellipse 70% 90% at 0 0, color-mix(in srgb, var(--ac) 14%, transparent), transparent 70%), var(--panel);
+}
+.v-app-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.v-app-head img { width: 44px; height: 44px; border-radius: 12px; flex: none;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--ac) 45%, transparent); }
+.v-app-head .v-badge { width: 44px; height: 44px; border-radius: 12px; font-size: 20px; }
+.v-app h3 { font: 700 18px/1.2 var(--head); margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.v-app-line { margin: 0; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.v-app-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.v-app-actions .btn { min-height: 34px; padding: 0 12px; font-size: 13px; text-decoration: none; }
+.v-app-open {
+  margin-left: auto; flex: none; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  color: var(--ac); text-decoration: none; border: 1px solid color-mix(in srgb, var(--ac) 60%, transparent);
+}
+.v-app-open:hover { background: color-mix(in srgb, var(--ac) 14%, transparent); }
+.v-app-pick { border-color: color-mix(in srgb, var(--pc) 55%, transparent); color: var(--text); }
+.v-app-pick:hover { border-color: var(--pc); }
+
 /* ---------- sent ---------- */
 .v-sent {
   display: grid; justify-items: center; text-align: center; gap: 10px; padding: clamp(28px, 5vw, 48px) 20px;
@@ -254,13 +299,24 @@
 .v-sent .cta-row { justify-content: center; gap: 12px; }
 
 /* ---------- narrower screens ---------- */
-@media (max-width: 900px) {
-  .v-paths { grid-template-columns: 1fr; gap: 10px; }
+@media (max-width: 1060px) {
+  .v-paths { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .v-path { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto; align-items: center; padding: 14px 16px; gap: 4px 14px; }
   .v-path-icon { grid-row: 1 / span 2; }
   .v-path-go { grid-column: 2; }
   .v-path-text b { font-size: 17px; }
   .v-path-text span { font-size: 13.5px; }
+}
+/* Phones: still two by two, each card a small tile. */
+@media (max-width: 600px) {
+  .v-paths { gap: 10px; }
+  .v-path { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; align-items: start; padding: 12px; gap: 8px; }
+  .v-path-icon { grid-row: auto; width: 38px; height: 38px; border-radius: 11px; }
+  .v-path-icon svg { width: 20px; height: 20px; }
+  .v-path-go { grid-column: auto; font-size: 13px; }
+  .v-path-text { gap: 4px; }
+  .v-path-text b { font-size: 15px; }
+  .v-path-text span { font-size: 12.5px; line-height: 1.4; }
 }
 @media (max-width: 720px) {
   .v-home { display: inline-block; }

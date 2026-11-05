@@ -196,6 +196,8 @@
     "Device removed": "ico-devices", "Door opened": "ico-door", "Approval code made": "ico-plus",
     "App down": "ico-activity", "App back up": "ico-apps", "Alert email failed": "ico-activity",
     "Vortex message": "ico-vortex", "Vortex message deleted": "ico-vortex",
+    "App added": "ico-plus", "App edited": "ico-apps", "App released": "ico-globe",
+    "App back in development": "ico-apps", "App deleted": "ico-apps",
   };
 
   function drawFeed(data) {
@@ -243,8 +245,8 @@
     for (const p of data.projects) {
       list.append(el("li", {},
         el("b", { text: p.name }),
-        el("small", { text: `${p.kind} · Next: ${p.next}` }),
-        el("span", { class: `pill ${p.status === "Built" ? "ok" : "off"}`, text: p.status })));
+        el("small", { text: p.next ? `${p.kind} · Next: ${p.next}` : p.kind }),
+        el("span", { class: `pill ${["Built", "Released"].includes(p.status) ? "ok" : "off"}`, text: p.status })));
     }
   }
 
@@ -340,7 +342,8 @@
 
     const fields = el("dl", { class: "vx-fields" },
       vxField("Name", m.name), vxField("Organisation", m.organisation),
-      vxField("Apps", m.apps.join(", ")), vxField("Kind of partnership", m.partnership),
+      vxField(m.kind === "buy" ? "Interested in buying" : "Apps", m.apps.join(", ")),
+      vxField("Kind of partnership", m.partnership),
       vxField("Idea", m.idea), vxField("One-line pitch", m.pitch), vxField("Who it's for", m.audience));
 
     const actions = el("div", { class: "vx-actions" });
@@ -410,6 +413,172 @@
     });
   });
 
+  // ---------------------------------------------------------------- the app catalog
+  // Every app MTRX Horizyn makes. Releasing one puts it on Chroma Vortex at
+  // once; one in development is shown nowhere. What the owner typed is
+  // placed with textContent.
+
+  let caAccents = [];
+  let caCount = 0;
+  let caEditing = null; // the key of the app being edited, or null when adding
+  let caKeyTyped = false;
+  const caForm = $("ca-form");
+  const caInput = (name) => caForm.elements.namedItem(name);
+
+  async function postJSON(url, body) {
+    const res = await fetch(url, {
+      method: "POST", credentials: "same-origin",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    let data = {};
+    try { data = await res.json(); } catch (_) { /* nothing */ }
+    if (res.status === 404) window.location.replace("/");
+    return { ok: res.ok, data };
+  }
+
+  const slug = (text) => text.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "").slice(0, 24).replace(/-+$/, "");
+
+  function caBadge(a) {
+    return a.icon ? el("img", { class: "ca-icon", src: a.icon, alt: "", width: "40", height: "40" })
+      : el("span", { class: `ca-badge accent-${a.accent}`, text: a.letter });
+  }
+
+  function caSwatches(selected) {
+    $("ca-swatches").replaceChildren(...caAccents.map((name) => {
+      const input = el("input", { type: "radio", name: "accent", value: name });
+      input.checked = name === selected;
+      return el("label", { class: `ca-swatch accent-${name}` }, input, el("i", {}), el("span", { text: name }));
+    }));
+  }
+
+  function caMsg(field, text) {
+    const out = caForm.querySelector(`[data-ca-msg="${field}"]`);
+    if (!out) return false;
+    out.textContent = text || "";
+    return true;
+  }
+
+  function caClear() {
+    caForm.querySelectorAll("[data-ca-msg]").forEach((out) => { out.textContent = ""; });
+    $("ca-error").textContent = "";
+  }
+
+  function caOpen(app) {
+    caEditing = app ? app.key : null;
+    caKeyTyped = false;
+    caForm.reset();
+    caClear();
+    $("ca-form-title").textContent = app ? `Edit ${app.name}` : "Add an app";
+    $("ca-save").textContent = app ? "Save changes" : "Add app";
+    $("ca-key-field").hidden = Boolean(app);
+    if (app) {
+      caInput("name").value = app.name;
+      caInput("line").value = app.line;
+      caInput("url").value = app.own_url;
+    }
+    caSwatches(app ? app.accent : caAccents[caCount % caAccents.length]);
+    caForm.hidden = false;
+    caForm.scrollIntoView({ block: "nearest" });
+    caInput("name").focus();
+  }
+
+  function caClose() {
+    caForm.hidden = true;
+    caEditing = null;
+  }
+
+  async function caAct(a, action, done) {
+    const result = await post(`/api/console/apps/${encodeURIComponent(a.key)}/${action}`);
+    if (!result.ok) { toast(result.data.error || "Couldn't do that.", true); loadCatalog(); return; }
+    toast(done);
+    drawCatalog(result.data);
+  }
+
+  function caRow(a) {
+    const status = el("span", { class: `pill ${a.released ? "ok" : "off"}`, text: a.released ? "Released to the public" : "In development" });
+    const where = el("p", { class: "ca-where" },
+      a.url ? el("a", { href: a.url, target: "_blank", rel: "noopener", text: a.url.replace(/^https?:\/\//, "") })
+        : el("span", { class: "ca-none", text: "No public address yet" }),
+      a.url_from_setting ? el("small", { text: `from the ${a.key.toUpperCase()}_URL setting` }) : null);
+
+    const edit = el("button", { type: "button", text: "Edit" });
+    edit.addEventListener("click", () => caOpen(a));
+    const flip = el("button", { type: "button", class: a.released ? "" : "go",
+      text: a.released ? "Back to development" : "Release to the public" });
+    flip.addEventListener("click", () => {
+      if (a.released) {
+        if (!confirm(`Take ${a.name} back into development? It leaves Chroma Vortex at once.`)) return;
+        caAct(a, "unrelease", `${a.name} is back in development and no longer public.`);
+      } else {
+        if (!confirm(`Release ${a.name} to the public? It appears on Chroma Vortex at once.`)) return;
+        caAct(a, "release", `${a.name} is now public on Chroma Vortex.`);
+      }
+    });
+    const actions = el("div", { class: "ca-actions" }, edit, flip);
+    if (a.deletable) {
+      const remove = el("button", { type: "button", class: "danger", text: "Delete" });
+      remove.addEventListener("click", () => {
+        if (!confirm(`Delete ${a.name}? It has never been released, and it can't be brought back.`)) return;
+        caAct(a, "delete", `${a.name} deleted.`);
+      });
+      actions.append(remove);
+    }
+    return el("li", { class: `ca-app accent-${a.accent}${a.released ? " released" : ""}` },
+      caBadge(a),
+      el("div", { class: "ca-main" },
+        el("div", { class: "ca-name" }, el("b", { text: a.name }), el("code", { text: a.key }), status),
+        el("p", { class: "ca-line", text: a.line }),
+        where),
+      actions);
+  }
+
+  function drawCatalog(data) {
+    caAccents = data.accents;
+    caCount = data.apps.length;
+    const list = $("ca-list");
+    list.replaceChildren(...data.apps.map(caRow));
+    if (!data.apps.length) list.append(el("li", { class: "vx-empty", text: "No apps yet. Add the first one." }));
+  }
+
+  async function loadCatalog() {
+    try {
+      const res = await fetch("/api/console/apps", { credentials: "same-origin" });
+      if (res.status === 404) { window.location.replace("/"); return; }
+      drawCatalog(await res.json());
+    } catch (_) {
+      /* the overview says when the console can't refresh */
+    }
+  }
+
+  $("ca-new").addEventListener("click", () => caOpen(null));
+  $("ca-cancel").addEventListener("click", caClose);
+  caInput("name").addEventListener("input", () => {
+    if (!caEditing && !caKeyTyped) caInput("key").value = slug(caInput("name").value);
+  });
+  caInput("key").addEventListener("input", () => { caKeyTyped = true; });
+  caForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    caClear();
+    const accent = caForm.querySelector('input[name="accent"]:checked');
+    const body = { name: caInput("name").value, line: caInput("line").value,
+      url: caInput("url").value.trim(), accent: accent ? accent.value : "" };
+    if (!caEditing) body.key = caInput("key").value.trim();
+    const url = caEditing ? `/api/console/apps/${encodeURIComponent(caEditing)}` : "/api/console/apps";
+    const button = $("ca-save");
+    button.disabled = true;
+    const result = await postJSON(url, body).catch(() => ({ ok: false, data: { error: "No connection. Try again." } }));
+    button.disabled = false;
+    if (!result.ok) {
+      const why = result.data.error || "Couldn't save that.";
+      if (!(result.data.field && caMsg(result.data.field, why))) $("ca-error").textContent = why;
+      return;
+    }
+    toast(caEditing ? "Saved." : `${result.data.app.name} added. It stays private until you release it.`);
+    caClose();
+    drawCatalog(result.data);
+  });
+
   // ---------------------------------------------------------------- loading
 
   async function load() {
@@ -422,6 +591,8 @@
       // The inbox redraws only when nothing in it is open, so a message
       // being read doesn't close under the owner.
       if (!document.querySelector("#vx-list details[open]")) loadVortex();
+      // The same for the app list while an app is being added or edited.
+      if (caForm.hidden) loadCatalog();
     } catch (_) {
       $("updated").textContent = "Couldn't refresh";
       $("updated").classList.add("stale");

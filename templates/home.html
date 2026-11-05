@@ -21,6 +21,11 @@
     says so instead of showing an example figure. -#}
 {%- set n = numbers or {"users_online": none, "total_users": none, "apps_online": none,
                           "apps_total": 3, "uptime": none} -%}
+{#- Newer apps join from the app catalog once released (catalog.for_home);
+    the three founding apps keep their own cards. -#}
+{%- set more = more_apps or [] -%}
+{%- set total = app_count or 3 -%}
+{%- set how_many = {3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}.get(total, total) -%}
 {%- macro count(value) -%}{{ "{:,}".format(value) if value is number else "—" }}{%- endmacro -%}
 <input type="checkbox" id="calm" class="calm-switch" aria-hidden="true" tabindex="-1">
 <div class="sky" aria-hidden="true"></div>
@@ -70,7 +75,7 @@
     <div class="hero-copy">
       <p class="eyebrow">Welcome to MTRX Horizyn</p>
       <h1><span class="line">One Vision.</span> <span class="line gradient-text">Infinite Possibilities.</span></h1>
-      <p class="lede">MTRX Horizyn is the parent company of three apps:
+      <p class="lede">MTRX Horizyn is the parent company of {{ how_many }} apps{% if more %}, including{% else %}:{% endif %}
         <a href="#learn-rankup">RankUp</a>, <a href="#learn-cyberlogix">CyberLogix AI</a> and
         <a href="#learn-omniarmor">OmniArmor.ai</a>. We build digital solutions that empower
         people, businesses, and communities.</p>
@@ -142,7 +147,7 @@
         </div>
         <div>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 4.5 9-4.5"/></svg>
-          <dt>Total Apps</dt><dd>3</dd><span>Available</span>
+          <dt>Total Apps</dt><dd>{{ total }}</dd><span>Available</span>
         </div>
       </dl>
     </div>
@@ -225,7 +230,7 @@
     <ul class="project-rows">
       {% for p in projects or [] %}
       <li><span><b>{{ p.name }}</b><small>{{ p.kind }}</small></span>
-        <em class="status">{{ p.status }}</em><span class="next">Next: {{ p.next }}</span></li>
+        <em class="status">{{ p.status }}</em>{% if p.next %}<span class="next">Next: {{ p.next }}</span>{% endif %}</li>
       {% endfor %}
     </ul>
   </div>
@@ -239,7 +244,7 @@
     <a class="sheet-x" href="#" aria-label="Close">×</a>
     <p class="eyebrow">About</p>
     <h2>About MTRX Horizyn</h2>
-    <p>MTRX Horizyn is a software company. It is the parent company of three apps, and
+    <p>MTRX Horizyn is a software company. It is the parent company of {{ how_many }} apps, and
       each one takes a worry off someone's plate, from a family's chore list to a
       business's freezer at 3am.</p>
     <ul class="company-apps">
@@ -254,6 +259,13 @@
         {% if urls[key] %}<a class="company-open" href="{{ urls[key] }}" rel="noopener" aria-label="Open {{ full }}">Open <span aria-hidden="true">→</span></a>{% endif %}
       </li>
       {% endfor %}
+      {%- for a in more %}
+      <li class="accent-{{ a.accent }}">
+        <span class="company-badge" aria-hidden="true">{{ a.letter }}</span>
+        <span><b>{{ a.name }}</b><small>{{ a.line }}</small></span>
+        {% if a.url %}<a class="company-open" href="{{ a.url }}" rel="noopener" aria-label="Open {{ a.name }}">Open <span aria-hidden="true">→</span></a>{% endif %}
+      </li>
+      {%- endfor %}
     </ul>
     <p class="eyebrow small">What we stand for</p>
     <ul class="values">
@@ -300,7 +312,7 @@
   <nav class="sheet-card menu" aria-label="MTRX Horizyn menu">
     <a href="#apps">Our apps</a>
     {% if not demo %}<a href="/genesis">Genesis: start your own idea</a>
-    <a href="/vortex">Chroma Vortex: partner, pitch or invest</a>{% endif %}
+    <a href="/vortex">Chroma Vortex: partner, pitch, invest or buy</a>{% endif %}
     <a href="#projects">Projects</a>
     <a href="#company">About MTRX Horizyn</a>
     <a href="#updates">What's new</a>

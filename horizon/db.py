@@ -125,6 +125,27 @@ CREATE TABLE IF NOT EXISTS vortex_messages (
     archived_at REAL
 );
 CREATE INDEX IF NOT EXISTS vortex_messages_at ON vortex_messages (at);
+-- The app catalog (catalog.py): every app MTRX Horizyn makes, and whether it
+-- is released to the public. Only released apps are shown on the site. The
+-- owner adds and changes them in the console. Nothing about any visitor.
+CREATE TABLE IF NOT EXISTS apps (
+    key TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    line TEXT NOT NULL DEFAULT '',
+    url TEXT NOT NULL DEFAULT '',
+    accent TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'in_development',
+    -- The last time it was released. Never cleared, so an app that has ever
+    -- been public cannot be deleted.
+    released_at REAL,
+    created_at REAL NOT NULL
+);
+-- One-off jobs that have been done, such as filling the app catalog the
+-- first time, so they are never done again.
+CREATE TABLE IF NOT EXISTS done_once (
+    job TEXT PRIMARY KEY,
+    at REAL NOT NULL
+);
 """
 
 
@@ -142,8 +163,11 @@ def connect():
 
 
 def init():
+    from . import catalog  # it uses this module, so it is imported here
+
     with connect() as conn:
         conn.executescript(SCHEMA)
+        catalog.seed(conn)
 
 
 def log(event: str, detail: str = ""):

@@ -101,10 +101,24 @@ test("the form is checked before anything is sent", () => {
 
   const partner = { name: "Grace", organisation: "Example Ltd", email: "grace@example.com", message: "Hello",
     apps: ["cyberlogix"], partnership: "resell" };
-  assert.deepEqual(V.problems("partner", partner), {});
-  assert.ok(V.problems("partner", { ...partner, apps: [] }).apps);
-  assert.ok(V.problems("partner", { ...partner, apps: ["other-app"] }).apps);
-  assert.ok(V.problems("partner", { ...partner, partnership: "merger" }).partnership);
+  // The choices are what the page offers: the released apps.
+  const released = ["rankup", "cyberlogix", "omniarmor"];
+  assert.deepEqual(V.problems("partner", partner, released), {});
+  assert.ok(V.problems("partner", { ...partner, apps: [] }, released).apps);
+  assert.ok(V.problems("partner", { ...partner, apps: ["other-app"] }, released).apps);
+  assert.ok(V.problems("partner", partner, ["rankup"]).apps); // cyberlogix not offered
+  assert.ok(V.problems("partner", { ...partner, partnership: "merger" }, released).partnership);
+
+  // Buying: the whole company, apps, or both; the organisation may be left out.
+  const buy = { name: "Jo", email: "jo@example.com", message: "Hello", apps: ["company"] };
+  const offered = [V.COMPANY, ...released];
+  assert.deepEqual(V.problems("buy", buy, offered), {});
+  assert.deepEqual(V.problems("buy", { ...buy, apps: ["company", "rankup"] }, offered), {});
+  assert.ok(V.problems("buy", { ...buy, apps: [] }, offered).apps);
+  assert.ok(V.problems("buy", { ...buy, apps: ["secret-app"] }, offered).apps);
+  assert.ok(V.problems("buy", { ...buy, message: "" }, offered).message);
+  assert.deepEqual(Object.keys(V.body("buy", { ...buy, partnership: "resell", idea: "x" })).sort(),
+    ["apps", "email", "kind", "message", "name", "organisation", "website"]);
 
   // Investors may leave the organisation out.
   assert.deepEqual(V.problems("invest", { name: "Sam", email: "sam@example.com", message: "Hi" }), {});

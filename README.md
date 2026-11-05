@@ -307,10 +307,10 @@ Console as well, as a second fence.
 
 `/vortex` (and `/chroma-vortex`, which redirects there) is the official place to work with MTRX
 Horizyn, linked from the home page's menu and footer, the other pages and the sitemap. It has
-three paths, each a short form:
+four paths, each a short form (four cards across, or two by two on tablets and phones):
 
-- **Partner with us**: name, organisation, email, which apps (RankUp, CyberLogix AI,
-  OmniArmor.ai), the kind of partnership (resell, integrate, refer customers, co-marketing,
+- **Partner with us**: name, organisation, email, which apps (any released app, see below),
+  the kind of partnership (resell, integrate, refer customers, co-marketing,
   something else) and a message.
 - **Pitch an idea**: name, email, the idea's name, a one-line pitch, who it's for, and an
   optional message. **Bring a project from Genesis** lists the visitor's Genesis projects from
@@ -322,10 +322,19 @@ three paths, each a short form:
 - **Investors**: name, organisation (optional), email and message, under a clear notice that
   the page is not an offer of shares or any investment and the company is not raising money
   through the site.
+- **Buy the company or an app**: name, organisation (optional), email, what they're interested in
+  (MTRX Horizyn as a whole, one or more released apps, or both) and a message, under the notice
+  "This is a place to start a conversation. Nothing here is an offer to sell, and no sale happens
+  through this site. Any deal would need proper agreements and advice." Kept as the `buy` kind,
+  with the choices in the `apps` column (`company` for the whole company).
+
+Below the forms, **Our apps** has a card for each released app: its name, its one line, **Open**
+when it has an address, and **Partner on this** and **Ask about buying**, which open that form
+with the app already picked.
 
 A form goes to `POST /api/vortex/send` (same-site only, like every change, and within the usual
 16 KB body limit). Every field is checked on the server: lengths, a plain email address, and the
-path, apps and partnership kind against fixed lists; fields that belong to another path are
+path and partnership kind against fixed lists, and the apps against the apps released right now; fields that belong to another path are
 dropped. Messages are kept in the `vortex_messages` table with the time, the path and the
 fields: **never the sender's address or a cookie**. They are deleted 365 days after they
 arrive by the upkeep job, and the privacy page says so.
@@ -336,11 +345,44 @@ day); a hidden field catches simple bots, which are told "sent" and dropped; and
 is mostly links is refused.
 
 When alert email is set up (`MTRX_ALERT_EMAIL` and the SMTP settings), the owner gets a short
-notice from a background thread: the path and the organisation or idea name, nothing else (no
-email address, no message), at most 30 a day. Everything is read in the console's **Chroma
+notice from a background thread: the path and the organisation or idea name (and, for buying,
+which apps or the company), nothing else (no email address, no message), at most 30 a day. Everything is read in the console's **Chroma
 Vortex** section: an inbox and an archive, an unread count on the sidebar, each message's
 fields, the reply address to copy and a **Reply by email** link, and buttons to mark read or
 unread, archive and delete. Opening a message marks it read.
+
+## The app catalog: adding and releasing apps
+
+Every app is a row in the `apps` table: a key (the short name used in links, `a`–`z`, `0`–`9`
+and dashes, fixed once added), a name, one line about it, a public address (a whole `http://` or
+`https://` address, checked like `RANKUP_URL`, or none), a colour from a fixed list (green, blue,
+violet, cyan, magenta, amber), its status (`in_development` or `released`) and `released_at`.
+The first start fills it with RankUp, CyberLogix AI and OmniArmor.ai, as released, once only
+(the `done_once` table remembers it). `RANKUP_URL`, `CYBERLOGIX_URL` and `OMNIARMOR_URL` still
+work: when one is set, it is the address used for that app.
+
+In the console, **Manage apps** adds an app (it starts in development, private), edits its name,
+line, address and colour, releases it to the public or takes it back into development, and
+deletes an app that has never been released. An app that has been public can't be deleted;
+take it back into development to hide it. Every change goes in the activity list.
+
+The moment an app is released it is on Chroma Vortex, in Our apps and in the Partner and Buy
+forms, and the server accepts it there; taken back into development, it is gone from the page
+and refused again. Messages already sent about it still show its name in the inbox.
+
+The home page keeps its three designed app cards: the secret knock taps their icons, so they
+are always there, and a founding app in development shows "soon" instead of its Open button.
+Newer released apps join the home page's About list, the project list and the app count, rather
+than its cards, which are drawn to fit three on one screen.
+
+| Route (owner only, same-site only) | What it does |
+|---|---|
+| `GET /api/console/apps` | every app, released or not |
+| `POST /api/console/apps` | add an app: `key`, `name`, `line`, `url`, `accent` |
+| `POST /api/console/apps/{key}` | edit its `name`, `line`, `url`, `accent` |
+| `POST /api/console/apps/{key}/release` | release it to the public |
+| `POST /api/console/apps/{key}/unrelease` | take it back into development |
+| `POST /api/console/apps/{key}/delete` | delete it, only if it was never released |
 
 ## Running it on a computer
 
@@ -430,6 +472,7 @@ needs changing. The line shows counts only, never anyone's address.
 - `templates/genesis.html`, `static/js/genesis*.js`, `static/css/genesis.css`: Genesis
 - `horizon/vortex.py`, `templates/vortex.html`, `static/js/vortex*.js`, `static/css/vortex.css`:
   Chroma Vortex
+- `horizon/catalog.py`: the app catalog, and which apps are released
 - `templates/`: the pages
 - `static/`: styles, scripts, pictures (cut from the supplied design artwork) and the two
   fonts (Inter and Montserrat, under the SIL Open Font License; the licences are beside them)

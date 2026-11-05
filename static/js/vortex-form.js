@@ -7,14 +7,20 @@
 (function (root) {
   "use strict";
 
-  const KINDS = ["partner", "pitch", "invest"];
+  const KINDS = ["partner", "pitch", "invest", "buy"];
   const LIMITS = { name: 80, organisation: 120, email: 254, idea: 60, pitch: 140, audience: 120, message: 3000 };
   const FIELDS = {
     partner: { required: ["name", "organisation", "email", "message"], optional: [] },
     pitch: { required: ["name", "email", "idea", "pitch", "audience"], optional: ["message"] },
     invest: { required: ["name", "email", "message"], optional: ["organisation"] },
+    buy: { required: ["name", "email", "message"], optional: ["organisation"] },
   };
-  const APPS = ["rankup", "cyberlogix", "omniarmor"];
+  // The apps a visitor can choose are the released ones, which the page
+  // lists (and the server checks again). Buying can also be about the whole
+  // company.
+  const COMPANY = "company";
+  const PICKS = { partner: "Choose which app or apps the partnership is about.",
+    buy: "Choose what you're interested in: the whole company, one or more apps, or both." };
   const PARTNERSHIPS = ["resell", "integrate", "refer", "co-market", "other"];
   const LABELS = {
     name: "your name", organisation: "your organisation", email: "your email",
@@ -29,28 +35,26 @@
   function body(kind, values) {
     const out = { kind };
     for (const f of fieldsOf(kind)) out[f] = typeof values[f] === "string" ? values[f].trim() : "";
-    if (kind === "partner") {
-      out.apps = Array.isArray(values.apps) ? values.apps.filter((a) => APPS.includes(a)) : [];
-      out.partnership = typeof values.partnership === "string" ? values.partnership : "";
-    }
+    if (kind in PICKS) out.apps = Array.isArray(values.apps) ? values.apps.filter((a) => typeof a === "string") : [];
+    if (kind === "partner") out.partnership = typeof values.partnership === "string" ? values.partnership : "";
     out[TRAP] = typeof values[TRAP] === "string" ? values[TRAP] : "";
     return out;
   }
 
-  // Every mistake, as { field: why }. Empty when the form can go.
-  function problems(kind, values) {
+  // Every mistake, as { field: why }. Empty when the form can go. `choices`
+  // is what the form offers to pick from: the released apps' keys, and for
+  // buying the company too.
+  function problems(kind, values, choices = []) {
     const errors = {};
-    if (!KINDS.includes(kind)) return { kind: "Choose one of the three paths first." };
+    if (!KINDS.includes(kind)) return { kind: "Choose one of the four paths first." };
     const b = body(kind, values);
     for (const f of fieldsOf(kind)) {
       if (!b[f] && FIELDS[kind].required.includes(f)) errors[f] = `Please fill in ${LABELS[f]}.`;
       else if (b[f].length > LIMITS[f]) errors[f] = `Please keep ${LABELS[f]} to ${LIMITS[f].toLocaleString("en")} characters.`;
     }
     if (!errors.email && !EMAIL.test(b.email)) errors.email = "That email address doesn't look right. Please check it.";
-    if (kind === "partner") {
-      if (!b.apps.length) errors.apps = "Choose which app or apps the partnership is about.";
-      if (!PARTNERSHIPS.includes(b.partnership)) errors.partnership = "Choose the kind of partnership.";
-    }
+    if (kind in PICKS && (!b.apps.length || b.apps.some((a) => !choices.includes(a)))) errors.apps = PICKS[kind];
+    if (kind === "partner" && !PARTNERSHIPS.includes(b.partnership)) errors.partnership = "Choose the kind of partnership.";
     return errors;
   }
 
@@ -90,7 +94,7 @@
     return `We'll reply to ${email} as soon as we can.`;
   }
 
-  const api = { KINDS, LIMITS, FIELDS, APPS, PARTNERSHIPS, TRAP, fieldsOf, body, problems, fromGenesis, fill, handedOver, sentLine };
+  const api = { KINDS, LIMITS, FIELDS, COMPANY, PARTNERSHIPS, TRAP, fieldsOf, body, problems, fromGenesis, fill, handedOver, sentLine };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.VortexForm = api;
 })(typeof window !== "undefined" ? window : globalThis);

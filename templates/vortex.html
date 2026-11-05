@@ -4,9 +4,9 @@
 {% include "_head.html" %}
 <link rel="stylesheet" href="{{ asset('css/vortex.css') }}">
 <title>Chroma Vortex · MTRX Horizyn</title>
-<meta name="description" content="Chroma Vortex, the official place to work with MTRX Horizyn: partner with RankUp, CyberLogix AI or OmniArmor.ai, pitch a business or app idea, or get in touch as an investor.">
+<meta name="description" content="Chroma Vortex, the official place to work with MTRX Horizyn: partner with one of our apps, pitch a business or app idea, get in touch as an investor, or ask about buying the company or an app.">
 <meta property="og:title" content="Chroma Vortex · MTRX Horizyn">
-<meta property="og:description" content="Partner with us, pitch an idea, or get in touch as an investor.">
+<meta property="og:description" content="Partner with us, pitch an idea, get in touch as an investor, or ask about buying the company or an app.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MTRX Horizyn">
 <meta property="og:url" content="{{ base }}/vortex">
@@ -33,6 +33,17 @@
   <textarea name="message" rows="6" maxlength="{{ limits.message }}" placeholder="{{ placeholder }}"></textarea>
   <small class="v-msg" data-msg-for="message"></small>
 </label>
+{%- endmacro -%}
+{#- A choice of app, for the Partner and Buy forms. -#}
+{%- macro app_badge(a) -%}
+{%- if a.icon %}<img src="{{ a.icon }}" alt="" width="22" height="22">
+{%- else %}<span class="v-badge accent-{{ a.accent }}" aria-hidden="true">{{ a.letter }}</span>{% endif -%}
+{%- endmacro -%}
+{%- macro app_chips() -%}
+{% for a in apps %}
+<label class="v-chip"><input type="checkbox" name="apps" value="{{ a.key }}">
+  {{ app_badge(a) }}<span>{{ a.name }}</span></label>
+{% endfor %}
 {%- endmacro -%}
 {%- macro send_row() -%}
 {#- The honeypot: hidden by a CSS class, so people never see it, while simple
@@ -78,10 +89,10 @@
     <div class="v-hero-copy">
       <p class="eyebrow v-eyebrow">MTRX Horizyn</p>
       <h1 class="v-title">Chroma <span>Vortex</span></h1>
-      <p class="v-line">Where partners, ideas and investors meet MTRX Horizyn.</p>
+      <p class="v-line">Where partners, ideas, investors and buyers meet MTRX Horizyn.</p>
       <p class="v-text">The official place to work with us. MTRX Horizyn is the parent company of
-        RankUp, CyberLogix AI and OmniArmor.ai. Choose a path, tell us a little, and we'll reply
-        by email.</p>
+        RankUp, CyberLogix AI and OmniArmor.ai{% if apps | rejectattr("icon") | list %}, and more{% endif %}. Choose a
+        path, tell us a little, and we'll reply by email.</p>
     </div>
   </section>
 
@@ -89,7 +100,7 @@
     <a class="v-path path-partner" href="#partner" data-path="partner">
       <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="12" r="5"/><circle cx="15.5" cy="12" r="5"/></svg></span>
       <span class="v-path-text"><b>Partner with us</b>
-        <span>Resell, integrate with, or work alongside RankUp, CyberLogix AI or OmniArmor.ai.</span></span>
+        <span>Resell, integrate with, or work alongside one of our apps.</span></span>
       <em class="v-path-go">Partner <span aria-hidden="true">→</span></em>
     </a>
     <a class="v-path path-pitch" href="#pitch" data-path="pitch">
@@ -104,6 +115,12 @@
         <span>Interested in MTRX Horizyn? Leave your details and we'll get back to you.</span></span>
       <em class="v-path-go">Get in touch <span aria-hidden="true">→</span></em>
     </a>
+    <a class="v-path path-buy" href="#buy" data-path="buy">
+      <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M12 15v2"/></svg></span>
+      <span class="v-path-text"><b>Buy the company or an app</b>
+        <span>Interested in acquiring MTRX Horizyn or one of its apps? Start the conversation.</span></span>
+      <em class="v-path-go">Ask about buying <span aria-hidden="true">→</span></em>
+    </a>
   </nav>
 
   <p class="v-choose" id="v-choose">Choose a path above to begin.</p>
@@ -111,8 +128,8 @@
   <section class="panel v-panel path-partner" id="v-partner" hidden>
     <p class="eyebrow v-kicker">Partner with us</p>
     <h2 class="v-h">Work with our apps</h2>
-    <p class="v-lede">For businesses that want to resell, integrate with, or work with RankUp,
-      CyberLogix AI or OmniArmor.ai. Tell us who you are and what you have in mind.</p>
+    <p class="v-lede">For businesses that want to resell, integrate with, or work with one of our
+      apps. Tell us who you are and what you have in mind.</p>
     <form class="v-form" data-kind="partner" novalidate>
       <div class="v-grid">
         {{ field("partner", "name", "Your name", limits.name, "name") }}
@@ -121,10 +138,8 @@
         <fieldset class="v-field v-wide v-apps">
           <legend class="v-label">Which app or apps</legend>
           <div class="v-chips">
-            {% for key, name in apps.items() %}
-            <label class="v-chip"><input type="checkbox" name="apps" value="{{ key }}">
-              <img src="/static/img/{{ key }}-icon.svg" alt="" width="22" height="22"><span>{{ name }}</span></label>
-            {% endfor %}
+            {{ app_chips() }}
+            {%- if not apps %}<p class="v-none">No apps are open to partners right now.</p>{% endif %}
           </div>
           <small class="v-msg" data-msg-for="apps"></small>
         </fieldset>
@@ -185,6 +200,31 @@
     </form>
   </section>
 
+  <section class="panel v-panel path-buy" id="v-buy" hidden>
+    <p class="eyebrow v-kicker">Buy the company or an app</p>
+    <h2 class="v-h">Ask about buying</h2>
+    <p class="v-notice v-notice-buy">This is a place to start a conversation. Nothing here is an offer to
+      sell, and no sale happens through this site. Any deal would need proper agreements and advice.</p>
+    <form class="v-form" data-kind="buy" novalidate>
+      <div class="v-grid">
+        {{ field("buy", "name", "Your name", limits.name, "name") }}
+        {{ field("buy", "organisation", "Organisation", limits.organisation, "organization", optional=true) }}
+        {{ field("buy", "email", "Email", limits.email, "email", wide=true, kind_of="email") }}
+        <fieldset class="v-field v-wide v-apps">
+          <legend class="v-label">What you're interested in</legend>
+          <div class="v-chips">
+            <label class="v-chip v-chip-company"><input type="checkbox" name="apps" value="{{ company.key }}">
+              <img src="/static/img/logo-64.png" alt="" width="22" height="22"><span>{{ company.name }}</span></label>
+            {{ app_chips() }}
+          </div>
+          <small class="v-msg" data-msg-for="apps"></small>
+        </fieldset>
+        {{ message("Message", "Who you are, what you'd like to buy, and anything we should know to start talking.") }}
+      </div>
+      {{ send_row() }}
+    </form>
+  </section>
+
   <section class="panel v-sent" id="v-sent" hidden>
     <span class="v-swirl v-swirl-small" aria-hidden="true"><i class="v-ring r1"></i><i class="v-ring r2"></i><i class="v-core"></i></span>
     <h2 class="v-sent-title">Sent.</h2>
@@ -196,6 +236,36 @@
       <a class="btn btn-ghost btn-small" href="/">Back to MTRX Horizyn</a>
     </div>
   </section>
+
+  {#- Our apps: every app released to the public, straight from the app
+      catalog. An app joins this list the moment it is released. -#}
+  {%- if apps %}
+  <section class="v-catalog" id="our-apps" aria-labelledby="v-apps-title">
+    <div class="v-catalog-head">
+      <p class="eyebrow v-eyebrow">Released to the public</p>
+      <h2 class="v-h" id="v-apps-title">Our apps</h2>
+      <p class="v-lede">Every app MTRX Horizyn has released to the public. New ones join this list the
+        day they launch.</p>
+    </div>
+    <ul class="v-app-list">
+      {% for a in apps %}
+      <li class="v-app accent-{{ a.accent }}" data-app="{{ a.key }}">
+        <div class="v-app-head">
+          {%- if a.icon %}<img src="{{ a.icon }}" alt="" width="44" height="44">
+          {%- else %}<span class="v-badge accent-{{ a.accent }}" aria-hidden="true">{{ a.letter }}</span>{% endif %}
+          <h3>{{ a.name }}</h3>
+          {% if a.url %}<a class="v-app-open" href="{{ a.url }}" rel="noopener">Open <span aria-hidden="true">↗</span></a>{% endif %}
+        </div>
+        <p class="v-app-line">{{ a.line }}</p>
+        <div class="v-app-actions">
+          <a class="btn btn-ghost btn-small v-app-pick path-partner" href="#partner" data-pick="{{ a.key }}">Partner on this</a>
+          <a class="btn btn-ghost btn-small v-app-pick path-buy" href="#buy" data-pick="{{ a.key }}">Ask about buying</a>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {%- endif %}
 </main>
 
 <footer class="footer">

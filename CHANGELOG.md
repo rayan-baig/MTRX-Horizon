@@ -4,6 +4,30 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.5.0 (5 November 2026)
+
+- **Buy the company or an app**, a fourth Chroma Vortex path: name, organisation (optional),
+  email, what the visitor is interested in (MTRX Horizyn as a whole, one or more released apps,
+  or both) and a message, under a clear notice that it only starts a conversation, nothing is an
+  offer to sell and no sale happens through the site. Stored in `vortex_messages` as the new
+  `buy` kind, with the same checks, limits, hidden bot field, link check, owner email notice and
+  console inbox as the other paths. The four path cards sit four across, or two by two on
+  tablets and phones.
+- **The app catalog**: a new `apps` table holding every app (key, name, one line, public
+  address, colour, status and when it was released), filled once on the first start with
+  RankUp, CyberLogix AI and OmniArmor.ai as released. `RANKUP_URL`, `CYBERLOGIX_URL` and
+  `OMNIARMOR_URL` still work: when one is set, it is that app's address.
+- The console's new **Manage apps** panel adds and edits apps, releases one to the public or
+  takes it back into development, and deletes one that was never released. Every change is in
+  the activity list. Owner-only routes under `/api/console/apps`.
+- An app appears on Chroma Vortex the moment it is released: a card in the new **Our apps**
+  section, with Open, **Partner on this** and **Ask about buying** (each opens that form with
+  the app picked), and a choice in the Partner and Buy forms. The server accepts exactly the
+  released apps. An app in development is shown nowhere.
+- The home page counts released apps, lists newer ones in About and Projects, and takes the
+  founding apps' Open buttons from the catalog.
+- The privacy page and the terms cover the new path.
+
 ## 1.4.0 (5 November 2026)
 
 - **Chroma Vortex** (`/vortex`, and `/chroma-vortex` redirects there): the official place to

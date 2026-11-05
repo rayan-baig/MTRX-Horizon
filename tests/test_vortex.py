@@ -1,4 +1,4 @@
-"""Chroma Vortex: partners, ideas and investors at /vortex.
+"""Chroma Vortex: partners, ideas, investors and buyers at /vortex.
 
 A visitor sends a short form; it is kept so the owner can read it in the
 console and reply, then deleted after a year. These check the page keeps the
@@ -30,6 +30,10 @@ PITCH = {"kind": "pitch", "name": "Ada", "email": "ada@example.com", "idea": "No
          "message": f"We have a prototype.\n\nCould we talk? {SECRET}"}
 INVEST = {"kind": "invest", "name": "Sam Lee", "organisation": "", "email": "sam@example.com",
           "message": f"I'd like to hear about your plans. {SECRET}"}
+BUY = {"kind": "buy", "name": "Jo Buyer", "organisation": "Example Holdings", "email": "jo@example.com",
+       "apps": ["rankup", "company"], "message": f"We'd like to talk about buying. {SECRET}"}
+BUY_NOTICE = ("This is a place to start a conversation. Nothing here is an offer to sell, and no sale "
+              "happens through this site. Any deal would need proper agreements and advice.")
 
 
 def send(client, body, headers=None):
@@ -73,12 +77,13 @@ def test_chroma_vortex_redirects_to_vortex(client):
     assert client.get("/chroma-vortex").url.path == "/vortex"
 
 
-def test_the_three_paths_and_what_each_says(client):
+def test_the_four_paths_and_what_each_says(client):
     page = client.get("/vortex").text
-    for path in ('href="#partner"', 'href="#pitch"', 'href="#invest"'):
+    for path in ('href="#partner"', 'href="#pitch"', 'href="#invest"', 'href="#buy"'):
         assert path in page
-    for title in ("Partner with us", "Pitch an idea", "Investors"):
+    for title in ("Partner with us", "Pitch an idea", "Investors", "Buy the company or an app"):
         assert title in page
+    assert page.count('class="v-path ') == 4
     for app in ("RankUp", "CyberLogix AI", "OmniArmor.ai"):
         assert app in page
     assert "If you're under 13, ask a parent or guardian to send this for you." in page
@@ -94,7 +99,7 @@ def test_the_three_paths_and_what_each_says(client):
 
 def test_the_honeypot_is_hidden_by_a_css_class(client):
     page = client.get("/vortex").text
-    assert page.count('<div class="v-trap" aria-hidden="true">') == 3
+    assert page.count('<div class="v-trap" aria-hidden="true">') == 4
     assert 'name="website"' in page
     css = (ROOT / "static/css/vortex.css").read_text()
     rule = css.split(".v-trap {", 1)[1].split("}", 1)[0]
@@ -148,11 +153,12 @@ def test_the_browser_checks_match_the_servers():
     if node is None:
         pytest.skip("Node is not installed here (CI has it)")
     out = subprocess.run([node, "-e", "const V = require(process.argv[1]); console.log(JSON.stringify("
-                                      "{LIMITS: V.LIMITS, APPS: V.APPS, PARTNERSHIPS: V.PARTNERSHIPS, FIELDS: V.FIELDS}))",
+                                      "{LIMITS: V.LIMITS, KINDS: V.KINDS, COMPANY: V.COMPANY, PARTNERSHIPS: V.PARTNERSHIPS, FIELDS: V.FIELDS}))",
                           str(ROOT / "static/js/vortex-form.js")], capture_output=True, text=True, check=True)
     js = json.loads(out.stdout)
     assert js["LIMITS"] == vortex.LIMITS
-    assert js["APPS"] == list(vortex.APPS) and js["PARTNERSHIPS"] == list(vortex.PARTNERSHIPS)
+    assert js["KINDS"] == list(vortex.KINDS) and js["COMPANY"] == vortex.COMPANY
+    assert js["PARTNERSHIPS"] == list(vortex.PARTNERSHIPS)
     assert js["FIELDS"] == {k: {"required": list(v["required"]), "optional": list(v["optional"])}
                             for k, v in vortex.FIELDS.items()}
 
@@ -180,7 +186,7 @@ def test_the_genesis_hand_off_pre_fills_in_node():
 
 # ---------------------------------------------------------------- sending
 
-@pytest.mark.parametrize("body", [PARTNER, PITCH, INVEST], ids=["partner", "pitch", "invest"])
+@pytest.mark.parametrize("body", [PARTNER, PITCH, INVEST, BUY], ids=["partner", "pitch", "invest", "buy"])
 def test_each_path_sends_and_is_stored(client, body):
     response = send(client, body)
     assert response.status_code == 200, response.text
@@ -199,6 +205,10 @@ def test_each_path_sends_and_is_stored(client, body):
         assert row["organisation"] == "" and row["apps"] == ""
     if body["kind"] == "invest":
         assert row["organisation"] == "" and row["idea"] == ""
+    if body["kind"] == "buy":
+        # The company first, then the apps in the catalog's order.
+        assert row["apps"] == "company,rankup" and row["organisation"] == "Example Holdings"
+        assert row["partnership"] == "" and row["idea"] == ""
 
 
 def test_fields_another_path_has_are_not_kept(client):
@@ -557,3 +567,109 @@ def test_terms_say_a_message_is_no_agreement_or_investment_offer(client):
     page = " ".join(client.get("/terms").text.split())
     assert "doesn't create a partnership, an agreement or any obligation" in page
     assert "Nothing on this site is an offer to sell, or a request to buy, any shares or other investment." in page
+
+
+# ---------------------------------------------------------------- buying the company or an app
+
+def test_the_buy_path_shows_its_notice_and_choices(client):
+    page = client.get("/vortex").text
+    section = page.split('id="v-buy"', 1)[1].split("</section>", 1)[0]
+    notice = " ".join(section.split('<p class="v-notice v-notice-buy">', 1)[1].split("</p>", 1)[0].split())
+    assert notice == BUY_NOTICE
+    assert 'data-kind="buy"' in section
+    for field in ('name="name"', 'name="organisation"', 'name="email"', 'name="message"'):
+        assert field in section
+    assert 'value="company"' in section and "MTRX Horizyn (the whole company)" in section
+    for key in ("rankup", "cyberlogix", "omniarmor"):
+        assert f'name="apps" value="{key}"' in section
+    # No price talk anywhere near it.
+    for word in ("price", "valuation", "returns", "offer to buy"):
+        assert word not in section.lower()
+
+
+@pytest.mark.parametrize("change", [
+    {"apps": []},
+    {"apps": "company"},
+    {"apps": ["company", "company"]},
+    {"apps": ["no-such-app"]},
+    {"apps": [7]},
+    {"apps": ["company", "rankup", "cyberlogix", "omniarmor", "extra"]},
+    {"message": ""},
+    {"name": ""},
+    {"email": "jo@"},
+    {"organisation": "x" * 121},
+])
+def test_buy_choices_are_checked(client, change):
+    response = send(client, {**BUY, **change})
+    assert response.status_code == 400 and response.json()["error"]
+    field = next(iter(change))
+    assert response.json()["field"] == field
+    assert rows() == []
+
+
+def test_buying_can_be_the_company_alone_an_app_alone_or_both(client):
+    for apps, kept in ((["company"], "company"), (["omniarmor"], "omniarmor"),
+                       (["omniarmor", "company", "rankup"], "company,rankup,omniarmor")):
+        assert send(client, {**BUY, "apps": apps}).status_code == 200
+        assert rows()[-1]["apps"] == kept
+    # Organisation is optional, and fields from another path are dropped.
+    assert send(client, {**BUY, "organisation": "", "partnership": "resell", "idea": "Nova"}).status_code == 200
+    last = rows()[-1]
+    assert last["organisation"] == "" and last["partnership"] == "" and last["idea"] == ""
+
+
+def test_buy_messages_are_counted_with_the_rest_and_the_honeypot_works(client, monkeypatch):
+    monkeypatch.setenv("MTRX_TRUST_PROXY", "1")
+    who = {"X-Forwarded-For": "203.0.113.9"}
+    assert send(client, {**BUY, "website": "https://bot.example"}, who).status_code == 200
+    assert rows() == []
+    links = " ".join(f"https://spam{i}.example/x" for i in range(6))
+    assert send(client, {**BUY, "message": links}, who).status_code == 400
+    for _ in range(5):
+        assert send(client, BUY, who).status_code == 200
+    assert send(client, BUY, who).status_code == 429
+    assert client.post("/api/vortex/send", json=BUY, headers={"Origin": "https://evil.example"}).status_code == 403
+
+
+def test_the_owner_hears_of_a_buy_message_without_personal_details(client, monkeypatch):
+    from horizon import health
+    sent = []
+    monkeypatch.setattr(health, "send_email", lambda subject, body: sent.append((subject, body)) or True)
+    monkeypatch.setenv("MTRX_ALERT_EMAIL", "owner@example.com")
+    monkeypatch.setenv("MTRX_SMTP_HOST", "smtp.example.com")
+    assert send(client, BUY).status_code == 200
+    deadline = time.time() + 5
+    while not sent and time.time() < deadline:
+        time.sleep(0.05)
+    ((subject, body),) = sent
+    assert subject == "MTRX Horizyn: new Chroma Vortex message (Buy the company or an app)"
+    assert "Organisation: Example Holdings" in body
+    assert "Interested in: MTRX Horizyn (the whole company), RankUp" in body
+    for private in (SECRET, "Jo Buyer", "@example.com", "We'd like"):
+        assert private not in body
+
+
+def test_a_buy_message_shows_in_the_owners_inbox(client):
+    owner(client)
+    assert send(client, BUY).status_code == 200
+    data = client.get("/api/console/vortex").json()
+    (m,) = data["messages"]
+    assert m["kind"] == "buy" and m["kind_name"] == "Buy the company or an app"
+    assert m["apps"] == ["MTRX Horizyn (the whole company)", "RankUp"]
+    assert m["organisation"] == "Example Holdings" and m["email"] == "jo@example.com"
+    assert data["unread"] == 1
+    assert client.post(f"/api/console/vortex/{m['id']}/archive", headers=ORIGIN).json()["unread"] == 0
+    script = client.get("/console/assets/console.js").text
+    assert 'm.kind === "buy" ? "Interested in buying"' in script
+    css = client.get("/console/assets/console.css").text
+    assert ".vx-msg.kind-buy" in css
+
+
+def test_privacy_and_terms_cover_the_buy_path(client):
+    privacy = " ".join(client.get("/privacy").text.split())
+    assert "ask about buying the company or one of its apps" in privacy
+    assert "for buying, whether it's the whole company or which apps" in privacy
+    assert "which of the four paths you chose" in privacy
+    terms = " ".join(client.get("/terms").text.split())
+    assert ("Nothing on this site is an offer to sell the company or any app, and no sale happens "
+            "through this site.") in terms

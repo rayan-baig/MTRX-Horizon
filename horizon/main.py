@@ -22,7 +22,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
-from . import config, costs, db, errors, genesis_ai, health, lock, stats, upkeep, vortex
+from . import catalog, config, costs, db, errors, genesis_ai, health, lock, stats, upkeep, vortex
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -323,13 +323,25 @@ async def _bad_request(request: Request, exc):
 def home(request: Request):
     settings = config.get()
     stats.refresh_in_background()
+    # The three founding apps keep their cards; their Open buttons and any
+    # newer released app come from the app catalog (catalog.for_home).
+    apps = catalog.for_home()
     return templates.TemplateResponse(request, "home.html", {
-        "urls": settings.app_urls,
+        "urls": apps["urls"],
+        "more_apps": apps["extra"],
+        "app_count": apps["count"],
         "contact": settings.contact_email,
         "numbers": stats.public_numbers(),
-        "projects": stats.PROJECTS,
+        "projects": _projects(apps["extra"]),
         "base": base_url(request),
     })
+
+
+def _projects(extra: list) -> list:
+    """The hand-kept project list, then each newer released app."""
+    known = {p["name"] for p in stats.PROJECTS}
+    return stats.PROJECTS + [{"name": a["name"], "kind": a["line"], "status": "Released", "next": ""}
+                             for a in extra if a["name"] not in known]
 
 
 # The date the privacy page and the terms last changed in substance.
@@ -381,15 +393,18 @@ def genesis(request: Request):
 
 
 # Chroma Vortex: the official place to partner with MTRX Horizyn, pitch an
-# idea or reach the company as an investor (vortex.py). It keeps what the
-# visitor chooses to send, for the owner to reply to, and nothing else.
+# idea, reach the company as an investor or ask about buying it or an app
+# (vortex.py). It keeps what the visitor chooses to send, for the owner to
+# reply to, and nothing else. Its app list is the released apps in the
+# catalog, read on every visit, so an app shows the moment it is released.
 @app.api_route("/vortex", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def vortex_page(request: Request):
     return templates.TemplateResponse(request, "vortex.html", {
         "page": "vortex",
         "contact": config.get().contact_email,
         "base": base_url(request),
-        "apps": vortex.APPS,
+        "apps": [catalog.public(a) for a in catalog.released()],
+        "company": {"key": vortex.COMPANY, "name": vortex.COMPANY_NAME},
         "partnerships": vortex.PARTNERSHIPS,
         "limits": vortex.LIMITS,
         "keep_days": vortex.KEEP_DAYS,
@@ -679,7 +694,7 @@ def overview(request: Request, days: int = 30):
         "alerts": _alert_setup(),
         "activity": activity,
         "devices": devices,
-        "projects": stats.PROJECTS,
+        "projects": _projects(catalog.for_home()["extra"]),
         "admin_urls": config.get().admin_urls,
         "costs": costs.summary(),
     }
@@ -759,3 +774,87 @@ def vortex_act(request: Request, message_id: str, action: str):
     if action == "delete":
         db.log("Vortex message deleted", f"by {dev['name']}")
     return {"ok": True, "unread": vortex.unread()}
+
+
+# ---------------------------------------------------------------- the app catalog, for the owner
+# Every app, and whether it is released (catalog.py). Releasing one puts it
+# on Chroma Vortex at once. Like every change, these only come from this
+# site's own pages (see `guard`); each one is written to the activity list.
+
+def _catalog_answer() -> dict:
+    return {"apps": catalog.everything(), "accents": list(catalog.ACCENTS), "limits": catalog.LIMITS,
+            "statuses": catalog.STATUSES}
+
+
+def _app_key(key: str) -> bool:
+    return len(key) <= catalog.LIMITS["key"] and catalog._KEY.fullmatch(key) is not None
+
+
+def _app_gone() -> JSONResponse:
+    # Not 404: the console takes a 404 to mean "signed out" and leaves.
+    return JSONResponse({"error": "That app isn't there any more."}, status_code=409)
+
+
+@app.get("/api/console/apps")
+def catalog_list(request: Request):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    return _catalog_answer()
+
+
+@app.post("/api/console/apps")
+async def catalog_add(request: Request):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    body = await _json(request)
+    try:
+        added = await run_in_threadpool(catalog.add, body)
+    except catalog.Refused as why:
+        return JSONResponse({"error": str(why), "field": why.field}, status_code=400)
+    return {"ok": True, "app": added, **_catalog_answer()}
+
+
+@app.post("/api/console/apps/{key}")
+async def catalog_edit(request: Request, key: str):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    if not _app_key(key):
+        return _app_gone()
+    body = await _json(request)
+    try:
+        changed = await run_in_threadpool(catalog.edit, key, body)
+    except catalog.Refused as why:
+        return JSONResponse({"error": str(why), "field": why.field}, status_code=400)
+    if changed is None:
+        return _app_gone()
+    return {"ok": True, "app": changed, **_catalog_answer()}
+
+
+APP_ACTIONS = ("release", "unrelease", "delete")
+
+
+@app.post("/api/console/apps/{key}/{action}")
+def catalog_act(request: Request, key: str, action: str):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    if action not in APP_ACTIONS:
+        return JSONResponse({"error": "That isn't something the console can do."}, status_code=400)
+    if not _app_key(key):
+        return _app_gone()
+    if action == "delete":
+        result = catalog.delete(key)
+        if result == "released":
+            return JSONResponse({"error": "An app that has been released can't be deleted. "
+                                          "Take it back into development to hide it instead."},
+                                status_code=409)
+        if result == "missing":
+            return _app_gone()
+        return {"ok": True, **_catalog_answer()}
+    done = catalog.release(key) if action == "release" else catalog.unrelease(key)
+    if done is None:
+        return _app_gone()
+    return {"ok": True, "app": done, **_catalog_answer()}

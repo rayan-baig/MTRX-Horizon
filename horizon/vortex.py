@@ -1,7 +1,8 @@
 """Chroma Vortex: the official place to partner with MTRX Horizyn, pitch an
-idea, or reach the company as an investor.
+idea, reach the company as an investor, or ask about buying the company or
+one of its apps.
 
-A visitor picks one of three paths on /vortex and sends a short form. Each
+A visitor picks one of four paths on /vortex and sends a short form. Each
 message is checked here, kept in the `vortex_messages` table so the owner
 can read it in the console and reply, and deleted after KEEP_DAYS.
 
@@ -12,7 +13,8 @@ the failed-tries table, the same way, and gone after a day), a hidden field
 catches simple bots, and a message that is mostly links is refused.
 
 When email is set up, the owner gets a short notice: the path and the
-organisation or idea name only. The full message, with the visitor's email
+organisation or idea name only (and, for buying, the names of the apps or the
+company chosen). The full message, with the visitor's email
 address, is read in the console, so no inbox keeps copies of it.
 """
 
@@ -22,14 +24,19 @@ import threading
 import time
 import unicodedata
 
-from . import config, db, health
+from . import catalog, config, db, health
 
 LOG = logging.getLogger("horizon")
 
 KEEP_DAYS = 365
 
-KINDS = {"partner": "Partner with us", "pitch": "Pitch an idea", "invest": "Investors"}
-APPS = {"rankup": "RankUp", "cyberlogix": "CyberLogix AI", "omniarmor": "OmniArmor.ai"}
+KINDS = {"partner": "Partner with us", "pitch": "Pitch an idea", "invest": "Investors",
+         "buy": "Buy the company or an app"}
+# The apps a visitor can choose are the released ones in the app catalog
+# (catalog.py), read fresh for every form. Buying can also be about the
+# whole company, kept as this key in the same `apps` column.
+COMPANY = "company"
+COMPANY_NAME = "MTRX Horizyn (the whole company)"
 PARTNERSHIPS = {
     "resell": "Resell or distribute",
     "integrate": "Integrate or build on",
@@ -47,6 +54,7 @@ FIELDS = {
     "partner": {"required": ("name", "organisation", "email", "message"), "optional": ()},
     "pitch": {"required": ("name", "email", "idea", "pitch", "audience"), "optional": ("message",)},
     "invest": {"required": ("name", "email", "message"), "optional": ("organisation",)},
+    "buy": {"required": ("name", "email", "message"), "optional": ("organisation",)},
 }
 LABELS = {"name": "your name", "organisation": "your organisation", "email": "your email",
           "idea": "the idea's name", "pitch": "the one-line pitch", "audience": "who it's for",
@@ -119,12 +127,28 @@ def mostly_links(*texts: str) -> bool:
     return letters > 0 and linked / letters > 0.5
 
 
+def _choices(chosen, allowed: list, why: str) -> str:
+    """The apps (or the company) picked, as "key,key" in the catalog's order.
+    Only the keys allowed now count, each at most once."""
+    if not isinstance(chosen, list) or not chosen or len(chosen) > len(allowed) \
+            or any(not isinstance(a, str) or a not in allowed for a in chosen) \
+            or len(set(chosen)) != len(chosen):
+        raise Refused(why, "apps")
+    return ",".join(k for k in allowed if k in chosen)
+
+
+def interest(keys: str, names: dict | None = None) -> list:
+    """The names of what a message was about, from its `apps` column."""
+    names = catalog.names() if names is None else names
+    return [COMPANY_NAME if k == COMPANY else names.get(k, k) for k in keys.split(",") if k]
+
+
 def read_form(body: dict) -> dict:
     """The fields to keep, checked, built only from the fields this path has.
     Anything else in the body is ignored."""
     kind = body.get("kind")
     if not isinstance(kind, str) or kind not in KINDS:
-        raise Refused("Choose one of the three paths first.", "kind")
+        raise Refused("Choose one of the four paths first.", "kind")
     rules = FIELDS[kind]
     row = {"kind": kind, "name": "", "organisation": "", "email": "", "apps": "",
            "partnership": "", "idea": "", "pitch": "", "audience": "", "message": ""}
@@ -135,15 +159,15 @@ def read_form(body: dict) -> dict:
     if not _EMAIL.fullmatch(row["email"]):
         raise Refused("That email address doesn't look right. Please check it.", "email")
     if kind == "partner":
-        apps = body.get("apps")
-        if not isinstance(apps, list) or not apps or len(apps) > len(APPS) \
-                or any(not isinstance(a, str) or a not in APPS for a in apps):
-            raise Refused("Choose which app or apps the partnership is about.", "apps")
-        row["apps"] = ",".join(k for k in APPS if k in apps)
+        row["apps"] = _choices(body.get("apps"), catalog.released_keys(),
+                               "Choose which app or apps the partnership is about.")
         partnership = body.get("partnership")
         if not isinstance(partnership, str) or partnership not in PARTNERSHIPS:
             raise Refused("Choose the kind of partnership.", "partnership")
         row["partnership"] = partnership
+    if kind == "buy":
+        row["apps"] = _choices(body.get("apps"), [COMPANY, *catalog.released_keys()],
+                               "Choose what you're interested in: the whole company, one or more apps, or both.")
     if mostly_links(row["message"], row["pitch"], row["audience"]):
         raise Refused(LINKY, "message")
     return row
@@ -214,6 +238,9 @@ def notice(row: dict) -> tuple[str, str]:
         what = f"Idea: {_clean_for_email(row['idea'])}"
     else:
         what = f"Organisation: {_clean_for_email(row['organisation']) or '(none given)'}"
+    if row["kind"] == "buy":
+        # Which apps (or the company): names from the catalog, nothing typed.
+        what += f"\nInterested in: {', '.join(interest(row['apps']))}"
     subject = f"MTRX Horizyn: new Chroma Vortex message ({kind})"
     body = (f"A new message arrived through Chroma Vortex.\n\n"
             f"Path:  {kind}\n{what}\n\n"
@@ -271,11 +298,11 @@ def send(who: str, body: dict) -> tuple[int, dict]:
 
 # ---------------------------------------------------------------- the console
 
-def _public(r) -> dict:
+def _public(r, names: dict) -> dict:
     return {
         "id": r["id"], "at": r["at"], "kind": r["kind"], "kind_name": KINDS.get(r["kind"], r["kind"]),
         "name": r["name"], "organisation": r["organisation"], "email": r["email"],
-        "apps": [APPS[a] for a in r["apps"].split(",") if a in APPS],
+        "apps": interest(r["apps"], names),
         "partnership": PARTNERSHIPS.get(r["partnership"], ""),
         "idea": r["idea"], "pitch": r["pitch"], "audience": r["audience"], "message": r["message"],
         "read": r["read_at"] is not None, "archived": r["archived_at"] is not None,
@@ -298,7 +325,8 @@ def inbox(box: str = "inbox", limit: int = 200) -> dict:
             "ORDER BY at DESC, id DESC LIMIT ?", (int(archived), limit)).fetchall()
         (in_archive,) = conn.execute(
             "SELECT COUNT(*) FROM vortex_messages WHERE archived_at IS NOT NULL").fetchone()
-    return {"box": "archived" if archived else "inbox", "messages": [_public(r) for r in rows],
+    names = catalog.names()
+    return {"box": "archived" if archived else "inbox", "messages": [_public(r, names) for r in rows],
             "unread": unread(), "archived": in_archive, "keep_days": KEEP_DAYS}
 
 

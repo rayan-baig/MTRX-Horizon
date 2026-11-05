@@ -38,6 +38,7 @@
     <nav>
       <a href="#overview" class="active"><span class="ico ico-home"></span>Overview</a>
       <a href="#platforms"><span class="ico ico-apps"></span>Applications</a>
+      <a href="#catalog"><span class="ico ico-plus"></span>Manage apps</a>
       <a href="#performance"><span class="ico ico-chart"></span>Analytics</a>
       <a href="#projects"><span class="ico ico-projects"></span>Projects</a>
       <a href="#vortex"><span class="ico ico-vortex"></span>Chroma Vortex<span class="side-badge" id="vx-unread" hidden></span></a>
@@ -114,6 +115,7 @@
       <ul class="action-list">
         <li><button type="button" data-action="invite"><span class="ico ico-plus"></span>Approve a new device<span aria-hidden="true">→</span></button></li>
         <li><button type="button" data-action="refresh"><span class="ico ico-refresh"></span>Refresh numbers<span aria-hidden="true">→</span></button></li>
+        <li><a href="#catalog"><span class="ico ico-apps"></span>Add or release an app<span aria-hidden="true">→</span></a></li>
         <li><a href="#devices"><span class="ico ico-devices"></span>Manage devices<span aria-hidden="true">→</span></a></li>
         <li><a href="/" target="_blank" rel="noopener"><span class="ico ico-globe"></span>Open the public site<span aria-hidden="true">→</span></a></li>
         <li><a href="/genesis" target="_blank" rel="noopener"><span class="ico ico-projects"></span>Open Genesis<span aria-hidden="true">→</span></a></li>
@@ -138,6 +140,43 @@
         each provider's pricing page.</p>
     </section>
 
+    <section class="panel catalog" id="catalog" aria-labelledby="ca-title">
+      <div class="panel-head">
+        <h2 id="ca-title"><span class="ico ico-apps"></span>Manage apps</h2>
+        <button class="btn btn-primary btn-small" type="button" id="ca-new">Add an app</button>
+      </div>
+      <p class="ca-note">An app <b>released to the public</b> appears on <a href="/vortex#our-apps" target="_blank" rel="noopener">Chroma Vortex</a>
+        at once: in Our apps, and as a choice in the Partner and Buy forms. An app in development is shown nowhere.
+        An app that has been released can't be deleted; take it back into development to hide it.</p>
+      <form class="ca-form" id="ca-form" novalidate hidden>
+        <h3 class="ca-form-title" id="ca-form-title">Add an app</h3>
+        <div class="ca-grid">
+          <label class="ca-field"><span>Name</span>
+            <input name="name" type="text" maxlength="40" autocomplete="off" placeholder="Nova Notes">
+            <small class="ca-msg" data-ca-msg="name"></small></label>
+          <label class="ca-field" id="ca-key-field"><span>Short name for links</span>
+            <input name="key" type="text" maxlength="24" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="nova-notes">
+            <small class="ca-hint">a to z, 0 to 9 and dashes. It can't be changed later.</small>
+            <small class="ca-msg" data-ca-msg="key"></small></label>
+          <label class="ca-field ca-wide"><span>One line about it</span>
+            <input name="line" type="text" maxlength="140" autocomplete="off" placeholder="Homework reminders that actually work.">
+            <small class="ca-msg" data-ca-msg="line"></small></label>
+          <label class="ca-field ca-wide"><span>Public address <em>optional</em></span>
+            <input name="url" type="url" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://nova.example.com">
+            <small class="ca-msg" data-ca-msg="url"></small></label>
+          <fieldset class="ca-field ca-wide ca-accents"><legend>Colour</legend>
+            <div class="ca-swatches" id="ca-swatches"></div>
+            <small class="ca-msg" data-ca-msg="accent"></small></fieldset>
+        </div>
+        <p class="ca-error" id="ca-error"></p>
+        <div class="ca-buttons">
+          <button class="btn btn-primary btn-small" type="submit" id="ca-save">Add app</button>
+          <button class="btn btn-ghost btn-small" type="button" id="ca-cancel">Cancel</button>
+        </div>
+      </form>
+      <ul class="ca-list" id="ca-list"></ul>
+    </section>
+
     <section class="panel vortex-inbox" id="vortex" aria-labelledby="vx-title">
       <div class="panel-head">
         <h2 id="vx-title"><span class="ico ico-vortex"></span>Chroma Vortex</h2>
@@ -146,7 +185,7 @@
           <button type="button" data-box="archived">Archived <span id="vx-count-archived"></span></button>
         </div>
       </div>
-      <p class="vx-note">Partners, ideas and investors, from <a href="/vortex" target="_blank" rel="noopener">Chroma Vortex</a>.
+      <p class="vx-note">Partners, ideas, investors and buyers, from <a href="/vortex" target="_blank" rel="noopener">Chroma Vortex</a>.
         Open a message to read it. Each one is deleted <span id="vx-keep">365</span> days after it arrived.</p>
       <ul class="vx-list" id="vx-list"></ul>
     </section>

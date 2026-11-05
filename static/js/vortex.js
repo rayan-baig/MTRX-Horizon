@@ -1,4 +1,5 @@
-// The Chroma Vortex page: three paths, each a short form. A form is sent
+// The Chroma Vortex page: four paths, each a short form, and the released
+// apps, each with buttons that open a form with that app picked. A form is sent
 // only when Send is pressed, to /api/vortex/send, with no cookie. Every
 // word a visitor typed is placed with textContent, never as HTML.
 (() => {
@@ -42,6 +43,9 @@
     return out;
   }
 
+  // What the form offers to pick from (the released apps, and the company).
+  const choices = (form) => [...form.querySelectorAll('input[name="apps"]')].map((box) => box.value);
+
   function say(form, field, text) {
     const out = form.querySelector(`[data-msg-for="${field}"]`);
     if (!out) return false;
@@ -81,7 +85,7 @@
     if (sending) return;
     clear(form);
     const vals = values(kind);
-    const bad = V.problems(kind, vals);
+    const bad = V.problems(kind, vals, choices(form));
     const fields = Object.keys(bad);
     if (fields.length) {
       for (const f of fields) if (!say(form, f, bad[f])) form.querySelector("[data-error]").textContent = bad[f];
@@ -192,6 +196,22 @@
   }
 
   window.addEventListener("hashchange", () => route(true));
+
+  // "Partner on this" and "Ask about buying" on an app: open that form with
+  // only that app picked.
+  document.querySelectorAll("[data-pick]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      const kind = link.getAttribute("href").slice(1);
+      const form = forms[kind];
+      if (!form) return;
+      form.querySelectorAll('input[name="apps"]').forEach((box) => { box.checked = box.value === link.dataset.pick; });
+      say(form, "apps", "");
+      if (window.location.hash === `#${kind}`) {
+        event.preventDefault();
+        route(true);
+      }
+    });
+  });
   // Pressing the path already open (after sending, say) opens its form again.
   document.querySelectorAll(".v-path").forEach((card) => {
     card.addEventListener("click", () => {
