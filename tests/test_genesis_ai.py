@@ -7,7 +7,7 @@ at it with ANTHROPIC_BASE_URL), so no real request is ever made.
 import json
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
@@ -62,7 +62,10 @@ def provider(monkeypatch):
         def log_message(self, *args):
             pass
 
-    server = HTTPServer(("127.0.0.1", 0), Handler)
+    # One thread per request: a "slow" answer still sleeping must not hold up
+    # the next request, which then timed out too and made the tests flaky.
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
     monkeypatch.setenv("ANTHROPIC_BASE_URL", f"http://127.0.0.1:{server.server_port}")
     monkeypatch.setenv("GENESIS_AI_KEY", "test-key")
@@ -217,6 +220,7 @@ def test_a_slow_or_broken_provider_gets_a_friendly_message(client, provider, mon
     response = ask(client)
     assert response.status_code == 504 and "try again" in response.json()["error"]
     provider["mode"] = "down"
+    monkeypatch.setattr(genesis_ai, "TIMEOUT_SECONDS", 10)  # this one is about the error, not the wait
     response = ask(client)
     assert response.status_code in (502, 503) and "try again" in response.json()["error"]
     # A failed ask costs nothing against the daily cap.
