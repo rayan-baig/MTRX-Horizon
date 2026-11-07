@@ -7,6 +7,9 @@ The website for MTRX Horizyn, the parent company of **RankUp**, **CyberLogix AI*
   stands for. Every number on it is true.
 - **Genesis** (`/genesis`) is where anyone can turn an idea into a project and take it
   from Spark to Launch. See [Genesis](#genesis).
+- **Omnicyte** ([`omnicyte/`](omnicyte/README.md)) is a separate product: a desktop buddy
+  that protects employees' mail, chats and browser from phishing. It runs on their own
+  computers, not on this site.
 - **The control console** (`/console`) shows how the apps and this server are doing. It has
   no link anywhere and looks like a missing page to everyone else.
 

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Omnicyte</title>
+<style>
+  body{margin:0;width:300px;background:#1b1f2b;color:#eef2f8;font:13px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+  main{padding:16px}
+  h1{font-size:15px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+  .dot{width:10px;height:10px;border-radius:50%;background:#9aa6b8}
+  .ok .dot{background:#3ad6c5}.bad .dot{background:#ff5470}
+  p{color:#9aa6b8;margin:6px 0 10px}
+  label{display:block;font-weight:600;margin:10px 0 4px}
+  input{width:100%;box-sizing:border-box;background:#262c3c;color:#eef2f8;border:1px solid #3a4256;border-radius:8px;padding:7px 9px;font:12px ui-monospace,Consolas,monospace}
+  button{margin-top:8px;background:#3ad6c5;color:#0d1a1f;border:0;border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+  <h1 id="state"><span class="dot"></span><span id="title">Omnicyte</span></h1>
+  <p id="detail">Checking…</p>
+  <label for="code">Pairing code</label>
+  <input id="code" autocomplete="off" spellcheck="false" placeholder="From the buddy: right-click › Pair">
+  <button id="save" type="button">Save</button>
+  <p>Links are checked by the Omnicyte app on this computer. Nothing leaves it.</p>
+</main>
+<script src="popup.js"></script>
+</body>
+</html>

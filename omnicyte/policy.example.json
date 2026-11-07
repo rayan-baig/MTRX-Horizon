@@ -1,0 +1,13 @@
+{
+  "org_name": "Acme Ltd",
+  "org_domains": ["acme.com", "acme.co.uk"],
+  "trusted_domains": ["acme.sharepoint.com", "acmepayroll.com"],
+  "report_to": "security@acme.com",
+  "event_log": "",
+  "alert_on": "danger",
+  "clipboard_watch": true,
+  "allow_user_trust": true,
+  "mailboxes": [
+    {"host": "outlook.office365.com", "user": "you@acme.com", "password_env": "OMNICYTE_IMAP_PASSWORD"}
+  ]
+}

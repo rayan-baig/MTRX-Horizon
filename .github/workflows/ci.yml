@@ -35,7 +35,7 @@ jobs:
       - name: The production image builds
         run: docker build -t horizon:ci .
       - name: Every script parses
-        run: for f in static/js/*.js horizon/private/*.js; do node --check "$f"; done
+        run: for f in static/js/*.js horizon/private/*.js omnicyte/extension/*.js; do node --check "$f"; done
       - name: The image starts, answers, and runs as the horizon user
         run: |
           docker volume create horizon-data
