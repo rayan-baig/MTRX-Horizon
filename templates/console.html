@@ -21,6 +21,7 @@
   <nav class="mainnav" aria-label="Console">
     <a href="#overview" class="active">Overview</a>
     <a href="#platforms">Apps</a>
+    <a href="#numbers">Numbers</a>
     <a href="#projects">Projects</a>
     <a href="#vortex">Vortex</a>
     <a href="#devices">Devices</a>
@@ -40,6 +41,7 @@
       <a href="#platforms"><span class="ico ico-apps"></span>Applications</a>
       <a href="#catalog"><span class="ico ico-plus"></span>Manage apps</a>
       <a href="#performance"><span class="ico ico-chart"></span>Analytics</a>
+      <a href="#numbers"><span class="ico ico-numbers"></span>Numbers</a>
       <a href="#projects"><span class="ico ico-projects"></span>Projects</a>
       <a href="#vortex"><span class="ico ico-vortex"></span>Chroma Vortex<span class="side-badge" id="vx-unread" hidden></span></a>
       <a href="#activity"><span class="ico ico-activity"></span>Activity</a>
@@ -138,6 +140,16 @@
       <ul class="cost-list" id="cost-list"></ul>
       <p class="cost-note">Rough figures in US dollars, before the first customer. Prices change: check
         each provider's pricing page.</p>
+    </section>
+
+    <section class="panel numbers" id="numbers" aria-labelledby="nu-title">
+      <div class="panel-head">
+        <h2 id="nu-title"><span class="ico ico-numbers"></span>Numbers</h2>
+        <span class="hint" id="nu-hint">The last 30 days, and this month against last</span>
+      </div>
+      <p class="nu-note">What people did in each app, as the app counts it: totals per day, never who.
+        Months are compared by the average per day, so a month still going is compared fairly.</p>
+      <ul class="nu-list" id="nu-list"><li class="nu-loading">Loading…</li></ul>
     </section>
 
     <section class="panel catalog" id="catalog" aria-labelledby="ca-title">

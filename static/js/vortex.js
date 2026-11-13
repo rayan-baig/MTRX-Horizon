@@ -178,9 +178,32 @@
 
   // ---------------------------------------------------------------- which path
 
+  // A link from another page can open a form with choices made (see
+  // V.fromHash): only apps this form offers are picked.
+  function preset(kind, asked) {
+    const form = forms[kind];
+    const offered = choices(form);
+    const apps = asked.apps.filter((a) => offered.includes(a));
+    if (apps.length) {
+      form.querySelectorAll('input[name="apps"]').forEach((box) => { box.checked = apps.includes(box.value); });
+      say(form, "apps", "");
+    }
+    const select = form.elements.namedItem("partnership");
+    if (asked.partnership && select) {
+      select.value = asked.partnership;
+      say(form, "partnership", "");
+    }
+  }
+
   function route(smooth) {
-    const hash = window.location.hash.slice(1);
-    const kind = V.KINDS.includes(hash) ? hash : null;
+    const asked = V.fromHash(window.location.hash);
+    const kind = asked.kind;
+    if (kind && (asked.apps.length || asked.partnership)) {
+      preset(kind, asked);
+      // The plain path stays in the address, so reloading keeps what the
+      // visitor has changed since.
+      history.replaceState(null, "", `#${kind}`);
+    }
     sentKind = null;
     $("v-sent").hidden = true;
     for (const k of V.KINDS) {

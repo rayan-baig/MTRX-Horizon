@@ -130,6 +130,8 @@
     <h2 class="v-h">Work with our apps</h2>
     <p class="v-lede">For businesses that want to resell, integrate with, or work with one of our
       apps. Tell us who you are and what you have in mind.</p>
+    <p class="v-more">Repair fridges, advise kitchens on food safety or sell kitchen equipment?
+      <a href="/partners">See how partners earn with CyberLogix AI</a>.</p>
     <form class="v-form" data-kind="partner" novalidate>
       <div class="v-grid">
         {{ field("partner", "name", "Your name", limits.name, "name") }}
@@ -247,6 +249,12 @@
       <p class="v-lede">Every app MTRX Horizyn has released to the public. New ones join this list the
         day they launch.</p>
     </div>
+    <a class="v-bundle" href="/bundle">
+      <span class="v-bundle-icons" aria-hidden="true"><img src="/static/img/cyberlogix-icon.svg" alt="" width="34" height="34"><img src="/static/img/omniarmor-icon.svg" alt="" width="34" height="34"></span>
+      <span class="v-bundle-text"><b>Kitchen Safety Bundle</b>
+        <span>CyberLogix AI's fridge alarms and OmniArmor.ai's checklists, working together.</span></span>
+      <em class="v-bundle-go">See the bundle <span aria-hidden="true">→</span></em>
+    </a>
     <ul class="v-app-list">
       {% for a in apps %}
       <li class="v-app accent-{{ a.accent }}" data-app="{{ a.key }}">
@@ -272,7 +280,7 @@
   <span class="foot-brand">MTRX HORIZYN</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
   <nav class="foot-links" aria-label="About this site">
-    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/vortex">Chroma Vortex</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
+    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/vortex">Chroma Vortex</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
     {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>
 </footer>

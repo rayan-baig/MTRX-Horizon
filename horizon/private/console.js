@@ -579,6 +579,100 @@
     drawCatalog(result.data);
   });
 
+  // ---------------------------------------------------------------- Numbers
+  // What people did in each app, per day, as each app counts it
+  // (horizon/numbers.py): the last 30 days as small bars, this month
+  // against last, the three things done most and what to do next.
+
+  const monthName = (m) => new Date(`${m}-01T00:00:00Z`).toLocaleDateString([], { month: "short", timeZone: "UTC" });
+
+  // Thirty small bars, one a day. A day the console never heard about is
+  // left blank; a quiet day is a thin line.
+  function spark(series, days, label) {
+    const W = 120, H = 28, step = W / series.length;
+    const max = Math.max(1, ...series.filter((n) => n != null));
+    const box = svg("svg", { class: "nu-spark", viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "none",
+      role: "img", "aria-label": `${label}, the last ${series.length} days` });
+    series.forEach((n, i) => {
+      if (n == null) return;
+      const h = n ? Math.max(2, (n / max) * (H - 2)) : 1;
+      const bar = svg("rect", { x: (i * step + 0.5).toFixed(2), y: (H - h).toFixed(2),
+        width: Math.max(1, step - 1).toFixed(2), height: h.toFixed(2), rx: 0.8, class: n ? "on" : "zero" });
+      const tip = svg("title");
+      tip.textContent = `${days[i]}: ${number(n)}`;
+      bar.append(tip);
+      box.append(bar);
+    });
+    return box;
+  }
+
+  function change(m) {
+    if (m.trend === "up") return el("span", { class: "nu-change up", text: `▲ ${m.change}%` });
+    if (m.trend === "down") return el("span", { class: "nu-change down", text: `▼ ${Math.abs(m.change)}%` });
+    if (m.trend === "flat") return el("span", { class: "nu-change flat", text: "≈ same" });
+    if (m.trend === "new") return el("span", { class: "nu-change up", text: "▲ new" });
+    return el("span", { class: "nu-change none", text: "–" });
+  }
+
+  function nuMetric(m, app) {
+    return el("li", { class: "nu-metric" },
+      el("span", { class: "nu-label", text: m.label }),
+      spark(m.days, app.days, m.label),
+      el("span", { class: "nu-month" },
+        el("strong", { text: number(m.this_month) }), change(m),
+        el("small", { text: `${monthName(app.month.last)}: ${number(m.last_month)}` })));
+  }
+
+  function nuEmpty(app) {
+    if (!app.connected) {
+      return el("div", { class: "nu-empty" },
+        el("p", { text: "Not connected yet." }),
+        el("small", { text: `Set ${app.setting} here and STATS_KEY in the app, and its daily numbers show up within a minute.` }));
+    }
+    return el("div", { class: "nu-empty" },
+      el("p", { text: "Connected, with no daily numbers yet." }),
+      el("small", { text: app.advice ? app.advice.text : "They appear after the app next answers." }));
+  }
+
+  function nuApp(app) {
+    const state = !app.connected ? el("span", { class: "pill off", text: "Not connected" })
+      : app.has_data ? el("span", { class: "pill ok", text: "Connected" })
+        : el("span", { class: "pill off", text: "No daily numbers yet" });
+    const head = el("div", { class: "nu-head" },
+      el("img", { src: `/static/img/${ICONS[app.key]}-icon.svg`, alt: "", width: "36", height: "36" }),
+      el("b", { text: app.name }), state);
+    const item = el("li", { class: `nu-app ${app.color}` }, head);
+    if (!app.has_data) { item.append(nuEmpty(app)); return item; }
+    item.append(
+      el("p", { class: `nu-next rule-${app.advice.rule}` },
+        el("span", { class: "nu-next-label", text: "What to do next" }), el("span", { text: app.advice.text })),
+      el("div", { class: "nu-top" },
+        el("span", { class: "nu-top-label", text: "Done most, last 30 days" }),
+        app.top.length
+          ? el("ol", {}, ...app.top.map((t) => el("li", {}, el("span", { text: t.label }), el("b", { text: number(t.total) }))))
+          : el("small", { text: "Nothing yet." })),
+      el("div", { class: "nu-cols", "aria-hidden": "true" },
+        el("span", { text: "Count" }), el("span", { text: "Last 30 days" }),
+        el("span", { text: `${monthName(app.month.this)} so far` })),
+      el("ul", { class: "nu-metrics" }, ...app.metrics.map((m) => nuMetric(m, app))));
+    return item;
+  }
+
+  function drawNumbers(data) {
+    const list = $("nu-list");
+    list.replaceChildren(...data.apps.map(nuApp));
+  }
+
+  async function loadNumbers() {
+    try {
+      const res = await fetch("/api/console/numbers", { credentials: "same-origin" });
+      if (res.status === 404) { window.location.replace("/"); return; }
+      drawNumbers(await res.json());
+    } catch (_) {
+      /* the overview says when the console can't refresh */
+    }
+  }
+
   // ---------------------------------------------------------------- loading
 
   async function load() {
@@ -588,6 +682,8 @@
       const data = await res.json();
       drawOverview(data); drawPlatforms(data); drawChart(data); drawFeed(data);
       drawDials(data); drawProjects(data); drawCosts(data); drawDevices(data);
+      // The overview has just saved each app's daily totals; draw them.
+      loadNumbers();
       // The inbox redraws only when nothing in it is open, so a message
       // being read doesn't close under the owner.
       if (!document.querySelector("#vx-list details[open]")) loadVortex();

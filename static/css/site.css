@@ -647,6 +647,17 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 }
 .company-apps b { overflow-wrap: anywhere; }
 .company-open { font-size: 13px; color: var(--accent); white-space: nowrap; }
+/* The Kitchen Safety Bundle, under the apps it joins together. */
+.company-bundle {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center;
+  margin: 10px 0 4px; padding: 10px 14px; border-radius: 10px; text-decoration: none;
+  border: 1px solid rgba(34, 211, 238, .45);
+  background: linear-gradient(90deg, rgba(59, 139, 255, .16), rgba(166, 107, 255, .12));
+}
+.company-bundle b { font-weight: 600; }
+.company-bundle span { grid-column: 1; color: var(--muted); font-size: 12.5px; }
+.company-bundle em { grid-column: 2; grid-row: 1 / span 2; font-style: normal; color: var(--cyan); }
+.company-bundle:hover { border-color: var(--cyan); }
 .company-contact { color: var(--muted); font-size: 14.5px; margin: 0; }
 .company-contact a { color: var(--cyan); overflow-wrap: anywhere; }
 .company-legal { color: var(--muted); margin: 16px 0 0; font-size: 13px; }

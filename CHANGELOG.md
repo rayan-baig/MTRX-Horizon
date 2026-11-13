@@ -4,6 +4,34 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.6.0 (13 November 2026)
+
+- **Partners** (`/partners`): for fridge and refrigeration repair companies, food safety
+  consultants and inspectors' trainers, and kitchen equipment sellers. "Recommend CyberLogix AI
+  to the shops you already visit, and earn a share of what they pay." Three steps (apply, get a
+  partner key, your customers sign up and you earn), what partners earn and see, exactly as
+  CyberLogix AI's partner code works (a share of money actually collected, nothing for trials or
+  unpaid or cancelled invoices, no rate printed since it is a setting), and a calm note on why a
+  separate alarm matters. Linked from Chroma Vortex's Partner path and every footer.
+- **Apply** opens the Chroma Vortex Partner form with CyberLogix AI picked and the new
+  partnership kind **Refer my customers (repair / food safety)** (`refer-trade`) chosen. The
+  server accepts the new kind; a Vortex address like `#partner/cyberlogix/refer-trade` fills in
+  the form (`fromHash` in `static/js/vortex-form.js`), picking only apps the form offers.
+- **Kitchen Safety Bundle** (`/bundle`): CyberLogix AI's fridge and freezer alarms with
+  OmniArmor.ai's inspection checklists, for restaurants, cafés, pharmacies and school kitchens.
+  "Start with a free trial" goes to CyberLogix AI's sign-up when it has an address; an app with
+  none says "coming soon" and offers Chroma Vortex. The price says "Ask about bundle pricing"
+  until CyberLogix AI's pricing has a bundle add-on (`BUNDLE_PRICE` in `horizon/offers.py`).
+  Linked from the home page's menu, About card and footer, from Chroma Vortex and its Our apps
+  list, and from the home page's search.
+- **Numbers**, a new console section: each app's daily usage counts from its stats address
+  (CyberLogix AI's and OmniArmor.ai's `usage`, RankUp's `daily`), with the last 30 days as small
+  bars per count, this month against last with an up or down arrow, the three things done most,
+  and a "What to do next" line from simple rules. Each day is kept in `usage_days` and each
+  month's totals in `usage_months`, so month-over-month works after last month has left an app's
+  30 days. An app that isn't connected, or sends no daily counts yet, says so. Owner-only
+  `GET /api/console/numbers`.
+
 ## 1.5.0 (5 November 2026)
 
 - **Buy the company or an app**, a fourth Chroma Vortex path: name, organisation (optional),

@@ -1,0 +1,363 @@
+{
+ "users": 42,
+ "active_users": 17,
+ "usage": {
+  "days": 30,
+  "from": "2026-10-15",
+  "to": "2026-11-13",
+  "totals": {
+   "signups": 57,
+   "sensors_added": 180,
+   "test_alerts": 37,
+   "acknowledged_button": 64,
+   "acknowledged_text": 18,
+   "acknowledged_keypress": 3,
+   "inspector_logs": 19,
+   "help_views": 261,
+   "acknowledged": 85
+  },
+  "daily": [
+   {
+    "day": "2026-10-15",
+    "signups": 1,
+    "sensors_added": 7,
+    "test_alerts": 1,
+    "acknowledged_button": 2,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 10
+   },
+   {
+    "day": "2026-10-16",
+    "signups": 3,
+    "sensors_added": 6,
+    "test_alerts": 1,
+    "acknowledged_button": 3,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 11
+   },
+   {
+    "day": "2026-10-17",
+    "signups": 0,
+    "sensors_added": 0,
+    "test_alerts": 0,
+    "acknowledged_button": 2,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 6
+   },
+   {
+    "day": "2026-10-18",
+    "signups": 2,
+    "sensors_added": 7,
+    "test_alerts": 1,
+    "acknowledged_button": 5,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 0,
+    "help_views": 5
+   },
+   {
+    "day": "2026-10-19",
+    "signups": 1,
+    "sensors_added": 5,
+    "test_alerts": 1,
+    "acknowledged_button": 3,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 0,
+    "help_views": 14
+   },
+   {
+    "day": "2026-10-20",
+    "signups": 1,
+    "sensors_added": 6,
+    "test_alerts": 1,
+    "acknowledged_button": 0,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 0,
+    "help_views": 7
+   },
+   {
+    "day": "2026-10-21",
+    "signups": 1,
+    "sensors_added": 3,
+    "test_alerts": 1,
+    "acknowledged_button": 2,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 13
+   },
+   {
+    "day": "2026-10-22",
+    "signups": 3,
+    "sensors_added": 7,
+    "test_alerts": 1,
+    "acknowledged_button": 1,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 0,
+    "help_views": 3
+   },
+   {
+    "day": "2026-10-23",
+    "signups": 1,
+    "sensors_added": 4,
+    "test_alerts": 2,
+    "acknowledged_button": 0,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 11
+   },
+   {
+    "day": "2026-10-24",
+    "signups": 0,
+    "sensors_added": 0,
+    "test_alerts": 1,
+    "acknowledged_button": 1,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 9
+   },
+   {
+    "day": "2026-10-25",
+    "signups": 2,
+    "sensors_added": 7,
+    "test_alerts": 2,
+    "acknowledged_button": 3,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 0,
+    "help_views": 14
+   },
+   {
+    "day": "2026-10-26",
+    "signups": 2,
+    "sensors_added": 7,
+    "test_alerts": 0,
+    "acknowledged_button": 2,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 0,
+    "help_views": 13
+   },
+   {
+    "day": "2026-10-27",
+    "signups": 0,
+    "sensors_added": 10,
+    "test_alerts": 1,
+    "acknowledged_button": 2,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 14
+   },
+   {
+    "day": "2026-10-28",
+    "signups": 1,
+    "sensors_added": 4,
+    "test_alerts": 2,
+    "acknowledged_button": 3,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 6
+   },
+   {
+    "day": "2026-10-29",
+    "signups": 0,
+    "sensors_added": 5,
+    "test_alerts": 1,
+    "acknowledged_button": 2,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 3
+   },
+   {
+    "day": "2026-10-30",
+    "signups": 1,
+    "sensors_added": 7,
+    "test_alerts": 2,
+    "acknowledged_button": 4,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 11
+   },
+   {
+    "day": "2026-10-31",
+    "signups": 1,
+    "sensors_added": 6,
+    "test_alerts": 1,
+    "acknowledged_button": 3,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 2,
+    "help_views": 10
+   },
+   {
+    "day": "2026-11-01",
+    "signups": 2,
+    "sensors_added": 4,
+    "test_alerts": 1,
+    "acknowledged_button": 4,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 0
+   },
+   {
+    "day": "2026-11-02",
+    "signups": 1,
+    "sensors_added": 6,
+    "test_alerts": 1,
+    "acknowledged_button": 3,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 6
+   },
+   {
+    "day": "2026-11-03",
+    "signups": 7,
+    "sensors_added": 7,
+    "test_alerts": 1,
+    "acknowledged_button": 2,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 0,
+    "help_views": 6
+   },
+   {
+    "day": "2026-11-04",
+    "signups": 4,
+    "sensors_added": 2,
+    "test_alerts": 1,
+    "acknowledged_button": 4,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 1,
+    "inspector_logs": 0,
+    "help_views": 7
+   },
+   {
+    "day": "2026-11-05",
+    "signups": 2,
+    "sensors_added": 7,
+    "test_alerts": 2,
+    "acknowledged_button": 0,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 2
+   },
+   {
+    "day": "2026-11-06",
+    "signups": 3,
+    "sensors_added": 9,
+    "test_alerts": 1,
+    "acknowledged_button": 3,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 0,
+    "help_views": 15
+   },
+   {
+    "day": "2026-11-07",
+    "signups": 4,
+    "sensors_added": 5,
+    "test_alerts": 3,
+    "acknowledged_button": 1,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 12
+   },
+   {
+    "day": "2026-11-08",
+    "signups": 3,
+    "sensors_added": 7,
+    "test_alerts": 0,
+    "acknowledged_button": 0,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 0,
+    "help_views": 2
+   },
+   {
+    "day": "2026-11-09",
+    "signups": 5,
+    "sensors_added": 8,
+    "test_alerts": 2,
+    "acknowledged_button": 1,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 16
+   },
+   {
+    "day": "2026-11-10",
+    "signups": 1,
+    "sensors_added": 10,
+    "test_alerts": 2,
+    "acknowledged_button": 2,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 1,
+    "inspector_logs": 0,
+    "help_views": 6
+   },
+   {
+    "day": "2026-11-11",
+    "signups": 3,
+    "sensors_added": 7,
+    "test_alerts": 2,
+    "acknowledged_button": 1,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 1,
+    "inspector_logs": 1,
+    "help_views": 8
+   },
+   {
+    "day": "2026-11-12",
+    "signups": 2,
+    "sensors_added": 9,
+    "test_alerts": 1,
+    "acknowledged_button": 3,
+    "acknowledged_text": 1,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 0,
+    "help_views": 7
+   },
+   {
+    "day": "2026-11-13",
+    "signups": 0,
+    "sensors_added": 8,
+    "test_alerts": 1,
+    "acknowledged_button": 2,
+    "acknowledged_text": 0,
+    "acknowledged_keypress": 0,
+    "inspector_logs": 1,
+    "help_views": 14
+   }
+  ],
+  "meaning": {
+   "signups": "Businesses signed up for a trial",
+   "sensors_added": "Sensors added",
+   "test_alerts": "Test alerts sent",
+   "acknowledged_button": "Alerts acknowledged with the console button or the API",
+   "acknowledged_text": "Alerts acknowledged by a text reply",
+   "acknowledged_keypress": "Alerts acknowledged by pressing 1 on a call",
+   "inspector_logs": "Inspector's logs made (the console opens one to print it)",
+   "help_views": "Help pages viewed (/help and /help/sensors)"
+  },
+  "note": "Daily totals only: no account, person, address or cookie is kept with them, and nothing is sent anywhere else. Days older than 400 are deleted. The pricing calculator works in the browser and is not counted."
+ }
+}

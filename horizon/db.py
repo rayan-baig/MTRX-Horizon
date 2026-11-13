@@ -140,6 +140,28 @@ CREATE TABLE IF NOT EXISTS apps (
     released_at REAL,
     created_at REAL NOT NULL
 );
+-- The Numbers section (numbers.py): each app's daily totals of what people
+-- do, as the app's stats address sends them (numbers only, never who), and
+-- each month's totals added up from them, so this month can be set against
+-- last month after last month has left the app's 30 days. Days are kept 100
+-- days, months a little over three years.
+CREATE TABLE IF NOT EXISTS usage_days (
+    app TEXT NOT NULL,
+    day TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    n INTEGER NOT NULL,
+    PRIMARY KEY (app, day, metric)
+);
+CREATE TABLE IF NOT EXISTS usage_months (
+    app TEXT NOT NULL,
+    month TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    total INTEGER NOT NULL,
+    -- How many days of the month the total is made of.
+    days_counted INTEGER NOT NULL,
+    at REAL NOT NULL,
+    PRIMARY KEY (app, month, metric)
+);
 -- One-off jobs that have been done, such as filling the app catalog the
 -- first time, so they are never done again.
 CREATE TABLE IF NOT EXISTS done_once (

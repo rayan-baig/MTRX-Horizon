@@ -15,7 +15,7 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, wait
 
-from . import config, db
+from . import config, db, numbers
 
 SNAPSHOT_EVERY = 3600
 KEEP_DAYS = 400  # a little over the console's longest range (366 days)
@@ -120,7 +120,7 @@ _OPENER = urllib.request.build_opener(_NoRedirects)
 def _blank(key: str) -> dict:
     settings = config.get()
     return {"key": key, **APPS[key], "connected": bool(settings.stats_urls.get(key)),
-            "online": None, "users": None, "active_users": None,
+            "online": None, "users": None, "active_users": None, "usage": None,
             "url": settings.app_urls.get(key) or None}
 
 
@@ -165,6 +165,9 @@ def fetch_app(key: str) -> dict:
         if isinstance(body, dict):
             result["users"] = _int_or_none(body.get("users"))
             result["active_users"] = _int_or_none(body.get("active_users"))
+        # The daily totals of what people do, for the Numbers section
+        # (numbers.py). None when the app sends none.
+        result["usage"] = numbers.parse(key, body)
     except Exception:
         result["online"] = False
     return result
@@ -194,8 +197,13 @@ def fetch_all() -> list:
 
 
 def snapshot(apps: list):
-    """Save each connected app's numbers, at most once an hour."""
+    """Save each connected app's numbers, at most once an hour, and its
+    daily totals each time they arrive (numbers.save keeps one row per day,
+    so asking again only brings today's up to date)."""
     now = time.time()
+    for app in apps:
+        if app.get("connected") and app.get("usage"):
+            numbers.save(app["key"], app["usage"], now)
     with db.connect() as conn:
         # The console shows at most the last 366 days; older snapshots only
         # made the database grow for ever.

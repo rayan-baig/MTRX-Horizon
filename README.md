@@ -160,8 +160,8 @@ Pick one long random key, then:
 | CyberLogix | `STATS_KEY=<the key>` | `CYBERLOGIX_STATS_URL=https://cyberlogix.<your domain>/api/stats` |
 | OmniArmor | `STATS_KEY=<the key>` | `OMNIARMOR_STATS_URL=https://omniarmor.<your domain>/api/stats` |
 
-and `MTRX_STATS_KEY=<the key>` here once. Each app answers with two counts and nothing
-else. A wrong or missing key gets "unauthorized"; an app without `STATS_KEY` acts as if
+and `MTRX_STATS_KEY=<the key>` here once. Each app answers with two counts and its daily usage
+totals (see [Numbers](#numbers-what-people-do-in-each-app)), nothing about anyone. A wrong or missing key gets "unauthorized"; an app without `STATS_KEY` acts as if
 the address does not exist.
 
 To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_URL` or
@@ -310,8 +310,10 @@ Horizyn, linked from the home page's menu and footer, the other pages and the si
 four paths, each a short form (four cards across, or two by two on tablets and phones):
 
 - **Partner with us**: name, organisation, email, which apps (any released app, see below),
-  the kind of partnership (resell, integrate, refer customers, co-marketing,
-  something else) and a message.
+  the kind of partnership (resell, integrate, refer customers, refer my customers (repair /
+  food safety), co-marketing, something else) and a message. An address such as
+  `/vortex#partner/cyberlogix/refer-trade` opens it with those choices made (the partner page's
+  Apply button).
 - **Pitch an idea**: name, email, the idea's name, a one-line pitch, who it's for, and an
   optional message. **Bring a project from Genesis** lists the visitor's Genesis projects from
   their own browser and fills in the idea fields. On a Genesis project, **Pitch this in Chroma
@@ -350,6 +352,62 @@ which apps or the company), nothing else (no email address, no message), at most
 Vortex** section: an inbox and an archive, an unread count on the sidebar, each message's
 fields, the reply address to copy and a **Reply by email** link, and buttons to mark read or
 unread, archive and delete. Opening a message marks it read.
+
+## Partners and the Kitchen Safety Bundle
+
+Two plain public pages, with no script, form or cookie, linked from every footer and listed in
+the sitemap. What they say about apps comes from the app catalog (`horizon/offers.py`), so a
+button only links to an app that is released and has an address.
+
+- **`/partners`** asks fridge and refrigeration repair companies, food safety consultants and
+  inspectors' trainers, and kitchen equipment sellers to recommend CyberLogix AI to the shops
+  they already visit, and earn a share of what those shops pay. It says only what CyberLogix
+  AI's partner code does (its `partners.py` and `docs/PARTNERS.md`): a share of money actually
+  collected in the last 30 days, nothing for a free trial or an unpaid or cancelled invoice,
+  the rate agreed per partner (so no number is printed), paid by bank transfer. **Apply** opens
+  `/vortex#partner/cyberlogix/refer-trade`: the Partner form with CyberLogix AI picked and
+  "Refer my customers (repair / food safety)" chosen. Nothing is sent until the visitor fills
+  in their details and presses Send.
+- **`/bundle`**, the Kitchen Safety Bundle: CyberLogix AI's fridge and freezer alarms with
+  OmniArmor.ai's inspection checklists, where CyberLogix AI fills in OmniArmor.ai's temperature
+  checks each day. **Start with a free trial** goes to CyberLogix AI's `/signup` when
+  `CYBERLOGIX_URL` (or its catalog address) is set; without one it says "Free trial coming
+  soon" and offers Chroma Vortex. Each app's **Open** button uses its catalog address, or says
+  "Coming soon". The price reads "Ask about bundle pricing" until CyberLogix AI's `pricing.py`
+  has a bundle add-on: then copy its monthly price into `BUNDLE_PRICE` in `horizon/offers.py`.
+
+## Numbers: what people do in each app
+
+The console's **Numbers** section shows, for each connected app, the daily usage counts its
+stats address sends (numbers per day, never who):
+
+| App | Where in `/api/stats` | Counts |
+|---|---|---|
+| CyberLogix AI | `usage.daily`, oldest day first | sign-ups, sensors added, test alerts, alerts answered (console, text, call), inspector's logs, help views |
+| OmniArmor.ai | `usage.days`, newest day first | checks updated, bulk updates, lessons started and passed, certificates, help views, sign-ups |
+| RankUp | `daily.days`, oldest first (or `null`) | families and schools signed up, chores accepted, rewards bought, games played, help views |
+
+Per app: the last 30 days as small bars for each count, this month so far against last month
+with an arrow, the three things done most in 30 days, and one **What to do next** line. Months
+are compared by the average per day counted, so the middle of a month is compared fairly. The
+line comes from these rules, first match wins:
+
+1. No daily counts yet: update the app.
+2. Nothing at all in 30 days: time to find the first customers.
+3. Sign-ups, but nobody took the first step: "No test alerts sent: remind new customers to try
+   one" (CyberLogix AI), "No checks updated..." (OmniArmor.ai), "No chores accepted yet..."
+   (RankUp).
+4. Sign-ups up or down 25% or more this month (with at least 3 last month): "Sign-ups are up
+   40% this month: keep doing what's working", or down, "ask happy customers to pass it on".
+5. No sign-ups in 30 days though people use it: share it somewhere new.
+6. Otherwise: steady, and the most done thing this month.
+
+Each app sends only 30 days, so the console keeps every day it is sent (`usage_days`, 100 days)
+and each month's totals (`usage_months`, about three years), updated whenever the console or the
+home page asks the apps. A month's total never shrinks to fewer days than it had. Anything odd
+in an answer (a bad date, a day ahead of now, a negative or non-whole count) is left out. An app
+that isn't connected shows how to connect it. The numbers come from `GET /api/console/numbers`,
+owner only, read from what was saved; `horizon/numbers.py` has the rules.
 
 ## The app catalog: adding and releasing apps
 
@@ -473,6 +531,9 @@ needs changing. The line shows counts only, never anyone's address.
 - `horizon/vortex.py`, `templates/vortex.html`, `static/js/vortex*.js`, `static/css/vortex.css`:
   Chroma Vortex
 - `horizon/catalog.py`: the app catalog, and which apps are released
+- `horizon/offers.py`, `templates/partners.html`, `templates/bundle.html`, `static/css/offers.css`:
+  the partner page and the Kitchen Safety Bundle
+- `horizon/numbers.py`: the console's Numbers section
 - `templates/`: the pages
 - `static/`: styles, scripts, pictures (cut from the supplied design artwork) and the two
   fonts (Inter and Montserrat, under the SIL Open Font License; the licences are beside them)

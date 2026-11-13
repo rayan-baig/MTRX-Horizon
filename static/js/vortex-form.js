@@ -21,7 +21,7 @@
   const COMPANY = "company";
   const PICKS = { partner: "Choose which app or apps the partnership is about.",
     buy: "Choose what you're interested in: the whole company, one or more apps, or both." };
-  const PARTNERSHIPS = ["resell", "integrate", "refer", "co-market", "other"];
+  const PARTNERSHIPS = ["resell", "integrate", "refer", "refer-trade", "co-market", "other"];
   const LABELS = {
     name: "your name", organisation: "your organisation", email: "your email",
     idea: "the idea's name", pitch: "the one-line pitch", audience: "who it's for", message: "your message",
@@ -90,11 +90,27 @@
     return store.open(local).load().find((p) => p.id === id) || null;
   }
 
+  // A path opened with choices already made, from a link on another page:
+  // "#partner/cyberlogix/refer-trade" opens the Partner form with CyberLogix
+  // AI picked and that kind of partnership chosen. Only the shape is checked
+  // here; the page picks only apps it offers, and the server checks it all
+  // again. Nothing a visitor typed is ever in an address.
+  const KEY = /^[a-z0-9](?:[a-z0-9-]{0,22}[a-z0-9])?$/;
+  function fromHash(hash) {
+    const parts = String(hash || "").replace(/^#/, "").split("/");
+    const kind = KINDS.includes(parts[0]) ? parts[0] : null;
+    const out = { kind, apps: [], partnership: "" };
+    if (!kind || !(kind in PICKS)) return out;
+    out.apps = [...new Set((parts[1] || "").split(",").filter((a) => KEY.test(a)))].slice(0, 12);
+    if (kind === "partner" && PARTNERSHIPS.includes(parts[2])) out.partnership = parts[2];
+    return out;
+  }
+
   function sentLine(email) {
     return `We'll reply to ${email} as soon as we can.`;
   }
 
-  const api = { KINDS, LIMITS, FIELDS, COMPANY, PARTNERSHIPS, TRAP, fieldsOf, body, problems, fromGenesis, fill, handedOver, sentLine };
+  const api = { KINDS, LIMITS, FIELDS, COMPANY, PARTNERSHIPS, TRAP, fieldsOf, body, problems, fromGenesis, fill, handedOver, fromHash, sentLine };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.VortexForm = api;
 })(typeof window !== "undefined" ? window : globalThis);

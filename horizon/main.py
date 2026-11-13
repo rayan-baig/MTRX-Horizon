@@ -22,7 +22,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
-from . import catalog, config, costs, db, errors, genesis_ai, health, lock, stats, upkeep, vortex
+from . import catalog, config, costs, db, errors, genesis_ai, health, lock, numbers, offers, stats, upkeep, vortex
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -117,7 +117,8 @@ class _GzipText(GZipMiddleware):
 
     async def __call__(self, scope, receive, send):
         path = scope.get("path", "") if scope["type"] == "http" else ""
-        if path in ("/", "/privacy", "/terms", "/brand", "/genesis", "/vortex", "/sitemap.xml") or (path.startswith(("/static/", "/console/assets/"))
+        if path in ("/", "/privacy", "/terms", "/brand", "/genesis", "/vortex", "/partners", "/bundle",
+                    "/sitemap.xml") or (path.startswith(("/static/", "/console/assets/"))
                            and path.endswith(self.TEXT)):
             await super().__call__(scope, receive, send)
         else:
@@ -411,6 +412,32 @@ def vortex_page(request: Request):
     })
 
 
+# The partner page: fridge and refrigeration repair firms, food safety
+# consultants and kitchen equipment sellers recommend CyberLogix AI to the
+# shops they visit (offers.py). Apply opens the Chroma Vortex Partner form,
+# filled in; nothing is sent from this page.
+@app.api_route("/partners", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def partners_page(request: Request):
+    return templates.TemplateResponse(request, "partners.html", {
+        "page": "partners",
+        "contact": config.get().contact_email,
+        "base": base_url(request),
+        **offers.partner_context(),
+    })
+
+
+# The Kitchen Safety Bundle: CyberLogix AI and OmniArmor.ai together
+# (offers.py). Its buttons go to the apps' own addresses from the catalog.
+@app.api_route("/bundle", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def bundle_page(request: Request):
+    return templates.TemplateResponse(request, "bundle.html", {
+        "page": "bundle",
+        "contact": config.get().contact_email,
+        "base": base_url(request),
+        **offers.bundle_context(),
+    })
+
+
 @app.api_route("/chroma-vortex", methods=["GET", "HEAD"])
 def chroma_vortex():
     return RedirectResponse("/vortex", status_code=301)
@@ -422,7 +449,7 @@ def healthz():
 
 
 # The pages a search engine may list. The console is never one of them.
-PUBLIC_PAGES = ("/", "/genesis", "/vortex", "/privacy", "/terms", "/brand")
+PUBLIC_PAGES = ("/", "/genesis", "/vortex", "/partners", "/bundle", "/privacy", "/terms", "/brand")
 
 
 @app.api_route("/robots.txt", methods=["GET", "HEAD"], response_class=Response)
@@ -687,7 +714,9 @@ def overview(request: Request, days: int = 30):
         for d in lock.list_devices()
     ]
     return {
-        "apps": apps,
+        # The daily totals are read from what was just saved, by the
+        # Numbers section (/api/console/numbers), so they are not sent twice.
+        "apps": [{k: v for k, v in a.items() if k != "usage"} for a in apps],
         "server": stats.server(),
         "history": stats.history(max(1, min(days, 366))),
         "health": health.summary(),
@@ -698,6 +727,17 @@ def overview(request: Request, days: int = 30):
         "admin_urls": config.get().admin_urls,
         "costs": costs.summary(),
     }
+
+
+@app.get("/api/console/numbers")
+def numbers_page(request: Request):
+    """The Numbers section: each app's daily totals, this month against
+    last, the things done most and what to do next (numbers.py). Read from
+    what the console saved; the overview is what asks the apps."""
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    return numbers.dashboard()
 
 
 def _alert_setup() -> dict:

@@ -1,0 +1,286 @@
+{
+ "users": 61,
+ "active_users": 33,
+ "daily": {
+  "days": [
+   {
+    "chores_accepted": 22,
+    "families_signed_up": 4,
+    "games_played": 2,
+    "help_views": 2,
+    "rewards_bought": 7,
+    "schools_signed_up": 0,
+    "day": "2026-10-15"
+   },
+   {
+    "chores_accepted": 2,
+    "families_signed_up": 4,
+    "games_played": 32,
+    "help_views": 0,
+    "rewards_bought": 7,
+    "schools_signed_up": 0,
+    "day": "2026-10-16"
+   },
+   {
+    "chores_accepted": 18,
+    "families_signed_up": 0,
+    "games_played": 7,
+    "help_views": 2,
+    "rewards_bought": 5,
+    "schools_signed_up": 0,
+    "day": "2026-10-17"
+   },
+   {
+    "chores_accepted": 52,
+    "families_signed_up": 3,
+    "games_played": 43,
+    "help_views": 3,
+    "rewards_bought": 10,
+    "schools_signed_up": 0,
+    "day": "2026-10-18"
+   },
+   {
+    "chores_accepted": 29,
+    "families_signed_up": 1,
+    "games_played": 11,
+    "help_views": 1,
+    "rewards_bought": 3,
+    "schools_signed_up": 0,
+    "day": "2026-10-19"
+   },
+   {
+    "chores_accepted": 49,
+    "families_signed_up": 3,
+    "games_played": 9,
+    "help_views": 1,
+    "rewards_bought": 1,
+    "schools_signed_up": 0,
+    "day": "2026-10-20"
+   },
+   {
+    "chores_accepted": 33,
+    "families_signed_up": 2,
+    "games_played": 15,
+    "help_views": 2,
+    "rewards_bought": 7,
+    "schools_signed_up": 0,
+    "day": "2026-10-21"
+   },
+   {
+    "chores_accepted": 38,
+    "families_signed_up": 3,
+    "games_played": 22,
+    "help_views": 0,
+    "rewards_bought": 5,
+    "schools_signed_up": 0,
+    "day": "2026-10-22"
+   },
+   {
+    "chores_accepted": 40,
+    "families_signed_up": 1,
+    "games_played": 27,
+    "help_views": 2,
+    "rewards_bought": 1,
+    "schools_signed_up": 0,
+    "day": "2026-10-23"
+   },
+   {
+    "chores_accepted": 34,
+    "families_signed_up": 0,
+    "games_played": 30,
+    "help_views": 2,
+    "rewards_bought": 6,
+    "schools_signed_up": 0,
+    "day": "2026-10-24"
+   },
+   {
+    "chores_accepted": 22,
+    "families_signed_up": 2,
+    "games_played": 24,
+    "help_views": 2,
+    "rewards_bought": 7,
+    "schools_signed_up": 0,
+    "day": "2026-10-25"
+   },
+   {
+    "chores_accepted": 25,
+    "families_signed_up": 3,
+    "games_played": 20,
+    "help_views": 1,
+    "rewards_bought": 2,
+    "schools_signed_up": 0,
+    "day": "2026-10-26"
+   },
+   {
+    "chores_accepted": 37,
+    "families_signed_up": 1,
+    "games_played": 26,
+    "help_views": 2,
+    "rewards_bought": 6,
+    "schools_signed_up": 0,
+    "day": "2026-10-27"
+   },
+   {
+    "chores_accepted": 86,
+    "families_signed_up": 2,
+    "games_played": 38,
+    "help_views": 2,
+    "rewards_bought": 6,
+    "schools_signed_up": 0,
+    "day": "2026-10-28"
+   },
+   {
+    "chores_accepted": 0,
+    "families_signed_up": 4,
+    "games_played": 28,
+    "help_views": 2,
+    "rewards_bought": 4,
+    "schools_signed_up": 0,
+    "day": "2026-10-29"
+   },
+   {
+    "chores_accepted": 46,
+    "families_signed_up": 6,
+    "games_played": 34,
+    "help_views": 2,
+    "rewards_bought": 13,
+    "schools_signed_up": 0,
+    "day": "2026-10-30"
+   },
+   {
+    "chores_accepted": 36,
+    "families_signed_up": 3,
+    "games_played": 11,
+    "help_views": 3,
+    "rewards_bought": 10,
+    "schools_signed_up": 0,
+    "day": "2026-10-31"
+   },
+   {
+    "chores_accepted": 44,
+    "families_signed_up": 0,
+    "games_played": 22,
+    "help_views": 2,
+    "rewards_bought": 16,
+    "schools_signed_up": 0,
+    "day": "2026-11-01"
+   },
+   {
+    "chores_accepted": 40,
+    "families_signed_up": 2,
+    "games_played": 28,
+    "help_views": 2,
+    "rewards_bought": 4,
+    "schools_signed_up": 0,
+    "day": "2026-11-02"
+   },
+   {
+    "chores_accepted": 24,
+    "families_signed_up": 2,
+    "games_played": 45,
+    "help_views": 2,
+    "rewards_bought": 15,
+    "schools_signed_up": 0,
+    "day": "2026-11-03"
+   },
+   {
+    "chores_accepted": 31,
+    "families_signed_up": 2,
+    "games_played": 16,
+    "help_views": 2,
+    "rewards_bought": 13,
+    "schools_signed_up": 0,
+    "day": "2026-11-04"
+   },
+   {
+    "chores_accepted": 26,
+    "families_signed_up": 1,
+    "games_played": 41,
+    "help_views": 1,
+    "rewards_bought": 10,
+    "schools_signed_up": 0,
+    "day": "2026-11-05"
+   },
+   {
+    "chores_accepted": 56,
+    "families_signed_up": 1,
+    "games_played": 28,
+    "help_views": 3,
+    "rewards_bought": 7,
+    "schools_signed_up": 0,
+    "day": "2026-11-06"
+   },
+   {
+    "chores_accepted": 29,
+    "families_signed_up": 2,
+    "games_played": 25,
+    "help_views": 2,
+    "rewards_bought": 17,
+    "schools_signed_up": 0,
+    "day": "2026-11-07"
+   },
+   {
+    "chores_accepted": 39,
+    "families_signed_up": 1,
+    "games_played": 47,
+    "help_views": 3,
+    "rewards_bought": 1,
+    "schools_signed_up": 0,
+    "day": "2026-11-08"
+   },
+   {
+    "chores_accepted": 9,
+    "families_signed_up": 0,
+    "games_played": 39,
+    "help_views": 1,
+    "rewards_bought": 1,
+    "schools_signed_up": 0,
+    "day": "2026-11-09"
+   },
+   {
+    "chores_accepted": 33,
+    "families_signed_up": 1,
+    "games_played": 11,
+    "help_views": 2,
+    "rewards_bought": 7,
+    "schools_signed_up": 0,
+    "day": "2026-11-10"
+   },
+   {
+    "chores_accepted": 38,
+    "families_signed_up": 0,
+    "games_played": 30,
+    "help_views": 1,
+    "rewards_bought": 9,
+    "schools_signed_up": 0,
+    "day": "2026-11-11"
+   },
+   {
+    "chores_accepted": 43,
+    "families_signed_up": 0,
+    "games_played": 44,
+    "help_views": 2,
+    "rewards_bought": 6,
+    "schools_signed_up": 0,
+    "day": "2026-11-12"
+   },
+   {
+    "chores_accepted": 30,
+    "families_signed_up": 1,
+    "games_played": 13,
+    "help_views": 1,
+    "rewards_bought": 5,
+    "schools_signed_up": 0,
+    "day": "2026-11-13"
+   }
+  ],
+  "totals": {
+   "chores_accepted": 1011,
+   "families_signed_up": 55,
+   "games_played": 768,
+   "help_views": 53,
+   "rewards_bought": 211,
+   "schools_signed_up": 0
+  }
+ }
+}

@@ -284,6 +284,28 @@
 .v-app-pick { border-color: color-mix(in srgb, var(--pc) 55%, transparent); color: var(--text); }
 .v-app-pick:hover { border-color: var(--pc); }
 
+/* ---------- the partner page and the bundle ---------- */
+.v-more { margin: -4px 0 16px; color: var(--muted); font-size: 14px; }
+.v-more a { color: var(--v-cyan); }
+.v-bundle {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px 16px;
+  padding: 14px 18px; border-radius: var(--radius); text-decoration: none;
+  border: 1px solid rgba(34, 211, 238, .45);
+  background: linear-gradient(90deg, rgba(59, 139, 255, .18), rgba(166, 107, 255, .14));
+}
+.v-bundle:hover { border-color: var(--v-cyan); }
+.v-bundle-icons { display: flex; }
+.v-bundle-icons img { width: 34px; height: 34px; border-radius: 10px; }
+.v-bundle-icons img + img { margin-left: -8px; }
+.v-bundle-text { display: grid; gap: 2px; min-width: 0; }
+.v-bundle-text b { font: 700 16px/1.2 var(--head); }
+.v-bundle-text span { color: var(--muted); font-size: 13.5px; }
+.v-bundle-go { font-style: normal; font-weight: 600; font-size: 14px; color: var(--v-cyan); white-space: nowrap; }
+@media (max-width: 600px) {
+  .v-bundle { grid-template-columns: auto minmax(0, 1fr); padding: 12px 14px; }
+  .v-bundle-go { grid-column: 2; }
+}
+
 /* ---------- sent ---------- */
 .v-sent {
   display: grid; justify-items: center; text-align: center; gap: 10px; padding: clamp(28px, 5vw, 48px) 20px;

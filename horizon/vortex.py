@@ -41,6 +41,10 @@ PARTNERSHIPS = {
     "resell": "Resell or distribute",
     "integrate": "Integrate or build on",
     "refer": "Refer customers",
+    # From the partner page (/partners): fridge and refrigeration repair
+    # firms, food safety consultants and kitchen equipment sellers who
+    # recommend CyberLogix AI to the shops they already visit.
+    "refer-trade": "Refer my customers (repair / food safety)",
     "co-market": "Co-marketing or events",
     "other": "Something else",
 }

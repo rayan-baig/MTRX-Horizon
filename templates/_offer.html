@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+<link rel="stylesheet" href="{{ asset('css/offers.css') }}">
+<title>{% block title %}{% endblock %} · MTRX Horizyn</title>
+<meta name="description" content="{% block description %}{% endblock %}">
+<meta property="og:title" content="{{ self.title() }} · MTRX Horizyn">
+<meta property="og:description" content="{{ self.description() }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MTRX Horizyn">
+<meta property="og:url" content="{{ base }}/{{ page }}">
+<meta property="og:image" content="{{ base }}/static/img/logo-512.png">
+<link rel="canonical" href="{{ base }}/{{ page }}">
+</head>
+<body class="legal-page offer-page offer-{{ page }}">
+{#- The partner page and the Kitchen Safety Bundle (horizon/offers.py). Plain
+    pages: no script, no form, no cookie. Their buttons are links to the
+    apps' own addresses or to Chroma Vortex. -#}
+<div class="sky" aria-hidden="true"></div>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="MTRX Horizyn home">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-text">
+      <span class="wordmark">MTRX <b>HORIZYN</b></span>
+      <span class="tagline">One vision. Infinite possibilities.</span>
+    </span>
+  </a>
+  <nav class="mainnav" aria-label="Main">
+    <a href="/">Home</a>
+    <a href="/genesis">Genesis</a>
+    <a href="/vortex">Vortex</a>
+    <a href="/bundle"{% if page == "bundle" %} class="active" aria-current="page"{% endif %}>Bundle</a>
+    <a href="/partners"{% if page == "partners" %} class="active" aria-current="page"{% endif %}>Partners</a>
+  </nav>
+  <a class="o-home" href="/">Home</a>
+</header>
+
+<main class="offer">
+{% block body %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <span class="foot-brand">MTRX HORIZYN</span>
+  <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
+  <nav class="foot-links" aria-label="About this site">
+    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/vortex">Chroma Vortex</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
+    {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
+  </nav>
+</footer>
+</body>
+</html>

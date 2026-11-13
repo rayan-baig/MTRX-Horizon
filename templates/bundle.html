@@ -1,0 +1,101 @@
+{% extends "_offer.html" %}
+{% block title %}Kitchen Safety Bundle{% endblock %}
+{% block description %}CyberLogix AI's fridge and freezer alarms and OmniArmor.ai's inspection checklists, together. With the bundle, CyberLogix AI fills in OmniArmor.ai's temperature checks every day. For restaurants, cafés, pharmacies and school kitchens.{% endblock %}
+{% block body %}
+{%- macro trial_button(where) -%}
+{%- if trial %}<a class="btn btn-primary" href="{{ trial }}" rel="noopener">Start with a free trial <span aria-hidden="true">→</span></a>
+{%- else %}<span class="btn btn-primary is-soon" aria-disabled="true">Free trial coming soon</span>
+<a class="btn btn-ghost" href="{{ ask }}">Ask us about it</a>{% endif -%}
+{%- endmacro -%}
+{%- macro price_line() -%}
+{%- if price %}<p class="o-price">The bundle adds <b>${{ "{:,.0f}".format(price) }}</b> a month to CyberLogix AI.</p>
+{%- else %}<p class="o-price"><a href="{{ ask }}">Ask about bundle pricing</a></p>{% endif -%}
+{%- endmacro -%}
+<section class="panel o-hero o-hero-bundle">
+  <div class="o-hero-copy">
+    <p class="eyebrow">Kitchen Safety Bundle</p>
+    <h1 class="o-title">Cold food watched. <span>Checks filled in.</span></h1>
+    <p class="o-lede">CyberLogix AI's fridge and freezer alarms and OmniArmor.ai's inspection checklists,
+      together. With the bundle, CyberLogix AI fills in OmniArmor.ai's temperature checks for you,
+      automatically, every day.</p>
+    <div class="cta-row">{{ trial_button("hero") }}</div>
+    {{ price_line() }}
+  </div>
+  <div class="o-hero-art o-pair" aria-hidden="true">
+    <img src="/static/img/cyberlogix-icon.svg" alt="" width="96" height="96">
+    <span class="o-link-line"><i></i><i></i><i></i></span>
+    <img src="/static/img/omniarmor-icon.svg" alt="" width="96" height="96">
+  </div>
+</section>
+
+<section class="o-section" aria-labelledby="for-title">
+  <p class="eyebrow">Who it's for</p>
+  <h2 class="o-h" id="for-title">Anywhere food or medicine has to stay cold</h2>
+  <ul class="o-cards o-four">
+    <li class="panel o-card"><h3>Restaurants</h3>
+      <p>Walk-in coolers and freezers full of stock, and an inspector who could call any day.</p></li>
+    <li class="panel o-card"><h3>Cafés</h3>
+      <p>A few fridges, a small team, and no time for paperwork.</p></li>
+    <li class="panel o-card"><h3>Pharmacies</h3>
+      <p>Vaccines and medicines that must stay cold, and a record to prove it.</p></li>
+    <li class="panel o-card"><h3>School kitchens</h3>
+      <p>Meals for hundreds of children, and checks that have to be done every day.</p></li>
+  </ul>
+</section>
+
+<section class="o-section" aria-labelledby="apps-title">
+  <p class="eyebrow">What's in it</p>
+  <h2 class="o-h" id="apps-title">Two apps, one job</h2>
+  <ul class="o-apps">
+    {%- for key, what, points in [
+      ("cyberlogix", "Fridge and freezer alarms", [
+        "Wireless sensors read the temperature day and night.",
+        "Too warm? A text, then a phone call, then the next person, until someone answers.",
+        "Every reading kept in a sealed record."]),
+      ("omniarmor", "Inspection checklists", [
+        "The checks that apply to your business, each naming the rule it comes from.",
+        "Counts the days and emails your team before anything is due.",
+        "A record you can show an inspector."]),
+    ] %}
+    {%- set a = (apps | selectattr("key", "equalto", key) | first) if apps else none %}
+    <li class="panel o-app o-app-{{ key }}">
+      <div class="o-app-head">
+        <img src="/static/img/{{ key }}-icon.svg" alt="" width="52" height="52">
+        <div><h3>{{ a.name if a else {"cyberlogix": "CyberLogix AI", "omniarmor": "OmniArmor.ai"}[key] }}</h3>
+          <p class="o-app-what">{{ what }}</p></div>
+      </div>
+      <ul class="o-ticks">{% for p in points %}<li>{{ p }}</li>{% endfor %}</ul>
+      {% if a and a.url %}<a class="btn btn-ghost btn-small" href="{{ a.url }}" rel="noopener">Open {{ a.name }} <span aria-hidden="true">↗</span></a>
+      {% else %}<p class="o-soon"><span>Coming soon.</span> <a href="{{ ask }}">Ask in Chroma Vortex</a></p>{% endif %}
+    </li>
+    {%- endfor %}
+  </ul>
+</section>
+
+<section class="panel o-joined" aria-labelledby="joined-title">
+  <div class="o-joined-copy">
+    <p class="eyebrow">Better together</p>
+    <h2 class="o-h" id="joined-title">The temperature check fills itself in</h2>
+    <p>Every day, CyberLogix AI hands OmniArmor.ai the day's real readings, and the temperature checks on
+      your checklist are filled in for you.</p>
+    <ul class="o-ticks">
+      <li><b>No more writing temperatures on paper.</b></li>
+      <li>No missed check on a busy day: it's done every day, from real readings.</li>
+      <li>One record for the inspector, where the readings and the checklist agree.</li>
+    </ul>
+  </div>
+  <ol class="o-flow" aria-label="How the two apps work together">
+    <li><b>CyberLogix AI</b><span>reads each fridge and freezer</span></li>
+    <li><b>Every day</b><span>the readings are passed across</span></li>
+    <li><b>OmniArmor.ai</b><span>temperature checks: done</span></li>
+  </ol>
+</section>
+
+<section class="panel o-cta" aria-labelledby="start-title">
+  <h2 class="o-h" id="start-title">Start with the alarms. Add the checklists.</h2>
+  <p>{% if trial %}The free trial starts in CyberLogix AI. Tell us when you'd like the bundle switched on.
+    {%- else %}The free trial opens soon. Ask us now and we'll tell you when it's ready.{% endif %}</p>
+  <div class="cta-row">{{ trial_button("end") }}</div>
+  {{ price_line() }}
+</section>
+{% endblock %}

@@ -1,0 +1,317 @@
+{
+ "users": 23,
+ "active_users": 9,
+ "usage": {
+  "days": [
+   {
+    "day": "2026-11-13",
+    "checks_updated": 13,
+    "bulk_updates": 3,
+    "lessons_started": 8,
+    "lessons_passed": 5,
+    "certificates": 0,
+    "help_views": 5,
+    "signups": 0
+   },
+   {
+    "day": "2026-11-12",
+    "checks_updated": 6,
+    "bulk_updates": 0,
+    "lessons_started": 7,
+    "lessons_passed": 1,
+    "certificates": 0,
+    "help_views": 3,
+    "signups": 1
+   },
+   {
+    "day": "2026-11-11",
+    "checks_updated": 9,
+    "bulk_updates": 2,
+    "lessons_started": 9,
+    "lessons_passed": 3,
+    "certificates": 1,
+    "help_views": 6,
+    "signups": 1
+   },
+   {
+    "day": "2026-11-10",
+    "checks_updated": 5,
+    "bulk_updates": 1,
+    "lessons_started": 7,
+    "lessons_passed": 0,
+    "certificates": 0,
+    "help_views": 6,
+    "signups": 1
+   },
+   {
+    "day": "2026-11-09",
+    "checks_updated": 14,
+    "bulk_updates": 2,
+    "lessons_started": 5,
+    "lessons_passed": 1,
+    "certificates": 0,
+    "help_views": 2,
+    "signups": 1
+   },
+   {
+    "day": "2026-11-08",
+    "checks_updated": 10,
+    "bulk_updates": 1,
+    "lessons_started": 3,
+    "lessons_passed": 0,
+    "certificates": 0,
+    "help_views": 1,
+    "signups": 1
+   },
+   {
+    "day": "2026-11-07",
+    "checks_updated": 0,
+    "bulk_updates": 2,
+    "lessons_started": 3,
+    "lessons_passed": 0,
+    "certificates": 1,
+    "help_views": 3,
+    "signups": 0
+   },
+   {
+    "day": "2026-11-06",
+    "checks_updated": 7,
+    "bulk_updates": 2,
+    "lessons_started": 3,
+    "lessons_passed": 4,
+    "certificates": 1,
+    "help_views": 5,
+    "signups": 1
+   },
+   {
+    "day": "2026-11-05",
+    "checks_updated": 23,
+    "bulk_updates": 2,
+    "lessons_started": 6,
+    "lessons_passed": 0,
+    "certificates": 1,
+    "help_views": 6,
+    "signups": 1
+   },
+   {
+    "day": "2026-11-04",
+    "checks_updated": 10,
+    "bulk_updates": 3,
+    "lessons_started": 0,
+    "lessons_passed": 3,
+    "certificates": 2,
+    "help_views": 2,
+    "signups": 1
+   },
+   {
+    "day": "2026-11-03",
+    "checks_updated": 27,
+    "bulk_updates": 1,
+    "lessons_started": 6,
+    "lessons_passed": 4,
+    "certificates": 0,
+    "help_views": 3,
+    "signups": 1
+   },
+   {
+    "day": "2026-11-02",
+    "checks_updated": 19,
+    "bulk_updates": 1,
+    "lessons_started": 4,
+    "lessons_passed": 1,
+    "certificates": 0,
+    "help_views": 5,
+    "signups": 1
+   },
+   {
+    "day": "2026-11-01",
+    "checks_updated": 8,
+    "bulk_updates": 1,
+    "lessons_started": 11,
+    "lessons_passed": 4,
+    "certificates": 1,
+    "help_views": 0,
+    "signups": 1
+   },
+   {
+    "day": "2026-10-31",
+    "checks_updated": 17,
+    "bulk_updates": 3,
+    "lessons_started": 6,
+    "lessons_passed": 2,
+    "certificates": 1,
+    "help_views": 0,
+    "signups": 1
+   },
+   {
+    "day": "2026-10-30",
+    "checks_updated": 16,
+    "bulk_updates": 1,
+    "lessons_started": 8,
+    "lessons_passed": 5,
+    "certificates": 0,
+    "help_views": 2,
+    "signups": 1
+   },
+   {
+    "day": "2026-10-29",
+    "checks_updated": 15,
+    "bulk_updates": 1,
+    "lessons_started": 2,
+    "lessons_passed": 6,
+    "certificates": 1,
+    "help_views": 1,
+    "signups": 0
+   },
+   {
+    "day": "2026-10-28",
+    "checks_updated": 25,
+    "bulk_updates": 2,
+    "lessons_started": 9,
+    "lessons_passed": 4,
+    "certificates": 0,
+    "help_views": 4,
+    "signups": 0
+   },
+   {
+    "day": "2026-10-27",
+    "checks_updated": 8,
+    "bulk_updates": 1,
+    "lessons_started": 6,
+    "lessons_passed": 1,
+    "certificates": 0,
+    "help_views": 4,
+    "signups": 1
+   },
+   {
+    "day": "2026-10-26",
+    "checks_updated": 18,
+    "bulk_updates": 2,
+    "lessons_started": 4,
+    "lessons_passed": 4,
+    "certificates": 1,
+    "help_views": 2,
+    "signups": 0
+   },
+   {
+    "day": "2026-10-25",
+    "checks_updated": 13,
+    "bulk_updates": 1,
+    "lessons_started": 5,
+    "lessons_passed": 2,
+    "certificates": 1,
+    "help_views": 3,
+    "signups": 0
+   },
+   {
+    "day": "2026-10-24",
+    "checks_updated": 16,
+    "bulk_updates": 3,
+    "lessons_started": 6,
+    "lessons_passed": 2,
+    "certificates": 1,
+    "help_views": 2,
+    "signups": 0
+   },
+   {
+    "day": "2026-10-23",
+    "checks_updated": 14,
+    "bulk_updates": 1,
+    "lessons_started": 6,
+    "lessons_passed": 1,
+    "certificates": 0,
+    "help_views": 1,
+    "signups": 2
+   },
+   {
+    "day": "2026-10-22",
+    "checks_updated": 11,
+    "bulk_updates": 0,
+    "lessons_started": 3,
+    "lessons_passed": 3,
+    "certificates": 1,
+    "help_views": 4,
+    "signups": 2
+   },
+   {
+    "day": "2026-10-21",
+    "checks_updated": 18,
+    "bulk_updates": 1,
+    "lessons_started": 6,
+    "lessons_passed": 5,
+    "certificates": 1,
+    "help_views": 6,
+    "signups": 0
+   },
+   {
+    "day": "2026-10-20",
+    "checks_updated": 12,
+    "bulk_updates": 2,
+    "lessons_started": 4,
+    "lessons_passed": 4,
+    "certificates": 1,
+    "help_views": 5,
+    "signups": 1
+   },
+   {
+    "day": "2026-10-19",
+    "checks_updated": 31,
+    "bulk_updates": 3,
+    "lessons_started": 4,
+    "lessons_passed": 3,
+    "certificates": 2,
+    "help_views": 3,
+    "signups": 1
+   },
+   {
+    "day": "2026-10-18",
+    "checks_updated": 20,
+    "bulk_updates": 2,
+    "lessons_started": 2,
+    "lessons_passed": 3,
+    "certificates": 1,
+    "help_views": 6,
+    "signups": 1
+   },
+   {
+    "day": "2026-10-17",
+    "checks_updated": 14,
+    "bulk_updates": 2,
+    "lessons_started": 6,
+    "lessons_passed": 3,
+    "certificates": 1,
+    "help_views": 3,
+    "signups": 1
+   },
+   {
+    "day": "2026-10-16",
+    "checks_updated": 6,
+    "bulk_updates": 1,
+    "lessons_started": 5,
+    "lessons_passed": 0,
+    "certificates": 0,
+    "help_views": 0,
+    "signups": 0
+   },
+   {
+    "day": "2026-10-15",
+    "checks_updated": 17,
+    "bulk_updates": 2,
+    "lessons_started": 4,
+    "lessons_passed": 2,
+    "certificates": 0,
+    "help_views": 7,
+    "signups": 1
+   }
+  ],
+  "totals": {
+   "checks_updated": 422,
+   "bulk_updates": 49,
+   "lessons_started": 158,
+   "lessons_passed": 76,
+   "certificates": 19,
+   "help_views": 100,
+   "signups": 23
+  }
+ }
+}

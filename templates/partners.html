@@ -1,0 +1,118 @@
+{% extends "_offer.html" %}
+{% block title %}Partners{% endblock %}
+{% block description %}For fridge and refrigeration repair companies, food safety consultants and kitchen equipment sellers: recommend CyberLogix AI to the shops you already visit, and earn a share of what they pay.{% endblock %}
+{% block body %}
+{#- What this page says about money is what CyberLogix AI's partner code does
+    (its partners.py and docs/PARTNERS.md): a share, set for each partner, of
+    money its businesses actually paid. No rate is printed, because the rate
+    is a setting. -#}
+<section class="panel o-hero">
+  <div class="o-hero-copy">
+    <p class="eyebrow">Partners · CyberLogix AI</p>
+    <h1 class="o-title">Recommend CyberLogix AI to the shops you already visit, <span>and earn a share of what they pay.</span></h1>
+    <p class="o-lede">CyberLogix AI watches fridges and freezers with wireless sensors, and the moment one gets
+      too warm it tells the right person: a text, then a phone call, then the next person, until someone
+      answers. You already know which kitchens need it.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="{{ apply }}">Apply <span aria-hidden="true">→</span></a>
+      <a class="btn btn-ghost" href="#how">How it works</a>
+    </div>
+  </div>
+  <div class="o-hero-art" aria-hidden="true">
+    <span class="o-orbit"><img src="/static/img/cyberlogix-icon.svg" alt="" width="120" height="120"></span>
+  </div>
+</section>
+
+<section class="o-section" aria-labelledby="who-title">
+  <p class="eyebrow">Who it's for</p>
+  <h2 class="o-h" id="who-title">For people kitchens already trust</h2>
+  <ul class="o-cards o-three">
+    <li class="panel o-card">
+      <span class="o-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg></span>
+      <h3>Fridge and refrigeration repair companies</h3>
+      <p>You get the call when a freezer fails. Help your customers hear about it before the stock is lost,
+        and see which of your sites needs a visit.</p>
+    </li>
+    <li class="panel o-card">
+      <span class="o-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 11l2 2 4-4"/><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/></svg></span>
+      <h3>Food safety consultants and inspectors' trainers</h3>
+      <p>You teach kitchens to keep food cold and keep records. CyberLogix AI keeps every reading for them,
+        ready to show an inspector.</p>
+    </li>
+    <li class="panel o-card">
+      <span class="o-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M5 10h14M9 6v1.5M9 13.5v3"/></svg></span>
+      <h3>Kitchen equipment sellers</h3>
+      <p>Every fridge, freezer or cold room you sell is one worth watching. Add an alarm to the
+        conversation you're already having.</p>
+    </li>
+  </ul>
+</section>
+
+<section class="o-section" id="how" aria-labelledby="how-title">
+  <p class="eyebrow">How it works</p>
+  <h2 class="o-h" id="how-title">Three steps</h2>
+  <ol class="o-steps">
+    <li class="panel o-step">
+      <span class="o-num" aria-hidden="true">1</span>
+      <h3>Apply</h3>
+      <p>Tell us about your business in the Chroma Vortex partner form. It takes a couple of minutes, and
+        we reply by email.</p>
+    </li>
+    <li class="panel o-step">
+      <span class="o-num" aria-hidden="true">2</span>
+      <h3>Get a partner key</h3>
+      <p>Once we agree, you get a partner key. It opens your partner portal: the businesses you look after,
+        any unit that's offline or low on battery, and any open alert.</p>
+    </li>
+    <li class="panel o-step">
+      <span class="o-num" aria-hidden="true">3</span>
+      <h3>Your customers sign up, and you earn</h3>
+      <p>Your customer starts a free trial. We link their account to you, and you earn a share of what they
+        pay, every month they pay.</p>
+    </li>
+  </ol>
+</section>
+
+<section class="o-split" aria-labelledby="earn-title">
+  <div class="panel o-facts">
+    <p class="eyebrow">What you earn</p>
+    <h2 class="o-h" id="earn-title">A share of what is really paid</h2>
+    <ul class="o-ticks">
+      <li>A share of what your customers <b>actually paid</b> in the last 30 days. Not the price list.</li>
+      <li>A free trial, or an invoice that hasn't been paid, earns nothing. A cancelled invoice earns
+        nothing; half paid earns half.</li>
+      <li>Your share is agreed when you join. Your statement shows each business and what you earned from it.</li>
+      <li>We pay it ourselves, by bank transfer, each month.</li>
+    </ul>
+  </div>
+  <div class="panel o-facts">
+    <p class="eyebrow">What you see</p>
+    <h2 class="o-h">Enough to send an engineer</h2>
+    <ul class="o-ticks">
+      <li>Each business you look after: its units, where they are, when each last reported, battery and signal.</li>
+      <li>The businesses that need a visit, at the top.</li>
+      <li>Never their staff, phone numbers or invoices, and never a business that isn't yours. You can't
+        change anything in their account.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="panel o-story" aria-labelledby="story-title">
+  <p class="eyebrow">Why it matters</p>
+  <h2 class="o-h" id="story-title">Why a separate alarm matters</h2>
+  <p>In October 2026, hackers warmed the fridges at hundreds of supermarkets in France. Separate alarms
+    matter: a sensor that reads the temperature on its own, apart from the fridge's controls, still tells
+    someone when the food gets warm.</p>
+  <p>That's what CyberLogix AI's sensors do, whatever has gone wrong.</p>
+</section>
+
+<section class="panel o-cta" aria-labelledby="apply-title">
+  <h2 class="o-h" id="apply-title">Ready to recommend CyberLogix AI?</h2>
+  <p>Apply in Chroma Vortex. {% if app %}CyberLogix AI and “{{ kind_name }}” are picked for you; add a few
+    words about your business and press Send.{% else %}Choose “{{ kind_name }}” and tell us about your business.{% endif %}</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="{{ apply }}">Apply <span aria-hidden="true">→</span></a>
+    <a class="btn btn-ghost" href="/bundle">See the Kitchen Safety Bundle</a>
+  </div>
+</section>
+{% endblock %}

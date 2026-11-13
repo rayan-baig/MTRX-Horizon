@@ -35,6 +35,10 @@
     ["Genesis", "Turn your idea into a launch", "/genesis", "genesis idea start project launch"],
     ["Chroma Vortex", "Partner with us, pitch an idea, talk to us as an investor, or ask about buying", "/vortex",
       "vortex partner partnership business resell integrate pitch idea investor invest contact buy acquire purchase"],
+    ["Kitchen Safety Bundle", "CyberLogix AI and OmniArmor.ai together for kitchens", "/bundle",
+      "bundle kitchen safety restaurant cafe pharmacy school fridge freezer alarm checklist inspection temperature"],
+    ["Partners", "Recommend CyberLogix AI to the shops you visit and earn a share", "/partners",
+      "partners refer referral repair refrigeration fridge food safety consultant equipment commission earn"],
   ] : []).forEach(([title, hint, href, words]) => {
     items.push({ title, hint, href, words: (title + " " + words).toLowerCase() });
   });
