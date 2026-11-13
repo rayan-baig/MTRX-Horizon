@@ -35,14 +35,16 @@
     return (a.innerText || a.textContent || "").replace(/\s+/g, " ").trim().slice(0, 200);
   }
 
+  // Only dangerous links are marked. Outlining every "take care" link would
+  // teach people to ignore the outlines.
   function mark(a, v) {
-    if (!v || v.level === "safe") return;
+    if (!v || v.level !== "danger") return;
     a.dataset.omnicyte = v.level;
-    a.style.outline = v.level === "danger" ? "2px solid #ff5470" : "2px dashed #ffc145";
+    a.style.outline = "2px solid #ff5470";
     a.style.outlineOffset = "1px";
     a.style.borderRadius = "2px";
     const first = (v.signals || [])[0];
-    a.title = (v.level === "danger" ? "⚠ Omnicyte: don't click. " : "Omnicyte: take care. ") + (first ? first.title : "");
+    a.title = "⚠ Omnicyte: don't click. " + (first ? first.title : "");
   }
 
   async function scan() {

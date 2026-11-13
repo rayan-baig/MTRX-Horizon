@@ -58,8 +58,47 @@ Every signal comes with a plain-language reason and a tip, so the alert also tea
   private keys and tokens pasted into chat or mail. These are shown only masked.
 
 One strong sign alone (a lookalike domain, mismatched link text) is **danger**. Weaker signs
-add up to **caution**. By default the buddy pops up only for danger; the browser marks caution
-links with a dashed outline.
+add up to **caution**. By default the buddy pops up only for danger, and the browser marks only
+dangerous links.
+
+## Keeping false alarms down
+
+A buddy that cries wolf trains people to click past it, so Omnicyte is built to stay quiet about
+ordinary mail:
+
+- **Brand names are judged by context.** A disguised name (`micros0ft`, Cyrillic letters) or one
+  dressed up as a domain (`paypal.com.evil.io`) is danger. A brand's plain name counts only next
+  to the words phishers pair it with (`microsoft-login`, `dhl-parcel-redelivery`). Brand names
+  that are everyday words (apple, amazon, outlook, teams, chase, zoom, slack, stripe…) never count
+  on their own, so `apple-pie-recipes.com` and `economic-outlook.org` are fine. Fan, news and
+  developer sites (`awesome-github.dev`) are fine too.
+- **Your own spaces on SaaS platforms are recognised**: `acme.atlassian.net`,
+  `acme.zendesk.com`, `stripe.statuspage.io`, `google.github.io`. So are the real domains of the
+  brands it knows, including the ones they email from (`facebookmail.com`, `dropboxmail.com`,
+  `echosign.com`).
+- **Newsletter click trackers and short links** (SendGrid, Mailchimp, HubSpot, Marketo,
+  `nyti.ms`…) never show the final address, so link text that differs from them is not held
+  against them.
+- **File and product names aren't sites**: link text like `report.pdf`, `README.md` or
+  `Node.js` is not a claim about where the link goes.
+- **Private network addresses** (intranet names, `192.168.x.x`, `10.x`, `.local`, `localhost`)
+  are trusted: phishing comes from the internet.
+- **Words alone never warn.** "Urgent", "verify your account", "your password will expire" and
+  "invoice" are in plenty of real mail. They only count when something technical is wrong too: a
+  lookalike sender, a bad link, a risky attachment, or a boss writing from a Gmail address. The
+  one exception is a request to share a one-time code.
+- **Display names**: a brand counts only when the name is just the brand plus service words
+  ("Microsoft 365 Support"), so people and companies named Chase, Apple Valley Dental or
+  "Salesforce Ben" are fine.
+- **Code isn't a password**: `password = os.environ['DB_PASSWORD']`, `$DB_PASS`,
+  `<your password>` and plain words are not flagged as shared secrets.
+- **Downloads** are normal on websites. They only count in a message, and not when the sender
+  links to their own site's installer.
+
+`tests/test_omnicyte_false_alarms.py` holds over 200 everyday links, notifications, newsletters,
+internal mails and chat messages that must all come out safe. `tests/test_omnicyte_detection.py`
+holds the phishing that must still be caught. If a false alarm turns up in real use, add it to the
+first file and make it pass without breaking the second.
 
 ## Run it
 

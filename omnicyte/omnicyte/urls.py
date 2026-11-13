@@ -154,67 +154,200 @@ def _distance(a: str, b: str, limit: int) -> int:
 
 
 # Ordinary words one letter away from a brand name.
-NOT_LOOKALIKES = {"finance", "romance", "outlooks", "dropbear", "workdays", "netflux"}
-
-
-def _close(token: str, name: str, exact_only: bool = False) -> bool:
-    """Is token the name, or a lookalike spelling of it?"""
-    if not token:
-        return False
-    norm = normalize(token)
-    if token == name or norm == name:
-        return True
-    if exact_only or norm in NOT_LOOKALIKES:
-        return False
-    # Doubled letters: gooogle, paypall.
-    if _squeeze(norm) == _squeeze(name) and len(norm) - len(name) <= 2:
-        return True
-    limit = 2 if len(name) >= 10 else 1 if len(name) >= 7 else 0
-    return limit > 0 and _distance(norm, name, limit) <= limit
+NOT_LOOKALIKES = {"finance", "romance", "outlooks", "dropbear", "workdays", "netflux", "applied", "salesforge",
+                  "facebooks", "linkedln"}
+_INTERNAL_TLDS = {"local", "lan", "corp", "internal", "intranet", "home", "localdomain", "test", "localhost",
+                  "example", "invalid", "arpa", "private"}
 
 
 def _squeeze(s: str) -> str:
     return re.sub(r"(.)\1+", r"\1", s)
 
 
-def _tokens(host: str) -> list[str]:
-    host = decode_host(host)
-    return [t for t in re.split(r"[.\-_]", host) if t]
-
-
-def brand_imitated(host: str) -> str | None:
-    """The brand a host pretends to be, if it uses a brand's name (or a near
-    spelling of it) without being on one of that brand's real domains."""
-    if not host or _is_ip(host):
+def _match(token: str, name: str) -> str | None:
+    """How token resembles a brand name: "exact", "disguised" (lookalike
+    letters, doubled letters), "near" (one letter off), or not at all."""
+    if not token:
         return None
-    for name, real in brands.BRANDS.items():
-        if belongs_to(host, real):
-            continue
-        for tok in _tokens(host):
-            if _close(tok, name, name in brands.EXACT_ONLY):
-                return name
+    if token == name:
+        return "exact"
+    norm = normalize(token)
+    if norm == name:
+        return "disguised"
+    if name in brands.EXACT_ONLY or norm in NOT_LOOKALIKES:
+        return None
+    if _squeeze(norm) == _squeeze(name) and 0 < len(norm) - len(name) <= 2:
+        return "disguised"
+    if len(name) >= 8 and _distance(norm, name, 1) <= 1:
+        return "near"
     return None
 
 
-def org_imitated(host: str, org_domains) -> str | None:
-    """Which of our own domains a host is a near copy of (but isn't)."""
-    if not host or not org_domains or belongs_to(host, org_domains):
+def _close(token: str, name: str, exact_only: bool = False) -> bool:
+    kind = _match(token, name)
+    return kind is not None and (not exact_only or kind == "exact")
+
+
+def is_internal(host: str) -> bool:
+    """A private address on the company network: an intranet name, a printer,
+    a router, this computer. Phishing comes from the internet, not from here."""
+    host = host.strip("[]").lower()
+    if not host or host == "localhost" or "." not in host:
+        return bool(host)
+    try:
+        ip = ipaddress.ip_address(host)
+        return ip.is_private or ip.is_loopback or ip.is_link_local
+    except ValueError:
+        return host.rsplit(".", 1)[-1] in _INTERNAL_TLDS
+
+
+def _platform(host: str, platforms) -> str | None:
+    """The most specific platform a host sits on: app.box.com before box.com."""
+    found = [p for p in platforms if host.endswith("." + p)]
+    return max(found, key=len) if found else None
+
+
+def _parts(host: str):
+    """(labels someone chose, platform it sits on or None). For
+    "paypal-login.web.app" that's (["paypal-login"], "web.app"); for
+    "login.paypal.com.evil.co.uk" it's (["login", "paypal", "com", "evil"], None)."""
+    dhost = decode_host(host)
+    platform = _platform(dhost, brands.TENANT_PLATFORMS | brands.FREE_HOSTS)
+    if platform:
+        return dhost[: -len(platform) - 1].split("."), platform
+    reg = registrable(dhost)
+    suffix = reg.count(".")  # labels after the bought name
+    labels = dhost.split(".")
+    return labels[: len(labels) - suffix], None
+
+
+def _words(labels) -> list[str]:
+    return [w for label in labels for w in re.split(r"[\-_]", label) if w]
+
+
+def brand_imitation(host: str) -> tuple[str, int] | None:
+    """(brand, weight) if a host uses a brand's name without being that brand.
+
+    The weight depends on how: disguised spellings and a brand dressed up as
+    a whole domain (paypal.com.evil.io) are danger; the plain name only with
+    words phishers pair it with; a brand name that's an everyday word, a fan
+    or developer site, or a company's own space on a platform, not at all.
+    """
+    if not host or _is_ip(host) or is_internal(host):
         return None
-    # Our own space on a service we use: acme.sharepoint.com, acme.okta.com.
+    labels, platform = _parts(host)
+    if not labels:
+        return None
+    words = _words(labels)
+    best = None
+    for name, real in brands.BRANDS.items():
+        if belongs_to(host, real) or belongs_to(decode_host(host), real):
+            continue
+        for i, w in enumerate(words):
+            kind = _match(w, name)
+            others = words[:i] + words[i + 1:]
+            if not kind and len(name) >= 5 and len(w) > len(name):
+                # glued to a phishing word: microsoftonline, paypalsecure, appleidverify
+                rest = w[len(name):] if w.startswith(name) else w[:-len(name)] if w.endswith(name) else ""
+                if rest in brands.PHISHY_WORDS:
+                    kind, others = "exact", others + [rest]
+            if not kind:
+                continue
+            phishy = any(o in brands.PHISHY_WORDS for o in others)
+            companion = phishy or any(o in brands.BRANDS for o in others)
+            community = any(o in brands.COMMUNITY_WORDS for o in others) and not phishy
+            dressed = any(lbl in ("com", "net", "org", "co") for lbl in labels[:-1]) or (
+                len(labels) > 1 and labels[-1] not in ("www",) and name in labels[:-1])
+            if platform in brands.TENANT_PLATFORMS and labels[-1] == name and len(labels) == 1:
+                continue  # stripe.statuspage.io, google.github.io: the brand's own space
+            if kind == "disguised" or dressed:
+                weight = 60
+            elif community and not kind == "near":
+                weight = 0
+            elif kind == "near":
+                weight = 60 if companion else 30
+            elif name in brands.COMMON_WORD_BRANDS:
+                weight = 60 if companion else 0
+            elif platform in brands.TENANT_PLATFORMS:
+                weight = 60 if companion else 0
+            else:
+                weight = 60 if companion else 40
+            if weight and (best is None or weight > best[1]):
+                best = (name, weight)
+    return best
+
+
+def brand_imitated(host: str) -> str | None:
+    found = brand_imitation(host)
+    return found[0] if found and found[1] >= 40 else None
+
+
+def org_imitation(host: str, org_domains) -> tuple[str, int] | None:
+    """(our domain, weight) if a host is a copy of one of our own domains."""
+    if not host or not org_domains or belongs_to(host, org_domains) or is_internal(host) or _is_ip(host):
+        return None
+    # Our own space on a service we use: acme.sharepoint.com, acme.atlassian.net.
     if any(belongs_to(host, real) for real in brands.BRANDS.values()):
         return None
-    reg = registrable(decode_host(host))
-    label = reg.split(".")[0]
+    labels, platform = _parts(host)
+    if platform in brands.TENANT_PLATFORMS and len(labels) == 1:
+        return None
+    words = _words(labels)
+    reg_label = registrable(decode_host(host)).split(".")[0]
     for d in org_domains:
         own = d.split(".")[0]
         if len(own) < 4:
             continue
-        if label != own and (normalize(label) == normalize(own) or _close(label, own)):
-            return d
-        # our name stuffed into somebody else's domain: acme-corp.com.evil.io, acme-sso.net
-        if any(t == own for t in _tokens(host)) and registrable(host) != registrable(d):
-            return d
+        others = [w for w in words if w != own]
+        companion = any(o in brands.PHISHY_WORDS or o in brands.BRANDS for o in others)
+        if reg_label != own and (normalize(reg_label) == normalize(own)
+                                 or (_squeeze(normalize(reg_label)) == _squeeze(own) and len(reg_label) > len(own))):
+            return d, 65                                   # acrne.com, acmme.com
+        if reg_label != own and len(own) >= 6 and _distance(reg_label, own, 1) <= 1:
+            return d, 65 if companion else 35              # one letter off a longer name
+        if own in words and registrable(host) != registrable(d):
+            dressed = own in labels[:-1] and any(lbl in ("com", "co", "net", "org") for lbl in labels)
+            if dressed or companion:
+                return d, 65                               # acme.com.evil.io, acme-sso.net
+            return d, 15                                   # acme-bagels.com: just shares the word
     return None
+
+
+def org_imitated(host: str, org_domains) -> str | None:
+    found = org_imitation(host, org_domains)
+    return found[0] if found and found[1] >= 40 else None
+
+
+def _same_owner(a: str, b: str, also=()) -> bool:
+    """Do two hosts belong to the same company (same domain, or both one brand's)?"""
+    if registrable(a) == registrable(b):
+        return True
+    if also and belongs_to(a, also) and belongs_to(b, also):
+        return True
+    return any(belongs_to(a, real) and belongs_to(b, real) for real in brands.BRANDS.values())
+
+
+def claimed_site(text: str) -> str | None:
+    """The site a link's words name, if they name one: "www.chase.com/login" ->
+    "www.chase.com". File names and product names (report.pdf, Node.js) don't."""
+    text = (text or "").strip()
+    m = DOMAIN_LIKE.match(text)
+    if not m:
+        return None
+    claimed = m.group(1).lower()
+    tld = claimed.rsplit(".", 1)[-1]
+    explicit = text.lower().startswith(("http://", "https://", "www."))
+    if tld in brands.FILE_EXTENSIONS and not explicit:
+        return None
+    if tld not in brands.GENERIC_TLDS and not explicit:
+        return None
+    if len(claimed.split(".")[0]) < 2:
+        return None
+    return claimed
+
+
+def is_click_tracker(host: str) -> bool:
+    return belongs_to(host, brands.CLICK_TRACKERS) or registrable(host) in brands.SHORTENERS or host in brands.SHORTENERS
 
 
 # ---------------------------------------------------------------- one link
@@ -223,8 +356,9 @@ def analyze_link(href: str, shown: str = "", org_domains=(), trusted=()) -> tupl
     """Look at one link. Returns (real destination, signals).
 
     shown is the text a person sees and clicks, if it differs from the address.
-    trusted domains are believed (no lookalike or wording checks), but a
-    trusted domain can still never run code or hide a different site behind @.
+    Trusted domains, the company's own, the real domains of the brands we know
+    and private network addresses are believed: no lookalike or wording checks.
+    Nothing can make a link that runs code, or hides its site behind @, safe.
     """
     raw = (href or "").strip()
     signals: list[Signal] = []
@@ -239,6 +373,7 @@ def analyze_link(href: str, shown: str = "", org_domains=(), trusted=()) -> tupl
     dest = unwrap(raw)
     try:
         parts = urlsplit(dest)
+        parts.port  # noqa: B018 - raises on a malformed port
     except ValueError:
         return dest, [Signal("scheme", "The link is malformed in a way browsers may misread", dest[:80], 40)]
     host = host_of(dest)
@@ -248,35 +383,31 @@ def analyze_link(href: str, shown: str = "", org_domains=(), trusted=()) -> tupl
         signals.append(Signal("userinfo", f"The address hides its real site behind an @: it goes to {shown_host}",
                               dest[:120], 60))
 
-    all_trusted = tuple(trusted) + tuple(org_domains)
-    is_trusted = belongs_to(host, all_trusted)
+    ours = tuple(trusted) + tuple(org_domains)
 
-    # The text says one site, the link goes to another.
-    shown_text = (shown or "").strip()
-    m = DOMAIN_LIKE.match(shown_text)
-    if m and host:
-        claimed = m.group(1).lower()
-        if "." in claimed and registrable(claimed) != registrable(host) \
-                and not belongs_to(host, brands.BRANDS.get(registrable(claimed).split(".")[0], ())):
-            signals.append(Signal("text-mismatch", f"The link says {claimed} but really goes to {shown_host}",
-                                  f"{shown_text[:60]} → {host}", 60))
+    # The words say one site, the link goes to another. A newsletter's click
+    # counter or a short link never shows the real address, so it proves nothing.
+    claimed = claimed_site(shown)
+    if claimed and host and not is_click_tracker(host) and not _same_owner(claimed, host, ours):
+        signals.append(Signal("text-mismatch", f"The link says {claimed} but really goes to {shown_host}",
+                              f"{(shown or '').strip()[:60]} → {host}", 60))
 
-    if is_trusted:
+    if belongs_to(host, ours) or is_internal(host) or any(belongs_to(host, real) for real in brands.BRANDS.values()):
         return dest, signals
 
     if _is_ip(host):
         signals.append(Signal("ip-address", "The link goes to a bare number (IP address), not a named site",
-                              host, 35))
+                              host, 40))
     else:
-        org = org_imitated(host, org_domains)
-        if org:
-            signals.append(Signal("org-lookalike", f"{shown_host} is made to look like our own {org}",
-                                  shown_host, 65))
-        brand = brand_imitated(host)
-        if brand and not org:
-            signals.append(Signal("brand-lookalike",
-                                  f"{shown_host} uses {brands.DISPLAY.get(brand, brand)}'s name but isn't "
-                                  f"{brands.DISPLAY.get(brand, brand)}", shown_host, 60))
+        org = org_imitation(host, org_domains)
+        if org and org[1] >= 25:
+            signals.append(Signal("org-lookalike", f"{shown_host} is made to look like our own {org[0]}",
+                                  shown_host, org[1]))
+        brand = brand_imitation(host)
+        if brand and not (org and org[1] >= 25):
+            name = brands.DISPLAY.get(brand[0], brand[0])
+            signals.append(Signal("brand-lookalike", f"{shown_host} uses {name}'s name but isn't {name}",
+                                  shown_host, brand[1]))
         if "xn--" in host:
             signals.append(Signal("punycode", f"The address uses lookalike letters from another alphabet: {shown_host}",
                                   host, 30))
@@ -294,15 +425,15 @@ def analyze_link(href: str, shown: str = "", org_domains=(), trusted=()) -> tupl
     login = next((w for w in LOGIN_WORDS if re.search(rf"(?<![a-z]){re.escape(w)}(?![a-z])", path)), None)
     if login:
         if parts.scheme == "http":
-            signals.append(Signal("no-https", "A sign-in page that isn't encrypted (http, not https)", host, 25))
+            signals.append(Signal("no-https", "A sign-in page that isn't encrypted (http, not https)", host, 20))
         else:
-            signals.append(Signal("login-path", "It goes straight to a sign-in or verify page", login, 10))
+            signals.append(Signal("login-path", "It goes straight to a sign-in or verify page", login, 5))
     if (parts.path or "").lower().endswith(DOWNLOAD_EXTENSIONS):
         signals.append(Signal("download", "The link downloads a program or script",
-                              (parts.path or "").rsplit("/", 1)[-1][:60], 45))
+                              (parts.path or "").rsplit("/", 1)[-1][:60], 20))
     for value in parse_qs(parts.query).values():
         inner = next((v for v in value if v.lower().startswith(("http://", "https://"))), None)
         if inner and registrable(host_of(inner)) not in ("", registrable(host)):
-            signals.append(Signal("redirect", f"It bounces on to another site: {host_of(inner)}", host_of(inner), 15))
+            signals.append(Signal("redirect", f"It bounces on to another site: {host_of(inner)}", host_of(inner), 10))
             break
     return dest, signals

@@ -17,12 +17,26 @@ PATTERNS = (
     ("OpenAI API key", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_\-]{32,}\b")),
     ("Private key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY(?: BLOCK)?-----")),
     ("Access token (JWT)", re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b")),
-    ("Password", re.compile(r"(?i)\b(?:password|passwd|pwd|passcode|pw)\s*(?:is|=|:)\s*[\"']?([^\s\"']{6,})")),
+    ("Password", re.compile(r"(?i)\b(?:password|passwd|passcode|pw)\s*(?:is|=|:)\s*[\"']?([^\s\"'`]{6,})")),
 )
 
 # "password: reset" is a sentence, not a password.
 _NOT_PASSWORDS = {"reset", "required", "expired", "expiring", "changed", "incorrect", "protected",
                   "manager", "policy", "please", "below", "attached", "hidden", "********"}
+
+
+def _looks_like_password(value: str) -> bool:
+    """A real password, not a word, a placeholder or code that reads one from
+    somewhere ("os.environ['DB']", "$DB_PASS", "<your password>")."""
+    v = value.strip(".,;")
+    if v.lower() in _NOT_PASSWORDS or len(v) < 6:
+        return False
+    if v.startswith(("http", "{", "$", "%", "<", "[", "(", "/", "~", "*", "•", "process.", "os.", "env")):
+        return False
+    if any(c in v for c in "()[]") or re.search(r"(?i)getenv|environ|secret[s]?\.|vault|\{\{", v):
+        return False
+    classes = sum(bool(re.search(p, v)) for p in (r"[a-z]", r"[A-Z]", r"\d", r"[^A-Za-z0-9]"))
+    return classes >= 2 and not re.fullmatch(r"[A-Za-z]+[.!?]?", v)
 
 
 def mask(secret: str) -> str:
@@ -42,7 +56,7 @@ def find(text: str) -> list[tuple[str, str]]:
             continue
         for m in pattern.finditer(text or ""):
             value = m.group(1) if m.groups() else m.group(0)
-            if kind == "Password" and (value.lower().strip(".,;") in _NOT_PASSWORDS or value.startswith(("http", "{"))):
+            if kind == "Password" and not _looks_like_password(value):
                 continue
             if kind == "OpenAI API key" and value.startswith("sk-ant-"):
                 continue

@@ -46,7 +46,7 @@ DANGER = [
     ("https://www.acme.com@evil.example/login", "userinfo"),
     ("javascript:alert(1)", "scheme"),
     ("data:text/html;base64,PGgxPkhp", "scheme"),
-    ("http://192.168.4.4/owa/login", "ip-address"),
+    ("http://45.33.32.156/owa/login", "ip-address"),
 ]
 
 
@@ -87,10 +87,21 @@ def test_weak_signs_add_up_only_to_caution():
     assert v.level == "caution", v.signals
 
 
-def test_downloads_are_flagged():
+def test_downloads_count_in_messages_not_on_websites():
+    # On a website, downloading an installer is normal.
     v = check_link("https://files.example.net/Invoice_2291.exe", policy=ACME)
     assert "download" in {s.code for s in v.signals}
+    assert v.level == "safe"
+    # Sent in a message from someone else's address, it isn't.
+    from omnicyte.engine import Message, check_message
+    v = check_message(Message(source="mail", sender_address="ap@vendor.example",
+                              text="Invoice: https://files.example.net/Invoice_2291.exe"), ACME)
     assert v.level == "caution"
+
+
+def test_private_network_addresses_are_safe():
+    for url in ("http://192.168.4.4/owa/login", "http://10.0.0.8:8080/login", "http://printer.local/", "http://intranet/"):
+        assert check_link(url, policy=ACME).level == "safe", url
 
 
 def test_trusted_domains_still_cant_hide_behind_an_at():

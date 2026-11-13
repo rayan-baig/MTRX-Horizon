@@ -17,28 +17,33 @@ from .signals import Signal, level
 # its weight once, however many of its phrases appear.
 PHRASES = {
     "credential-request": (25, (
-        r"verify your (?:account|identity|email|mailbox|credentials)", r"confirm your (?:password|account|identity|login|credentials)",
+        r"verify your (?:account|identity|mailbox|credentials)", r"confirm your (?:password|account|identity|login|credentials)",
         r"(?:enter|provide|update|re-?enter|validate) your (?:password|credentials|login details|account details)",
         r"your password (?:will expire|has expired|expires)", r"mailbox (?:is full|storage|quota|will be (?:deactivated|deleted))",
         r"re-?activate your account", r"unusual sign-?in activity", r"sign in to (?:view|review|release|receive) (?:the )?(?:document|file|message|invoice|payment)s?",
-        r"(?:shared|sent) (?:a|the) (?:secure )?(?:document|file) with you", r"keep (?:your )?(?:same|current) password",
+        r"keep (?:your )?(?:same|current) password", r"re-?validate your (?:account|password|mailbox)",
         r"to avoid (?:account )?(?:suspension|deactivation|termination|losing access)",
     )),
     "mfa-code": (35, (
-        r"(?:send|give|share|read|text) (?:me|us) (?:the|your) (?:code|otp|verification code|one[- ]time (?:code|password|passcode))",
-        r"(?:what|which) (?:is|was) the (?:code|otp)", r"approve the (?:sign-?in|login|mfa|push) (?:request|prompt|notification)",
-        r"(?:authenticator|mfa|2fa|two-factor) code",
+        r"(?:send|give|share|read|text|tell|forward) (?:me|us) (?:the|your|that) (?:verification|security|login|sign-?in|"
+        r"one[- ]time|otp|2fa|mfa|authenticator|confirmation|6[- ]digit|six[- ]digit) (?:code|pin|passcode|number)",
+        r"(?:send|give|share|read|text|tell|forward) (?:me|us) (?:the|that) (?:code|pin|passcode|number) (?:you|that|which) "
+        r"(?:just )?(?:got|received|get|were sent|was sent|came|arrived)",
+        r"(?:send|give|share|read|text|tell|forward) (?:me|us) (?:the|that) (?:code|pin|passcode) (?:on|from) your (?:phone|mobile|app)",
+        r"(?:send|give|text|tell) (?:me|us) (?:the|that) (?:code|pin|passcode) so (?:i|we) can (?:fix|verify|unlock|reset|sign|log)",
+        r"(?:approve|accept) the (?:sign-?in|login|mfa|push|authentication) (?:request|prompt|notification)s? (?:i|we) (?:just )?sent",
     )),
     "urgency": (15, (
         r"within (?:24|48|12|2|1) ?(?:hours?|hrs?)", r"\bimmediately\b", r"\burgent(?:ly)?\b", r"final (?:notice|warning|reminder)",
-        r"(?:account|access|mailbox) (?:will be|has been) (?:suspended|locked|disabled|closed|terminated)",
-        r"\bact now\b", r"\bas soon as possible\b", r"before (?:end of|close of) (?:day|business)", r"\btoday only\b",
+        r"(?:account|access|mailbox) (?:will be|has been) (?:suspended|locked|disabled|closed|terminated|limited)",
+        r"\bact now\b", r"before (?:end of|close of) (?:day|business)", r"\btoday only\b",
     )),
     "payment-change": (25, (
-        r"(?:change|update|new) (?:of )?(?:our |my )?(?:bank(?:ing)? (?:details|account|information)|payment (?:details|information|instructions)|remittance)",
-        r"wire (?:transfer|the payment|the funds)", r"\bgift ?cards?\b", r"(?:overdue|outstanding|unpaid) invoice",
-        r"(?:process|make) (?:a|the) (?:payment|transfer) (?:today|now|urgently|quickly)", r"\b(?:iban|swift|routing number)\b",
-        r"keep this (?:confidential|between us)", r"i(?:'m| am) (?:in a meeting|traveling|unavailable)(?:.{0,40})(?:payment|transfer|gift)",
+        r"(?:change|update|new|updated) (?:of |to )?(?:our |my )?(?:bank(?:ing)? (?:details|account|information)|"
+        r"payment (?:details|information|instructions)|remittance details)",
+        r"(?:bank|account|banking) details have changed", r"\bgift ?cards?\b",
+        r"(?:process|make|send) (?:a|the) (?:payment|transfer|wire) (?:today|now|urgently|quickly|right away)",
+        r"keep this (?:confidential|between us|to yourself)", r"i(?:'m| am) (?:in a meeting|traveling|unavailable)(?:.{0,40})(?:payment|transfer|gift)",
     )),
 }
 _COMPILED = {code: (w, [re.compile(p, re.I) for p in pats]) for code, (w, pats) in PHRASES.items()}
@@ -120,43 +125,69 @@ def _domains(policy):
     return tuple(policy.org_domains), tuple(policy.trusted_domains)
 
 
+def _name_words(name: str) -> list[str]:
+    return [w for w in re.split(r"[^a-z0-9&]+", name.lower()) if w]
+
+
+def _claims(words, key) -> bool:
+    """Is a display name just this brand (or our name) plus service words?
+    "Microsoft 365 Support" yes; "Salesforce Ben", "Chase Miller" no."""
+    hits = [w for w in words if w == key or urls.normalize(w) == key]
+    if not hits:
+        return False
+    rest = [w for w in words if w not in hits]
+    return all(r in brands.SERVICE_WORDS or r in brands.BRANDS or r.isdigit() for r in rest)
+
+
+def _role(name: str) -> bool:
+    low = " " + re.sub(r"[^a-z0-9]+", " ", name.lower()) + " "
+    return bool(re.search(r"\bIT\b", name)) or any(f" {r} " in low for r in brands.ROLE_WORDS)
+
+
 def _sender_signals(msg: Message, org) -> list[Signal]:
     sigs = []
     dom = _domain(msg.sender_address)
     name = (msg.sender_name or "").strip()
-    if dom:
-        lookalike_org = urls.org_imitated(dom, org)
-        if lookalike_org:
-            sigs.append(Signal("sender-lookalike", f"The sender's address {dom} is made to look like our {lookalike_org}",
-                               msg.sender_address, 65))
+    known = dom not in brands.FREEMAIL and (any(urls.belongs_to(dom, real) for real in brands.BRANDS.values())
+             or urls.belongs_to(dom, brands.TENANT_PLATFORMS) or urls.belongs_to(dom, brands.REPLY_PLATFORMS))
+    if dom and not urls.belongs_to(dom, org):
+        found = urls.org_imitation(dom, org)
+        if found and found[1] >= 25:
+            sigs.append(Signal("sender-lookalike", f"The sender's address {dom} is made to look like our {found[0]}",
+                               msg.sender_address, found[1]))
         else:
-            brand = urls.brand_imitated(dom)
-            if brand:
+            brand = urls.brand_imitation(dom)
+            if brand and brand[1] >= 40:
                 sigs.append(Signal("sender-lookalike",
-                                   f"The sender's address {dom} uses {brands.DISPLAY.get(brand, brand)}'s name but isn't theirs",
-                                   msg.sender_address, 55))
-    if name and dom and not sigs:
-        words = [w for w in re.split(r"[^a-z0-9]+", urls.normalize(name)) if w]
-        joined = "".join(words)
-        for brand_key, real in brands.BRANDS.items():
-            if urls.belongs_to(dom, real) or urls.belongs_to(dom, org):
+                                   f"The sender's address {dom} uses {brands.DISPLAY.get(brand[0], brand[0])}'s name "
+                                   f"but isn't theirs", msg.sender_address, min(55, brand[1])))
+    if name and dom and not sigs and not urls.belongs_to(dom, org):
+        words = _name_words(name)
+        for key, real in brands.BRANDS.items():
+            if urls.belongs_to(dom, real):
                 continue
-            standalone = words == [brand_key] or (len(words) <= 3 and brand_key in words)
-            weak = brand_key in brands.WEAK_IN_DISPLAY_NAME
-            if (weak and words == [brand_key]) or (not weak and (standalone or brand_key in joined)):
-                sigs.append(Signal("sender-brand",
-                                   f"It says it's from {brands.DISPLAY.get(brand_key, brand_key)}, but was sent from {dom}",
+            if _claims(words, key):
+                sigs.append(Signal("sender-brand", f"It says it's from {brands.DISPLAY.get(key, key)}, but was sent from {dom}",
                                    f"{name} <{msg.sender_address}>", 45))
                 break
-        # Someone outside claiming to be us ("Acme IT Support" from gmail.com).
-        if not sigs and org:
-            own_names = {d.split(".")[0] for d in org if len(d.split(".")[0]) >= 4}
-            if any(o in joined for o in own_names) and not urls.belongs_to(dom, org):
-                sigs.append(Signal("sender-brand", f"It uses our company's name, but was sent from outside: {dom}",
-                                   f"{name} <{msg.sender_address}>", 40))
+        # Someone outside claiming to be us ("Acme IT Helpdesk" from gmail.com).
+        if not sigs and org and not known:
+            for d in org:
+                own = d.split(".")[0]
+                if len(own) >= 4 and (own in words) and (_claims(words, own) or _role(name)):
+                    sigs.append(Signal("sender-brand", f"It uses our company's name, but was sent from outside: {dom}",
+                                       f"{name} <{msg.sender_address}>", 40))
+                    break
+        # A boss or IT writing from a personal address: the gift-card scam.
+        if not sigs and dom in brands.FREEMAIL and _role(name):
+            sigs.append(Signal("sender-role", f"Someone claiming a senior or IT role is writing from a personal "
+                                              f"{dom} address", f"{name} <{msg.sender_address}>", 30))
     reply = _domain(msg.reply_to)
-    if reply and dom and urls.registrable(reply) != urls.registrable(dom) and not urls.belongs_to(reply, org):
-        sigs.append(Signal("reply-to", f"Replies would go to {reply}, not to {dom}", msg.reply_to, 20))
+    if reply and dom and urls.registrable(reply) != urls.registrable(dom) and not urls.belongs_to(reply, org) \
+            and not urls.belongs_to(reply, brands.REPLY_PLATFORMS):
+        to_personal = reply in brands.FREEMAIL and dom not in brands.FREEMAIL
+        sigs.append(Signal("reply-to", f"Replies would go to {reply}, not to {dom}" +
+                           (", a personal email account" if to_personal else ""), msg.reply_to, 30 if to_personal else 15))
     return sigs
 
 
@@ -211,22 +242,42 @@ def check_message(msg: Message, policy=None) -> Verdict:
         link_verdicts.append(LinkVerdict(href, dest, score, level(score), sigs))
     link_verdicts.sort(key=lambda v: -v.score)
 
+    sender_reg = urls.registrable(_domain(msg.sender_address))
+    for lv in link_verdicts:
+        # A program download is normal on a website, not in a message, unless
+        # it comes from the sender's own site (a release note with its installer).
+        if msg.source in ("mail", "chat") and urls.registrable(urls.host_of(lv.destination)) != sender_reg:
+            for s in lv.signals:
+                if s.code == "download":
+                    s.weight = 45
+            lv.score = sum(s.weight for s in lv.signals)
+            lv.level = level(lv.score)
+    link_verdicts.sort(key=lambda v: -v.score)
+
     signals += _sender_signals(msg, org)
     signals += _attachment_signals(msg.attachments)
     wording = _wording_signals(msg)
-    # Asking for credentials only really matters if there's a way to hand them
-    # over: a link, an attachment, or a request to reply with them.
-    has_route = bool(link_verdicts) or bool(msg.attachments) or any(s.code == "mfa-code" for s in wording)
-    for s in wording:
-        if s.code in ("credential-request", "urgency") and not has_route:
-            s.weight = s.weight // 2
+
+    # Words alone ("urgent", "verify your account", "invoice") are in plenty
+    # of real mail. They count in full only when something technical is wrong
+    # too: a lookalike sender, a bad link, a risky attachment. Without that,
+    # they can't make a warning on their own, except a request for a one-time code.
+    evidence = any(s.weight >= 20 for s in signals) or (link_verdicts and link_verdicts[0].score >= 20)
+    if not evidence:
+        allowance = 20
+        for s in sorted(wording, key=lambda s: -s.weight):
+            if s.code == "mfa-code":
+                continue
+            s.weight = min(s.weight, allowance)
+            allowance -= s.weight
+        wording = [s for s in wording if s.weight > 0]
     signals += wording
     # Replies going elsewhere matter most when the message wants something
-    # sent back: a code, a password, a payment.
-    if any(s.code in ("payment-change", "mfa-code", "credential-request") for s in wording):
+    # sent back: a code or a payment.
+    if any(s.code in ("payment-change", "mfa-code") for s in wording):
         for s in signals:
             if s.code == "reply-to":
-                s.weight = 40
+                s.weight = max(s.weight, 40)
 
     if msg.gateway_verdict or _GATEWAY_HEADERS.match(msg.subject or ""):
         tag = msg.gateway_verdict or _GATEWAY_HEADERS.match(msg.subject).group(0).strip()
