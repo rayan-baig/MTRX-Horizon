@@ -8,7 +8,7 @@
 <a class="btn btn-ghost" href="{{ ask }}">Ask us about it</a>{% endif -%}
 {%- endmacro -%}
 {%- macro price_line() -%}
-{%- if price %}<p class="o-price">The bundle adds <b>${{ "{:,.0f}".format(price) }}</b> a month to CyberLogix AI.</p>
+{%- if price %}<p class="o-price">The bundle adds <b>${{ "{:,.0f}".format(price) }}</b> a month per location to CyberLogix AI.</p>
 {%- else %}<p class="o-price"><a href="{{ ask }}">Ask about bundle pricing</a></p>{% endif -%}
 {%- endmacro -%}
 <section class="panel o-hero o-hero-bundle">

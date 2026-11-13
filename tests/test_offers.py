@@ -188,14 +188,14 @@ def test_the_bundle_page_says_what_it_is_and_who_it_is_for(client):
     assert "Fridge and freezer alarms" in text and "Inspection checklists" in text
 
 
-def test_no_price_until_cyberlogix_has_a_bundle_add_on(client, monkeypatch):
+def test_the_bundle_price_matches_cyberlogix_and_can_be_hidden(client, monkeypatch):
     from horizon import offers
-    assert offers.BUNDLE_PRICE is None
+    assert offers.BUNDLE_PRICE == 29
+    page = client.get("/bundle").text
+    assert "<b>$29</b> a month per location" in page and "Ask about bundle pricing" not in page
+    monkeypatch.setattr(offers, "BUNDLE_PRICE", None)
     page = client.get("/bundle").text
     assert "Ask about bundle pricing" in page and "$" not in _text(page)
-    monkeypatch.setattr(offers, "BUNDLE_PRICE", 149)
-    page = client.get("/bundle").text
-    assert "Ask about bundle pricing" not in page and "<b>$149</b> a month" in page
 
 
 def test_the_trial_and_open_buttons_go_to_the_apps_own_addresses(client, monkeypatch):

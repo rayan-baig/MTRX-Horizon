@@ -12,10 +12,9 @@ What the pages say about money is only what the apps' code does:
   partner) of what the partner's businesses actually paid in the last 30
   days. A free trial, an unpaid or a cancelled invoice earns nothing. No
   figure is printed here, because the rate is a setting.
-- The bundle: no price until CyberLogix AI's pricing.py has a bundle add-on.
-  Until then BUNDLE_PRICE stays None and the page says "Ask about bundle
-  pricing". Copy the add-on's monthly price here, in US dollars, when it is
-  added there, and change both together.
+- The bundle: CyberLogix AI's pricing.py charges the bundle as an add-on per
+  location. BUNDLE_PRICE is that monthly price in US dollars; change both
+  together. Set it to None and the page says "Ask about bundle pricing".
 """
 
 from . import catalog, vortex
@@ -24,7 +23,8 @@ PARTNER_APP = "cyberlogix"
 BUNDLE_APPS = ("cyberlogix", "omniarmor")
 # The partnership kind the partner page's Apply button picks (vortex.py).
 PARTNER_KIND = "refer-trade"
-BUNDLE_PRICE = None
+# Kept equal to CyberLogix AI's kitchen_safety_bundle add-on in pricing.py.
+BUNDLE_PRICE = 29
 
 
 def _apps() -> dict:
