@@ -1,6 +1,8 @@
 // The Genesis page: a visitor's own projects, kept in their own browser.
-// Nothing here talks to the server. Every word a visitor typed is placed
-// with textContent, never as HTML.
+// Nothing here talks to the server but Ask Genesis. Every word a visitor
+// typed is placed with textContent, never as HTML. When Genesis Pro is on,
+// static/js/genesis-pro.js (window.GenesisPro) handles the key and the
+// backup; this file only asks it whether this browser has Pro.
 (() => {
   const S = window.GenesisStore;
   const $ = (id) => document.getElementById(id);
@@ -12,6 +14,8 @@
   const aiOn = $("genesis").dataset.ai === "on";
   const answers = {}; // the last Ask Genesis answer per project, for this visit only
   let asking = false;
+  const Pro = window.GenesisPro || null; // only while Genesis Pro is switched on
+  const isPro = () => Boolean(Pro && Pro.active());
 
   function el(tag, props = {}, ...children) {
     const node = document.createElement(tag);
@@ -45,6 +49,7 @@
     const saved = store.save(projects);
     if (!saved && store.usable) toast("Your browser wouldn't save that. Download a copy to keep it.", true);
     drawStorageNote();
+    if (Pro) Pro.changed(); // a Pro browser backs up a little later
   }
 
   function drawStorageNote() {
@@ -200,7 +205,7 @@
       el("p", { class: "g-pitch", text: p.pitch }),
       el("p", { class: "g-for" }, el("span", { text: "For " }), el("b", { text: p.audience })),
       el("p", { class: "g-started", text: `Started ${when(p.created)}` }),
-      vortexLink(p));
+      vortexLink(p), planButton(p));
 
     const moves = el("div", { class: "g-moves" });
     if (here > 0) {
@@ -306,6 +311,26 @@
     return link;
   }
 
+  // ---------------------------------------------------------------- Download plan (Pro)
+  // One project as a plain text file, made here in the browser.
+
+  function planButton(p) {
+    if (!isPro()) return null;
+    const b = el("button", { class: "g-tool g-plan", type: "button", text: "Download plan" });
+    b.addEventListener("click", () => {
+      flushNotes();
+      const blob = new Blob([S.planText(p)], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = el("a", { href: url, download: S.planFileName(p) });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast("Plan downloaded.");
+    });
+    return b;
+  }
+
   // ---------------------------------------------------------------- Ask Genesis
   // The only thing Genesis ever sends: when a button here is pressed, the
   // project's name, pitch, who it's for and stage, and the visitor's
@@ -317,23 +342,27 @@
     ["risks", "What could go wrong?"], ["next", "What should I do next?"],
   ];
   const QUESTION_LIMIT = 300;
+  // Genesis Pro's extra helpers and longer question (horizon/genesis_ai.py).
+  const PRO_HELPERS = [["plan", "Four-week plan"], ["page", "Words for my website"], ["price", "Price ideas"]];
+  const PRO_QUESTION_LIMIT = 600;
 
   function askPanel(p) {
+    const pro = isPro();
     const head = el("div", { class: "g-row" }, el("h2", { class: "g-h2" }, "Ask Genesis"),
-      el("span", { class: "g-ai-badge", text: "AI · free" }));
+      el("span", { class: `g-ai-badge${pro ? " pro" : ""}`, text: pro ? "AI · Pro" : "AI · free" }));
     const note = el("p", { class: "g-ask-note", text: "Don't type personal details. Your question is sent to our AI provider to answer it; we don't keep it. AI answers can be wrong, so check what matters." });
     if (!aiOn) {
       return el("section", { class: "panel g-ask off" }, head,
         el("p", { class: "g-note", text: "AI help isn't switched on yet. Everything else in Genesis works as usual." }));
     }
     const out = el("div", { class: "g-answer", "aria-live": "polite" });
-    const buttons = HELPERS.map(([key, label]) => {
-      const b = el("button", { class: "g-helper", type: "button", text: label });
+    const buttons = (pro ? HELPERS.concat(PRO_HELPERS) : HELPERS).map(([key, label]) => {
+      const b = el("button", { class: `g-helper${PRO_HELPERS.some(([k]) => k === key) ? " pro" : ""}`, type: "button", text: label });
       b.addEventListener("click", () => send(p, key, label, "", out, panel));
       return b;
     });
     const input = el("input", { type: "text", class: "g-question-input", placeholder: "Or ask a short question about your idea", autocomplete: "off" });
-    input.maxLength = QUESTION_LIMIT;
+    input.maxLength = pro ? PRO_QUESTION_LIMIT : QUESTION_LIMIT;
     const go = el("button", { class: "btn btn-genesis btn-small", type: "submit", text: "Ask" });
     const form = el("form", { class: "g-question" }, input, go);
     form.addEventListener("submit", (event) => {
@@ -386,10 +415,11 @@
     panel.querySelectorAll("button, input").forEach((b) => { b.disabled = true; });
     drawAnswer(p, out);
     let result;
+    const headers = { "Content-Type": "application/json" };
+    if (Pro && Pro.key()) headers["X-Genesis-Pro-Key"] = Pro.key();
     try {
       const res = await fetch("/api/genesis/ask", {
-        method: "POST", credentials: "omit",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", credentials: "omit", headers,
         body: JSON.stringify({
           project: { name: p.name, pitch: p.pitch, audience: p.audience, stage: p.stage },
           helper, question,
@@ -397,6 +427,7 @@
       });
       let data = {};
       try { data = await res.json(); } catch (_) { /* not JSON */ }
+      if (Pro) Pro.answered(data);
       result = res.ok && data.answer
         ? { label, text: data.answer, refused: Boolean(data.refused) }
         : { label, error: data.error || "Genesis couldn't answer just now. Please try again in a minute." };
@@ -481,13 +512,23 @@
     if (view === "list") { current = null; projects = store.usable ? store.load() : projects; drawList(); }
     else if (view === "new") showForm();
     else drawProject(project);
-    window.scrollTo(0, 0);
+    const pro = hash === "#pro" && document.getElementById("pro");
+    if (pro) pro.scrollIntoView();
+    else window.scrollTo(0, 0);
   }
 
   window.addEventListener("hashchange", route);
   window.addEventListener("storage", (event) => {
     if (event.key === S.KEY && $("g-detail").hidden && $("g-new").hidden) { projects = store.load(); drawList(); }
   });
+  if (Pro) {
+    Pro.connect({
+      get: () => projects.slice(),
+      set: (list) => { projects = list; persist(); if (!$("g-list-view").hidden) drawList(); },
+    });
+    // Pro turned on or off: redraw the project open now, for its Pro parts.
+    Pro.onChange(() => { if (current && !$("g-detail").hidden) drawProject(current); });
+  }
   drawStorageNote();
   route();
 })();

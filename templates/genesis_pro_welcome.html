@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+<link rel="stylesheet" href="{{ asset('css/genesis.css') }}">
+<title>Welcome to Genesis Pro · MTRX Horizyn</title>
+<meta name="robots" content="noindex">
+</head>
+<body class="legal-page genesis-page">
+<div class="sky" aria-hidden="true"></div>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="MTRX Horizyn home">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-text">
+      <span class="wordmark">MTRX <b>HORIZYN</b></span>
+      <span class="tagline">One vision. Infinite possibilities.</span>
+    </span>
+  </a>
+  <nav class="mainnav" aria-label="Main">
+    <a href="/">Home</a>
+    <a href="/genesis" class="active">Genesis</a>
+    <a href="/vortex">Vortex</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/brand">Brand</a>
+  </nav>
+  <a class="g-home" href="/genesis">Genesis</a>
+</header>
+
+{#- Where Stripe sends a buyer after paying. static/js/genesis-pro-welcome.js
+    asks for their first Pro key, shown once, and keeps it in this browser. #}
+<main class="genesis g-welcome">
+  <noscript><p class="panel g-noscript">This page needs JavaScript turned on. Your Pro key is also in your email.</p></noscript>
+  <section class="panel g-pro g-welcome-panel">
+    <div class="g-hero-art" aria-hidden="true"><span class="g-spark"></span></div>
+    <p class="eyebrow g-pro-eyebrow">Thank you</p>
+    <h1 class="g-pro-title g-welcome-title">Welcome to Genesis <b>Pro</b></h1>
+
+    <div id="w-wait">
+      <p class="g-thinking">Getting your Pro ready…</p>
+      <p class="g-pro-small">This takes a few seconds after paying.</p>
+    </div>
+
+    <div id="w-done" hidden>
+      <p class="g-welcome-line" id="w-saved"></p>
+      <p class="g-pro-small">Your Pro key:</p>
+      <p class="g-pro-key g-welcome-key" id="w-key"></p>
+      <div class="g-tools">
+        <button class="g-tool" type="button" id="w-copy">Copy key</button>
+      </div>
+      <p class="g-pro-small" id="w-email"></p>
+      <ul class="g-pro-perks g-welcome-perks">
+        <li><b>More AI help</b><span>More answers a day, longer ones, and three more helpers.</span></li>
+        <li><b>Cloud backup</b><span>Your projects back up by themselves while you work.</span></li>
+        <li><b>Download plan</b><span>Open a project and press Download plan.</span></li>
+      </ul>
+      <div class="cta-row"><a class="btn btn-genesis" href="/genesis">Back to Genesis <span aria-hidden="true">→</span></a></div>
+    </div>
+
+    <div id="w-error" hidden>
+      <p class="g-pro-error" id="w-error-text"></p>
+      <div class="cta-row"><a class="btn btn-ghost" href="/genesis#pro">Back to Genesis</a></div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span class="foot-brand">MTRX HORIZYN</span>
+  <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
+  <nav class="foot-links" aria-label="About this site">
+    <a href="/genesis">Genesis</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a>
+    {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
+  </nav>
+</footer>
+
+<script src="{{ asset('js/genesis-store.js') }}" defer></script>
+<script src="{{ asset('js/genesis-pro-welcome.js') }}" defer></script>
+</body>
+</html>

@@ -658,7 +658,39 @@
     return item;
   }
 
+  // Genesis Pro (horizon/genesis_pro.py): members and money, from Stripe's
+  // webhook. Hidden while Pro is off and nobody has ever had it.
+  const usd = (n) => new Intl.NumberFormat([], { style: "currency", currency: "USD" }).format(n || 0);
+
+  function nuPro(pro) {
+    const box = $("nu-pro");
+    box.hidden = !pro;
+    if (!pro) { box.replaceChildren(); return; }
+    const state = pro.ready ? el("span", { class: "pill ok", text: "Selling" })
+      : el("span", { class: "pill off", text: pro.enabled ? "Switched on, Stripe not set up" : "Switched off" });
+    const tile = (label, value, note) => el("li", { class: "nu-pro-tile" },
+      el("span", { class: "nu-pro-label", text: label }), el("strong", { text: value }),
+      note ? el("small", { text: note }) : null);
+    const notes = [];
+    if (pro.default_prices) {
+      notes.push("The AI prices are still the safe defaults, so each answer is counted at ten times a small model's price and members get fewer answers than they should. Set GENESIS_AI_INPUT_PRICE and GENESIS_AI_OUTPUT_PRICE to the model's real prices.");
+    }
+    if (pro.other_currency) notes.push(`${pro.other_currency} member${pro.other_currency === 1 ? " pays" : "s pay"} in another currency, left out of the dollar figures.`);
+    box.replaceChildren(
+      el("div", { class: "nu-head" }, el("span", { class: "nu-pro-mark", "aria-hidden": "true" }),
+        el("b", { text: "Genesis Pro" }), state),
+      el("ul", { class: "nu-pro-tiles" },
+        tile("Pro members", number(pro.members), `${number(pro.monthly)} monthly · ${number(pro.yearly)} yearly`),
+        tile("Monthly revenue", usd(pro.mrr_usd), "Yearly plans counted as a twelfth"),
+        tile("Collected this month", usd(pro.collected_usd), pro.refunded_usd ? `after ${usd(pro.refunded_usd)} refunded` : `Last month ${usd(pro.last_month_usd)}`),
+        tile("New this month", number(pro.new_this_month), `${number(pro.ended_this_month)} ended · ${number(pro.cancelling)} cancelling`),
+        tile("Payment failed", number(pro.past_due), "Pro paused until they pay"),
+        tile("AI cost, 30 days", usd(pro.ai_30d_usd), `Cap ${usd(pro.ai_cap_usd)} per member a month`)),
+      ...notes.map((n) => el("p", { class: "nu-pro-note", text: n })));
+  }
+
   function drawNumbers(data) {
+    nuPro(data.pro);
     const list = $("nu-list");
     list.replaceChildren(...data.apps.map(nuApp));
   }

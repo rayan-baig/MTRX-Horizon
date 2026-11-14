@@ -76,6 +76,89 @@
         <button class="btn btn-ghost" type="button" id="g-import-empty">Import a file</button>
       </div>
     </section>
+
+    {%- if pro %}
+    {#- Genesis Pro (horizon/genesis_pro.py). Only on the page while it is
+        switched on and set up. Nothing a member makes is ever shown to
+        anyone else. static/js/genesis-pro.js fills in the rest. #}
+    <section class="panel g-pro" id="pro" aria-labelledby="g-pro-title">
+      <div class="g-pro-head">
+        <p class="eyebrow g-pro-eyebrow">For your biggest ideas</p>
+        <h2 class="g-pro-title" id="g-pro-title">Genesis <b>Pro</b></h2>
+        <span class="g-pro-on" id="g-pro-on" hidden>Pro is on</span>
+      </div>
+
+      <div class="g-pro-offer" id="g-pro-offer">
+        <ul class="g-pro-perks">
+          <li><b>Up to {{ pro.per_day }} AI answers a day</b>
+            <span>The free plan has {{ pro.free_per_day }}. Pro's are all yours, so it's never too busy
+              (with a fair monthly allowance).</span></li>
+          <li><b>Longer, deeper answers</b>
+            <span>And three more helpers: a four-week plan, words for your website, and price ideas.</span></li>
+          <li><b>Private cloud backup</b>
+            <span>Your projects stay safe even if this browser is cleared. Only you can see them.</span></li>
+          <li><b>Download a plan</b>
+            <span>Any project as a tidy file, to print or show a mentor.</span></li>
+        </ul>
+        <div class="g-pro-buy">
+          <button class="btn btn-genesis g-pro-plan" type="button" data-plan="month">Get Pro
+            {%- if pro.month %} · {{ pro.month.label }} a month{% endif %}</button>
+          {%- if pro.yearly %}
+          <button class="btn btn-ghost g-pro-plan" type="button" data-plan="year">
+            {%- if pro.year %}{{ pro.year.label }} a year{% else %}Pay yearly{% endif %}
+            {%- if pro.months_free %} · {{ pro.months_free }} month{{ 's' if pro.months_free != 1 }} free{% endif %}</button>
+          {%- endif %}
+        </div>
+        {%- if not pro.month %}
+        <p class="g-pro-price-note">You'll see the price before paying.</p>
+        {%- endif %}
+        <p class="g-pro-adult"><b>A grown-up pays.</b> Checkout is for adults, so ask a parent or carer
+          to buy Pro with you. Cancel any time.</p>
+        <p class="g-pro-error" id="g-pro-error" role="alert"></p>
+        <p class="g-pro-ended" id="g-pro-ended" hidden></p>
+
+        <details class="g-pro-have" id="g-pro-have">
+          <summary>I have a Pro key</summary>
+          <form class="g-pro-form" id="g-pro-key-form" novalidate>
+            <input type="text" id="g-pro-key-input" autocomplete="off" autocapitalize="characters"
+              spellcheck="false" placeholder="GP-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" aria-label="Pro key">
+            <button class="btn btn-genesis btn-small" type="submit">Use key</button>
+          </form>
+          <p class="g-pro-small">Lost it? We'll email a new key to the address used at checkout.</p>
+          <form class="g-pro-form" id="g-pro-resend-form" novalidate>
+            <input type="email" id="g-pro-email" autocomplete="email" placeholder="Email used at checkout"
+              aria-label="Email used at checkout">
+            <button class="btn btn-ghost btn-small" type="submit">Email a new key</button>
+          </form>
+          <p class="g-msg" id="g-pro-key-msg" role="status"></p>
+        </details>
+      </div>
+
+      <div class="g-pro-member" id="g-pro-member" hidden>
+        <p class="g-pro-status" id="g-pro-status"></p>
+        <div class="g-pro-box">
+          <h3 class="g-pro-h3">Cloud backup</h3>
+          <p class="g-pro-small" id="g-pro-backup-line"></p>
+          <div class="g-tools">
+            <button class="g-tool" type="button" id="g-pro-backup-now">Back up now</button>
+            <button class="g-tool" type="button" id="g-pro-restore">Restore</button>
+            <button class="g-tool danger" type="button" id="g-pro-backup-delete">Delete backups</button>
+          </div>
+          <ul class="g-pro-backups" id="g-pro-backups" hidden></ul>
+        </div>
+        <div class="g-pro-box">
+          <h3 class="g-pro-h3">Your Pro</h3>
+          <div class="g-tools">
+            <button class="g-tool" type="button" id="g-pro-portal">Manage subscription</button>
+            <button class="g-tool" type="button" id="g-pro-show-key">Show my key</button>
+            <button class="g-tool danger" type="button" id="g-pro-forget">Turn off Pro in this browser</button>
+          </div>
+          <p class="g-pro-key" id="g-pro-key" hidden></p>
+          <p class="g-pro-small">Your key turns Pro on in another browser. Keep it private, like a password.</p>
+        </div>
+      </div>
+    </section>
+    {%- endif %}
   </div>
 
   <section class="panel g-form-panel" id="g-new" hidden>
@@ -128,6 +211,9 @@
 <p class="g-toast" id="g-toast" role="status" aria-live="polite"></p>
 
 <script src="{{ asset('js/genesis-store.js') }}" defer></script>
+{%- if pro %}
+<script src="{{ asset('js/genesis-pro.js') }}" defer></script>
+{%- endif %}
 <script src="{{ asset('js/genesis.js') }}" defer></script>
 </body>
 </html>

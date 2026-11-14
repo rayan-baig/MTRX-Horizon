@@ -168,3 +168,42 @@ test("a name close to one MTRX Horizyn uses gets a gentle warning", () => {
   assert.ok(S.nameWarning("Omni Armor"));
   assert.equal(S.nameWarning("Nova"), null);
 });
+
+// ---------------------------------------------------------------- Genesis Pro
+
+test("a Pro key is tidied however it was typed, and odd ones are refused", () => {
+  assert.equal(S.proKey("gp-abcd efgh ijkl-mnop-qrst-uvwx"), "GP-ABCD-EFGH-IJKL-MNOP-QRST-UVWX");
+  assert.equal(S.proKey("GPABCDEFGHIJKLMNOPQRSTUVWX"), "GP-ABCD-EFGH-IJKL-MNOP-QRST-UVWX");
+  for (const bad of ["", "GP-ABCD", "GP-ABCD-EFGH-IJKL-MNOP-QRST-UVW1", "XX-ABCD-EFGH-IJKL-MNOP-QRST-UVWX", null, 42, "G".repeat(200)]) {
+    assert.equal(S.proKey(bad), null, String(bad));
+  }
+});
+
+test("a Pro key is kept in storage, read back and forgotten, and blocked storage is survived", () => {
+  const storage = memoryStorage();
+  assert.equal(S.readProKey(storage), null);
+  assert.equal(S.keepProKey(storage, "gp-abcd-efgh-ijkl-mnop-qrst-uvwx"), true);
+  assert.equal(storage.getItem(S.PRO_KEY), "GP-ABCD-EFGH-IJKL-MNOP-QRST-UVWX");
+  assert.equal(S.readProKey(storage), "GP-ABCD-EFGH-IJKL-MNOP-QRST-UVWX");
+  assert.equal(S.keepProKey(storage, "not a key"), false);
+  S.forgetProKey(storage);
+  assert.equal(S.readProKey(storage), null);
+  assert.equal(S.keepProKey(blocked, "GP-ABCD-EFGH-IJKL-MNOP-QRST-UVWX"), false);
+  assert.equal(S.readProKey(blocked), null);
+  assert.equal(S.forgetProKey(blocked), false);
+});
+
+test("Download plan: a project as plain text with its checklist and notes", () => {
+  const { project } = S.create(idea, Date.UTC(2026, 10, 1));
+  project.ticks.name = true;
+  project.notes = "Ask Sam about it";
+  const text = S.planText(project, Date.UTC(2026, 10, 14));
+  assert.match(text, /^# Nova\n\nHomework reminders that work\n\nFor: Students\nWeb address idea: nova.com\n/);
+  assert.match(text, /Stage: Spark \(1 of 19 steps done, 5%\)/);
+  assert.match(text, /- \[x\] Pick a name and check nobody else uses it/);
+  assert.match(text, /- \[ \] Launch it/);
+  assert.match(text, /## Notes\n\nAsk Sam about it/);
+  assert.match(text, /2026-11-14\n$/);
+  assert.equal(S.planFileName(project), "nova-plan.txt");
+  assert.equal(S.planText({ name: "" }), "");
+});

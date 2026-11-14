@@ -318,6 +318,86 @@
 .g-toast.show { opacity: 1; transform: translate(-50%, 0); }
 .g-toast.bad { border-color: var(--red); }
 
+/* ---------- Genesis Pro: the paid upgrade, in a deeper dawn ---------- */
+.g-pro {
+  position: relative; overflow: hidden; display: grid; gap: 16px; padding: clamp(20px, 3.5vw, 32px);
+  border-color: rgba(251, 191, 36, 0.5);
+  background:
+    radial-gradient(ellipse 70% 90% at 0 0, rgba(251, 191, 36, 0.14), transparent 70%),
+    radial-gradient(ellipse 60% 80% at 100% 100%, rgba(167, 139, 250, 0.16), transparent 70%), var(--panel);
+}
+.g-pro.on { border-color: rgba(52, 232, 158, 0.5); }
+#pro { scroll-margin-top: 84px; }
+.g-pro-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; position: relative; }
+.g-pro-eyebrow { flex-basis: 100%; color: var(--spark); margin: 0; }
+.g-pro-title { font: 800 clamp(26px, 4.5vw, 36px)/1.1 var(--head); margin: 0; }
+.g-pro-title b { background: var(--dawn); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.g-pro-on {
+  font: 600 11px/1.4 var(--head); letter-spacing: 0.12em; text-transform: uppercase; padding: 4px 10px;
+  border-radius: 999px; color: #04241a; background: var(--launched);
+}
+.g-pro-offer, .g-pro-member { display: grid; gap: 14px; position: relative; }
+.g-pro-perks { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+.g-pro-perks li {
+  display: grid; gap: 3px; padding: 12px 14px 12px 38px; border-radius: 12px; position: relative;
+  border: 1px solid var(--line); background: rgba(5, 8, 22, 0.45);
+}
+.g-pro-perks li::before {
+  content: ""; position: absolute; left: 14px; top: 15px; width: 14px; height: 14px;
+  background: radial-gradient(circle, #fff 0 12%, var(--spark) 30%, var(--plan) 70%);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+}
+.g-pro-perks b { font: 700 15px/1.3 var(--head); }
+.g-pro-perks span { color: var(--muted); font-size: 13.5px; }
+.g-pro-buy { display: flex; flex-wrap: wrap; gap: 10px; }
+.g-pro-buy .btn { font-family: var(--body); }
+.g-pro-buy .btn:disabled { opacity: 0.6; cursor: progress; }
+.g-pro-adult {
+  margin: 0; padding: 10px 14px; border-radius: 12px; font-size: 14px;
+  border: 1px solid rgba(34, 211, 238, 0.4); background: rgba(34, 211, 238, 0.08);
+}
+.g-pro-adult b { color: var(--launch); }
+.g-pro-price-note, .g-pro-small { margin: 0; color: var(--faint); font-size: 13px; }
+.g-pro-error { margin: 0; color: #fda4af; font-size: 14px; }
+.g-pro-error:empty { display: none; }
+.g-pro-ended { margin: 0; color: var(--spark); font-size: 14px; }
+.g-link { background: none; border: 0; padding: 0; color: var(--launch); font: inherit; text-decoration: underline; cursor: pointer; }
+.g-pro-have { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 10px; }
+.g-pro-have summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+.g-pro-have[open] { gap: 10px; }
+.g-pro-have[open] summary { margin-bottom: 10px; }
+.g-pro-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.g-pro-form input { flex: 1 1 220px; min-width: 0; }
+.genesis input[type="email"] {
+  width: 100%; min-height: 40px; padding: 8px 12px; border-radius: 10px;
+  background: var(--bg-2); border: 1px solid var(--line-strong); color: var(--text); font: 14px/1.4 var(--body);
+}
+#g-pro-key-input { min-height: 40px; padding: 8px 12px; font: 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.g-pro-status { margin: 0; font-weight: 600; color: var(--launched); }
+.g-pro-box { display: grid; gap: 10px; padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(5, 8, 22, 0.45); }
+.g-pro-h3 { font: 600 13px/1.2 var(--head); letter-spacing: 0.14em; text-transform: uppercase; margin: 0; }
+.g-pro-backups { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.g-pro-backups li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 13.5px; color: var(--muted); }
+.g-pro-box button:disabled { opacity: 0.45; cursor: default; }
+.g-pro-key {
+  margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--bg-2); border: 1px dashed var(--spark);
+  font: 600 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.04em; overflow-wrap: anywhere;
+}
+.g-ai-badge.pro { background: linear-gradient(90deg, var(--spark), var(--launched)); }
+.g-helper.pro { border-color: rgba(251, 191, 36, 0.6); background: rgba(251, 191, 36, 0.1); }
+.g-plan { margin: 14px 0 0 8px; }
+
+/* The page Stripe sends a buyer back to. */
+.g-welcome { width: min(720px, 100%); }
+.g-welcome-panel { padding: clamp(24px, 5vw, 40px); }
+.g-welcome-panel > :not(.g-hero-art) { position: relative; }
+.g-welcome-title { font-size: clamp(28px, 6vw, 40px); }
+.g-welcome-line { margin: 0; font-size: 17px; font-weight: 600; color: var(--launched); }
+.g-welcome-key { font-size: 16px; }
+#w-done, #w-wait, #w-error { display: grid; gap: 12px; }
+.g-welcome-perks { grid-template-columns: 1fr; }
+
 /* ---------- narrower screens ---------- */
 @media (max-width: 900px) {
   /* One column: the stage first, then the checklist, then notes. */
@@ -341,4 +421,6 @@
   .g-path span { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; }
   .g-checklist, .g-progress, .g-notes-panel, .g-danger { padding: 16px; }
   .g-item { padding: 8px 4px; }
+  .g-pro-buy .btn { flex: 1 1 100%; }
+  .g-plan { margin-left: 0; }
 }

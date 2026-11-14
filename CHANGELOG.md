@@ -4,6 +4,56 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.7.0 (14 November 2026)
+
+- **Genesis Pro**, a paid upgrade to Genesis for the people who use it most: about $4.99 a month,
+  or $49.90 a year ("2 months free", ten months' price). **Off by default**: until
+  `GENESIS_PRO_ENABLED=1` and `STRIPE_SECRET_KEY`, `GENESIS_PRO_STRIPE_WEBHOOK_SECRET` and
+  `GENESIS_PRO_STRIPE_PRICE` are set, no page mentions Pro and every Pro address is "page not
+  found". The free plan is unchanged. `docs/GENESIS-PRO.md` has the cost sums, the settings, how
+  it works and the owner's Stripe steps.
+- **What Pro adds:** up to `GENESIS_PRO_PER_DAY` (100) Ask Genesis answers a day and
+  `GENESIS_PRO_PER_HOUR` (30) an hour per member, counted by member and never using the free
+  plan's shared daily budget; answers up to 350 words (at most 1,000 tokens, `PRO_MAX_TOKENS`)
+  from a more detailed prompt; three more helpers (a four-week plan, words for a one-page website,
+  price ideas); a 600-character question; a private **cloud backup** of the member's projects
+  (the last 3 copies, backed up by itself as they work, merged back in on **Restore**, deleted on
+  request or 60 days after Pro ends); and **Download plan**, a project as a text file made in the
+  browser. Nothing a member makes is ever published or shared.
+- **The cap:** besides the daily asks, each member's AI help may cost at most
+  `GENESIS_PRO_MONTHLY_AI_USD` ($1.50) in any 31 days. Each ask's worst case is set aside before
+  the call, so the allowance can't be passed whatever the model's price. A maxed-out member costs
+  at most $1.50 a month against $4.51 (monthly) or $3.98 (yearly) a month after Stripe's fees.
+- **Paying:** a Stripe Checkout subscription (`POST /api/genesis/pro/checkout`), monthly or
+  yearly, named only by the price ids in `GENESIS_PRO_STRIPE_PRICE` and
+  `GENESIS_PRO_YEARLY_STRIPE_PRICE`; the page shows the amounts it reads from Stripe once an hour.
+  The buy button says a grown-up pays and checkout is for adults, and Stripe's page says it again.
+- **Stripe's signed webhook is the only source of truth** (`POST /api/genesis/pro/stripe`, the one
+  `/api/` address without the same-site check): the signature is checked (at most 5 minutes old),
+  each event applied once, and older subscription events ignored. Handles a paid checkout,
+  subscription changes, cancelling (Pro lasts to the end of the time paid for), failed payments
+  (Pro paused until paid), and refunds (a full refund ends Pro at once). Paid invoices and refunds
+  are kept for the numbers.
+- **No accounts:** a **Pro key** (`GP-XXXX-...`, 120 random bits) is emailed to the buyer and shown
+  once on `/genesis/pro/welcome`, which keeps it in the browser; the browser sends it in an
+  `X-Genesis-Pro-Key` header, never a cookie. **I have a Pro key** turns Pro on in another browser,
+  **Email a new key** sends a fresh one to a member's address (the same answer either way), and
+  **Manage subscription** opens Stripe's customer portal. Only SHA-256 fingerprints of keys, of the
+  buyer's email and of the checkout's id are stored; no email address and no card details. The
+  welcome page's address is kept out of the server log.
+- New tables `genesis_pro_members`, `genesis_pro_keys`, `genesis_pro_events`,
+  `genesis_pro_payments`, `genesis_pro_spend` and `genesis_pro_backups`, tidied by the upkeep loop.
+  Every new address is rate-limited (`genesis_pro.RATES`).
+- The console's **Numbers** section shows a Genesis Pro card while Pro is on: members (monthly and
+  yearly), monthly revenue, money collected this month and last, new, ended and cancelling members,
+  failed payments, and the AI cost against the cap, with a warning while the AI price settings are
+  still the safe defaults. The costs list names Pro's AI help while Pro is on.
+- The privacy page and the terms gain a short Genesis Pro section, shown only while Pro is on.
+- New settings: `GENESIS_PRO_ENABLED`, `STRIPE_SECRET_KEY`, `GENESIS_PRO_STRIPE_WEBHOOK_SECRET`,
+  `GENESIS_PRO_STRIPE_PRICE`, `GENESIS_PRO_YEARLY_STRIPE_PRICE`, `GENESIS_PRO_PER_HOUR`,
+  `GENESIS_PRO_PER_DAY`, `GENESIS_PRO_MONTHLY_AI_USD` and `GENESIS_PRO_EMAIL_FROM`, in
+  `.env.example`, `render.yaml`, the README, `docs/STAGING.md` and `docs/GENESIS-PRO.md`.
+
 ## 1.6.1 (14 November 2026)
 
 - **The domain is chosen: mtrxhorizyn.com.** `render.yaml` now sets the live addresses:

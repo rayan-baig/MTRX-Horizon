@@ -56,6 +56,15 @@ class Settings:
     genesis_ai_output_price: float
     vortex_per_hour: int
     vortex_per_day: int
+    genesis_pro_enabled: bool
+    stripe_secret_key: str
+    genesis_pro_webhook_secret: str
+    genesis_pro_price: str
+    genesis_pro_yearly_price: str
+    genesis_pro_per_hour: int
+    genesis_pro_per_day: int
+    genesis_pro_monthly_ai_usd: float
+    genesis_pro_email_from: str
 
 
 def parse_knock(raw: str) -> tuple[str, ...]:
@@ -91,6 +100,16 @@ def _money(raw: str | None, default: float) -> float:
     except ValueError:
         return default
     return value if value >= 0 and value == value and value != float("inf") else default
+
+
+# A Stripe price id, such as price_1Abc...: letters, digits and _ only, so
+# nothing that could change the address it is sent to.
+_PRICE_ID = re.compile(r"price_[A-Za-z0-9_]{1,200}")
+
+
+def _price_id(raw: str | None) -> str:
+    value = (raw or "").strip()
+    return value if _PRICE_ID.fullmatch(value) else ""
 
 
 def _web_address(raw: str | None) -> str:
@@ -183,4 +202,21 @@ def get() -> Settings:
         # Chroma Vortex (vortex.py): messages each address may send.
         vortex_per_hour=_whole_number(env.get("VORTEX_PER_HOUR"), 5),
         vortex_per_day=_whole_number(env.get("VORTEX_PER_DAY"), 20),
+        # Genesis Pro (genesis_pro.py): a paid upgrade to Genesis. Off, and
+        # nothing about it shown, until GENESIS_PRO_ENABLED=1 and the Stripe
+        # settings are all set. Stripe holds the prices; the code knows
+        # only their ids.
+        genesis_pro_enabled=env.get("GENESIS_PRO_ENABLED", "") == "1",
+        stripe_secret_key=env.get("STRIPE_SECRET_KEY", "").strip(),
+        genesis_pro_webhook_secret=env.get("GENESIS_PRO_STRIPE_WEBHOOK_SECRET", "").strip(),
+        genesis_pro_price=_price_id(env.get("GENESIS_PRO_STRIPE_PRICE")),
+        genesis_pro_yearly_price=_price_id(env.get("GENESIS_PRO_YEARLY_STRIPE_PRICE")),
+        # Asks each Pro member may make (counted by member, not address).
+        genesis_pro_per_hour=_whole_number(env.get("GENESIS_PRO_PER_HOUR"), 30),
+        genesis_pro_per_day=_whole_number(env.get("GENESIS_PRO_PER_DAY"), 100),
+        # The most one member's AI help may cost in any 31 days: the cap
+        # that keeps a maxed-out member well under the price after fees
+        # (docs/GENESIS-PRO.md has the sums).
+        genesis_pro_monthly_ai_usd=_money(env.get("GENESIS_PRO_MONTHLY_AI_USD"), 1.5),
+        genesis_pro_email_from=_email(env.get("GENESIS_PRO_EMAIL_FROM")),
     )

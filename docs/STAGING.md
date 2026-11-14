@@ -82,6 +82,11 @@ paste in the live ones.
 | `MTRX_ALERT_EMAIL` and `MTRX_SMTP_*` | empty, or a test inbox | Section 4 |
 | `MTRX_CONTACT_EMAIL` | empty | Nobody should write to staging |
 | `MTRX_DEV` | unset | Never on a site on the internet, staging included |
+| `GENESIS_PRO_ENABLED` | `1` only while trying Genesis Pro | Off otherwise, as on live until it sells |
+| `STRIPE_SECRET_KEY` | a Stripe **test mode** key (`sk_test_` or `rk_test_`) | Never live's: staging must never charge a real card |
+| `GENESIS_PRO_STRIPE_WEBHOOK_SECRET` | a test mode endpoint's secret, for `https://staging.mtrxhorizyn.com/api/genesis/pro/stripe` | Its own endpoint, so live's events never reach staging |
+| `GENESIS_PRO_STRIPE_PRICE`, `GENESIS_PRO_YEARLY_STRIPE_PRICE` | the test mode prices' ids | Test prices are separate from live ones |
+| `GENESIS_PRO_PER_HOUR`, `GENESIS_PRO_PER_DAY`, `GENESIS_PRO_MONTHLY_AI_USD`, `GENESIS_PRO_EMAIL_FROM` | as on live, or a test inbox address | docs/GENESIS-PRO.md |
 
 `MTRX_SESSION_HOURS`, `MTRX_KNOCK_MINUTES` and `MTRX_ALERT_MINUTES` as on
 live, so staging behaves the same.
@@ -183,5 +188,7 @@ another new code.
       `*_STATS_URL` on staging points at a live app.
 - [ ] Mail on staging is off or a test inbox.
 - [ ] `MTRX_DEV` is unset on both.
+- [ ] Stripe on staging is test mode only: `STRIPE_SECRET_KEY` starts `sk_test_` or `rk_test_`,
+      and staging's webhook endpoint and prices are test mode ones (docs/GENESIS-PRO.md).
 - [ ] No copy of the live database has ever been put on staging.
 - [ ] Nothing about staging is in `render.yaml`.

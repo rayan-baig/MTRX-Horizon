@@ -22,13 +22,17 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
-from . import catalog, config, costs, db, errors, genesis_ai, health, lock, numbers, offers, stats, upkeep, vortex
+from . import (catalog, config, costs, db, errors, genesis_ai, genesis_pro, health, lock, numbers, offers, stats,
+               upkeep, vortex)
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
 DEVICE_COOKIE_DAYS = 400
 DOOR_COOKIE = "mh_k"
 SESSION_COOKIE = "mh_s"
+
+# Where Stripe sends Genesis Pro's events (genesis_pro.py).
+STRIPE_WEBHOOK = "/api/genesis/pro/stripe"
 
 CSP = (
     "default-src 'self'; img-src 'self' data:; "
@@ -56,7 +60,10 @@ class _HideSecretLinks(logging.Filter):
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        return "/console/add/" not in record.getMessage()
+        # The Genesis Pro welcome page's address carries the checkout's id,
+        # which shows a buyer's first key once.
+        message = record.getMessage()
+        return "/console/add/" not in message and "/genesis/pro/welcome" not in message
 
 
 logging.getLogger("uvicorn.access").addFilter(_HideSecretLinks())
@@ -251,7 +258,10 @@ async def guard(request: Request, call_next):
     # (rankup., cyberlogix., omniarmor.): to a browser they are the "same
     # site" as this one, so SameSite lets their requests carry our cookies.
     # The exact host compared here does not.
-    if request.method != "GET" and request.url.path.startswith("/api/"):
+    # Stripe's webhook is the one exception: it comes from Stripe, not a
+    # page, and its signature is checked instead (genesis_pro.webhook).
+    if (request.method != "GET" and request.url.path.startswith("/api/")
+            and request.url.path != STRIPE_WEBHOOK):
         origin = request.headers.get("origin", "")
         try:
             same_site = bool(origin) and urlsplit(origin).netloc == request.url.netloc
@@ -347,17 +357,21 @@ def _projects(extra: list) -> list:
 
 # The date the privacy page and the terms last changed in substance.
 LEGAL_UPDATED = "5 November 2026"
+# The same, while Genesis Pro is on: its parts of both pages are shown only then.
+PRO_LEGAL_UPDATED = "14 November 2026"
 
 
 def _legal(request: Request, page: str) -> HTMLResponse:
     settings = config.get()
     return templates.TemplateResponse(request, f"{page}.html", {
         "page": page,
-        "updated": LEGAL_UPDATED,
+        "updated": PRO_LEGAL_UPDATED if genesis_pro.ready() else LEGAL_UPDATED,
         "contact": settings.contact_email,
         # Read from the same settings the cookies are set with, so the page
         # cannot say one thing while the code does another.
         "vortex_days": vortex.KEEP_DAYS,
+        "pro": genesis_pro.ready(),
+        "pro_backup_days": genesis_pro.BACKUP_KEEP_AFTER_END // 86400,
         "cookies": {"device_days": DEVICE_COOKIE_DAYS,
                     "door_minutes": settings.knock_minutes,
                     "session_hours": settings.session_hours},
@@ -390,7 +404,23 @@ def genesis(request: Request):
         "contact": config.get().contact_email,
         "base": base_url(request),
         "ai": genesis_ai.enabled(),
+        # Genesis Pro: None, and nothing about it on the page, while it is off.
+        "pro": genesis_pro.offer(),
     })
+
+
+# Where Stripe sends a Genesis Pro buyer after paying. The page asks for the
+# buyer's first key (POST /api/genesis/pro/claim) and keeps it in the browser.
+@app.get("/genesis/pro/welcome", response_class=HTMLResponse)
+def genesis_pro_welcome(request: Request):
+    if not genesis_pro.ready():
+        return not_found(request)
+    response = templates.TemplateResponse(request, "genesis_pro_welcome.html", {
+        "page": "genesis", "contact": config.get().contact_email,
+    })
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Robots-Tag"] = "noindex"
+    return response
 
 
 # Chroma Vortex: the official place to partner with MTRX Horizyn, pitch an
@@ -479,21 +509,29 @@ def sitemap(request: Request):
 MAX_BODY = 16_384
 
 
-async def _json(request: Request):
+async def _raw(request: Request, limit: int = MAX_BODY) -> bytes | None:
+    """The request's body, or None if it is bigger than `limit`."""
+    size = request.headers.get("content-length", "")
+    if size and (not size.isdigit() or int(size) > limit):
+        return None
+    raw = b""
+    async for chunk in request.stream():
+        raw += chunk
+        if len(raw) > limit:
+            return None
+    return raw
+
+
+async def _json(request: Request, limit: int = MAX_BODY):
     """The request's JSON object, or {} for anything else.
 
     Bodies used to be read whole however big they were, so anyone could
     make the server hold as much as they cared to send, and JSON nested
     thousands deep crashed the parser with a 500.
     """
-    size = request.headers.get("content-length", "")
-    if size and (not size.isdigit() or int(size) > MAX_BODY):
+    raw = await _raw(request, limit)
+    if raw is None:
         return {}
-    raw = b""
-    async for chunk in request.stream():
-        raw += chunk
-        if len(raw) > MAX_BODY:
-            return {}
     try:
         body = json.loads(raw)
     except (ValueError, RecursionError):
@@ -507,7 +545,106 @@ async def genesis_ask(request: Request):
     each one is counted by address, as failed tries are. Like every change,
     it only comes from this site's own pages (see `guard`)."""
     body = await _json(request)
-    status, answer = await run_in_threadpool(genesis_ai.answer, client_ip(request), body)
+    status, answer = await run_in_threadpool(genesis_ai.answer, client_ip(request), body,
+                                             _pro_key(request))
+    return JSONResponse(answer, status_code=status)
+
+
+# ---------------------------------------------------------------- Genesis Pro
+# The paid upgrade (genesis_pro.py). Every address here is "page not found"
+# until Pro is switched on and set up. A browser that has Pro sends its key
+# in a header, never a cookie. Each address is limited (genesis_pro.RATES).
+
+def _pro_key(request: Request) -> str | None:
+    return request.headers.get(genesis_pro.KEY_HEADER) or None
+
+
+async def _pro(request: Request, work, *args, limit: int = MAX_BODY, with_body: bool = True):
+    if not genesis_pro.ready():
+        return not_found(request)
+    extra = (await _json(request, limit),) if with_body else ()
+    status, answer = await run_in_threadpool(work, client_ip(request), *args, *extra)
+    return JSONResponse(answer, status_code=status)
+
+
+@app.post("/api/genesis/pro/checkout")
+async def genesis_pro_checkout(request: Request):
+    if not genesis_pro.ready():
+        return not_found(request)
+    plan = (await _json(request)).get("plan")
+    status, answer = await run_in_threadpool(genesis_pro.checkout, client_ip(request), plan, base_url(request))
+    return JSONResponse(answer, status_code=status)
+
+
+@app.post("/api/genesis/pro/claim")
+async def genesis_pro_claim(request: Request):
+    if not genesis_pro.ready():
+        return not_found(request)
+    session = (await _json(request)).get("session")
+    status, answer = await run_in_threadpool(genesis_pro.claim, client_ip(request), session)
+    return JSONResponse(answer, status_code=status)
+
+
+@app.post("/api/genesis/pro/status")
+async def genesis_pro_status(request: Request):
+    return await _pro(request, genesis_pro.status, _pro_key(request), with_body=False)
+
+
+@app.post("/api/genesis/pro/resend")
+async def genesis_pro_resend(request: Request):
+    if not genesis_pro.ready():
+        return not_found(request)
+    email = (await _json(request)).get("email")
+    status, answer = await run_in_threadpool(genesis_pro.resend, client_ip(request), email)
+    return JSONResponse(answer, status_code=status)
+
+
+@app.post("/api/genesis/pro/portal")
+async def genesis_pro_portal(request: Request):
+    if not genesis_pro.ready():
+        return not_found(request)
+    status, answer = await run_in_threadpool(genesis_pro.portal, client_ip(request), _pro_key(request),
+                                             base_url(request))
+    return JSONResponse(answer, status_code=status)
+
+
+@app.post("/api/genesis/pro/backup")
+async def genesis_pro_backup(request: Request):
+    # A backup holds every project with its notes, so it may be far bigger
+    # than any other body the site takes.
+    return await _pro(request, genesis_pro.save_backup, _pro_key(request), limit=genesis_pro.BACKUP_MAX_BYTES)
+
+
+@app.post("/api/genesis/pro/backups")
+async def genesis_pro_backups(request: Request):
+    return await _pro(request, genesis_pro.list_backups, _pro_key(request), with_body=False)
+
+
+@app.post("/api/genesis/pro/restore")
+async def genesis_pro_restore(request: Request):
+    if not genesis_pro.ready():
+        return not_found(request)
+    backup_id = (await _json(request)).get("id")
+    status, answer = await run_in_threadpool(genesis_pro.restore, client_ip(request), _pro_key(request),
+                                             backup_id)
+    return JSONResponse(answer, status_code=status)
+
+
+@app.post("/api/genesis/pro/backup/delete")
+async def genesis_pro_backup_delete(request: Request):
+    return await _pro(request, genesis_pro.delete_backups, _pro_key(request), with_body=False)
+
+
+@app.post(STRIPE_WEBHOOK)
+async def genesis_pro_stripe(request: Request):
+    """Stripe's signed events: the only thing that changes who is Pro."""
+    if not genesis_pro.ready():
+        return not_found(request)
+    payload = await _raw(request, 512_000)
+    if payload is None:
+        return JSONResponse({"error": "Too big."}, status_code=413)
+    status, answer = await run_in_threadpool(genesis_pro.webhook, client_ip(request), payload,
+                                             request.headers.get("stripe-signature", ""))
     return JSONResponse(answer, status_code=status)
 
 
@@ -737,7 +874,10 @@ def numbers_page(request: Request):
     dev, denied = _owner_only(request)
     if denied:
         return denied
-    return numbers.dashboard()
+    data = numbers.dashboard()
+    # Genesis Pro's members and money, or None while it is off and unused.
+    data["pro"] = genesis_pro.numbers()
+    return data
 
 
 def _alert_setup() -> dict:

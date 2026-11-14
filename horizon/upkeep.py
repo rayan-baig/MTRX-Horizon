@@ -9,7 +9,7 @@ others or the site.
 import logging
 import threading
 
-from . import genesis_ai, health, lock, vortex
+from . import genesis_ai, genesis_pro, health, lock, vortex
 
 EVERY_SECONDS = 60
 
@@ -20,7 +20,7 @@ _thread: threading.Thread | None = None
 def run_once():
     """Every job, once. The loop calls this; so can a test."""
     for job in (lock.forget_old_tries, genesis_ai.forget_old_asks, vortex.forget_old,
-                health.run_checks):
+                genesis_pro.forget_old, genesis_pro.refresh_prices, health.run_checks):
         try:
             job()
         except Exception:

@@ -15,7 +15,8 @@ import pytest
 from tests.test_lock import ORIGIN, client, make_client, owner  # noqa: F401
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPTS = ("static/js/genesis-store.js", "static/js/genesis.js")
+SCRIPTS = ("static/js/genesis-store.js", "static/js/genesis.js", "static/js/genesis-pro.js",
+           "static/js/genesis-pro-welcome.js")
 
 
 def test_genesis_opens_for_anyone_with_the_site_rules(client):
@@ -43,10 +44,11 @@ def test_genesis_page_has_no_inline_script_or_style(client):
         assert re.search(re.escape(path) + r"\?v=[0-9a-f]{10}", page), path
 
 
-def test_genesis_sends_nothing_but_ask_genesis():
-    """The projects never leave the browser. The one request the page can
-    make is Ask Genesis, and the server has no other Genesis address that
-    takes anything in."""
+def test_genesis_sends_nothing_but_ask_genesis(client):
+    """The projects never leave the browser. The one request the free page
+    can make is Ask Genesis. The server's only other Genesis addresses are
+    Genesis Pro's, and while Pro is off (the default) each one is "page not
+    found" and the page doesn't load Pro's script."""
     from horizon import main
     store = (ROOT / "static/js/genesis-store.js").read_text()
     page = (ROOT / "static/js/genesis.js").read_text()
@@ -61,10 +63,14 @@ def test_genesis_sends_nothing_but_ask_genesis():
     # What Ask Genesis sends: the four project fields, the helper and the question.
     sent = page.split('body: JSON.stringify({', 1)[1].split("}),", 1)[0]
     assert "notes" not in sent and "ticks" not in sent and "address" not in sent
+    assert "genesis-pro" not in client.get("/genesis").text
     for route in main.app.routes:
         path = getattr(route, "path", "")
         if "genesis" in path and getattr(route, "methods", set()) - {"GET", "HEAD"}:
-            assert path == "/api/genesis/ask", path
+            if path == "/api/genesis/ask":
+                continue
+            assert path.startswith("/api/genesis/pro/"), path
+            assert client.post(path, json={}, headers=ORIGIN).status_code == 404, path
 
 
 def test_genesis_form_cannot_send(client):

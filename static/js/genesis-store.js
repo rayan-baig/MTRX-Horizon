@@ -292,10 +292,69 @@
     return age >= -60000 && age <= HANDOFF_MS ? offer.id : null;
   }
 
+  // ---------------------------------------------------------------- Genesis Pro
+  // A Pro key is kept in this browser's storage under PRO_KEY, so Pro stays on
+  // here. It is sent only to MTRX Horizyn, in a header, with Pro requests.
+
+  const PRO_KEY = "mtrx-genesis-pro";
+
+  // A key as typed or pasted, tidied to GP-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX, or null.
+  function proKey(raw) {
+    if (typeof raw !== "string" || raw.length > 80) return null;
+    const flat = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!/^GP[A-Z2-7]{24}$/.test(flat)) return null;
+    return "GP-" + flat.slice(2).match(/.{4}/g).join("-");
+  }
+
+  function readProKey(storage) {
+    try { return storage ? proKey(storage.getItem(PRO_KEY)) : null; } catch (_) { return null; }
+  }
+
+  function keepProKey(storage, key) {
+    const tidy = proKey(key);
+    if (!storage || !tidy) return false;
+    try { storage.setItem(PRO_KEY, tidy); return true; } catch (_) { return false; }
+  }
+
+  function forgetProKey(storage) {
+    try { if (storage) storage.removeItem(PRO_KEY); return true; } catch (_) { return false; }
+  }
+
+  // "Download plan": one project as a plain text file anyone can open.
+  function planText(project, now) {
+    const p = clean(project);
+    if (!p) return "";
+    const pr = progress(p);
+    const stage = STAGES.find((s) => s.key === p.stage) || STAGES[0];
+    const day = new Date(now || Date.now()).toISOString().slice(0, 10);
+    const out = [
+      `# ${p.name}`, "", p.pitch, "",
+      `For: ${p.audience}`,
+    ];
+    if (p.address) out.push(`Web address idea: ${p.address}`);
+    out.push(`Stage: ${pr.launched ? "Launched" : stage.name} (${pr.done} of ${pr.total} steps done, ${pr.percent}%)`, "");
+    for (const s of STAGES) {
+      const items = CHECKLIST.filter((i) => i.stage === s.key);
+      out.push(`## ${s.name}: ${s.line}`, "");
+      for (const item of items) out.push(`- [${p.ticks[item.key] ? "x" : " "}] ${item.label}`);
+      out.push("");
+    }
+    if (p.notes.trim()) out.push("## Notes", "", p.notes.trim(), "");
+    out.push(`Made with Genesis, MTRX Horizyn. ${day}`, "");
+    return out.join("\n");
+  }
+
+  // A file name from a project's name: "nova-notes-plan.txt".
+  function planFileName(project) {
+    const base = suggestAddress(project && project.name).replace(/\.com$/, "") || "genesis";
+    return `${base}-plan.txt`;
+  }
+
   const api = {
     KEY, LIMITS, STAGES, CHECKLIST, line, block, addressProblem, suggestAddress, nameWarning,
     check, create, progress, clean, cleanList, exportText, importText, open,
     HANDOFF_KEY, offerToVortex, takeVortexOffer,
+    PRO_KEY, proKey, readProKey, keepProKey, forgetProKey, planText, planFileName,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.GenesisStore = api;

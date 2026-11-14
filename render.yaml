@@ -50,6 +50,20 @@ services:
         sync: false          # a current model id from Anthropic's model list
       - key: GENESIS_AI_DAILY_CAP_USD
         value: "2"
+      # Genesis Pro (docs/GENESIS-PRO.md): off until switched on here and the
+      # Stripe settings below are typed into the dashboard.
+      - key: GENESIS_PRO_ENABLED
+        value: "0"
+      - key: STRIPE_SECRET_KEY
+        sync: false          # a restricted key from Stripe; never stored in the code
+      - key: GENESIS_PRO_STRIPE_WEBHOOK_SECRET
+        sync: false          # the webhook endpoint's signing secret (whsec_...)
+      - key: GENESIS_PRO_STRIPE_PRICE
+        sync: false          # the monthly price id (price_...)
+      - key: GENESIS_PRO_YEARLY_STRIPE_PRICE
+        sync: false          # the yearly price id (price_...), ten months' price
+      - key: GENESIS_PRO_MONTHLY_AI_USD
+        value: "1.5"
       - key: VORTEX_PER_HOUR
         value: "5"           # Chroma Vortex messages each visitor may send an hour
       - key: VORTEX_PER_DAY

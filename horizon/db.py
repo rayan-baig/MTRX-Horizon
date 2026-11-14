@@ -162,6 +162,75 @@ CREATE TABLE IF NOT EXISTS usage_months (
     at REAL NOT NULL,
     PRIMARY KEY (app, month, metric)
 );
+-- Genesis Pro (genesis_pro.py), the paid upgrade. Who is Pro is decided only
+-- by Stripe's signed webhook. A member is a Stripe subscription: its ids, its
+-- state, its price and when it renews or ends. No name, no card, and no email
+-- address: only a SHA-256 fingerprint of the buyer's email, so a new key can
+-- be sent to the same address, and of the checkout's id, so the page Stripe
+-- sends the buyer back to can show their first key once.
+CREATE TABLE IF NOT EXISTS genesis_pro_members (
+    id TEXT PRIMARY KEY,
+    customer TEXT NOT NULL DEFAULT '',
+    subscription TEXT NOT NULL UNIQUE,
+    email_hash TEXT NOT NULL DEFAULT '',
+    checkout_hash TEXT NOT NULL DEFAULT '',
+    claimed_at REAL,
+    status TEXT NOT NULL,
+    interval TEXT NOT NULL DEFAULT 'month',
+    amount_cents INTEGER NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'usd',
+    renews_at REAL,
+    ends_at REAL,
+    event_at INTEGER NOT NULL DEFAULT 0,
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS genesis_pro_members_customer ON genesis_pro_members (customer);
+CREATE INDEX IF NOT EXISTS genesis_pro_members_email ON genesis_pro_members (email_hash);
+CREATE INDEX IF NOT EXISTS genesis_pro_members_checkout ON genesis_pro_members (checkout_hash);
+-- Pro keys: only the SHA-256 of each, never the key. A member has a few.
+CREATE TABLE IF NOT EXISTS genesis_pro_keys (
+    key_hash TEXT PRIMARY KEY,
+    member_id TEXT NOT NULL,
+    created_at REAL NOT NULL,
+    last_used REAL
+);
+CREATE INDEX IF NOT EXISTS genesis_pro_keys_member ON genesis_pro_keys (member_id);
+-- Stripe event ids already handled, so a retried event is applied once.
+CREATE TABLE IF NOT EXISTS genesis_pro_events (
+    id TEXT PRIMARY KEY,
+    at REAL NOT NULL
+);
+-- Money in and out, for the console's numbers: each paid invoice and each
+-- refund, in the currency's smallest unit. Kept about 13 months.
+CREATE TABLE IF NOT EXISTS genesis_pro_payments (
+    key TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    subscription TEXT NOT NULL DEFAULT '',
+    customer TEXT NOT NULL DEFAULT '',
+    cents INTEGER NOT NULL,
+    currency TEXT NOT NULL,
+    at REAL NOT NULL
+);
+-- Each Pro ask: which member and when, and what it cost, for the member's
+-- daily asks and their 31-day AI allowance. Never the words. Kept 32 days.
+CREATE TABLE IF NOT EXISTS genesis_pro_spend (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    member_id TEXT NOT NULL,
+    at REAL NOT NULL,
+    usd REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS genesis_pro_spend_lookup ON genesis_pro_spend (member_id, at);
+-- A Pro member's cloud backup of their Genesis projects: the last few copies,
+-- private to them. Deleted on request, and 60 days after Pro ends.
+CREATE TABLE IF NOT EXISTS genesis_pro_backups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    member_id TEXT NOT NULL,
+    at REAL NOT NULL,
+    projects INTEGER NOT NULL,
+    body TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS genesis_pro_backups_member ON genesis_pro_backups (member_id, at);
 -- One-off jobs that have been done, such as filling the app catalog the
 -- first time, so they are never done again.
 CREATE TABLE IF NOT EXISTS done_once (

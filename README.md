@@ -256,8 +256,8 @@ people it's for, the simplest first version, try it with 3 real people, a privac
 to contact you, backups, a launch day...), progress per stage and overall, and notes. The list
 shows every project as a card, with an empty state that invites the first idea.
 
-**Nothing about a project is kept on the server.** Projects live only in the visitor's own
-browser (`localStorage`). If the browser blocks storage, Genesis still works for that visit
+**Nothing about a project is kept on the server** (unless a Genesis Pro member backs their
+projects up, below). Projects live only in the visitor's own browser (`localStorage`). If the browser blocks storage, Genesis still works for that visit
 and says so. **Download** saves every project as a JSON file, **Import** reads one back (to
 move to another device), and **Delete all** clears them. The privacy page says the same.
 
@@ -304,6 +304,37 @@ tokens and each request a few hundred words. A visitor over their limit, or ever
 cap is reached, gets a friendly message, and the provider is not called. Timeouts (30 seconds)
 and provider errors also get a friendly message. Set a monthly spend limit in the Anthropic
 Console as well, as a second fence.
+
+### Genesis Pro: the paid upgrade
+
+**Genesis Pro** ([docs/GENESIS-PRO.md](docs/GENESIS-PRO.md)) is an optional subscription, about
+$4.99 a month or $49.90 a year ("2 months free"), for the people who use Genesis most. The free
+plan does not change. Pro adds up to 100 Ask Genesis answers a day (the member's own, not the
+shared free budget), longer and more detailed answers, three more helpers (a four-week plan,
+words for a one-page website, price ideas), a private cloud backup of the member's projects, and
+**Download plan** (a project as a text file). Nothing a member makes is ever published or shared.
+
+It is **off until `GENESIS_PRO_ENABLED=1`** and Stripe is set up; until then no page mentions it
+and every Pro address is "page not found". Payment is a Stripe Checkout subscription, and
+Stripe's signed webhook is the only thing that makes anyone Pro or stops them (cancelled,
+payment failed, refunded). There are no accounts: the buyer gets a **Pro key** on the page Stripe
+sends them back to and by email, the browser keeps it and sends it in a header with Pro
+requests, and only SHA-256 fingerprints of keys and of the buyer's email are stored. The buy
+button says a grown-up pays and checkout is for adults.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `GENESIS_PRO_ENABLED` | `0` | `1` switches Pro on, once the next three are set |
+| `STRIPE_SECRET_KEY` | empty | Stripe's (restricted) secret key |
+| `GENESIS_PRO_STRIPE_WEBHOOK_SECRET` | empty | the signing secret of `https://mtrxhorizyn.com/api/genesis/pro/stripe` |
+| `GENESIS_PRO_STRIPE_PRICE` / `GENESIS_PRO_YEARLY_STRIPE_PRICE` | empty | the monthly and yearly price ids; Stripe holds the amounts |
+| `GENESIS_PRO_PER_DAY` / `GENESIS_PRO_PER_HOUR` | 100 / 30 | Ask Genesis answers per member |
+| `GENESIS_PRO_MONTHLY_AI_USD` | 1.5 | the most one member's AI help may cost in any 31 days |
+| `GENESIS_PRO_EMAIL_FROM` | `MTRX_ALERT_FROM` | where Pro keys are emailed from (through `MTRX_SMTP_*`) |
+
+A maxed-out member costs at most $1.50 of AI a month, against $4.51 (monthly) or $3.98 (yearly)
+a month after Stripe's fees. The doc has the sums, the owner's Stripe steps, and every limit. The
+console's **Numbers** section shows Pro members and monthly revenue.
 
 ## Chroma Vortex
 
@@ -529,6 +560,8 @@ needs changing. The line shows counts only, never anyone's address.
 - `horizon/health.py`: the apps' health checks, and the alerts when one is down
 - `horizon/upkeep.py`: the jobs the server runs on its own once a minute
 - `horizon/genesis_ai.py`: Ask Genesis, its limits and its system prompt
+- `horizon/genesis_pro.py`, `static/js/genesis-pro*.js`, `templates/genesis_pro_welcome.html`:
+  Genesis Pro, the paid upgrade (`docs/GENESIS-PRO.md`)
 - `templates/genesis.html`, `static/js/genesis*.js`, `static/css/genesis.css`: Genesis
 - `horizon/vortex.py`, `templates/vortex.html`, `static/js/vortex*.js`, `static/css/vortex.css`:
   Chroma Vortex

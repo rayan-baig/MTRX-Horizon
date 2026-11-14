@@ -19,6 +19,10 @@
     settings tell your browser to refuse anything else.</li>
   <li>Genesis projects stay in your browser, except the text you choose to send with "Ask Genesis",
     which goes to our AI provider to write the answer; we keep only counts.</li>
+  {%- if pro %}
+  <li>Genesis Pro, if a grown-up buys it, is paid through Stripe. Card details never reach us, and we
+    keep no email address: only what we need to know that Pro is paid for, and a member's own backup.</li>
+  {%- endif %}
   <li>Like every website, the server notes each request it answers (see below).</li>
 </ul>
 
@@ -90,6 +94,29 @@
   24 hours, then deleted. We also keep how much each answer cost, as a number with no words in it.
   Nothing else about you is kept, and no cookie is set.</p>
 
+{% if pro -%}
+<h2>Genesis Pro</h2>
+<p>Genesis Pro is an optional paid upgrade to Genesis, bought by a grown-up through Stripe, our
+  payment provider. Stripe takes the payment and the email address on its own checkout page, under
+  its own privacy policy. Card details never reach us.</p>
+<p>From Stripe we keep: its codes for the customer and the subscription; whether Pro is paid up;
+  monthly or yearly; the price; when it renews or ends; and each payment and refund. Instead of the
+  email address, we keep a fingerprint of it (a one-way code that can't be turned back into the
+  address), so that "Email a new key" can send a key to the same address. When we email a key, the
+  address is used to send it and is not kept.</p>
+<p>Your Pro key is kept in your browser's storage for this site and sent with Pro requests, in the
+  request rather than as a cookie. We keep only a fingerprint of each key.</p>
+<p>Pro's AI help works like Ask Genesis above, except that questions are counted by member instead of
+  by address: which member asked, when, and what the answer cost, kept for 32 days. The words are
+  never kept.</p>
+<p><b>Cloud backup.</b> While a browser has Pro, it sends your Genesis projects (names, pitches,
+  checklists and notes) to our server to keep a backup: the last 3 copies, for you alone to restore.
+  Nobody else can see them, and they are never used for anything else. Delete them any time with
+  <b>Delete backups</b>; otherwise they are deleted {{ pro_backup_days }} days after Pro ends.</p>
+<p>To stop misuse, Pro's buttons are limited too: the address a request came from (for an IPv6
+  address, the block it belongs to) and the time are kept for 24 hours, then deleted.</p>
+
+{% endif -%}
 <h2>The numbers on the home page</h2>
 <p>The user counts and uptime on the home page are totals that the apps report to this site. They
   contain no one's name, email or other details.</p>

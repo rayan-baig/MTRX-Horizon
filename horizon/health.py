@@ -171,20 +171,23 @@ def _local(host: str) -> bool:
     return host in ("localhost", "127.0.0.1", "::1")
 
 
-def send_email(subject: str, body: str) -> bool:
-    """Email the owner. False if email isn't set up; raises if sending fails.
+def send_email(subject: str, body: str, to: str = "", sender: str = "") -> bool:
+    """Email the owner, or `to` when given (a Genesis Pro buyer's key).
+    False if email isn't set up; raises if sending fails.
 
     Port 465 is encrypted from the start; any other port must offer
     STARTTLS, so the password and the message never cross the internet in
     the clear. Only a mail server on this same machine may go without.
     """
     s = config.get()
-    if not (s.alert_email and s.smtp_host and (s.alert_from or s.alert_email)):
+    recipient = to or s.alert_email
+    sender = sender or s.alert_from or s.alert_email
+    if not (recipient and s.smtp_host and sender):
         return False
     message = EmailMessage()
     message["Subject"] = subject
-    message["From"] = s.alert_from or s.alert_email
-    message["To"] = s.alert_email
+    message["From"] = sender
+    message["To"] = recipient
     message.set_content(body)
     context = ssl.create_default_context()
     if s.smtp_port == 465:

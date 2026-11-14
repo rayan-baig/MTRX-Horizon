@@ -80,7 +80,7 @@ Stay calm, write down the time, then:
 | An uptime monitor says an app is down | Open the host's dashboard for that app (Render or Cloudflare) and look at the latest deploy and logs. If the newest deploy broke it, roll back to the previous one in the dashboard. |
 | CyberLogix watchdog says the sweep stopped | This is the important one: freezers are not being watched. Restart the CyberLogix service in Render. Then read CyberLogix `docs/OPERATIONS.md`, "dead man's switch". |
 | Emails stopped arriving | Check the email service's dashboard for bounces or a suspended account. CyberLogix and OmniArmor keep unsent mail and send it when mail works again; RankUp's sign-in emails go through Supabase, so check its email settings too. |
-| Payments failing | Look at the Stripe dashboard's webhook page for errors. Each app's payments doc explains its webhook. |
+| Payments failing | Look at the Stripe dashboard's webhook page for errors. Each app's payments doc explains its webhook; Genesis Pro's is in [GENESIS-PRO.md](GENESIS-PRO.md). |
 | Data looks wrong | Don't edit the database by hand. Take a backup first, then ask for help. |
 | A customer says they can see someone else's data | Treat this as the most serious problem there is: take that app offline in the host's dashboard, then investigate. |
 
@@ -143,6 +143,7 @@ page before you sign up.
 | Text messages and calls (CyberLogix, Twilio) | pay per message | CyberLogix tracks this and has a spending cap per business |
 | Stripe | a fee per payment, no monthly fee | |
 | Ask Genesis (AI help on `/genesis`, Anthropic) | pay per answer | Off until set up; at most `GENESIS_AI_DAILY_CAP_USD` a day (2 dollars by default, so at most about $60 a month) |
+| Genesis Pro's AI help (paid for by members) | pay per answer | Off until switched on; at most `GENESIS_PRO_MONTHLY_AI_USD` ($1.50) per member a month, against $3.98 to $4.51 a month each member brings in after Stripe's fees ([GENESIS-PRO.md](GENESIS-PRO.md)) |
 
 Before the first customer, that is roughly **$40–50 a month** plus the
 domain.

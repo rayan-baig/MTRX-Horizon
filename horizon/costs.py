@@ -6,6 +6,8 @@ before signing up. The console shows this list, so a change here is a change
 there.
 """
 
+from . import config
+
 # (what, low, high, note). Both ends equal means a fixed price.
 MONTHLY = (
     ("MTRX Horizyn server (Render starter + disk)", 7, 7,
@@ -29,11 +31,17 @@ PER_USE = (
      "Pay per answer; off until set up, and capped per day by GENESIS_AI_DAILY_CAP_USD."),
 )
 
+# Listed only while Genesis Pro is switched on.
+PRO_PER_USE = ("Genesis Pro AI help (paid for by members)",
+               ("At most GENESIS_PRO_MONTHLY_AI_USD per member in any 31 days, well under the price "
+                "after Stripe's fees (docs/GENESIS-PRO.md)."))
+
 
 def summary() -> dict:
+    per_use = PER_USE + ((PRO_PER_USE,) if config.get().genesis_pro_enabled else ())
     return {
         "monthly": [{"what": w, "low": lo, "high": hi, "note": n} for w, lo, hi, n in MONTHLY],
-        "per_use": [{"what": w, "note": n} for w, n in PER_USE],
+        "per_use": [{"what": w, "note": n} for w, n in per_use],
         "total_low": sum(lo for _, lo, _, _ in MONTHLY),
         "total_high": sum(hi for _, _, hi, _ in MONTHLY),
     }
