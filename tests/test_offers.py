@@ -193,6 +193,7 @@ def test_the_bundle_price_matches_cyberlogix_and_can_be_hidden(client, monkeypat
     assert offers.BUNDLE_PRICE == 29
     page = client.get("/bundle").text
     assert "<b>$29</b> a month per location" in page and "Ask about bundle pricing" not in page
+    assert "OmniArmor.ai Pro for that location is included" in page
     monkeypatch.setattr(offers, "BUNDLE_PRICE", None)
     page = client.get("/bundle").text
     assert "Ask about bundle pricing" in page and "$" not in _text(page)
