@@ -4,6 +4,19 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.6.1 (14 November 2026)
+
+- **The domain is chosen: mtrxhorizyn.com.** `render.yaml` now sets the live addresses:
+  `MTRX_PUBLIC_URL=https://mtrxhorizyn.com`, the three apps' "Open" addresses
+  (`https://rankup.mtrxhorizyn.com`, `https://cyberlogix.mtrxhorizyn.com`,
+  `https://omniarmor.mtrxhorizyn.com`), their health addresses (RankUp and CyberLogix AI
+  `/api/health`, OmniArmor.ai `/healthz`) and stats addresses (`/api/stats`), and asks for
+  `MTRX_STATS_KEY` without storing it. Staging is made by hand and gets none of them.
+- The README, `docs/STAGING.md`, `docs/RUNNING-MTRX-HORIZYN.md` and `.env.example` name the
+  real addresses instead of placeholders, with `hello@mtrxhorizyn.com` for business enquiries
+  and `help@<app>.mtrxhorizyn.com` for each app. The code still reads every address from its
+  setting, and works with them unset.
+
 ## 1.6.0 (13 November 2026)
 
 - **Partners** (`/partners`): for fridge and refrigeration repair companies, food safety

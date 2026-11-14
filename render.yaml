@@ -14,6 +14,32 @@ services:
         value: "1"
       - key: MTRX_DB_PATH
         value: /app/data/horizon.db
+      # The live addresses. This Blueprint is the live site's only: staging is
+      # made by hand with its own values (docs/STAGING.md), so none of these
+      # reach it. MTRX_CONTACT_EMAIL is left to the dashboard (README,
+      # "Business enquiries") so no link shows before the mailbox exists.
+      - key: MTRX_PUBLIC_URL
+        value: https://mtrxhorizyn.com
+      - key: RANKUP_URL
+        value: https://rankup.mtrxhorizyn.com
+      - key: CYBERLOGIX_URL
+        value: https://cyberlogix.mtrxhorizyn.com
+      - key: OMNIARMOR_URL
+        value: https://omniarmor.mtrxhorizyn.com
+      - key: RANKUP_HEALTH_URL
+        value: https://rankup.mtrxhorizyn.com/api/health
+      - key: CYBERLOGIX_HEALTH_URL
+        value: https://cyberlogix.mtrxhorizyn.com/api/health
+      - key: OMNIARMOR_HEALTH_URL
+        value: https://omniarmor.mtrxhorizyn.com/healthz
+      - key: RANKUP_STATS_URL
+        value: https://rankup.mtrxhorizyn.com/api/stats
+      - key: CYBERLOGIX_STATS_URL
+        value: https://cyberlogix.mtrxhorizyn.com/api/stats
+      - key: OMNIARMOR_STATS_URL
+        value: https://omniarmor.mtrxhorizyn.com/api/stats
+      - key: MTRX_STATS_KEY
+        sync: false          # the same long random key as each app's STATS_KEY
       - key: MTRX_SETUP_TOKEN
         generateValue: true  # base64, so it may hold "/", "+" or "="; the approval page takes them
       - key: MTRX_KNOCK

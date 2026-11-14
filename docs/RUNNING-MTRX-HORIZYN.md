@@ -10,10 +10,10 @@ on parts of it:
 
 | What | Address | Its own docs |
 |---|---|---|
-| MTRX Horizyn (site + your console) | `https://<your domain>` | this repo's README |
-| RankUp (kids' chores) | `https://rankup.<your domain>` | RankUp `docs/LAUNCH.md`, `docs/IF-SOMETHING-BREAKS.md` |
-| CyberLogix (fridge and freezer alerts) | `https://cyberlogix.<your domain>` | CyberLogix `DEPLOY.md`, `docs/OPERATIONS.md` |
-| OmniArmor (compliance checks + Academy) | `https://omniarmor.<your domain>` | OmniArmor `docs/OPERATIONS.md`, `docs/COSTS.md` |
+| MTRX Horizyn (site + your console) | `https://mtrxhorizyn.com` | this repo's README |
+| RankUp (kids' chores) | `https://rankup.mtrxhorizyn.com` | RankUp `docs/LAUNCH.md`, `docs/IF-SOMETHING-BREAKS.md` |
+| CyberLogix (fridge and freezer alerts) | `https://cyberlogix.mtrxhorizyn.com` | CyberLogix `DEPLOY.md`, `docs/OPERATIONS.md` |
+| OmniArmor (compliance checks + Academy) | `https://omniarmor.mtrxhorizyn.com` | OmniArmor `docs/OPERATIONS.md`, `docs/COSTS.md` |
 
 ---
 
@@ -25,11 +25,11 @@ monitor email or text you.
 
 | App | Check this address | Notes |
 |---|---|---|
-| MTRX Horizyn | `https://<your domain>/healthz` | Answers GET and HEAD |
-| RankUp | `https://rankup.<your domain>/api/health` | Shallow and public. With `Authorization: Bearer <CRON_SECRET>` it lists every scheduled job and answers 503 if one is late |
-| CyberLogix | `https://cyberlogix.<your domain>/api/health` | Use this for the host's health check |
-| CyberLogix, second check | `https://cyberlogix.<your domain>/api/watchdog` | Answers 503 when the alert sweep has stopped. Put this in the uptime monitor only, never in the host's health check (the host would restart the server and hide the problem) |
-| OmniArmor | `https://omniarmor.<your domain>/healthz` | |
+| MTRX Horizyn | `https://mtrxhorizyn.com/healthz` | Answers GET and HEAD |
+| RankUp | `https://rankup.mtrxhorizyn.com/api/health` | Shallow and public. With `Authorization: Bearer <CRON_SECRET>` it lists every scheduled job and answers 503 if one is late |
+| CyberLogix | `https://cyberlogix.mtrxhorizyn.com/api/health` | Use this for the host's health check |
+| CyberLogix, second check | `https://cyberlogix.mtrxhorizyn.com/api/watchdog` | Answers 503 when the alert sweep has stopped. Put this in the uptime monitor only, never in the host's health check (the host would restart the server and hide the problem) |
+| OmniArmor | `https://omniarmor.mtrxhorizyn.com/healthz` | |
 
 Check every 5 minutes. Most free monitors allow that.
 
@@ -55,7 +55,7 @@ Do these in order. If any step fails, stop and fix it before going on.
    `docs/BACKEND.md`. They are safe to run over a live database, and the
    new app version can fail without them.
 4. Let the new version deploy (pushing to the main branch deploys it).
-5. Open `https://rankup.<your domain>/api/health` with the secret: every
+5. Open `https://rankup.mtrxhorizyn.com/api/health` with the secret: every
    check should say ok.
 
 **CyberLogix, OmniArmor, MTRX Horizyn** (their database is a file on the
@@ -109,10 +109,10 @@ a glance which app a message is about:
 
 | App | Help address |
 |---|---|
-| RankUp | `help@rankup.<your domain>` |
-| CyberLogix | `help@cyberlogix.<your domain>` |
-| OmniArmor | `help@omniarmor.<your domain>` |
-| MTRX Horizyn (business enquiries) | set `MTRX_CONTACT_EMAIL` |
+| RankUp | `help@rankup.mtrxhorizyn.com` |
+| CyberLogix | `help@cyberlogix.mtrxhorizyn.com` |
+| OmniArmor | `help@omniarmor.mtrxhorizyn.com` |
+| MTRX Horizyn (business enquiries) | `hello@mtrxhorizyn.com`, shown on the site once `MTRX_CONTACT_EMAIL` is set to it |
 
 Rules of thumb:
 - Answer within one working day. CyberLogix customers with a freezer

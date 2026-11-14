@@ -37,7 +37,7 @@ Anyone who fails any lock sees the normal "page not found".
      `cyberlogix`, `omniarmor` (the three app icons). Example: `logo logo omniarmor rankup mark`.
      Don't use the example. Make up your own and tell nobody.
    - `MTRX_SETUP_TOKEN`: a long random code (Render makes one for you).
-2. On your laptop, open `https://<your site>/console/add/<the setup code>`, name the
+2. On your laptop, open `https://mtrxhorizyn.com/console/add/<the setup code>`, name the
    device, and press **Approve this device**. You're in.
 3. In the console, press **Approve a device** and scan the QR code with your phone.
 
@@ -80,17 +80,16 @@ Safari is not approved inside the Home Screen app.
 
 MTRX Horizyn is the company, and it has the one domain. RankUp, CyberLogix and
 OmniArmor are its products: they have no domains of their own, and each lives on a
-subdomain of MTRX Horizyn's. The name isn't chosen yet, so `example.com` stands for it
-below.
+subdomain of MTRX Horizyn's: **mtrxhorizyn.com**.
 
 | Address | What is there |
 |---|---|
-| `example.com` and `www.example.com` | This site: the home page and the console |
-| `rankup.example.com` | RankUp |
-| `cyberlogix.example.com` | CyberLogix |
-| `omniarmor.example.com` | OmniArmor |
+| `mtrxhorizyn.com` and `www.mtrxhorizyn.com` | This site: the home page and the console |
+| `rankup.mtrxhorizyn.com` | RankUp |
+| `cyberlogix.mtrxhorizyn.com` | CyberLogix |
+| `omniarmor.mtrxhorizyn.com` | OmniArmor |
 
-**Subdomains, not folders** (`example.com/rankup`). A browser treats each subdomain as
+**Subdomains, not folders** (`mtrxhorizyn.com/rankup`). A browser treats each subdomain as
 a separate site for cookies, saved data and installed web apps, so a sign-in on one
 app never reaches another, and none of them reaches the console. To keep it that way:
 
@@ -103,35 +102,38 @@ app never reaches another, and none of them reaches the console. To keep it that
 
 **Setting it up**, on the host that runs each one (Render here):
 
-1. **This site:** in Render, the service's Settings, Custom Domains, add `example.com`
-   and `www.example.com`. At whoever manages the domain's DNS, add the records Render
+1. **This site:** in Render, the service's Settings, Custom Domains, add `mtrxhorizyn.com`
+   and `www.mtrxhorizyn.com`. At whoever manages the domain's DNS, add the records Render
    shows (for the bare domain usually an `A` record or an `ALIAS`/`ANAME`; for `www` a
    `CNAME` to the service's `onrender.com` address). Render redirects one to the other
-   and gets the HTTPS certificate itself. Then set `MTRX_PUBLIC_URL=https://example.com`
-   so QR codes, the sitemap and link previews use it.
+   and gets the HTTPS certificate itself. `MTRX_PUBLIC_URL=https://mtrxhorizyn.com` (set
+   in `render.yaml`) has QR codes, the sitemap, `robots.txt` and link previews use it.
+   Unset, they use the address the visitor came in on.
 2. **Each app:** add a `CNAME` named `rankup`, `cyberlogix` or `omniarmor` pointing at
    that app's own host, add the same name in that host's custom-domain settings, wait
    for HTTPS, and set the app's own address setting to it: CyberLogix's
-   `PUBLIC_BASE_URL`, OmniArmor's `BASE_URL`, and RankUp's equivalent. Leave each app's
+   `PUBLIC_BASE_URL`, OmniArmor's `BASE_URL`, and RankUp's `PUBLIC_SITE_URL`. Leave each app's
    allowed-origins setting (such as CyberLogix's `CYBERLOGIX_ALLOWED_ORIGINS`) unset:
    never `*`, and never this domain or a sibling. Each app's deploy guide has the steps.
-3. **Here:** point the settings below at the subdomains, always starting with `https://`:
+3. **Here:** point the settings below at the subdomains, always starting with `https://`.
+   `render.yaml` sets these, and the health addresses below, for the live service; a copy
+   made by hand (such as staging) sets its own or leaves them empty:
 
    | Setting | Value |
    |---|---|
-   | `RANKUP_URL` | `https://rankup.example.com` |
-   | `CYBERLOGIX_URL` | `https://cyberlogix.example.com` |
-   | `OMNIARMOR_URL` | `https://omniarmor.example.com` |
-   | `RANKUP_STATS_URL` | `https://rankup.example.com/api/stats` |
-   | `CYBERLOGIX_STATS_URL` | `https://cyberlogix.example.com/api/stats` |
-   | `OMNIARMOR_STATS_URL` | `https://omniarmor.example.com/api/stats` |
+   | `RANKUP_URL` | `https://rankup.mtrxhorizyn.com` |
+   | `CYBERLOGIX_URL` | `https://cyberlogix.mtrxhorizyn.com` |
+   | `OMNIARMOR_URL` | `https://omniarmor.mtrxhorizyn.com` |
+   | `RANKUP_STATS_URL` | `https://rankup.mtrxhorizyn.com/api/stats` |
+   | `CYBERLOGIX_STATS_URL` | `https://cyberlogix.mtrxhorizyn.com/api/stats` |
+   | `OMNIARMOR_STATS_URL` | `https://omniarmor.mtrxhorizyn.com/api/stats` |
 
 **Email.** Everything is sent from the one domain, so the records that keep mail out of
-spam are set up once, on `example.com`, at whoever manages its DNS, using the values the
+spam are set up once, on `mtrxhorizyn.com`, at whoever manages its DNS, using the values the
 email provider gives: **SPF** (which servers may send for the domain), **DKIM** (a
 signature on each message) and **DMARC** (what to do with mail that fails those two).
-Each app then sends from an address of its own, such as `no-reply@cyberlogix.example.com`
-or `no-reply@omniarmor.example.com`, so people can tell them apart. A sending subdomain
+Each app then sends from an address of its own, such as `no-reply@cyberlogix.mtrxhorizyn.com`
+or `no-reply@omniarmor.mtrxhorizyn.com`, so people can tell them apart. A sending subdomain
 must be verified with the provider as well (it adds a DKIM record for it), and the
 parent domain's DMARC covers it. Check the records with any free DMARC checker before
 real customers depend on the mail. Every app's terms, privacy page and emails name
@@ -146,7 +148,7 @@ To connect an app, give it a small private stats address that answers with JSON:
 { "users": 120, "active_users": 30 }
 ```
 
-Then set, for example, `RANKUP_STATS_URL=https://rankup.example.com/api/stats`. If
+Then set, for example, `RANKUP_STATS_URL=https://rankup.mtrxhorizyn.com/api/stats`. If
 `MTRX_STATS_KEY` is set, the console sends it as `Authorization: Bearer <key>`, and the
 app should refuse requests without it. The console saves each app's numbers once an hour
 to draw the chart and work out uptime.
@@ -156,9 +158,9 @@ Pick one long random key, then:
 
 | App | In that app's hosting settings | In this site's settings |
 |---|---|---|
-| RankUp | `STATS_KEY=<the key>` | `RANKUP_STATS_URL=https://rankup.<your domain>/api/stats` |
-| CyberLogix | `STATS_KEY=<the key>` | `CYBERLOGIX_STATS_URL=https://cyberlogix.<your domain>/api/stats` |
-| OmniArmor | `STATS_KEY=<the key>` | `OMNIARMOR_STATS_URL=https://omniarmor.<your domain>/api/stats` |
+| RankUp | `STATS_KEY=<the key>` | `RANKUP_STATS_URL=https://rankup.mtrxhorizyn.com/api/stats` |
+| CyberLogix | `STATS_KEY=<the key>` | `CYBERLOGIX_STATS_URL=https://cyberlogix.mtrxhorizyn.com/api/stats` |
+| OmniArmor | `STATS_KEY=<the key>` | `OMNIARMOR_STATS_URL=https://omniarmor.mtrxhorizyn.com/api/stats` |
 
 and `MTRX_STATS_KEY=<the key>` here once. Each app answers with two counts and its daily usage
 totals (see [Numbers](#numbers-what-people-do-in-each-app)), nothing about anyone. A wrong or missing key gets "unauthorized"; an app without `STATS_KEY` acts as if
@@ -166,7 +168,7 @@ the address does not exist.
 
 To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_URL` or
 `OMNIARMOR_URL` to the app's whole address on its subdomain, such as
-`https://rankup.<your domain>`. An address without `https://` shows no button, rather
+`https://rankup.mtrxhorizyn.com`. An address without `https://` shows no button, rather
 than a link to nowhere.
 
 ## Admin links and costs in the console
@@ -196,9 +198,9 @@ the last week. It needs each app's public health address:
 
 | Setting | Value |
 |---|---|
-| `RANKUP_HEALTH_URL` | `https://rankup.<your domain>/api/health` |
-| `CYBERLOGIX_HEALTH_URL` | `https://cyberlogix.<your domain>/api/health` |
-| `OMNIARMOR_HEALTH_URL` | `https://omniarmor.<your domain>/healthz` |
+| `RANKUP_HEALTH_URL` | `https://rankup.mtrxhorizyn.com/api/health` |
+| `CYBERLOGIX_HEALTH_URL` | `https://cyberlogix.mtrxhorizyn.com/api/health` |
+| `OMNIARMOR_HEALTH_URL` | `https://omniarmor.mtrxhorizyn.com/healthz` |
 
 The server asks each one once a minute, whether or not the console is open, with a
 4-second limit and no key. Any 2xx answer is up; anything else, a redirect, or no answer
@@ -216,7 +218,7 @@ To set up email, use any email provider's SMTP details:
 | `MTRX_SMTP_HOST` | the provider's SMTP server |
 | `MTRX_SMTP_PORT` | `587` (STARTTLS, the default) or `465` |
 | `MTRX_SMTP_USER`, `MTRX_SMTP_PASSWORD` | the login the provider gives you |
-| `MTRX_ALERT_FROM` | the sender, such as `alerts@<your domain>` (defaults to the login) |
+| `MTRX_ALERT_FROM` | the sender, such as `alerts@mtrxhorizyn.com` (defaults to the login) |
 
 Mail is only sent encrypted. A server that offers no encryption is refused (except one
 on the same machine), and the console shows "Alert email failed". The console shows
@@ -232,7 +234,7 @@ shows in the console's **Recent activity**.
 ## Business enquiries
 
 Set `MTRX_CONTACT_EMAIL` to the address business enquiries should go to, such as
-`hello@<your domain>`. The home page's About card, its footer and menu, and the privacy
+`hello@mtrxhorizyn.com`. The home page's About card, its footer and menu, and the privacy
 and terms pages then show it as an email link. Unset (or not a plain address), nothing is
 shown. Partners, ideas and investors have their own place: [Chroma Vortex](#chroma-vortex).
 
@@ -502,7 +504,7 @@ The domain and the apps' subdomains are set up as in
 
 **Running all four apps** (uptime checks, releasing, backups, what to do when something breaks, support, costs): [docs/RUNNING-MTRX-HORIZYN.md](docs/RUNNING-MTRX-HORIZYN.md).
 
-**Uptime monitor:** check `https://<your domain>/healthz` (answers `{"ok":true}` to GET or HEAD).
+**Uptime monitor:** check `https://mtrxhorizyn.com/healthz` (answers `{"ok":true}` to GET or HEAD).
 The site must be served over **https**, because browsers only make device keys on secure
 sites.
 

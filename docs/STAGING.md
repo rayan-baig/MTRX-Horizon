@@ -1,8 +1,8 @@
 # A staging copy
 
 A second, separate copy of the MTRX Horizyn site and console on Render, at
-`staging.example.com` (where `example.com` stands for MTRX Horizyn's domain,
-as in the README). You try a change there first, and only then put it on
+`staging.mtrxhorizyn.com` (MTRX Horizyn's domain is `mtrxhorizyn.com`, as in
+the README). You try a change there first, and only then put it on
 the live site.
 
 The rule for everything below: **staging shares nothing with live.** Not the
@@ -27,6 +27,10 @@ Never put any of these in `render.yaml`:
   `MTRX_PUBLIC_URL`, or a test inbox's `MTRX_SMTP_*` settings. Secrets are
   typed into the service's Environment page, never committed.
 
+`render.yaml` does set the live addresses (`MTRX_PUBLIC_URL`, the apps'
+`*_URL`, `*_HEALTH_URL` and `*_STATS_URL`). A service made by hand does not
+read it, so staging gets none of them: set staging's own, as in section 3.
+
 ## 1. The service
 
 Render → New → Web Service → this repository.
@@ -50,10 +54,10 @@ it holds the owner's approved devices and the apps' numbers.
 1. Where the domain's DNS is managed, add a `CNAME` named `staging` pointing
    at the staging service's `onrender.com` address.
 2. Render: the staging service → Settings → Custom Domains → add
-   `staging.example.com`, and wait for the certificate. It must be served
+   `staging.mtrxhorizyn.com`, and wait for the certificate. It must be served
    over https: browsers only make device keys on secure sites.
 
-Its cookies have no `Domain`, so they belong to `staging.example.com` alone,
+Its cookies have no `Domain`, so they belong to `staging.mtrxhorizyn.com` alone,
 and the console checks the exact address of every change, so staging's pages
 can never act on live's console (README, "The domain, and the apps'
 subdomains").
@@ -67,7 +71,7 @@ paste in the live ones.
 |---|---|---|
 | `MTRX_DB_PATH` | `/app/data/horizon.db` | On staging's own disk |
 | `MTRX_TRUST_PROXY` | `1` | Render's proxy, as on live |
-| `MTRX_PUBLIC_URL` | `https://staging.example.com` | QR codes for approving a device point at staging, not live |
+| `MTRX_PUBLIC_URL` | `https://staging.mtrxhorizyn.com` | QR codes for approving a device point at staging, not live |
 | `MTRX_NOINDEX` | `1` | Search engines leave it out (section 5) |
 | `MTRX_SETUP_TOKEN` | a new one (section 6) | Live's would approve a device on staging, and staging's must never work on live |
 | `MTRX_KNOCK` | a different knock from live's | Trying staging must not teach anyone live's knock |
@@ -95,7 +99,7 @@ accepts SMTP over encryption (the site refuses a server without it) and
 delivers nothing, and put its details in `MTRX_SMTP_HOST`, `MTRX_SMTP_PORT`,
 `MTRX_SMTP_USER` and `MTRX_SMTP_PASSWORD`, with the test inbox in
 `MTRX_ALERT_EMAIL`. Never live's mail account. `MTRX_ALERT_FROM`, if set, is
-a staging address such as `alerts@staging.example.com`.
+a staging address such as `alerts@staging.mtrxhorizyn.com`.
 
 ### The apps' numbers
 
@@ -118,8 +122,8 @@ Otherwise a search for the company could land on staging.
 Check it after each deploy:
 
 ```sh
-curl -sI https://staging.example.com/ | grep -i x-robots-tag
-curl -s https://staging.example.com/robots.txt
+curl -sI https://staging.mtrxhorizyn.com/ | grep -i x-robots-tag
+curl -s https://staging.mtrxhorizyn.com/robots.txt
 ```
 
 Leave `MTRX_NOINDEX` unset on live.
@@ -133,7 +137,7 @@ checks.
 1. Make a new setup code, at least 16 characters, used for staging only:
    `python3 -c "import secrets; print(secrets.token_urlsafe(24))"`. Put it in
    staging's `MTRX_SETUP_TOKEN` and save (it redeploys).
-2. On your laptop open `https://staging.example.com/console/add/<the code>`,
+2. On your laptop open `https://staging.mtrxhorizyn.com/console/add/<the code>`,
    name the device and press **Approve this device**. Approve a second device
    by QR code from the console, as on live (README, "The first time").
 3. **Delete `MTRX_SETUP_TOKEN` from staging's settings.** The code works once,
@@ -147,7 +151,7 @@ another new code.
 ## 7. From staging to live, a checklist
 
 - [ ] Push the change to the `staging` branch. Staging deploys it.
-- [ ] `curl -s https://staging.example.com/healthz` answers `"ok": true`
+- [ ] `curl -s https://staging.mtrxhorizyn.com/healthz` answers `"ok": true`
       with the new version from `VERSION`.
 - [ ] `python -m pytest -q` passes, and GitHub Actions is green for that
       commit.
@@ -163,8 +167,8 @@ another new code.
       git merge --ff-only staging && git push`. Do not re-type the change:
       the commit that was tested is the commit that ships.
 - [ ] Live deploys on the push (if auto-deploy is off: the service → Manual
-      Deploy → Deploy latest commit). Check `https://example.com/healthz`
-      shows the same version, that `curl -sI https://example.com/` has **no**
+      Deploy → Deploy latest commit). Check `https://mtrxhorizyn.com/healthz`
+      shows the same version, that `curl -sI https://mtrxhorizyn.com/` has **no**
       `X-Robots-Tag`, and look once for live's "Proxy check:" line
       ([RUNNING-MTRX-HORIZYN.md](RUNNING-MTRX-HORIZYN.md), section 2).
 
