@@ -1,0 +1,52 @@
+{% extends "_offer.html" %}
+{% block title %}Creator dashboard{% endblock %}
+{% block description %}Your clicks, sign-ups and earnings as an MTRX Horizyn creator.{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ asset('css/grow.css') }}">{% endblock %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block body %}
+{#- A creator's own numbers (creators.dashboard). static/js/creator-dashboard.js
+    sends the key in a header and places every answer with textContent. -#}
+<section class="panel cr-dash" id="cr-locked">
+  <p class="eyebrow">Creators</p>
+  <h1 class="o-title">Your dashboard</h1>
+  <p class="o-lede">Paste the private key we emailed you.</p>
+  <form class="cr-key-form" id="cr-key-form" novalidate>
+    <label class="ea-field"><span class="ea-label">Your key</span>
+      <input type="text" name="key" maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CR-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" required></label>
+    <label class="ea-check"><input type="checkbox" name="remember" checked> <span>Remember it on this device</span></label>
+    <button class="btn btn-primary" type="submit">Open my dashboard <span aria-hidden="true">→</span></button>
+    <p class="ea-msg" id="cr-key-msg" role="status"></p>
+  </form>
+  <p class="ea-small">Not a creator yet? <a href="/creators#apply">Apply here</a>.</p>
+</section>
+
+<section class="cr-board" id="cr-board" hidden>
+  <div class="panel cr-board-head">
+    <p class="eyebrow">Creator dashboard</p>
+    <h1 class="o-h">Hi, <span id="cr-name"></span></h1>
+    <p class="cr-deal" id="cr-deal"></p>
+    <div class="cr-link">
+      <span class="ea-label">Your link</span>
+      <code id="cr-link"></code>
+      <button class="btn btn-ghost btn-small" type="button" id="cr-copy">Copy</button>
+    </div>
+  </div>
+  <ul class="cr-tiles">
+    <li class="panel"><span>Clicks, 30 days</span><strong id="cr-clicks30">0</strong><small id="cr-clicks">0 in all</small></li>
+    <li class="panel"><span>Sign-ups, 30 days</span><strong id="cr-signups30">0</strong><small id="cr-signups">0 in all</small></li>
+    <li class="panel"><span>Earned</span><strong id="cr-earned">$0.00</strong><small id="cr-paid">$0.00 paid</small></li>
+    <li class="panel"><span>Still to pay you</span><strong id="cr-owed">$0.00</strong><small>We pay by hand</small></li>
+  </ul>
+  <div class="panel cr-chart-box">
+    <p class="ea-label">The last 30 days</p>
+    <div class="cr-chart" id="cr-chart"></div>
+    <p class="cr-legend"><span class="cr-key-clicks">Clicks</span><span class="cr-key-signups">Sign-ups</span></p>
+  </div>
+  <div class="panel cr-ledger-box">
+    <p class="ea-label">Earnings and payments</p>
+    <ul class="cr-ledger" id="cr-ledger"></ul>
+  </div>
+  <p class="cr-out"><button class="btn btn-ghost btn-small" type="button" id="cr-forget">Forget my key on this device</button></p>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/creator-dashboard.js') }}" defer></script>{% endblock %}

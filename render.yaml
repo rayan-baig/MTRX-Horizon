@@ -68,3 +68,27 @@ services:
         value: "5"           # Chroma Vortex messages each visitor may send an hour
       - key: VORTEX_PER_DAY
         value: "20"
+      # The early access list and the creator program
+      # (docs/EARLY-ACCESS-AND-CREATORS.md): off until switched on here.
+      - key: EARLY_ACCESS_ENABLED
+        value: "0"
+      - key: FOUNDER_CODE_RANKUP
+        sync: false          # a Stripe promotion code you make, such as FOUNDER20
+      - key: FOUNDER_CODE_CYBERLOGIX
+        sync: false
+      - key: FOUNDER_CODE_OMNIARMOR
+        sync: false
+      - key: FOUNDER_PERCENT_OFF
+        sync: false          # the percent those codes take off, such as 20
+      - key: MTRX_POSTAL_ADDRESS
+        sync: false          # the company's postal address; launch emails are blocked until it is set
+      - key: EARLY_ACCESS_EMAIL_FROM
+        sync: false          # the address early access and creator emails come from
+      - key: EARLY_ACCESS_SEND_PER_MINUTE
+        value: "20"
+      - key: CREATORS_ENABLED
+        value: "0"
+      - key: CREATOR_PERCENT
+        value: "20"
+      - key: CREATOR_MONTHS
+        value: "12"

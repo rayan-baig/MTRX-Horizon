@@ -336,6 +336,41 @@ A maxed-out member costs at most $1.50 of AI a month, against $4.51 (monthly) or
 a month after Stripe's fees. The doc has the sums, the owner's Stripe steps, and every limit. The
 console's **Numbers** section shows Pro members and monthly revenue.
 
+## Early access and creators
+
+Two ways to have customers and money ready on launch day ([docs/EARLY-ACCESS-AND-CREATORS.md](docs/EARLY-ACCESS-AND-CREATORS.md)).
+Both are **off by default**: until switched on, no page mentions them and their addresses are
+"page not found".
+
+- **The early access list** (`EARLY_ACCESS_ENABLED=1`, with email set up): a **Get early access**
+  form on the home page (the first button, each app's card and Learn more) and on
+  `/early-access`. Email, which apps, and "I'm a grown-up (18+)". Double opt-in: only people who
+  press the link in our email count, and the rest are deleted after 7 days. Only the email and
+  the apps are kept. Every email has a one-click unsubscribe link and `List-Unsubscribe`
+  headers. Founding members are promised a launch discount; each app's code is a Stripe
+  promotion code in `FOUNDER_CODE_*`. The console's **Early access** section shows the counts and
+  sends the **launch email** for an app: previewed first, sent to the people confirmed for it with
+  its founder code, each person once, a few a minute, and blocked until `MTRX_POSTAL_ADDRESS` is set.
+- **The creator program** (`CREATORS_ENABLED=1`): `/creators` ("Make videos about our apps, earn
+  20% of what your viewers pay in their first year"), an application emailed to you and listed in
+  the console, and on approval a short link `mtrxhorizyn.com/c/<code>` that counts clicks and
+  sign-ups and forwards to the app with `?ref=<code>` (before launch, to its early access form),
+  plus a private dashboard key (only its hash is kept). You write earnings and payouts down by
+  hand; nothing moves money. Clicks are counted with a daily-changing keyed hash, never the address.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `EARLY_ACCESS_ENABLED` | `0` | `1` switches the early access list on (shown once email works) |
+| `FOUNDER_CODE_RANKUP` / `FOUNDER_CODE_CYBERLOGIX` / `FOUNDER_CODE_OMNIARMOR` | empty | each app's founding member code: a Stripe promotion code you make |
+| `FOUNDER_PERCENT_OFF` | empty | the percent off, shown only for an app with a code |
+| `MTRX_POSTAL_ADDRESS` | empty | the company's postal address, at the foot of every email; launch emails are blocked until it is set |
+| `EARLY_ACCESS_EMAIL_FROM` | `MTRX_ALERT_FROM` | where early access and creator emails come from (through `MTRX_SMTP_*`) |
+| `EARLY_ACCESS_SEND_PER_MINUTE` | 20 | how many launch emails go a minute |
+| `CREATORS_ENABLED` | `0` | `1` switches the creator program on |
+| `CREATOR_PERCENT` / `CREATOR_MONTHS` | 20 / 12 | the creators' share, and for how many months |
+
+Both show on the console's **Numbers** section.
+
 ## Chroma Vortex
 
 `/vortex` (and `/chroma-vortex`, which redirects there) is the official place to work with MTRX
@@ -569,6 +604,10 @@ needs changing. The line shows counts only, never anyone's address.
 - `horizon/offers.py`, `templates/partners.html`, `templates/bundle.html`, `static/css/offers.css`:
   the partner page and the Kitchen Safety Bundle
 - `horizon/numbers.py`: the console's Numbers section
+- `horizon/early_access.py`, `horizon/creators.py`, `horizon/growth.py`, `templates/early_access*.html`,
+  `templates/creators.html`, `templates/creator_dashboard.html`, `static/js/early-access.js`,
+  `static/js/creators.js`, `static/js/creator-dashboard.js`, `static/css/grow.css`: the early access
+  list and the creator program (`docs/EARLY-ACCESS-AND-CREATORS.md`)
 - `templates/`: the pages
 - `static/`: styles, scripts, pictures (cut from the supplied design artwork) and the two
   fonts (Inter and Montserrat, under the SIL Open Font License; the licences are beside them)

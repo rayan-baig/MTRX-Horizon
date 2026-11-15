@@ -39,6 +39,12 @@
       "bundle kitchen safety restaurant cafe pharmacy school fridge freezer alarm checklist inspection temperature"],
     ["Partners", "Recommend CyberLogix AI to the shops you visit and earn a share", "/partners",
       "partners refer referral repair refrigeration fridge food safety consultant equipment commission earn"],
+  ] : []).concat(document.getElementById("early-access") ? [
+    ["Early access", "Be first in line when the apps open", "#early-access",
+      "early access waitlist wait list launch founding member discount sign up notify"],
+  ] : []).concat(document.querySelector('a[href="/creators"]') ? [
+    ["Creators", "Make videos about our apps and earn", "/creators",
+      "creators youtube youtuber video influencer affiliate earn referral link"],
   ] : []).forEach(([title, hint, href, words]) => {
     items.push({ title, hint, href, words: (title + " " + words).toLowerCase() });
   });

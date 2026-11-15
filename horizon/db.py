@@ -231,6 +231,96 @@ CREATE TABLE IF NOT EXISTS genesis_pro_backups (
     body TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS genesis_pro_backups_member ON genesis_pro_backups (member_id, at);
+-- Random keys this site makes for itself (growth.py): one that signs the
+-- links in early access emails, and one a day that turns a visitor's address
+-- into a mark that can't be turned back. A day's key is deleted two days on,
+-- after which nobody can tell whose mark was whose.
+CREATE TABLE IF NOT EXISTS site_keys (
+    name TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    at REAL NOT NULL
+);
+-- The early access list (early_access.py): an email address and the apps it
+-- wants news of. Nothing else about the person. `pending` holds apps waiting
+-- for the person to press the link in their email, and `ref` the creator
+-- code they came through until then (it is counted and cleared on confirming).
+-- Never confirmed: deleted after 7 days. Unsubscribing deletes the row.
+CREATE TABLE IF NOT EXISTS early_signups (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    apps TEXT NOT NULL DEFAULT '',
+    pending TEXT NOT NULL DEFAULT '',
+    ref TEXT NOT NULL DEFAULT '',
+    created_at REAL NOT NULL,
+    pending_at REAL,
+    confirmed_at REAL
+);
+-- Launch emails the owner wrote, and who each one has gone to. A campaign's
+-- id comes from its app, subject and words, so sending the same one again
+-- only reaches people who haven't had it: each person gets it once.
+CREATE TABLE IF NOT EXISTS early_campaigns (
+    id TEXT PRIMARY KEY,
+    app TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    message TEXT NOT NULL,
+    base TEXT NOT NULL,
+    created_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS early_sends (
+    campaign_id TEXT NOT NULL,
+    signup_id TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'queued',
+    at REAL NOT NULL,
+    PRIMARY KEY (campaign_id, signup_id)
+);
+CREATE INDEX IF NOT EXISTS early_sends_state ON early_sends (state, at);
+-- The creator program (creators.py): what a creator sent with their
+-- application, and once approved, their short link's code. Only the SHA-256
+-- of each private dashboard key is kept.
+CREATE TABLE IF NOT EXISTS creators (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    name TEXT NOT NULL,
+    channel TEXT NOT NULL,
+    audience TEXT NOT NULL,
+    email TEXT NOT NULL,
+    app TEXT NOT NULL DEFAULT '',
+    code TEXT UNIQUE,
+    created_at REAL NOT NULL,
+    approved_at REAL
+);
+CREATE TABLE IF NOT EXISTS creator_keys (
+    key_hash TEXT PRIMARY KEY,
+    creator_id TEXT NOT NULL,
+    created_at REAL NOT NULL,
+    last_used REAL
+);
+-- Each creator's clicks and confirmed sign-ups, as counts per day. Never who.
+CREATE TABLE IF NOT EXISTS creator_days (
+    creator_id TEXT NOT NULL,
+    day TEXT NOT NULL,
+    clicks INTEGER NOT NULL DEFAULT 0,
+    signups INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (creator_id, day)
+);
+-- Which marks (a keyed hash of the address and the link, with that day's
+-- key) have clicked today, so a visitor counts once a day. Kept two days.
+CREATE TABLE IF NOT EXISTS creator_seen (
+    day TEXT NOT NULL,
+    mark TEXT NOT NULL,
+    PRIMARY KEY (day, mark)
+);
+-- What each creator has earned and been paid, as the owner writes it down.
+-- Nothing here moves any money.
+CREATE TABLE IF NOT EXISTS creator_ledger (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    creator_id TEXT NOT NULL,
+    at REAL NOT NULL,
+    kind TEXT NOT NULL,
+    cents INTEGER NOT NULL,
+    note TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS creator_ledger_creator ON creator_ledger (creator_id, at);
 -- One-off jobs that have been done, such as filling the app catalog the
 -- first time, so they are never done again.
 CREATE TABLE IF NOT EXISTS done_once (

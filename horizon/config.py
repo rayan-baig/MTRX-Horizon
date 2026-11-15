@@ -65,6 +65,15 @@ class Settings:
     genesis_pro_per_day: int
     genesis_pro_monthly_ai_usd: float
     genesis_pro_email_from: str
+    early_access_enabled: bool
+    founder_codes: dict
+    founder_percent_off: int
+    postal_address: str
+    growth_email_from: str
+    early_access_send_per_minute: int
+    creators_enabled: bool
+    creator_percent: int
+    creator_months: int
 
 
 def parse_knock(raw: str) -> tuple[str, ...]:
@@ -110,6 +119,31 @@ _PRICE_ID = re.compile(r"price_[A-Za-z0-9_]{1,200}")
 def _price_id(raw: str | None) -> str:
     value = (raw or "").strip()
     return value if _PRICE_ID.fullmatch(value) else ""
+
+
+# A Stripe promotion code as a customer types it at checkout, such as
+# FOUNDER20: letters, digits, - and _ only.
+_PROMO_CODE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,39}")
+
+
+def _promo_code(raw: str | None) -> str:
+    value = (raw or "").strip()
+    return value if _PROMO_CODE.fullmatch(value) else ""
+
+
+def _percent(raw: str | None, default: int) -> int:
+    """A whole percentage from 1 to 100, or `default` (0 means not set)."""
+    try:
+        value = int((raw or "").strip())
+    except ValueError:
+        return default
+    return value if 1 <= value <= 100 else default
+
+
+def _one_line(raw: str | None, limit: int = 300) -> str:
+    """Plain text on one line: no control characters, spaces tidied."""
+    text = "".join(" " if ord(c) < 32 or ord(c) == 127 else c for c in (raw or ""))
+    return " ".join(text.split())[:limit]
 
 
 def _web_address(raw: str | None) -> str:
@@ -219,4 +253,23 @@ def get() -> Settings:
         # (docs/GENESIS-PRO.md has the sums).
         genesis_pro_monthly_ai_usd=_money(env.get("GENESIS_PRO_MONTHLY_AI_USD"), 1.5),
         genesis_pro_email_from=_email(env.get("GENESIS_PRO_EMAIL_FROM")),
+        # The early access list (early_access.py). Off, and nothing about it
+        # shown, until EARLY_ACCESS_ENABLED=1. Each app's founder code is a
+        # Stripe promotion code the owner makes in Stripe; the percent it
+        # takes off is shown only for an app that has a code.
+        early_access_enabled=env.get("EARLY_ACCESS_ENABLED", "") == "1",
+        founder_codes={k: _promo_code(env.get(f"FOUNDER_CODE_{k.upper()}")) for k in APP_KEYS},
+        founder_percent_off=_percent(env.get("FOUNDER_PERCENT_OFF"), 0),
+        # The company's postal address, printed at the foot of every launch
+        # email. Launch emails can't be sent until it is set.
+        postal_address=_one_line(env.get("MTRX_POSTAL_ADDRESS")),
+        # Where early access and creator emails come from, through the
+        # MTRX_SMTP_* mail server (empty uses MTRX_ALERT_FROM).
+        growth_email_from=_email(env.get("EARLY_ACCESS_EMAIL_FROM")),
+        # Launch emails are sent one by one, at most this many a minute.
+        early_access_send_per_minute=_whole_number(env.get("EARLY_ACCESS_SEND_PER_MINUTE"), 20),
+        # The creator program (creators.py). Off until CREATORS_ENABLED=1.
+        creators_enabled=env.get("CREATORS_ENABLED", "") == "1",
+        creator_percent=_percent(env.get("CREATOR_PERCENT"), 20),
+        creator_months=_whole_number(env.get("CREATOR_MONTHS"), 12),
     )

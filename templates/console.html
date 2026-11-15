@@ -44,6 +44,8 @@
       <a href="#numbers"><span class="ico ico-numbers"></span>Numbers</a>
       <a href="#projects"><span class="ico ico-projects"></span>Projects</a>
       <a href="#vortex"><span class="ico ico-vortex"></span>Chroma Vortex<span class="side-badge" id="vx-unread" hidden></span></a>
+      {% if early %}<a href="#early"><span class="ico ico-users"></span>Early access</a>{% endif %}
+      {% if creators %}<a href="#creators"><span class="ico ico-key"></span>Creators<span class="side-badge" id="cr-waiting" hidden></span></a>{% endif %}
       <a href="#activity"><span class="ico ico-activity"></span>Activity</a>
       <a href="#costs"><span class="ico ico-chart"></span>Costs</a>
       <a href="#devices"><span class="ico ico-devices"></span>Devices</a>
@@ -150,6 +152,8 @@
       <p class="nu-note">What people did in each app, as the app counts it: totals per day, never who.
         Months are compared by the average per day, so a month still going is compared fairly.</p>
       <div class="nu-pro" id="nu-pro" hidden></div>
+      <div class="nu-pro nu-grow nu-early" id="nu-early" hidden></div>
+      <div class="nu-pro nu-grow nu-creators" id="nu-creators" hidden></div>
       <ul class="nu-list" id="nu-list"><li class="nu-loading">Loading…</li></ul>
     </section>
 
@@ -203,6 +207,67 @@
       <ul class="vx-list" id="vx-list"></ul>
     </section>
 
+    {% if early -%}
+    {#- The early access list (horizon/early_access.py): who is waiting for each
+        app, and the launch email. Everything is placed with textContent. -#}
+    <section class="panel early" id="early" aria-labelledby="ea-title">
+      <div class="panel-head">
+        <h2 id="ea-title"><span class="ico ico-users"></span>Early access</h2>
+        <a class="hint" href="/early-access" target="_blank" rel="noopener">Open the sign-up page</a>
+      </div>
+      <p class="ca-note">People who asked to hear the day an app opens. Only people who pressed the link in our email
+        count as <b>confirmed</b>; the rest are deleted after 7 days.</p>
+      <ul class="ea-warn" id="ea-warn"></ul>
+      <ul class="ea-counts" id="ea-counts"></ul>
+      <form class="ca-form ea-send" id="ea-send" novalidate>
+        <h3 class="ca-form-title">Send launch email</h3>
+        <div class="ca-grid">
+          <label class="ca-field"><span>App</span><select name="app" id="ea-app"></select></label>
+          <label class="ca-field ca-wide"><span>Subject</span>
+            <input name="subject" type="text" maxlength="120" autocomplete="off" placeholder="RankUp is open!"></label>
+          <label class="ca-field ca-wide"><span>Message</span>
+            <textarea name="message" rows="6" maxlength="3000" placeholder="It's here. Thanks for waiting: here's your founding member discount."></textarea></label>
+        </div>
+        <p class="ca-hint">We add the app's founder code, its link, an unsubscribe link and your postal address at the bottom.
+          It goes to people confirmed for that app, each once, a few a minute.</p>
+        <p class="ca-error" id="ea-error"></p>
+        <div class="ca-buttons"><button class="btn btn-primary btn-small" type="submit" id="ea-preview-btn">Preview</button></div>
+      </form>
+      <div class="ea-preview" id="ea-preview" hidden>
+        <p class="ea-preview-to" id="ea-preview-to"></p>
+        <ul class="ea-problems" id="ea-problems"></ul>
+        <div class="ea-mail">
+          <p class="ea-mail-from" id="ea-mail-from"></p>
+          <p class="ea-mail-subject" id="ea-mail-subject"></p>
+          <p class="ea-mail-body" id="ea-mail-body"></p>
+        </div>
+        <div class="ca-buttons">
+          <button class="btn btn-primary btn-small" type="button" id="ea-go">Send</button>
+          <button class="btn btn-ghost btn-small" type="button" id="ea-edit">Edit</button>
+        </div>
+      </div>
+      <h3 class="ea-sub">Launch emails</h3>
+      <ul class="ea-campaigns" id="ea-campaigns"></ul>
+    </section>
+    {%- endif %}
+
+    {% if creators -%}
+    {#- The creator program (horizon/creators.py): applications to approve, each
+        creator's link and numbers, and what they've earned and been paid. -#}
+    <section class="panel creators" id="creators" aria-labelledby="cr-title">
+      <div class="panel-head">
+        <h2 id="cr-title"><span class="ico ico-key"></span>Creators</h2>
+        <a class="hint" href="/creators" target="_blank" rel="noopener" id="cr-hint">Open the creators page</a>
+      </div>
+      <p class="ca-note" id="cr-note">Approve a creator to give them a short link and a private dashboard key. Write down what
+        they earn and what you pay them here: nothing moves money by itself.</p>
+      <h3 class="ea-sub">Waiting for you</h3>
+      <ul class="cr-list" id="cr-pending"></ul>
+      <h3 class="ea-sub">Approved</h3>
+      <ul class="cr-list" id="cr-approved"></ul>
+    </section>
+    {%- endif %}
+
     <section class="panel devices" id="devices" aria-labelledby="dv-title">
       <div class="panel-head">
         <h2 id="dv-title">Approved devices</h2>
@@ -229,6 +294,14 @@
   <p class="inv-count" id="inv-count"></p>
   <form method="dialog"><button class="btn btn-primary">Done</button></form>
 </dialog>
+
+{% if creators %}<dialog id="cr-key-dialog" class="panel" aria-labelledby="crk-title">
+  <h2 id="crk-title">Their dashboard key</h2>
+  <p>Shown this once. <span id="crk-emailed"></span></p>
+  <p class="crk-link" id="crk-link"></p>
+  <div class="inv-link"><input id="crk-key" readonly aria-label="Dashboard key"><button class="btn btn-ghost btn-small" type="button" id="crk-copy">Copy</button></div>
+  <form method="dialog"><button class="btn btn-primary">Done</button></form>
+</dialog>{% endif %}
 
 <p class="toast" id="toast" role="status" aria-live="polite"></p>
 

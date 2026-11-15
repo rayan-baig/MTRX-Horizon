@@ -1,0 +1,27 @@
+{% extends "_offer.html" %}
+{% block title %}Unsubscribe{% endblock %}
+{% block description %}Leave the MTRX Horizyn early access list.{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ asset('css/grow.css') }}">{% endblock %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block body %}
+{#- The unsubscribe link in every early access email (early_access.py). The
+    button posts back to this same address; a mail app's own unsubscribe
+    button does the same in one click. -#}
+<section class="panel ea-done">
+  <p class="eyebrow">Early access</p>
+  {% if status == 429 %}
+  <h1 class="o-title">Please wait a moment</h1>
+  <p class="o-lede">{{ error }}</p>
+  {% elif gone %}
+  <h1 class="o-title">You're unsubscribed</h1>
+  <p class="o-lede">You're off the list, and we've deleted your email address. You won't hear from us again.</p>
+  <div class="cta-row"><a class="btn btn-ghost" href="/">Back to MTRX Horizyn</a></div>
+  {% else %}
+  <h1 class="o-title">Unsubscribe?</h1>
+  <p class="o-lede">You'll stop getting emails about {{ names or "our apps" }}, and we'll delete your email address.</p>
+  <form method="post" action="/early-access/unsubscribe/{{ token }}">
+    <button class="btn btn-primary" type="submit">Unsubscribe</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

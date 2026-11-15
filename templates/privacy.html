@@ -11,8 +11,18 @@
 
 <h2>The short version</h2>
 <ul>
+  {% if early or creators -%}
+  <li>No accounts. Chroma Vortex keeps only what you choose to send there, to reply to you, for up to
+    {{ vortex_days }} days. It is never shared.</li>
+  <li>{% if early %}The early access list keeps only your email and the apps you picked, to tell you when they
+    open: unconfirmed sign-ups are deleted after {{ early_days }} days, and every email has a one-click
+    unsubscribe that deletes you from the list.{% endif %}{% if early and creators %} {% endif %}
+    {%- if creators %}If you apply as a creator, we keep what you send to run the program, and count clicks on
+    your link without keeping anyone's address.{% endif %}</li>
+  {%- else -%}
   <li>No accounts and no sign-up. The one form is Chroma Vortex, and it keeps only what you choose to
     send there, to reply to you, for up to {{ vortex_days }} days. It is never shared.</li>
+  {%- endif %}
   <li>No cookies for visitors.</li>
   <li>No tracking: no analytics, no ads, no "like" buttons, and nothing loaded from any other
     company. Every picture, font and script comes from this site, and the site's security
@@ -29,8 +39,8 @@
 <h2>Chroma Vortex</h2>
 <p>Chroma Vortex is where you can ask to partner with us, pitch an idea, get in touch as an
   investor, or ask about buying the company or one of its apps. Until it opened, this site kept
-  nothing that visitors typed. It is still the only place that keeps anything you give it, and only
-  once you press <b>Send</b>.</p>
+  nothing that visitors typed.{% if not (early or creators) %} It is still the only place that keeps anything you
+  give it, and only once you press <b>Send</b>.{% endif %}</p>
 <p>We keep what you typed into the form and nothing more: your name, your email address and your
   message; your organisation, if you gave one; for a partnership, which apps and the kind of
   partnership; for an idea, its name, its one-line pitch and who it's for; for buying, whether it's

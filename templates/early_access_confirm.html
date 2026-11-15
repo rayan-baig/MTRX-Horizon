@@ -1,0 +1,35 @@
+{% extends "_offer.html" %}
+{% block title %}You're on the list{% endblock %}
+{% block description %}Early access to MTRX Horizyn's apps.{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ asset('css/grow.css') }}">{% endblock %}
+{% block head %}<meta name="robots" content="noindex">{% endblock %}
+{% block body %}
+{#- Where the link in the confirmation email lands (early_access.confirm). -#}
+<section class="panel ea-done">
+  {% if status == 200 %}
+  <span class="ea-tick" aria-hidden="true"></span>
+  <p class="eyebrow">Confirmed</p>
+  <h1 class="o-title">You're on the list!</h1>
+  <p class="o-lede">We'll email you the day {{ names }} opens.
+    {%- if first %} You're a founding member, so you'll get a launch discount.{% endif %}</p>
+  <ul class="ea-picked">
+    {%- for key in apps %}
+    <li class="ea-{{ key }}"><img src="/static/img/{{ key }}-icon.svg" alt="" width="36" height="36"><b>{{ app_names[key] }}</b></li>
+    {%- endfor %}
+  </ul>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="/">Back to MTRX Horizyn <span aria-hidden="true">→</span></a>
+  </div>
+  <p class="ea-small">Changed your mind? <a href="/early-access/unsubscribe/{{ unsubscribe }}">Unsubscribe</a>.</p>
+  {% elif status == 410 %}
+  <p class="eyebrow">Early access</p>
+  <h1 class="o-title">This link has run out</h1>
+  <p class="o-lede">{{ error }}</p>
+  <div class="cta-row"><a class="btn btn-primary" href="/early-access">Sign up again <span aria-hidden="true">→</span></a></div>
+  {% else %}
+  <p class="eyebrow">Early access</p>
+  <h1 class="o-title">Please wait a moment</h1>
+  <p class="o-lede">{{ error }}</p>
+  {% endif %}
+</section>
+{% endblock %}

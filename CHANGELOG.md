@@ -4,6 +4,53 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.8.0 (15 November 2026)
+
+- **The early access list**, so the apps open with customers waiting. **Off by default**: until
+  `EARLY_ACCESS_ENABLED=1` and email (`MTRX_SMTP_*`) works, no page mentions it and every address
+  of it is "page not found". `docs/EARLY-ACCESS-AND-CREATORS.md` has everything.
+- **Get early access** on the home page (the first button, each app's card and Learn more, each
+  opening the form over the page with that app ticked) and on `/early-access`: an email address,
+  tick boxes for the apps, and "I'm a grown-up (18+)". **Double opt-in**: we email a link and only
+  people who press it count; the rest are deleted after 7 days. Only the email and the apps are
+  kept. The answer is the same whether or not an address is already on the list.
+- **Unsubscribing:** every email has a one-click unsubscribe link and `List-Unsubscribe` with
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058), so a mail app's own button works
+  in one click. Unsubscribing deletes the person. The links keep working if the list is switched
+  off later.
+- **Founding members** are promised a launch discount. Each app's code is a Stripe promotion code in
+  `FOUNDER_CODE_RANKUP`, `FOUNDER_CODE_CYBERLOGIX` and `FOUNDER_CODE_OMNIARMOR`; the percent
+  (`FOUNDER_PERCENT_OFF`) is shown only for an app that has a code.
+- **Launch emails** from the console's new **Early access** section: counts per app (confirmed and
+  unconfirmed), then write a subject and message for one app, preview it, and send it to the
+  people confirmed for that app with its founder code, unsubscribe link and the company's postal
+  address. Sent one at a time, at most `EARLY_ACCESS_SEND_PER_MINUTE` (20) a minute, carrying on
+  after a restart. An email is known by its app, subject and words, so each person gets it once,
+  however often Send is pressed, and each is marked before it goes so a crash can't send it twice.
+  **Blocked**, with the reason in the console, until `MTRX_POSTAL_ADDRESS` is set, email works and
+  the app has its founder code.
+- **The creator program**, `/creators`: "Make videos about our apps, earn 20% of what your viewers
+  pay in their first year" (`CREATOR_PERCENT`, `CREATOR_MONTHS`). **Off by default**
+  (`CREATORS_ENABLED`). The application (name, channel link, audience size, email, app, and "I'm 18
+  or over or my parent or guardian is applying for me") is emailed to `MTRX_CONTACT_EMAIL` and
+  listed in the console's new **Creators** section.
+- **Approving a creator** gives them a short link, `/c/<code>`, and a private dashboard key
+  (`CR-XXXX-...`, 120 bits) shown once and emailed to them; only its SHA-256 is kept. The link
+  counts clicks and confirmed early access sign-ups, then forwards to the app with `?ref=<code>`
+  (before launch, to its early access form here). Where it goes is worked out from the creator's
+  app alone, and only to `mtrxhorizyn.com`, its subdomains or the app's own address setting: no
+  open redirect. Clicks are counted with a keyed hash whose key changes every day and is deleted
+  after two, never the address.
+- **The creator dashboard**, `/creators/dashboard`: clicks and sign-ups (30 days and in all, with a
+  chart), and what the creator has earned, been paid and is owed, as the owner writes it down in
+  the console. Nothing moves money by itself.
+- **Limits on everything:** joining (5 an hour, 20 a day per address), confirmation emails (3 a
+  day per email address, 500 a day in all), wrong links, applications (3 an hour, 10 a day),
+  wrong dashboard keys (20 an hour) and link clicks (120 an hour per visitor mark).
+- The console's **Numbers** section shows both. The privacy page gains one short line about each
+  while it is on. `.env.example`, `render.yaml`, the README and `docs/RUNNING-MTRX-HORIZYN.md`
+  list every new setting. `send_email` can add headers (for `List-Unsubscribe`).
+
 ## 1.7.0 (14 November 2026)
 
 - **Genesis Pro**, a paid upgrade to Genesis for the people who use it most: about $4.99 a month,

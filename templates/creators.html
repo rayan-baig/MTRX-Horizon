@@ -1,0 +1,111 @@
+{% extends "_offer.html" %}
+{% block title %}Creators{% endblock %}
+{% block description %}Make videos about our apps, earn {{ program.percent }}% of what your viewers pay in their {{ program.period }}.{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ asset('css/grow.css') }}">{% endblock %}
+{% block body %}
+{#- The creator program (horizon/creators.py). The share and how long it lasts
+    are settings (CREATOR_PERCENT, CREATOR_MONTHS), read on every visit.
+    Earnings are written down and paid by hand: no money moves by itself. -#}
+<section class="panel o-hero cr-hero">
+  <div class="o-hero-copy">
+    <p class="eyebrow">Creators</p>
+    <h1 class="o-title">Make videos about our apps, <span>earn {{ program.percent }}% of what your viewers pay in their {{ program.period }}.</span></h1>
+    <p class="o-lede">For YouTubers and other creators. Show RankUp, CyberLogix AI or OmniArmor.ai to the people
+      who watch you, and share your own link. When they pay, you earn.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#apply">Apply <span aria-hidden="true">→</span></a>
+      <a class="btn btn-ghost" href="/creators/dashboard">My dashboard</a>
+    </div>
+  </div>
+  <div class="o-hero-art" aria-hidden="true">
+    <span class="cr-play"><span></span></span>
+  </div>
+</section>
+
+<section class="o-section" aria-labelledby="cr-how-title">
+  <p class="eyebrow">How it works</p>
+  <h2 class="o-h" id="cr-how-title">Three steps</h2>
+  <ol class="o-steps">
+    <li class="panel o-step">
+      <span class="o-num" aria-hidden="true">1</span>
+      <h3>Apply</h3>
+      <p>Tell us your name and your channel. It takes a minute, and we reply by email.</p>
+    </li>
+    <li class="panel o-step">
+      <span class="o-num" aria-hidden="true">2</span>
+      <h3>Get your link</h3>
+      <p>Once we say yes, you get a short link of your own and a private key for your dashboard.</p>
+    </li>
+    <li class="panel o-step">
+      <span class="o-num" aria-hidden="true">3</span>
+      <h3>Make videos, earn</h3>
+      <p>Put your link in your videos. You earn {{ program.percent }}% of what the people who come through it pay in
+        their {{ program.period }}.</p>
+    </li>
+  </ol>
+</section>
+
+<section class="o-split" aria-labelledby="cr-earn-title">
+  <div class="panel o-facts">
+    <p class="eyebrow">What you earn</p>
+    <h2 class="o-h" id="cr-earn-title">{{ program.percent }}% for {{ program.months }} month{{ "" if program.months == 1 else "s" }}</h2>
+    <ul class="o-ticks">
+      <li>{{ program.percent }}% of what each person who came through your link <b>actually pays</b> in their {{ program.period }}.</li>
+      <li>A free plan or a free trial earns nothing, and a refund takes it back.</li>
+      <li>We pay you ourselves. Your dashboard shows what you've earned and what we've paid.</li>
+    </ul>
+  </div>
+  <div class="panel o-facts">
+    <p class="eyebrow">Your dashboard</p>
+    <h2 class="o-h">See how you're doing</h2>
+    <ul class="o-ticks">
+      <li>How many people clicked your link, day by day.</li>
+      <li>How many joined{% if early %} the early access list{% endif %} through it.</li>
+      <li>What you've earned, and what's been paid.</li>
+      <li>We count clicks without keeping anyone's address.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="panel cr-apply" id="apply" aria-labelledby="cr-apply-title">
+  <p class="eyebrow">Apply</p>
+  <h2 class="o-h" id="cr-apply-title">Join the creator program</h2>
+  <p class="cr-young">You must be 18 or over, or have a parent or guardian apply for you.</p>
+  <form class="cr-form" id="cr-form" novalidate>
+    <div class="cr-grid">
+      <label class="ea-field"><span class="ea-label">Your name</span>
+        <input type="text" name="name" maxlength="{{ limits.name }}" autocomplete="name" required>
+        <small class="cr-msg" data-for="name"></small></label>
+      <label class="ea-field"><span class="ea-label">Your email</span>
+        <input type="email" name="email" maxlength="{{ limits.email }}" autocomplete="email" inputmode="email" required>
+        <small class="cr-msg" data-for="email"></small></label>
+      <label class="ea-field cr-wide"><span class="ea-label">Your channel link</span>
+        <input type="url" name="channel" maxlength="{{ limits.channel }}" autocomplete="url" inputmode="url" placeholder="https://www.youtube.com/@yourchannel" required>
+        <small class="cr-msg" data-for="channel"></small></label>
+      <label class="ea-field"><span class="ea-label">About how many followers?</span>
+        <select name="audience" required>
+          <option value="">Choose one</option>
+          {%- for value, label in audiences.items() %}
+          <option value="{{ value }}">{{ label }}</option>
+          {%- endfor %}
+        </select>
+        <small class="cr-msg" data-for="audience"></small></label>
+      <label class="ea-field"><span class="ea-label">Which app?</span>
+        <select name="app">
+          <option value="">Not sure yet</option>
+          {%- for key, name in apps.items() %}
+          <option value="{{ key }}">{{ name }}</option>
+          {%- endfor %}
+        </select></label>
+    </div>
+    <label class="ea-check"><input type="checkbox" name="grown_up" required>
+      <span>I'm 18 or over, or my parent or guardian is applying for me</span></label>
+    <small class="cr-msg" data-for="grown_up"></small>
+    <label class="ea-trap" aria-hidden="true">Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+    <button class="btn btn-primary" type="submit" id="cr-send">Send application <span aria-hidden="true">→</span></button>
+    <p class="ea-msg" id="cr-result" role="status"></p>
+  </form>
+  <p class="ea-small">We keep what you send here to run the program, and use it for nothing else.</p>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/creators.js') }}" defer></script>{% endblock %}

@@ -22,8 +22,8 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
-from . import (catalog, config, costs, db, errors, genesis_ai, genesis_pro, health, lock, numbers, offers, stats,
-               upkeep, vortex)
+from . import (catalog, config, costs, creators, db, early_access, errors, genesis_ai, genesis_pro, growth, health,
+               lock, numbers, offers, stats, upkeep, vortex)
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -62,8 +62,10 @@ class _HideSecretLinks(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         # The Genesis Pro welcome page's address carries the checkout's id,
         # which shows a buyer's first key once.
+        # The early access links in an email confirm or unsubscribe someone.
         message = record.getMessage()
-        return "/console/add/" not in message and "/genesis/pro/welcome" not in message
+        return not any(secret in message for secret in (
+            "/console/add/", "/genesis/pro/welcome", "/early-access/confirm/", "/early-access/unsubscribe/"))
 
 
 logging.getLogger("uvicorn.access").addFilter(_HideSecretLinks())
@@ -125,7 +127,7 @@ class _GzipText(GZipMiddleware):
     async def __call__(self, scope, receive, send):
         path = scope.get("path", "") if scope["type"] == "http" else ""
         if path in ("/", "/privacy", "/terms", "/brand", "/genesis", "/vortex", "/partners", "/bundle",
-                    "/sitemap.xml") or (path.startswith(("/static/", "/console/assets/"))
+                    "/early-access", "/creators", "/sitemap.xml") or (path.startswith(("/static/", "/console/assets/"))
                            and path.endswith(self.TEXT)):
             await super().__call__(scope, receive, send)
         else:
@@ -345,6 +347,10 @@ def home(request: Request):
         "numbers": stats.public_numbers(),
         "projects": _projects(apps["extra"]),
         "base": base_url(request),
+        # The early access list and the creator program: None, and nothing
+        # about them on the page, while they are off.
+        "early": early_access.offer(),
+        "creators": creators.enabled(),
     })
 
 
@@ -359,13 +365,20 @@ def _projects(extra: list) -> list:
 LEGAL_UPDATED = "5 November 2026"
 # The same, while Genesis Pro is on: its parts of both pages are shown only then.
 PRO_LEGAL_UPDATED = "14 November 2026"
+# The same, while the early access list or the creator program is on.
+GROWTH_LEGAL_UPDATED = "15 November 2026"
 
 
 def _legal(request: Request, page: str) -> HTMLResponse:
     settings = config.get()
+    early, makers = early_access.ready(), creators.enabled()
+    updated = GROWTH_LEGAL_UPDATED if early or makers else PRO_LEGAL_UPDATED if genesis_pro.ready() else LEGAL_UPDATED
     return templates.TemplateResponse(request, f"{page}.html", {
         "page": page,
-        "updated": PRO_LEGAL_UPDATED if genesis_pro.ready() else LEGAL_UPDATED,
+        "updated": updated,
+        "early": early,
+        "creators": makers,
+        "early_days": early_access.KEEP_UNCONFIRMED // 86400,
         "contact": settings.contact_email,
         # Read from the same settings the cookies are set with, so the page
         # cannot say one thing while the code does another.
@@ -482,6 +495,12 @@ def healthz():
 PUBLIC_PAGES = ("/", "/genesis", "/vortex", "/partners", "/bundle", "/privacy", "/terms", "/brand")
 
 
+def public_pages() -> tuple:
+    """PUBLIC_PAGES, and the early access and creator pages while they are on."""
+    extra = (("/early-access",) if early_access.ready() else ()) + (("/creators",) if creators.enabled() else ())
+    return PUBLIC_PAGES + extra
+
+
 @app.api_route("/robots.txt", methods=["GET", "HEAD"], response_class=Response)
 def robots(request: Request):
     # Naming /console here told every visitor where to look. The console
@@ -497,7 +516,7 @@ def sitemap(request: Request):
     # Set MTRX_PUBLIC_URL on the live site: without it the address comes
     # from the request, and is escaped since the visitor chose it.
     base = xml_escape(base_url(request))
-    pages = () if config.get().noindex else PUBLIC_PAGES
+    pages = () if config.get().noindex else public_pages()
     urls = "".join(f"  <url><loc>{base}{page}</loc></url>\n" for page in pages)
     body = ('<?xml version="1.0" encoding="UTF-8"?>\n'
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
@@ -648,6 +667,135 @@ async def genesis_pro_stripe(request: Request):
     return JSONResponse(answer, status_code=status)
 
 
+# ---------------------------------------------------------------- early access
+# The list of people who want to hear the day an app opens (early_access.py).
+# Every address here is "page not found" until it is switched on and email is
+# set up, except an unsubscribe link from an email already sent.
+
+def _quiet(response: Response) -> Response:
+    """A page about one person: never kept by a browser or listed."""
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Robots-Tag"] = "noindex"
+    return response
+
+
+@app.api_route("/early-access", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def early_access_page(request: Request, app: str = "", ref: str = ""):
+    offer = early_access.offer()
+    if offer is None:
+        return not_found(request)
+    # The app picked and the creator's code come from a creator's link; both
+    # are checked against what they may be before they reach the page.
+    return templates.TemplateResponse(request, "early_access.html", {
+        "page": "early-access", "contact": config.get().contact_email, "base": base_url(request),
+        "early": offer, "picked": app if app in growth.APP_NAMES else "",
+        "ref": creators.normal_code(ref) or "", "creators": creators.enabled(),
+    })
+
+
+@app.post("/api/early-access/join")
+async def early_access_join(request: Request):
+    if not early_access.ready():
+        return not_found(request)
+    body = await _json(request)
+    status, answer = await run_in_threadpool(early_access.join, client_ip(request), body, base_url(request))
+    return JSONResponse(answer, status_code=status)
+
+
+def _early_page(request: Request, template: str, status: int, answer: dict) -> HTMLResponse:
+    if status == 404:
+        return not_found(request)
+    response = templates.TemplateResponse(request, template, {
+        "page": "early-access", "contact": config.get().contact_email, "base": base_url(request),
+        "status": status, "app_names": growth.APP_NAMES, **answer,
+    }, status_code=200 if status in (200, 410) else status)
+    return _quiet(response)
+
+
+@app.get("/early-access/confirm/{token}", response_class=HTMLResponse)
+def early_access_confirm(request: Request, token: str):
+    if not early_access.ready():
+        return not_found(request)
+    status, answer = early_access.confirm(client_ip(request), token)
+    return _early_page(request, "early_access_confirm.html", status, answer)
+
+
+@app.get("/early-access/unsubscribe/{token}", response_class=HTMLResponse)
+def early_access_unsubscribe_page(request: Request, token: str):
+    # Works even while early access is off: a link in an email already sent
+    # must always let the person leave. A wrong link is "page not found".
+    status, answer = early_access.unsubscribe_check(client_ip(request), token)
+    return _early_page(request, "early_access_unsubscribe.html", status, {"token": token, "done": False, **answer})
+
+
+@app.post("/early-access/unsubscribe/{token}", response_class=HTMLResponse)
+def early_access_unsubscribe(request: Request, token: str):
+    # The page's button, and a mail app's one-click unsubscribe (RFC 8058),
+    # which posts here from the mail provider with no Origin: so this is not
+    # under /api/. The signed link is what proves it may.
+    status, answer = early_access.unsubscribe(client_ip(request), token)
+    return _early_page(request, "early_access_unsubscribe.html", status, {"token": token, "done": True, **answer})
+
+
+# ---------------------------------------------------------------- the creator program
+# Creators make videos about the apps and earn a share (creators.py). Every
+# address here is "page not found" until CREATORS_ENABLED=1.
+
+@app.api_route("/creators", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def creators_page(request: Request):
+    if not creators.enabled():
+        return not_found(request)
+    return templates.TemplateResponse(request, "creators.html", {
+        "page": "creators", "contact": config.get().contact_email, "base": base_url(request),
+        "program": creators.program(), "audiences": creators.AUDIENCES, "apps": growth.APP_NAMES,
+        "limits": creators.LIMITS, "early": early_access.ready(), "creators": True,
+    })
+
+
+@app.post("/api/creators/apply")
+async def creators_apply(request: Request):
+    if not creators.enabled():
+        return not_found(request)
+    body = await _json(request)
+    status, answer = await run_in_threadpool(creators.apply, client_ip(request), body)
+    return JSONResponse(answer, status_code=status)
+
+
+@app.get("/creators/dashboard", response_class=HTMLResponse)
+def creators_dashboard_page(request: Request):
+    if not creators.enabled():
+        return not_found(request)
+    return _quiet(templates.TemplateResponse(request, "creator_dashboard.html", {
+        "page": "creators", "contact": config.get().contact_email, "base": base_url(request),
+        "program": creators.program(), "creators": True,
+    }))
+
+
+@app.post("/api/creators/me")
+async def creators_me(request: Request):
+    """A creator's own numbers. Their key comes in a header, never a cookie."""
+    if not creators.enabled():
+        return not_found(request)
+    status, answer = await run_in_threadpool(creators.dashboard, client_ip(request),
+                                             request.headers.get(creators.KEY_HEADER), base_url(request))
+    return JSONResponse(answer, status_code=status)
+
+
+@app.get("/c/{code}")
+def creator_link(request: Request, code: str):
+    """A creator's short link: counted, then on to the app (creators.click).
+    Where it goes is worked out from the creator's app, never the request."""
+    if not creators.enabled():
+        return not_found(request)
+    where = creators.click(client_ip(request), code)
+    if where is None:
+        return not_found(request)
+    response = RedirectResponse(where, status_code=302)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Robots-Tag"] = "noindex"
+    return response
+
+
 @app.post("/api/vortex/send")
 async def vortex_send(request: Request):
     """A Chroma Vortex message. Open to every visitor, with no cookie: each
@@ -700,7 +848,8 @@ def _knock(device_id: str | None, taps) -> JSONResponse:
 @app.get("/console", response_class=HTMLResponse)
 def console(request: Request):
     if signed_in(request):
-        return templates.TemplateResponse(request, "console.html")
+        return templates.TemplateResponse(request, "console.html", {
+            "early": early_access.enabled(), "creators": creators.enabled()})
     device_ok = lock.device(request.cookies.get(DEVICE_COOKIE)) is not None
     if device_ok and lock.door_open(request.cookies.get(DOOR_COOKIE)):
         return templates.TemplateResponse(request, "unlock.html")
@@ -877,6 +1026,9 @@ def numbers_page(request: Request):
     data = numbers.dashboard()
     # Genesis Pro's members and money, or None while it is off and unused.
     data["pro"] = genesis_pro.numbers()
+    # The early access list and the creator program, the same way.
+    data["early_access"] = early_access.numbers()
+    data["creators"] = creators.numbers()
     return data
 
 
@@ -1038,3 +1190,65 @@ def catalog_act(request: Request, key: str, action: str):
     if done is None:
         return _app_gone()
     return {"ok": True, "app": done, **_catalog_answer()}
+
+
+# ---------------------------------------------------------------- early access, for the owner
+# Counts per app, and the launch email: preview, then send to the people
+# confirmed for one app, each once, throttled (early_access.py). These never
+# answer 404 to the owner: the console takes a 404 to mean "signed out".
+
+@app.get("/api/console/early-access")
+def early_access_console(request: Request):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    return early_access.console()
+
+
+@app.post("/api/console/early-access/{action}")
+async def early_access_act(request: Request, action: str):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    if action not in ("preview", "send"):
+        return JSONResponse({"error": "That isn't something the console can do."}, status_code=400)
+    body = await _json(request)
+    args = (body.get("app"), body.get("subject"), body.get("message"))
+    if action == "preview":
+        status, answer = await run_in_threadpool(early_access.preview, *args)
+    else:
+        status, answer = await run_in_threadpool(early_access.queue, *args, base_url(request))
+    return JSONResponse(answer, status_code=status)
+
+
+# ---------------------------------------------------------------- creators, for the owner
+
+@app.get("/api/console/creators")
+def creators_console(request: Request):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    return creators.console(base_url(request))
+
+
+CREATOR_ACTIONS = ("approve", "key", "remove", "record")
+
+
+@app.post("/api/console/creators/{creator_id}/{action}")
+async def creators_act(request: Request, creator_id: str, action: str):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    if action not in CREATOR_ACTIONS:
+        return JSONResponse({"error": "That isn't something the console can do."}, status_code=400)
+    body = await _json(request)
+    if action == "approve":
+        status, answer = await run_in_threadpool(creators.approve, creator_id, body.get("app"), base_url(request))
+    elif action == "key":
+        status, answer = await run_in_threadpool(creators.new_dashboard_key, creator_id, base_url(request))
+    elif action == "record":
+        status, answer = await run_in_threadpool(creators.record, creator_id, body)
+    else:
+        gone = await run_in_threadpool(creators.remove, creator_id)
+        status, answer = (200, {"ok": True}) if gone else (409, {"error": "That creator is already gone."})
+    return JSONResponse(answer, status_code=status)

@@ -198,6 +198,8 @@
     "Vortex message": "ico-vortex", "Vortex message deleted": "ico-vortex",
     "App added": "ico-plus", "App edited": "ico-apps", "App released": "ico-globe",
     "App back in development": "ico-apps", "App deleted": "ico-apps",
+    "Early access": "ico-users", "Launch email": "ico-users", "Creator application": "ico-key",
+    "Creator approved": "ico-key", "Creator removed": "ico-key",
   };
 
   function drawFeed(data) {
@@ -689,8 +691,48 @@
       ...notes.map((n) => el("p", { class: "nu-pro-note", text: n })));
   }
 
+  // The early access list and the creator program, as tiles like Pro's.
+  // Hidden while each is off and has never been used.
+  function nuTiles(id, data, title, state, tiles) {
+    const box = $(id);
+    if (!box) return;
+    box.hidden = !data;
+    if (!data) { box.replaceChildren(); return; }
+    box.replaceChildren(
+      el("div", { class: "nu-head" }, el("span", { class: "nu-pro-mark", "aria-hidden": "true" }),
+        el("b", { text: title }), state),
+      el("ul", { class: "nu-pro-tiles" }, ...tiles.map(([label, value, note]) => el("li", { class: "nu-pro-tile" },
+        el("span", { class: "nu-pro-label", text: label }), el("strong", { text: value }),
+        note ? el("small", { text: note }) : null))));
+  }
+
+  function nuEarly(ea) {
+    if (!ea) { nuTiles("nu-early", null); return; }
+    const state = ea.ready ? el("span", { class: "pill ok", text: "Open" })
+      : el("span", { class: "pill off", text: ea.enabled ? "Switched on, email not set up" : "Switched off" });
+    nuTiles("nu-early", ea, "Early access", state, [
+      ["Confirmed", number(ea.confirmed), `${number(ea.new_this_week)} this week`],
+      ...ea.apps.map((a) => [a.name, number(a.confirmed), `${number(a.unconfirmed)} unconfirmed`]),
+      ["Launch emails sent", number(ea.emails_sent), `${number(ea.unconfirmed)} waiting to confirm`],
+    ]);
+  }
+
+  function nuCreators(cr) {
+    if (!cr) { nuTiles("nu-creators", null); return; }
+    const state = cr.enabled ? el("span", { class: "pill ok", text: `${cr.percent}% for ${cr.months} months` })
+      : el("span", { class: "pill off", text: "Switched off" });
+    nuTiles("nu-creators", cr, "Creators", state, [
+      ["Creators", number(cr.approved), `${number(cr.pending)} waiting for you`],
+      ["Clicks, 30 days", number(cr.clicks_30), "Each visitor once a day"],
+      ["Sign-ups, 30 days", number(cr.signups_30), "Confirmed early access"],
+      ["Owed to creators", usd(cr.owed_usd), `${usd(cr.earned_usd)} earned · ${usd(cr.paid_usd)} paid`],
+    ]);
+  }
+
   function drawNumbers(data) {
     nuPro(data.pro);
+    nuEarly(data.early_access);
+    nuCreators(data.creators);
     const list = $("nu-list");
     list.replaceChildren(...data.apps.map(nuApp));
   }
@@ -703,6 +745,236 @@
     } catch (_) {
       /* the overview says when the console can't refresh */
     }
+  }
+
+  // ---------------------------------------------------------------- early access
+  // The list (horizon/early_access.py): counts per app, and the launch email,
+  // previewed before it goes. Shown only while it is switched on.
+
+  const eaForm = $("ea-send");
+  let eaDraft = null;
+
+  function eaWarn(data) {
+    const notes = [];
+    if (!data.email) notes.push("Email isn't set up, so nobody can confirm and the sign-up form is hidden. Set MTRX_SMTP_HOST and EARLY_ACCESS_EMAIL_FROM.");
+    if (!data.postal) notes.push("Launch emails are blocked until you set MTRX_POSTAL_ADDRESS: every launch email has to show the company's postal address.");
+    const missing = data.apps.filter((a) => !a.code).map((a) => a.setting);
+    if (missing.length) notes.push(`No founder code yet for ${missing.join(", ")}. Make a promotion code in Stripe and set it, or launch emails for that app stay blocked.`);
+    if (!data.percent) notes.push("FOUNDER_PERCENT_OFF isn't set, so the page promises a launch discount without a number.");
+    $("ea-warn").replaceChildren(...notes.map((n) => el("li", { text: n })));
+  }
+
+  function eaCounts(data) {
+    $("ea-counts").replaceChildren(...data.apps.map((a) => {
+      const write = el("button", { type: "button", text: "Write launch email" });
+      write.addEventListener("click", () => {
+        $("ea-app").value = a.key;
+        eaShowForm();
+        eaForm.scrollIntoView({ block: "nearest" });
+        eaForm.elements.namedItem("subject").focus();
+      });
+      return el("li", { class: `ea-count ${a.key}` },
+        el("img", { src: `/static/img/${ICONS[a.key]}-icon.svg`, alt: "", width: "36", height: "36" }),
+        el("b", { text: a.name }),
+        el("span", { class: "ea-num" }, el("strong", { text: number(a.confirmed) }), el("small", { text: "confirmed" })),
+        el("span", { class: "ea-num" }, el("strong", { text: number(a.unconfirmed) }), el("small", { text: "unconfirmed" })),
+        el("span", { class: `pill ${a.code ? "ok" : "off"}`, text: a.code ? "Founder code set" : "No founder code" }),
+        el("div", { class: "ca-actions" }, write));
+    }));
+  }
+
+  function eaCampaigns(list) {
+    const box = $("ea-campaigns");
+    box.replaceChildren(...list.map((c) => el("li", {},
+      el("b", { text: c.subject }),
+      el("small", { text: `${c.app_name} · ${new Date(c.created_at * 1000).toLocaleDateString([], { dateStyle: "medium" })}` }),
+      el("span", { class: "ea-states", text: [`${number(c.sent)} sent`, c.queued ? `${number(c.queued)} on the way` : "",
+        c.failed ? `${number(c.failed)} failed` : "", c.skipped ? `${number(c.skipped)} left the list` : ""]
+        .filter(Boolean).join(" · ") }))));
+    if (!list.length) box.append(el("li", { class: "vx-empty", text: "None yet. Write one above when an app opens." }));
+  }
+
+  function eaShowForm() {
+    $("ea-preview").hidden = true;
+    eaForm.hidden = false;
+  }
+
+  async function loadEarly() {
+    if (!eaForm) return;
+    try {
+      const res = await fetch("/api/console/early-access", { credentials: "same-origin" });
+      if (res.status === 404) { window.location.replace("/"); return; }
+      const data = await res.json();
+      const select = $("ea-app");
+      if (!select.options.length) {
+        select.replaceChildren(...data.apps.map((a) => el("option", { value: a.key, text: a.name })));
+      }
+      eaWarn(data); eaCounts(data); eaCampaigns(data.campaigns);
+    } catch (_) {
+      /* the overview says when the console can't refresh */
+    }
+  }
+
+  function eaBody() {
+    return { app: $("ea-app").value, subject: eaForm.elements.namedItem("subject").value,
+      message: eaForm.elements.namedItem("message").value };
+  }
+
+  if (eaForm) {
+    eaForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      $("ea-error").textContent = "";
+      eaDraft = eaBody();
+      const result = await postJSON("/api/console/early-access/preview", eaDraft)
+        .catch(() => ({ ok: false, data: { error: "No connection. Try again." } }));
+      if (!result.ok) { $("ea-error").textContent = result.data.error || "Couldn't preview that."; return; }
+      const d = result.data;
+      $("ea-preview-to").textContent = d.can_send
+        ? `Goes to ${number(d.to)} ${d.to === 1 ? "person" : "people"}${d.already ? ` (${number(d.already)} already had it)` : ""}.`
+        : "This can't be sent yet:";
+      $("ea-problems").replaceChildren(...d.problems.map((p) => el("li", { text: p })));
+      $("ea-mail-from").textContent = d.from ? `From: ${d.from}` : "";
+      $("ea-mail-subject").textContent = d.subject;
+      $("ea-mail-body").textContent = d.body;
+      $("ea-go").hidden = !d.can_send;
+      $("ea-go").textContent = `Send to ${number(d.to)} ${d.to === 1 ? "person" : "people"}`;
+      eaForm.hidden = true;
+      $("ea-preview").hidden = false;
+    });
+    $("ea-edit").addEventListener("click", eaShowForm);
+    $("ea-go").addEventListener("click", async () => {
+      if (!eaDraft) return;
+      if (!confirm("Send this launch email now? Each person gets it once.")) return;
+      $("ea-go").disabled = true;
+      const result = await postJSON("/api/console/early-access/send", eaDraft)
+        .catch(() => ({ ok: false, data: { error: "No connection. Try again." } }));
+      $("ea-go").disabled = false;
+      if (!result.ok) { toast(result.data.error || "Couldn't send that.", true); return; }
+      const d = result.data;
+      toast(d.queued ? `On its way to ${number(d.queued)} ${d.queued === 1 ? "person" : "people"}, ${d.per_minute} a minute.`
+        : "Everyone confirmed has already had this email.");
+      eaForm.reset();
+      eaDraft = null;
+      eaShowForm();
+      loadEarly();
+    });
+  }
+
+  // ---------------------------------------------------------------- creators
+  // The creator program (horizon/creators.py). What creators typed is placed
+  // with textContent; a channel link is only made a link if it is http(s).
+
+  const crList = $("cr-pending");
+  let crApps = {};
+
+  function crKey(data, name) {
+    $("crk-key").value = data.key;
+    $("crk-link").textContent = data.link ? `${name}'s link: ${data.link}` : "";
+    $("crk-emailed").textContent = data.emailed ? "We've emailed it to them too." : "Email isn't set up, so send it to them yourself.";
+    $("cr-key-dialog").showModal();
+  }
+
+  function crChannel(url) {
+    return /^https?:\/\//i.test(url)
+      ? el("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: url.replace(/^https?:\/\//i, "") })
+      : el("span", { text: url });
+  }
+
+  function crAppSelect(chosen) {
+    const select = el("select", { "aria-label": "App their link goes to" },
+      el("option", { value: "", text: "Choose the app" }),
+      ...Object.entries(crApps).map(([key, name]) => el("option", { value: key, text: name })));
+    select.value = chosen || "";
+    return select;
+  }
+
+  async function crAct(c, action, body = {}) {
+    const result = await postJSON(`/api/console/creators/${encodeURIComponent(c.id)}/${action}`, body)
+      .catch(() => ({ ok: false, data: { error: "No connection. Try again." } }));
+    if (!result.ok) toast(result.data.error || "Couldn't do that.", true);
+    return result;
+  }
+
+  function crPending(c) {
+    const select = crAppSelect(c.app);
+    const approve = el("button", { type: "button", class: "go", text: "Approve" });
+    approve.addEventListener("click", async () => {
+      if (!select.value) { toast("Choose the app their link goes to.", true); select.focus(); return; }
+      const result = await crAct(c, "approve", { app: select.value });
+      if (!result.ok) return;
+      crKey(result.data, c.name);
+      loadCreators();
+    });
+    const decline = el("button", { type: "button", class: "danger", text: "Decline" });
+    decline.addEventListener("click", async () => {
+      if (!confirm(`Decline ${c.name}? Their application is deleted.`)) return;
+      if ((await crAct(c, "remove")).ok) { toast("Declined and deleted."); loadCreators(); }
+    });
+    return el("li", { class: "cr-item" },
+      el("div", { class: "cr-main" },
+        el("b", { text: c.name }),
+        el("p", { class: "cr-line" }, crChannel(c.channel)),
+        el("small", { text: `${c.audience} followers · wants ${c.app_name} · ${c.email} · ${ago(c.created_at)}` })),
+      el("div", { class: "ca-actions" }, select, approve, decline));
+  }
+
+  function crApproved(c) {
+    const kind = el("select", { "aria-label": "Earned or paid" },
+      el("option", { value: "earned", text: "Earned" }), el("option", { value: "paid", text: "Paid to them" }));
+    const amount = el("input", { type: "text", inputmode: "decimal", placeholder: "Amount, $", "aria-label": "Amount in dollars", maxlength: "10" });
+    const note = el("input", { type: "text", placeholder: "Note (optional)", "aria-label": "Note", maxlength: "140" });
+    const save = el("button", { type: "button", class: "go", text: "Write it down" });
+    save.addEventListener("click", async () => {
+      const result = await crAct(c, "record", { kind: kind.value, amount: amount.value, note: note.value });
+      if (result.ok) { toast("Written down."); loadCreators(); }
+    });
+    const key = el("button", { type: "button", text: "New key" });
+    key.addEventListener("click", async () => {
+      if (!confirm(`Make ${c.name} a new dashboard key? Their old one keeps working until it's one of the oldest.`)) return;
+      const result = await crAct(c, "key");
+      if (result.ok) crKey(result.data, c.name);
+    });
+    const remove = el("button", { type: "button", class: "danger", text: "Remove" });
+    remove.addEventListener("click", async () => {
+      if (!confirm(`Remove ${c.name}? Their link stops working and their numbers are deleted.`)) return;
+      if ((await crAct(c, "remove")).ok) { toast("Removed."); loadCreators(); }
+    });
+    return el("li", { class: "cr-item approved" },
+      el("div", { class: "cr-main" },
+        el("b", { text: c.name }),
+        el("p", { class: "cr-line" }, el("code", { text: c.link }), el("span", { text: ` → ${c.app_name}` })),
+        el("small", { text: `${number(c.clicks_30)} clicks and ${number(c.signups_30)} sign-ups in 30 days · ${number(c.clicks)} and ${number(c.signups)} in all` }),
+        el("small", { text: `Earned ${usd(c.earned_usd)} · paid ${usd(c.paid_usd)} · owed ${usd(c.owed_usd)}` })),
+      el("div", { class: "cr-record" }, kind, amount, note, save),
+      el("div", { class: "ca-actions" }, key, remove));
+  }
+
+  async function loadCreators() {
+    if (!crList) return;
+    try {
+      const res = await fetch("/api/console/creators", { credentials: "same-origin" });
+      if (res.status === 404) { window.location.replace("/"); return; }
+      const data = await res.json();
+      crApps = data.apps;
+      $("cr-note").textContent = `Creators earn ${data.percent}% of what the people they send pay in their ${data.period}. Approve one to give them a short link and a private dashboard key. Write down what they earn and what you pay them here: nothing moves money by itself.`;
+      crList.replaceChildren(...data.pending.map(crPending));
+      if (!data.pending.length) crList.append(el("li", { class: "vx-empty", text: "No applications waiting." }));
+      const approved = $("cr-approved");
+      approved.replaceChildren(...data.approved.map(crApproved));
+      if (!data.approved.length) approved.append(el("li", { class: "vx-empty", text: "Nobody approved yet." }));
+      const badge = $("cr-waiting");
+      badge.textContent = String(data.pending.length);
+      badge.hidden = !data.pending.length;
+    } catch (_) {
+      /* the overview says when the console can't refresh */
+    }
+  }
+
+  if (crList) {
+    $("crk-copy").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText($("crk-key").value); toast("Key copied."); }
+      catch (_) { $("crk-key").select(); }
+    });
   }
 
   // ---------------------------------------------------------------- loading
@@ -721,6 +993,9 @@
       if (!document.querySelector("#vx-list details[open]")) loadVortex();
       // The same for the app list while an app is being added or edited.
       if (caForm.hidden) loadCatalog();
+      // And for early access and creators while the owner is typing there.
+      if (eaForm && !eaForm.contains(document.activeElement) && $("ea-preview").hidden) loadEarly();
+      if (crList && !document.querySelector("#creators input:focus, #creators select:focus")) loadCreators();
     } catch (_) {
       $("updated").textContent = "Couldn't refresh";
       $("updated").classList.add("stale");

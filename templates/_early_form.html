@@ -1,0 +1,31 @@
+{#- The early access form (horizon/early_access.py), on the home page and on
+    /early-access. static/js/early-access.js sends it; nothing is sent until
+    the button is pressed. `picked` ticks one app; `ref` is a creator's code
+    from their link, already checked. Labels hold their inputs, so the same
+    form can be on a page more than once. -#}
+{% macro early_form(early, picked="", ref="") -%}
+<form class="ea-form" novalidate>
+  <label class="ea-field"><span class="ea-label">Your email</span>
+    <input type="email" name="email" maxlength="254" autocomplete="email" inputmode="email" placeholder="Your email address" required></label>
+  <fieldset class="ea-apps">
+    <legend class="ea-label">Which apps?</legend>
+    {%- for a in early.apps %}
+    <label class="ea-app ea-{{ a.key }}"><input type="checkbox" name="apps" value="{{ a.key }}"{% if picked == a.key %} checked{% endif %}>
+      <img src="/static/img/{{ a.key }}-icon.svg" alt="" width="28" height="28" loading="lazy">
+      <span><b>{{ a.name }}</b>{% if a.percent %}<small>{{ a.percent }}% off for founding members</small>{% endif %}</span></label>
+    {%- endfor %}
+  </fieldset>
+  <label class="ea-check"><input type="checkbox" name="adult" required> <span>I'm a grown-up (18+)</span></label>
+  <label class="ea-trap" aria-hidden="true">Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+  {%- if ref %}
+  <input type="hidden" name="ref" value="{{ ref }}">{% endif %}
+  <button class="btn btn-primary ea-go" type="submit">Get early access <span aria-hidden="true">→</span></button>
+  <p class="ea-msg" role="status"></p>
+  <p class="ea-small">We email you once to confirm, then when it opens. Unsubscribe in one click, any time.</p>
+</form>
+{%- endmacro %}
+
+{% macro early_promise(early) -%}
+{% if early.percent %}Founding members get <b>{{ early.percent }}% off</b> at launch.
+{%- else %}Founding members get a launch discount.{% endif %}
+{%- endmacro %}

@@ -3,6 +3,7 @@
 <head>
 {% include "_head.html" %}
 <link rel="stylesheet" href="{{ asset('css/offers.css') }}">
+{% block styles %}{% endblock %}
 <title>{% block title %}{% endblock %} · MTRX Horizyn</title>
 <meta name="description" content="{% block description %}{% endblock %}">
 <meta property="og:title" content="{{ self.title() }} · MTRX Horizyn">
@@ -11,12 +12,14 @@
 <meta property="og:site_name" content="MTRX Horizyn">
 <meta property="og:url" content="{{ base }}/{{ page }}">
 <meta property="og:image" content="{{ base }}/static/img/logo-512.png">
-<link rel="canonical" href="{{ base }}/{{ page }}">
+{% block head %}<link rel="canonical" href="{{ base }}/{{ page }}">{% endblock %}
 </head>
 <body class="legal-page offer-page offer-{{ page }}">
-{#- The partner page and the Kitchen Safety Bundle (horizon/offers.py). Plain
-    pages: no script, no form, no cookie. Their buttons are links to the
-    apps' own addresses or to Chroma Vortex. -#}
+{#- The partner page and the Kitchen Safety Bundle (horizon/offers.py): plain
+    pages with no script, no form and no cookie. Their buttons are links to
+    the apps' own addresses or to Chroma Vortex. The early access and creator
+    pages (early_access.py, creators.py) use the same frame with a form and
+    their own script. -#}
 <div class="sky" aria-hidden="true"></div>
 <header class="topbar">
   <a class="brand" href="/" aria-label="MTRX Horizyn home">
@@ -44,9 +47,11 @@
   <span class="foot-brand">MTRX HORIZYN</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
   <nav class="foot-links" aria-label="About this site">
-    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/vortex">Chroma Vortex</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
+    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/vortex">Chroma Vortex</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a>
+    {%- if early %}<a href="/early-access">Early access</a>{% endif %}{% if creators %}<a href="/creators">Creators</a>{% endif %}<a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
     {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>
 </footer>
+{% block scripts %}{% endblock %}
 </body>
 </html>

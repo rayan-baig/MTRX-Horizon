@@ -14,6 +14,7 @@
 <meta property="og:image:height" content="512">
 <meta name="twitter:card" content="summary">
 <link rel="canonical" href="{{ base }}/">
+{% if early %}<link rel="stylesheet" href="{{ asset('css/grow.css') }}">{% endif %}
 </head>
 <body class="home">
 {#- Numbers on this page are real or absent. `numbers` comes from the apps'
@@ -26,6 +27,7 @@
 {%- set more = more_apps or [] -%}
 {%- set total = app_count or 3 -%}
 {%- set how_many = {3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}.get(total, total) -%}
+{%- from "_early_form.html" import early_form, early_promise -%}
 {%- macro count(value) -%}{{ "{:,}".format(value) if value is number else "—" }}{%- endmacro -%}
 <input type="checkbox" id="calm" class="calm-switch" aria-hidden="true" tabindex="-1">
 <div class="sky" aria-hidden="true"></div>
@@ -80,7 +82,9 @@
         <a href="#learn-omniarmor">OmniArmor.ai</a>. We build digital solutions that empower
         people, businesses, and communities.</p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="#apps">Explore Our Apps <span aria-hidden="true">→</span></a>
+        {#- While early access is on, it takes the first button. -#}
+        {% if early %}<a class="btn btn-primary" href="#early-access">Get early access <span aria-hidden="true">→</span></a>
+        {% else %}<a class="btn btn-primary" href="#apps">Explore Our Apps <span aria-hidden="true">→</span></a>{% endif %}
         <a class="btn btn-ghost" href="#tour">
           <svg class="play" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg>
           Watch Video</a>
@@ -109,6 +113,7 @@
       <p class="app-lede">{{ lede }}</p>
       <div class="card-actions">
         {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener" aria-label="Open {{ full }}"><span>Open<span class="app-name"> {{ name }}</span></span> <span class="arrow" aria-hidden="true">→</span></a>
+        {% elif early %}<a class="btn btn-solid ea-card-btn" href="#early-access-{{ key }}" aria-label="Get early access to {{ full }}"><span>Early access</span> <span class="arrow" aria-hidden="true">→</span></a>
         {% else %}<span class="btn btn-solid is-soon" aria-disabled="true" title="Opening soon"><span>Open<span class="app-name"> {{ name }}</span></span> <small>soon</small></span>{% endif %}
         <a class="btn btn-outline" href="#learn-{{ key }}" aria-label="Learn more about {{ full }}">Learn more <span class="arrow" aria-hidden="true">→</span></a>
       </div>
@@ -177,7 +182,8 @@
   <span class="foot-line">Technology for a stronger tomorrow.</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.{% if not demo %} <span class="foot-version">Version {{ version }}</span>{% endif %}</span>
   {% if not demo %}<nav class="foot-links" aria-label="About this site">
-    <a href="#company">About</a><a href="/genesis">Genesis</a><a href="/vortex">Chroma Vortex</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
+    <a href="#company">About</a><a href="/genesis">Genesis</a><a href="/vortex">Chroma Vortex</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a>
+    {%- if early %}<a href="/early-access">Early access</a>{% endif %}{% if creators %}<a href="/creators">Creators</a>{% endif %}<a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
     {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>{% endif %}
 </footer>
@@ -216,7 +222,8 @@
       {% for point in points %}<li>{{ point }}</li>{% endfor %}
     </ul>
     {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener">Open {{ name }} <span aria-hidden="true">→</span></a>
-    {% else %}<p class="learn-soon">{{ name }} opens to the public soon.</p>{% endif %}
+    {% else %}<p class="learn-soon">{{ name }} opens to the public soon.</p>
+    {% if early %}<a class="btn btn-solid" href="#early-access-{{ key }}">Get early access <span aria-hidden="true">→</span></a>{% endif %}{% endif %}
   </div>
 </section>
 {% endfor %}
@@ -317,7 +324,9 @@
     {% if not demo %}<a href="/genesis">Genesis: start your own idea</a>
     <a href="/vortex">Chroma Vortex: partner, pitch, invest or buy</a>
     <a href="/bundle">Kitchen Safety Bundle: alarms and checklists together</a>
-    <a href="/partners">Partners: recommend CyberLogix AI and earn</a>{% endif %}
+    <a href="/partners">Partners: recommend CyberLogix AI and earn</a>
+    {% if early %}<a href="#early-access">Early access: be first in line</a>{% endif %}
+    {% if creators %}<a href="/creators">Creators: make videos and earn</a>{% endif %}{% endif %}
     <a href="#projects">Projects</a>
     <a href="#company">About MTRX Horizyn</a>
     <a href="#updates">What's new</a>
@@ -343,7 +352,25 @@
   </div>
 </section>
 
+{#- The early access form: once for every app, and once for each app on its
+    own, ticked already. Each opens over the page, like the cards above. -#}
+{%- if early %}
+{%- for key, title in [("", "Be first in line"), ("rankup", "RankUp"), ("cyberlogix", "CyberLogix AI"), ("omniarmor", "OmniArmor.ai")] %}
+<section class="sheet ea-sheet{% if key %} ea-{{ key }}{% endif %}" id="early-access{% if key %}-{{ key }}{% endif %}" aria-label="Get early access{% if key %} to {{ title }}{% endif %}">
+  <a class="sheet-shut" href="#" aria-label="Close"></a>
+  <div class="sheet-card">
+    <a class="sheet-x" href="#" aria-label="Close">×</a>
+    <p class="eyebrow">Early access</p>
+    <h2>{% if key %}Get early access to {{ title }}{% else %}{{ title }}{% endif %}</h2>
+    <p>We'll email you the day it opens. {{ early_promise(early) }}</p>
+    {{ early_form(early, key) }}
+  </div>
+</section>
+{%- endfor %}
+{%- endif %}
+
 <script src="{{ asset('js/home.js') }}" defer></script>
+{% if early %}<script src="{{ asset('js/early-access.js') }}" defer></script>{% endif %}
 {% if not demo %}<script src="{{ asset('js/knock.js') }}" defer></script>{% endif %}
 </body>
 </html>

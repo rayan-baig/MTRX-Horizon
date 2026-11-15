@@ -114,6 +114,12 @@ a glance which app a message is about:
 | OmniArmor | `help@omniarmor.mtrxhorizyn.com` |
 | MTRX Horizyn (business enquiries) | `hello@mtrxhorizyn.com`, shown on the site once `MTRX_CONTACT_EMAIL` is set to it |
 
+On launch day, send the people on the early access list their launch email from the console's
+**Early access** section (preview, then send; each person gets it once). It needs
+`MTRX_POSTAL_ADDRESS` and the app's `FOUNDER_CODE_*` set first. Creator applications arrive by
+email and in the console's **Creators** section; write down what each creator earns and what you
+pay them there ([EARLY-ACCESS-AND-CREATORS.md](EARLY-ACCESS-AND-CREATORS.md)).
+
 Rules of thumb:
 - Answer within one working day. CyberLogix customers with a freezer
   problem: the same day.

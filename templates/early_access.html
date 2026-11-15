@@ -1,0 +1,54 @@
+{% extends "_offer.html" %}
+{% from "_early_form.html" import early_form, early_promise %}
+{% block title %}Early access{% endblock %}
+{% block description %}Be first in line for RankUp, CyberLogix AI and OmniArmor.ai. Founding members get a launch discount.{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ asset('css/grow.css') }}">{% endblock %}
+{% block body %}
+{#- The early access list (horizon/early_access.py). The form keeps an email
+    address and the apps ticked, once the person presses the link we email
+    them. Nothing else. -#}
+<section class="panel ea-hero">
+  <div class="ea-hero-copy">
+    <p class="eyebrow">Early access</p>
+    <h1 class="o-title">Be first in line <span>when our apps open.</span></h1>
+    <p class="o-lede">RankUp, CyberLogix AI and OmniArmor.ai open soon. Join the list and we'll email you the
+      day the app you picked opens. {{ early_promise(early) }}</p>
+  </div>
+  <div class="panel ea-card">
+    <h2 class="o-h">Get early access</h2>
+    {{ early_form(early, picked, ref) }}
+  </div>
+</section>
+
+<section class="o-section" aria-labelledby="ea-apps-title">
+  <p class="eyebrow">The apps</p>
+  <h2 class="o-h" id="ea-apps-title">What's opening</h2>
+  <ul class="o-cards o-three">
+    {%- for key, name, line in [
+      ("rankup", "RankUp", "A chores game for families: jobs done become points, levels and games."),
+      ("cyberlogix", "CyberLogix AI", "Sensors watch fridges and freezers, and the right person hears the moment one gets warm."),
+      ("omniarmor", "OmniArmor.ai", "The compliance checks that apply to a business, with deadlines counted and records kept."),
+    ] %}
+    {%- set a = early.apps | selectattr("key", "equalto", key) | first %}
+    <li class="panel o-card ea-app-card ea-{{ key }}">
+      <img src="/static/img/{{ key }}-icon.svg" alt="" width="48" height="48" loading="lazy">
+      <h3>{{ name }}</h3>
+      <p>{{ line }}</p>
+      {% if a.percent %}<p class="ea-deal">{{ a.percent }}% off for founding members</p>{% endif %}
+    </li>
+    {%- endfor %}
+  </ul>
+</section>
+
+<section class="panel o-facts ea-facts" aria-labelledby="ea-how-title">
+  <p class="eyebrow">How it works</p>
+  <h2 class="o-h" id="ea-how-title">Short and simple</h2>
+  <ul class="o-ticks">
+    <li>Tick the apps you care about and press <b>Get early access</b>.</li>
+    <li>We email you a link. Tap it to confirm: only then are you on the list.</li>
+    <li>When an app you picked opens, we email you, with your founding member code if you're a founding member.</li>
+    <li>We keep only your email and the apps you picked. Unsubscribe in one click from any email.</li>
+  </ul>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/early-access.js') }}" defer></script>{% endblock %}
