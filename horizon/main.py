@@ -366,7 +366,7 @@ LEGAL_UPDATED = "5 November 2026"
 # The same, while Genesis Pro is on: its parts of both pages are shown only then.
 PRO_LEGAL_UPDATED = "14 November 2026"
 # The same, while the early access list or the creator program is on.
-GROWTH_LEGAL_UPDATED = "15 November 2026"
+GROWTH_LEGAL_UPDATED = "17 November 2026"
 
 
 def _legal(request: Request, page: str) -> HTMLResponse:
@@ -701,7 +701,8 @@ async def early_access_join(request: Request):
     if not early_access.ready():
         return not_found(request)
     body = await _json(request)
-    status, answer = await run_in_threadpool(early_access.join, client_ip(request), body, base_url(request))
+    # The email's links come from MTRX_PUBLIC_URL, never this request's Host.
+    status, answer = await run_in_threadpool(early_access.join, client_ip(request), body)
     return JSONResponse(answer, status_code=status)
 
 
@@ -1232,7 +1233,7 @@ async def early_access_act(request: Request, action: str):
     if action == "preview":
         status, answer = await run_in_threadpool(early_access.preview, *args)
     else:
-        status, answer = await run_in_threadpool(early_access.queue, *args, base_url(request))
+        status, answer = await run_in_threadpool(early_access.queue, *args)
     return JSONResponse(answer, status_code=status)
 
 

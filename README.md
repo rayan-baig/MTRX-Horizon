@@ -314,17 +314,17 @@ shared free budget), longer and more detailed answers, three more helpers (a fou
 words for a one-page website, price ideas), a private cloud backup of the member's projects, and
 **Download plan** (a project as a text file). Nothing a member makes is ever published or shared.
 
-It is **off until `GENESIS_PRO_ENABLED=1`** and Stripe is set up; until then no page mentions it
+It is **off until `GENESIS_PRO_ENABLED=1`**, Stripe is set up and email works; until then no page mentions it
 and every Pro address is "page not found". Payment is a Stripe Checkout subscription, and
 Stripe's signed webhook is the only thing that makes anyone Pro or stops them (cancelled,
-payment failed, refunded). There are no accounts: the buyer gets a **Pro key** on the page Stripe
+payment failed, refunded, disputed). There are no accounts: the buyer gets a **Pro key** on the page Stripe
 sends them back to and by email, the browser keeps it and sends it in a header with Pro
 requests, and only SHA-256 fingerprints of keys and of the buyer's email are stored. The buy
 button says a grown-up pays and checkout is for adults.
 
 | Setting | Default | What it does |
 |---|---|---|
-| `GENESIS_PRO_ENABLED` | `0` | `1` switches Pro on, once the next three are set |
+| `GENESIS_PRO_ENABLED` | `0` | `1` switches Pro on, once the next three are set and email works |
 | `STRIPE_SECRET_KEY` | empty | Stripe's (restricted) secret key |
 | `GENESIS_PRO_STRIPE_WEBHOOK_SECRET` | empty | the signing secret of `https://mtrxhorizyn.com/api/genesis/pro/stripe` |
 | `GENESIS_PRO_STRIPE_PRICE` / `GENESIS_PRO_YEARLY_STRIPE_PRICE` | empty | the monthly and yearly price ids; Stripe holds the amounts |

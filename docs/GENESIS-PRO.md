@@ -4,8 +4,8 @@ Genesis Pro is a paid upgrade to Genesis (`/genesis`) for the people who use it 
 **$4.99 a month**, or **$49.90 a year** ("2 months free", ten months' price, as the other apps
 do). The free plan does not change at all.
 
-It is **off by default**. Until `GENESIS_PRO_ENABLED=1` and every Stripe setting below is set,
-every Pro address answers "page not found", and no page, the privacy page and terms included,
+It is **off by default**. Until `GENESIS_PRO_ENABLED=1`, every Stripe setting below is set and
+email works (`MTRX_SMTP_*`), every Pro address answers "page not found", and no page, the privacy page and terms included,
 says anything about Pro.
 
 The code is `horizon/genesis_pro.py` (members, keys, Stripe, backups, numbers), the Pro parts
@@ -112,7 +112,7 @@ than the real ones, or the estimate (and so the cap) would be too low.
 
 | Setting | Default | What it does |
 |---|---|---|
-| `GENESIS_PRO_ENABLED` | `0` | `1` switches Pro on. It only shows once the three Stripe settings below are set too |
+| `GENESIS_PRO_ENABLED` | `0` | `1` switches Pro on. It only shows once the three Stripe settings below are set and email works; until then the console's Genesis Pro card says what is missing |
 | `STRIPE_SECRET_KEY` | empty | Stripe's secret key (best: a restricted key, see below). Never commit it |
 | `GENESIS_PRO_STRIPE_WEBHOOK_SECRET` | empty | the signing secret (`whsec_...`) of the webhook endpoint below |
 | `GENESIS_PRO_STRIPE_PRICE` | empty | the monthly price's id (`price_...`) |
@@ -122,8 +122,8 @@ than the real ones, or the estimate (and so the cap) would be too low.
 | `GENESIS_PRO_EMAIL_FROM` | `MTRX_ALERT_FROM` | the address Pro keys are emailed from |
 
 Pro keys are emailed through the same mail server as the alerts (`MTRX_SMTP_HOST` and the
-other `MTRX_SMTP_*` settings). Without it, a buyer still gets their key on the page Stripe sends
-them back to, but "Email a new key" can't work, so set email up before selling. Ask Genesis has
+other `MTRX_SMTP_*` settings). Pro stays off without it: a buyer who lost their key could never
+get a new one, or reach **Manage subscription** to cancel. Ask Genesis has
 to be on (`GENESIS_AI_KEY` and `GENESIS_AI_MODEL`) for Pro's AI help, and its price settings
 are used for Pro's allowance. The code names only price ids: Stripe holds the amounts, and the
 page shows the amounts it reads from Stripe (once an hour).
@@ -158,9 +158,17 @@ page shows the amounts it reads from Stripe (once an hour).
 5. **Cancelling, failed payments, refunds.** **Manage subscription** opens Stripe's own
    customer portal. Cancelled at the period's end: Pro lasts until then
    (`customer.subscription.updated`), then stops (`customer.subscription.deleted`). A failed
-   payment (`invoice.payment_failed`) pauses Pro until a later payment (`invoice.paid`). A full
-   refund (`charge.refunded`) ends Pro at once and stays ended until they pay again; a part
-   refund is counted but keeps Pro.
+   payment (`invoice.payment_failed`) pauses Pro until a later payment (`invoice.paid`), and
+   **Email a new key** still works for that member, so they can reach **Manage subscription** to
+   fix it. A full refund (`charge.refunded`) ends Pro at once and stays ended until they pay
+   again; a part refund is counted but keeps Pro. A disputed payment (a chargeback,
+   `charge.dispute.created`) pauses Pro until the dispute closes (`charge.dispute.closed`): won,
+   Pro comes back; lost, it stays paused. Pro also ends when the time paid for runs out, even if
+   Stripe's last event never arrives.
+   A checkout's own event can arrive late, after the subscription was already cancelled or
+   refunded, so before making a member this site asks Stripe for the subscription as it is now
+   (and remembers a full refund that came first); if Stripe can't be asked, the event is answered
+   "try again" and Stripe sends it again later.
 6. **Backup.** While a browser has Pro, it backs up all its projects a few seconds after each
    change (at most once a minute), or on **Back up now**. The server checks every field the
    same way Genesis does, keeps the last 3 copies, and **Restore** merges a copy into the
@@ -200,14 +208,16 @@ Do it all in **test mode** first, on staging (`docs/STAGING.md`), then again in 
    **$49.90 USD yearly** (ten months). Copy each price's id (`price_...`) into
    `GENESIS_PRO_STRIPE_PRICE` and `GENESIS_PRO_YEARLY_STRIPE_PRICE`.
 2. **API key.** Developers → API keys → **Create restricted key** with: Checkout Sessions
-   *write*, Prices *read*, Customer portal *write*; everything else *none*. Put it in
+   *write*, Prices *read*, Customer portal *write*, Subscriptions *read*, Charges *read*;
+   everything else *none*. Put it in
    `STRIPE_SECRET_KEY` (never in the code or a commit).
 3. **Webhook.** Developers → Webhooks → **Add endpoint**:
    `https://mtrxhorizyn.com/api/genesis/pro/stripe`, with these events:
    `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
    `customer.subscription.created`,
    `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`,
-   `invoice.payment_failed`, `charge.refunded`. Copy its signing secret (`whsec_...`) into
+   `invoice.payment_failed`, `charge.refunded`, `charge.dispute.created`,
+   `charge.dispute.closed`. Copy its signing secret (`whsec_...`) into
    `GENESIS_PRO_STRIPE_WEBHOOK_SECRET`.
 4. **Customer portal.** Settings → Billing → Customer portal: turn it on; allow cancelling (at
    the end of the billing period), updating the payment method and seeing invoices. To let
@@ -227,6 +237,11 @@ Do it all in **test mode** first, on staging (`docs/STAGING.md`), then again in 
    key and the email arrives, check Developers → Webhooks shows every delivery succeeded, ask
    Genesis a Pro question, back up, cancel from **Manage subscription**, and refund one test
    payment. Then repeat steps 1 to 3 in live mode with live keys and live prices.
+
+**Promotion codes:** Checkout lets a buyer type any promotion code in your Stripe account. Make
+every coupon behind a code apply only to its own product (**Apply to specific products** on the
+coupon), so the apps' founder codes, which launch emails send to everyone on the list, don't take
+money off Genesis Pro, and no code takes 100% off Pro unless you mean it to.
 
 **Refunds:** refund from Payments in the Stripe dashboard. A full refund ends Pro straight away
 on this site, but Stripe keeps the subscription going unless it is cancelled too: open the

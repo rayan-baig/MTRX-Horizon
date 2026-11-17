@@ -29,12 +29,15 @@ mentions it and every address of it is "page not found".
 """
 
 import base64
+import logging
 import re
 import secrets
 import time
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from . import catalog, config, db, early_access, growth
+
+LOG = logging.getLogger("horizon")
 
 RATES = {
     "cr_apply": (3, 3600),          # applications per address an hour
@@ -249,6 +252,17 @@ def welcome_email(name: str, url: str, key: str, base: str) -> tuple[str, str]:
     return subject, body
 
 
+def _welcome(row, code: str, key: str) -> bool:
+    """Email a creator their link and key, with links to MTRX_PUBLIC_URL
+    only. False when it can't go: then the console shows the key to pass on."""
+    base = growth.link_base()
+    if not base:
+        LOG.warning("Creators: welcome email not sent, MTRX_PUBLIC_URL isn't set")
+        return False
+    subject, body = welcome_email(row["name"], link(code, base), key, base)
+    return growth.send_later(row["email"], subject, body) is not None
+
+
 def approve(creator_id: str, app, base: str) -> tuple[int, dict]:
     """Approve a creator for an app: a code for their link and a key for their
     dashboard, shown once here and emailed to them."""
@@ -262,9 +276,8 @@ def approve(creator_id: str, app, base: str) -> tuple[int, dict]:
         conn.execute("UPDATE creators SET status = 'approved', app = ?, code = ?, "
                      "approved_at = COALESCE(approved_at, ?) WHERE id = ?", (app, code, time.time(), creator_id))
         key = _issue_key(conn, creator_id)
-    url = link(code, base)
-    subject, body = welcome_email(row["name"], url, key, base)
-    emailed = growth.send_later(row["email"], subject, body) is not None
+    url = link(code, growth.link_base() or base)
+    emailed = _welcome(row, code, key)
     db.log("Creator approved", f"/c/{code}")
     return 200, {"ok": True, "code": code, "link": url, "key": key, "emailed": emailed}
 
@@ -275,9 +288,7 @@ def new_dashboard_key(creator_id: str, base: str) -> tuple[int, dict]:
         if row is None or row["status"] != "approved":
             return 409, {"error": "Approve the creator first."}
         key = _issue_key(conn, creator_id)
-    subject, body = welcome_email(row["name"], link(row["code"], base), key, base)
-    emailed = growth.send_later(row["email"], subject, body) is not None
-    return 200, {"ok": True, "key": key, "emailed": emailed}
+    return 200, {"ok": True, "key": key, "emailed": _welcome(row, row["code"], key)}
 
 
 def remove(creator_id: str) -> bool:
@@ -476,7 +487,8 @@ def numbers() -> dict | None:
     if not enabled() and not states:
         return None
     earned, paid = money.get("earned", 0), money.get("paid", 0)
-    return {"enabled": enabled(), **program(), "approved": states.get("approved", 0),
+    problems = [growth.NO_LINK_BASE] if enabled() and not growth.link_base() else []
+    return {"enabled": enabled(), **program(), "problems": problems, "approved": states.get("approved", 0),
             "pending": states.get("pending", 0), "clicks_30": clicks, "signups_30": signups,
             "earned_usd": earned / 100, "paid_usd": paid / 100, "owed_usd": (earned - paid) / 100}
 

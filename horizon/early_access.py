@@ -42,12 +42,15 @@ then no page mentions it and every address of it is "page not found",
 except an unsubscribe link from an email already sent, which always works.
 """
 
+import logging
 import re
 import secrets
 import threading
 import time
 
 from . import catalog, config, db, growth
+
+LOG = logging.getLogger("horizon")
 
 KEEP_UNCONFIRMED = 7 * 86400
 
@@ -80,8 +83,21 @@ def enabled() -> bool:
 
 
 def ready() -> bool:
-    """Switched on and able to send the confirmation email. The form shows only then."""
-    return enabled() and growth.email_ready()
+    """Switched on and able to send the confirmation email, with links to
+    the site's own public address. The form shows only then."""
+    return enabled() and growth.email_ready() and bool(growth.link_base())
+
+
+def setup_problems() -> list:
+    """While switched on but not ready, what stops it, in plain words."""
+    if not enabled():
+        return []
+    out = []
+    if not growth.email_ready():
+        out.append("Email isn't set up yet: set MTRX_SMTP_HOST (and its login) and EARLY_ACCESS_EMAIL_FROM.")
+    if not growth.link_base():
+        out.append(growth.NO_LINK_BASE)
+    return out
 
 
 def _apps(text: str) -> list:
@@ -183,9 +199,14 @@ def _inbox(email: str) -> str:
     return f"{local}@{domain}"
 
 
-def join(who: str, body: dict, base: str) -> tuple[int, dict]:
+def join(who: str, body: dict) -> tuple[int, dict]:
     """A sign-up from the form. The answer is the same whether or not the
-    address is already on the list, so nobody can use it to find out who is."""
+    address is already on the list, so nobody can use it to find out who is.
+    The email's links use MTRX_PUBLIC_URL only."""
+    base = growth.link_base()
+    if not base:
+        LOG.warning("Early access: no confirmation email sent, MTRX_PUBLIC_URL isn't set")
+        return 503, {"error": NOT_OPEN}
     if not ready():
         return 503, {"error": NOT_OPEN}
     if body.get(TRAP):
@@ -390,6 +411,8 @@ def problems(app: str) -> list:
                    "Every launch email has to show it, so sending is blocked until it's there.")
     if not growth.email_ready():
         out.append("Email isn't set up yet: set MTRX_SMTP_HOST (and its login) and EARLY_ACCESS_EMAIL_FROM.")
+    if not growth.link_base():
+        out.append(growth.NO_LINK_BASE)
     if app in growth.APP_NAMES and not s.founder_codes.get(app):
         out.append(f"Set FOUNDER_CODE_{app.upper()} to {growth.APP_NAMES[app]}'s Stripe promotion code first: "
                    "the sign-up page promised founding members a launch discount.")
@@ -451,8 +474,9 @@ def preview(app, subject, message) -> tuple[int, dict]:
                  "problems": blocked, "can_send": not blocked, "from": growth.sender()}
 
 
-def queue(app, subject, message, base: str) -> tuple[int, dict]:
-    """Queue the email for everyone confirmed for the app who hasn't had it."""
+def queue(app, subject, message) -> tuple[int, dict]:
+    """Queue the email for everyone confirmed for the app who hasn't had it.
+    Its links use MTRX_PUBLIC_URL only (problems() blocks it without)."""
     try:
         app, subject, message = _clean(app, subject, message)
     except Refused as why:
@@ -462,6 +486,7 @@ def queue(app, subject, message, base: str) -> tuple[int, dict]:
         return 409, {"error": blocked[0], "problems": blocked}
     cid = campaign_id(app, subject, message)
     now = time.time()
+    base = growth.link_base()
     with db.connect() as conn:
         conn.execute("INSERT OR IGNORE INTO early_campaigns (id, app, subject, message, base, created_at) "
                      "VALUES (?, ?, ?, ?, ?, ?)", (cid, app, subject, message, base, now))
@@ -517,7 +542,8 @@ def deliver(limit: int | None = None, pause: float = 0.0, stop: threading.Event 
         if person is None or job["app"] not in _apps(person["apps"]):
             _finish(job, "skipped")  # unsubscribed since it was queued
             continue
-        unsubscribe = f"{job['base']}/early-access/unsubscribe/{token('unsubscribe', job['signup_id'])}"
+        # MTRX_PUBLIC_URL as it is now (problems() stops sending without it).
+        unsubscribe = f"{growth.link_base()}/early-access/unsubscribe/{token('unsubscribe', job['signup_id'])}"
         subject, body = launch_email(job["app"], job["subject"], job["message"], unsubscribe)
         ok = growth.send(person["email"], subject, body, _unsubscribe_headers(unsubscribe))
         _finish(job, "sent" if ok else "failed")
@@ -573,7 +599,7 @@ def console() -> dict:
     s = config.get()
     count = counts()
     return {
-        "enabled": enabled(), "ready": ready(), "email": growth.email_ready(),
+        "enabled": enabled(), "ready": ready(), "email": growth.email_ready(), "problems": setup_problems(),
         "postal": bool(s.postal_address), "percent": s.founder_percent_off or None,
         "per_minute": s.early_access_send_per_minute,
         "apps": [{"key": k, "name": n, **count[k], "code": bool(s.founder_codes.get(k)),
@@ -594,6 +620,7 @@ def numbers() -> dict | None:
                                (time.time() - 7 * 86400,)).fetchone()
     if not enabled() and not (people or waiting):
         return None
-    return {"enabled": enabled(), "ready": ready(), "confirmed": people, "unconfirmed": waiting,
+    return {"enabled": enabled(), "ready": ready(), "problems": setup_problems(),
+            "confirmed": people, "unconfirmed": waiting,
             "new_this_week": week, "emails_sent": sent,
             "apps": [{"key": k, "name": n, **count[k]} for k, n in growth.APP_NAMES.items()]}

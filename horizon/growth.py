@@ -119,6 +119,17 @@ def names(keys) -> str:
 
 # ---------------------------------------------------------------- email
 
+def link_base() -> str:
+    """The site's address for links in emails: MTRX_PUBLIC_URL only, never
+    the request's Host, which whoever sends a request can make up. "" while
+    it is unset, and then no email with a link is sent."""
+    return config.get().public_url
+
+
+NO_LINK_BASE = ("Set MTRX_PUBLIC_URL (https://mtrxhorizyn.com on the live site): emails with links in them "
+                "aren't sent without it, so a link can never come from a request's own address.")
+
+
 def sender() -> str:
     s = config.get()
     return s.growth_email_from or s.alert_from or s.alert_email

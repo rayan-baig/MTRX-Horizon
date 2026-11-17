@@ -212,6 +212,13 @@ CREATE TABLE IF NOT EXISTS genesis_pro_payments (
     currency TEXT NOT NULL,
     at REAL NOT NULL
 );
+-- Full refunds for a Stripe customer who wasn't a member yet, by Stripe's
+-- customer id only, so a checkout event that arrives late can't make them
+-- Pro. Kept 30 days.
+CREATE TABLE IF NOT EXISTS genesis_pro_early_refunds (
+    customer TEXT PRIMARY KEY,
+    at REAL NOT NULL
+);
 -- Each Pro ask: which member and when, and what it cost, for the member's
 -- daily asks and their 31-day AI allowance. Never the words. Kept 32 days.
 CREATE TABLE IF NOT EXISTS genesis_pro_spend (

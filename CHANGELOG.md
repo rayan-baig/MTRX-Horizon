@@ -4,6 +4,34 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.8.3 (17 November 2026)
+
+More fixes from the check before launch:
+
+- **A late checkout event can't give Pro to a subscription that has already ended.** Stripe can
+  deliver the checkout's event after the subscription was cancelled or refunded. Before making a
+  member, the site now asks Stripe for the subscription as it is now, and remembers a full refund
+  that arrived first. If Stripe can't be asked, the event is answered "try again" and Stripe sends
+  it again later.
+- **Pro ends when the time paid for runs out**, even if Stripe's last "cancelled" event never
+  arrives.
+- **Links in emails never come from the request's address.** They use `MTRX_PUBLIC_URL` only.
+  Without it, no email with a link is sent: the early access form stays hidden, launch emails are
+  blocked, creators are approved without their welcome email, it is written to the log, and the
+  console's Numbers cards say why.
+- **A member whose payment failed can get a new key emailed**, so they can open Manage
+  subscription and fix it.
+- **Disputed payments (chargebacks) pause Pro**, as a failed payment does, until the dispute
+  closes: won, Pro comes back; lost, it stays paused. Add `charge.dispute.created` and
+  `charge.dispute.closed` to the Stripe webhook, and give the restricted key Subscriptions read
+  and Charges read (`docs/GENESIS-PRO.md`, steps 2 and 3).
+- **Genesis Pro stays off until email works**, like a missing Stripe setting, and the console says
+  what is missing. Without email, a buyer who lost their key could never get it back.
+- **The privacy page** says the early access and creator forms keep the address a request came
+  from for 24 hours, and that a creator code is kept with a sign-up only until it is confirmed.
+- **Docs:** limit each founder promotion code in Stripe to its own app's product, so the codes in
+  launch emails don't take money off Genesis Pro.
+
 ## 1.8.2 (17 November 2026)
 
 Fixes found in a check before launch:

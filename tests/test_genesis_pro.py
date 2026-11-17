@@ -35,7 +35,10 @@ PRO_PATHS = ("/api/genesis/pro/checkout", "/api/genesis/pro/claim", "/api/genesi
 @pytest.fixture
 def stripe(monkeypatch):
     """A fake Stripe API. `state` keeps every request it got."""
-    state = {"calls": [], "down": False}
+    # What GET /v1/subscriptions/<id> and /v1/charges/<id> answer: set one
+    # here to change it; anything else is an active subscription, or a
+    # charge of the test customer.
+    state = {"calls": [], "down": False, "subscriptions": {}, "charges": {}}
 
     class Handler(BaseHTTPRequestHandler):
         def _answer(self, method):
@@ -53,6 +56,14 @@ def stripe(monkeypatch):
                 return self._send(200, {"id": "price_month1", "unit_amount": 499, "currency": "usd"})
             if self.path == "/v1/prices/price_year1":
                 return self._send(200, {"id": "price_year1", "unit_amount": 4990, "currency": "usd"})
+            if method == "GET" and self.path.startswith("/v1/subscriptions/"):
+                sub = self.path.rsplit("/", 1)[1]
+                return self._send(200, state["subscriptions"].get(sub) or {
+                    "id": sub, "object": "subscription", "customer": CUSTOMER, "status": "active",
+                    "metadata": {"product": "genesis_pro"}})
+            if method == "GET" and self.path.startswith("/v1/charges/"):
+                charge = self.path.rsplit("/", 1)[1]
+                return self._send(200, state["charges"].get(charge) or {"id": charge, "customer": CUSTOMER})
             return self._send(404, {"error": {"message": "no such thing"}})
 
         def do_GET(self):
@@ -408,10 +419,10 @@ def test_lost_key_emails_are_limited(client, pro):
     assert len(pro["mail"]) == 4
 
 
-def test_without_email_set_up_a_lost_key_cant_be_sent(client, pro, monkeypatch):
+def test_without_email_set_up_pro_is_off_so_no_key_can_be_lost(client, pro, monkeypatch):
     monkeypatch.delenv("MTRX_SMTP_HOST")
     response = client.post("/api/genesis/pro/resend", json={"email": BUYER}, headers=ORIGIN)
-    assert response.status_code == 503
+    assert response.status_code == 404
 
 
 # ---------------------------------------------------------------- Pro asks: the caps
@@ -748,3 +759,100 @@ def test_lost_key_emails_never_sign_a_member_out_of_the_browser_they_use(client,
     assert wait_for(lambda: len(pro["mail"]) == 10)
     newest = re.search(r"GP(-[A-Z2-7]{4}){6}", pro["mail"][-1]["body"]).group(0)
     assert status(client, newest)["pro"] is True
+
+
+# ---------------------------------------------------------------- found before launch, second look
+
+def test_a_checkout_event_that_arrives_after_the_subscription_ended_never_gives_pro(client, pro):
+    """Stripe can deliver the checkout's event late, after the subscription
+    was already cancelled: Stripe's own copy of the subscription decides."""
+    pro["stripe"]["subscriptions"][SUB] = subscription(status="canceled")
+    assert send(client, event("customer.subscription.deleted", subscription(status="canceled"))).json()[
+        "result"] == "unknown"
+    send(client, event("checkout.session.completed", completed()))
+    claim = client.post("/api/genesis/pro/claim", json={"session": SESSION}, headers=ORIGIN)
+    assert claim.status_code == 403 and "key" not in claim.json()
+    time.sleep(0.2)
+    assert pro["mail"] == []  # no key for a subscription that has already ended
+    assert any(c["method"] == "GET" and c["path"] == f"/v1/subscriptions/{SUB}" for c in pro["stripe"]["calls"])
+
+
+def test_a_refund_before_the_late_checkout_event_never_gives_pro(client, pro):
+    charge = {"id": "ch_test_early", "customer": CUSTOMER, "amount": 499, "amount_refunded": 499,
+              "refunded": True, "currency": "usd"}
+    send(client, event("charge.refunded", charge))
+    send(client, event("checkout.session.completed", completed()))
+    claim = client.post("/api/genesis/pro/claim", json={"session": SESSION}, headers=ORIGIN)
+    assert claim.status_code == 403
+
+
+def test_while_stripe_cant_be_asked_the_checkout_event_is_retried(client, pro):
+    pro["stripe"]["down"] = True
+    assert send(client, event("checkout.session.completed", completed())).status_code == 503
+    pro["stripe"]["down"] = False
+    assert send(client, event("checkout.session.completed", completed())).json()["result"] == "member added"
+
+
+def test_pro_ends_when_the_time_paid_for_runs_out_even_without_stripes_last_event(client, pro):
+    from horizon import db
+    key = buy(client)
+    send(client, event("customer.subscription.updated",
+                       subscription(cancel_at_period_end=True, cancel_at=int(time.time()) + 86400)))
+    assert status(client, key)["pro"] is True
+    # The time paid for ran out, and "customer.subscription.deleted" never came.
+    with db.connect() as conn:
+        conn.execute("UPDATE genesis_pro_members SET ends_at = ?", (time.time() - 60,))
+    assert status(client, key)["pro"] is False
+    assert client.post("/api/genesis/pro/backups", headers=pro_headers(key)).status_code == 403
+
+
+def test_a_member_whose_payment_failed_can_get_a_new_key_to_fix_it(client, pro):
+    buy(client)
+    send(client, event("invoice.payment_failed", {"id": "in_test_9", "subscription": SUB, "customer": CUSTOMER,
+                                                  "amount_paid": 0, "currency": "usd"}))
+    assert wait_for(lambda: len(pro["mail"]) == 1)
+    assert client.post("/api/genesis/pro/resend", json={"email": BUYER}, headers=ORIGIN).status_code == 200
+    assert wait_for(lambda: len(pro["mail"]) == 2)
+    new_key = re.search(r"GP(-[A-Z2-7]{4}){6}", pro["mail"][-1]["body"]).group(0)
+    answer = status(client, new_key)
+    assert answer["known"] is True and answer["pro"] is False and answer["status"] == "past_due"
+    portal = client.post("/api/genesis/pro/portal", headers=pro_headers(new_key))
+    assert portal.status_code == 200 and portal.json()["url"].startswith("https://billing.stripe.com/")
+
+
+def dispute(status="needs_response", charge="ch_test_d1"):
+    return {"id": "dp_test_1", "object": "dispute", "charge": charge, "amount": 499, "currency": "usd",
+            "status": status}
+
+
+def test_a_dispute_pauses_pro_and_winning_it_brings_pro_back(client, pro):
+    key = buy(client)
+    now = int(time.time())
+    assert send(client, event("charge.dispute.created", dispute(), now + 1)).json()["result"] == "disputed"
+    assert status(client, key)["pro"] is False
+    # Stripe still says the subscription is active, and a new invoice is paid: still paused.
+    send(client, event("customer.subscription.updated", subscription(), now + 2))
+    send(client, event("invoice.paid", {"id": "in_test_d2", "subscription": SUB, "customer": CUSTOMER,
+                                        "amount_paid": 499, "currency": "usd"}, now + 3))
+    assert status(client, key)["pro"] is False
+    assert send(client, event("charge.dispute.closed", dispute("won"), now + 4)).json()["result"] == "dispute won"
+    assert status(client, key)["pro"] is True
+
+
+def test_a_lost_dispute_keeps_pro_paused(client, pro):
+    key = buy(client)
+    now = int(time.time())
+    send(client, event("charge.dispute.created", dispute(), now + 1))
+    assert send(client, event("charge.dispute.closed", dispute("lost"), now + 2)).json()["result"] == "dispute lost"
+    assert status(client, key)["pro"] is False
+
+
+def test_pro_stays_off_until_email_works_and_the_console_says_why(client, pro, monkeypatch):
+    monkeypatch.delenv("MTRX_SMTP_HOST")
+    assert client.post("/api/genesis/pro/checkout", json={"plan": "month"}, headers=ORIGIN).status_code == 404
+    assert 'id="pro"' not in client.get("/genesis").text
+    owner(client)
+    card = client.get("/api/console/numbers").json()["pro"]
+    assert card["enabled"] is True and card["ready"] is False
+    assert any("MTRX_SMTP_HOST" in p for p in card["problems"])
+

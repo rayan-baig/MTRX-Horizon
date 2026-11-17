@@ -74,7 +74,9 @@
       ended.replaceChildren(
         el("span", { text: state.status === "past_due" || state.status === "unpaid"
           ? "Your last Pro payment didn't go through, so Pro is paused. A grown-up can fix it here: "
-          : "The Pro on this browser has ended. You can get it again any time, or " }),
+          : state.status === "disputed"
+            ? "A Pro payment is being disputed with the bank, so Pro is paused until that's settled. "
+            : "The Pro on this browser has ended. You can get it again any time, or " }),
         manageButton(),
         el("span", { text: " · " }),
         forgetButton());

@@ -669,11 +669,13 @@
     box.hidden = !pro;
     if (!pro) { box.replaceChildren(); return; }
     const state = pro.ready ? el("span", { class: "pill ok", text: "Selling" })
-      : el("span", { class: "pill off", text: pro.enabled ? "Switched on, Stripe not set up" : "Switched off" });
+      : el("span", { class: "pill off", text: pro.enabled ? "Switched on, not set up yet" : "Switched off" });
     const tile = (label, value, note) => el("li", { class: "nu-pro-tile" },
       el("span", { class: "nu-pro-label", text: label }), el("strong", { text: value }),
       note ? el("small", { text: note }) : null);
-    const notes = [];
+    // What keeps Pro off while it is switched on, such as email not set up.
+    const notes = [...(pro.problems || [])];
+    if (pro.disputed) notes.push(`${pro.disputed} member${pro.disputed === 1 ? "'s" : "s'"} Pro is paused by a disputed payment, until the dispute is won.`);
     if (pro.default_prices) {
       notes.push("The AI prices are still the safe defaults, so each answer is counted at ten times a small model's price and members get fewer answers than they should. Set GENESIS_AI_INPUT_PRICE and GENESIS_AI_OUTPUT_PRICE to the model's real prices.");
     }
@@ -693,7 +695,7 @@
 
   // The early access list and the creator program, as tiles like Pro's.
   // Hidden while each is off and has never been used.
-  function nuTiles(id, data, title, state, tiles) {
+  function nuTiles(id, data, title, state, tiles, notes = []) {
     const box = $(id);
     if (!box) return;
     box.hidden = !data;
@@ -703,18 +705,19 @@
         el("b", { text: title }), state),
       el("ul", { class: "nu-pro-tiles" }, ...tiles.map(([label, value, note]) => el("li", { class: "nu-pro-tile" },
         el("span", { class: "nu-pro-label", text: label }), el("strong", { text: value }),
-        note ? el("small", { text: note }) : null))));
+        note ? el("small", { text: note }) : null))),
+      ...notes.map((n) => el("p", { class: "nu-pro-note", text: n })));
   }
 
   function nuEarly(ea) {
     if (!ea) { nuTiles("nu-early", null); return; }
     const state = ea.ready ? el("span", { class: "pill ok", text: "Open" })
-      : el("span", { class: "pill off", text: ea.enabled ? "Switched on, email not set up" : "Switched off" });
+      : el("span", { class: "pill off", text: ea.enabled ? "Switched on, not set up yet" : "Switched off" });
     nuTiles("nu-early", ea, "Early access", state, [
       ["Confirmed", number(ea.confirmed), `${number(ea.new_this_week)} this week`],
       ...ea.apps.map((a) => [a.name, number(a.confirmed), `${number(a.unconfirmed)} unconfirmed`]),
       ["Launch emails sent", number(ea.emails_sent), `${number(ea.unconfirmed)} waiting to confirm`],
-    ]);
+    ], ea.problems || []);
   }
 
   function nuCreators(cr) {
@@ -726,7 +729,7 @@
       ["Clicks, 30 days", number(cr.clicks_30), "Each visitor once a day"],
       ["Sign-ups, 30 days", number(cr.signups_30), "Confirmed early access"],
       ["Owed to creators", usd(cr.owed_usd), `${usd(cr.earned_usd)} earned · ${usd(cr.paid_usd)} paid`],
-    ]);
+    ], cr.problems || []);
   }
 
   function drawNumbers(data) {

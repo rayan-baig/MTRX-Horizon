@@ -18,7 +18,9 @@
     open: unconfirmed sign-ups are deleted after {{ early_days }} days, and every email has a one-click
     unsubscribe that deletes you from the list.{% endif %}{% if early and creators %} {% endif %}
     {%- if creators %}If you apply as a creator, we keep what you send to run the program, and count clicks on
-    your link without keeping anyone's address.{% endif %}</li>
+    your link without keeping anyone's address.{% endif %}
+    To stop misuse, these forms keep the address a request came from for 24 hours
+    {%- if early and creators %}, and a creator code is kept with a sign-up only until it is confirmed{% endif %}.</li>
   {%- else -%}
   <li>No accounts and no sign-up. The one form is Orbyt, and it keeps only what you choose to
     send there, to reply to you, for up to {{ vortex_days }} days. It is never shared.</li>

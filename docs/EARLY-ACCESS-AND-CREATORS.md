@@ -37,7 +37,10 @@ share), `templates/early_access*.html`, `templates/_early_form.html`, `templates
 Emails go through the mail server you already use for alerts (`MTRX_SMTP_HOST`,
 `MTRX_SMTP_PORT`, `MTRX_SMTP_USER`, `MTRX_SMTP_PASSWORD`). Creator applications are emailed to
 `MTRX_CONTACT_EMAIL` (or `MTRX_ALERT_EMAIL` if that is empty). Links in emails use
-`MTRX_PUBLIC_URL` (`https://mtrxhorizyn.com` on the live site).
+`MTRX_PUBLIC_URL` (`https://mtrxhorizyn.com` on the live site) and never the address a request
+was sent to, which anyone can make up. Without it no email with a link goes: the early access
+form stays hidden, launch emails are blocked, creators are approved without their welcome email,
+and the console says why.
 
 ## The early access list
 
@@ -80,7 +83,9 @@ For each app, once its prices exist in Stripe:
 
 1. Stripe dashboard → **Product catalog → Coupons → New**: for example "Founding member",
    20% off, duration **Once** (or "Repeating" for a few months, if you prefer). Under
-   **Apply to specific products**, pick that app's product.
+   **Apply to specific products**, pick that app's product, and only that one. This matters:
+   launch emails send the code to everyone on the list, and a code that isn't limited to its
+   app also works at any other checkout in the same Stripe account, Genesis Pro's included.
 2. On the coupon, **Create promotion code**: type the code people will enter, such as
    `FOUNDER20`. You can limit it to first-time orders and set an end date.
 3. Make sure the app's checkout allows promotion codes.

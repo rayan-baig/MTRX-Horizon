@@ -29,6 +29,8 @@ def mail(monkeypatch):
     sent = []
     monkeypatch.setenv("MTRX_SMTP_HOST", "smtp.example.com")
     monkeypatch.setenv("EARLY_ACCESS_EMAIL_FROM", "news@example.com")
+    # Links in emails come only from here, never from the request.
+    monkeypatch.setenv("MTRX_PUBLIC_URL", "https://testserver")
     monkeypatch.setattr(health, "send_email", lambda subject, body, to="", sender="", headers=None: sent.append(
         {"subject": subject, "body": body, "to": to, "sender": sender, "headers": headers or {}}) or True)
     return sent
@@ -733,3 +735,67 @@ def test_signing_up_again_gives_a_confirm_link_that_lasts_seven_days(client, ear
     join(client, "gone@example.com")
     early_access.forget_old(now=time.time() + 8 * 86400)
     assert {r["email"] for r in rows("SELECT email FROM early_signups")} == {EMAIL}
+
+
+# ---------------------------------------------------------------- found before launch, second look
+
+EVIL = {"Host": "evil.example", "Origin": "https://evil.example"}
+
+
+def test_links_in_emails_never_come_from_the_requests_host(client, early, makers, owner):
+    """Anyone can send any Host header. Links in emails come only from
+    MTRX_PUBLIC_URL, so a sign-up can't make our email point elsewhere."""
+    assert client.post("/api/early-access/join", headers=EVIL,
+                       json={"email": EMAIL, "apps": ["rankup"], "adult": True}).status_code == 200
+    assert wait_for(lambda: len(early) == 1)
+    assert "evil" not in early[0]["body"] and "evil" not in str(early[0]["headers"])
+    assert "https://testserver/early-access/confirm/" in early[0]["body"]
+    # The owner's tools too: a creator's welcome email and launch emails.
+    assert apply(client).status_code == 200
+    (pending,) = client.get("/api/console/creators").json()["pending"]
+    client.post(f"/api/console/creators/{pending['id']}/approve", headers=EVIL, json={"app": "rankup"})
+    assert wait_for(lambda: any(m["to"] == "sam@example.com" for m in early))
+    welcome = next(m for m in early if m["to"] == "sam@example.com")
+    assert "evil" not in welcome["body"] and "https://testserver/c/" in welcome["body"]
+    client.post(link(early, "confirm"))
+    client.post("/api/console/early-access/send", headers=EVIL,
+                json={"app": "rankup", "subject": "RankUp is open!", "message": "It's here."})
+    from horizon import early_access
+    count = len(early)
+    early_access.deliver()
+    assert len(early) == count + 1 and "evil" not in early[-1]["body"] + str(early[-1]["headers"])
+
+
+def test_without_the_public_address_no_email_with_a_link_is_sent(client, early, makers, owner, monkeypatch,
+                                                                    caplog):
+    monkeypatch.delenv("MTRX_PUBLIC_URL")
+    # The form stays hidden, since its email couldn't be sent...
+    assert client.get("/early-access").status_code == 404
+    assert join(client).status_code == 404
+    from horizon import creators, early_access
+    caplog.set_level("WARNING", logger="horizon")
+    status, _ = early_access.join("203.0.113.9", {"email": EMAIL, "apps": ["rankup"], "adult": True})
+    assert status == 503 and "MTRX_PUBLIC_URL" in caplog.text
+    # ...a creator is approved without the email, and the owner is told...
+    assert apply(client).status_code == 200
+    (pending,) = client.get("/api/console/creators").json()["pending"]
+    answer = client.post(f"/api/console/creators/{pending['id']}/approve", headers=ORIGIN, json={"app": "rankup"})
+    assert answer.status_code == 200 and answer.json()["emailed"] is False
+    time.sleep(0.2)
+    assert not any(m["to"] == "sam@example.com" for m in early)
+    # ...and the console says why.
+    numbers = client.get("/api/console/numbers").json()
+    assert any("MTRX_PUBLIC_URL" in p for p in numbers["early_access"]["problems"])
+    assert any("MTRX_PUBLIC_URL" in p for p in numbers["creators"]["problems"])
+    assert any("MTRX_PUBLIC_URL" in p for p in early_access.problems("rankup"))
+    assert creators.numbers()["problems"]
+
+
+def test_privacy_page_says_the_forms_keep_the_address_a_day(client, early, makers, monkeypatch):
+    sentence = "keep the address a request came from for 24 hours"
+    page = client.get("/privacy").text
+    assert sentence in page and "a creator code is kept with a sign-up only until it is confirmed" in page
+    monkeypatch.setenv("EARLY_ACCESS_ENABLED", "0")
+    monkeypatch.setenv("CREATORS_ENABLED", "0")
+    assert sentence not in client.get("/privacy").text
+

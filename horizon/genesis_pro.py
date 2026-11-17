@@ -26,8 +26,9 @@ How someone becomes Pro, without accounts or passwords:
    "Send me a new key" emails a fresh key to an address whose fingerprint
    matches a member's. Card details never reach this server.
 
-Off until GENESIS_PRO_ENABLED=1 and STRIPE_SECRET_KEY,
-GENESIS_PRO_STRIPE_WEBHOOK_SECRET and GENESIS_PRO_STRIPE_PRICE are all set.
+Off until GENESIS_PRO_ENABLED=1, STRIPE_SECRET_KEY,
+GENESIS_PRO_STRIPE_WEBHOOK_SECRET and GENESIS_PRO_STRIPE_PRICE are all set,
+and email works (MTRX_SMTP_*).
 Until then every Pro address answers "page not found" and no page mentions
 Pro. docs/GENESIS-PRO.md has the cost sums and the owner's Stripe steps.
 """
@@ -64,6 +65,14 @@ PLANS = ("month", "year")
 # Stripe's subscription states in which a member has Pro. A cancelled
 # subscription stays "active" until the time already paid for runs out.
 PRO_STATES = ("active", "trialing")
+# Set here, not by Stripe: Pro is held back after a full refund, or while
+# a payment is disputed, whatever Stripe says about the subscription.
+HELD = ("refunded", "disputed")
+CHECKOUT_EVENTS = ("checkout.session.completed", "checkout.session.async_payment_succeeded")
+DISPUTE_EVENTS = ("charge.dispute.created", "charge.dispute.closed")
+# How long a full refund for a Stripe customer who isn't a member yet is
+# remembered, in case the checkout's own event comes late.
+EARLY_REFUND_DAYS = 30
 
 KEY_HEADER = "x-genesis-pro-key"
 KEYS_PER_MEMBER = 5
@@ -124,15 +133,36 @@ def enabled() -> bool:
 
 
 def ready() -> bool:
-    """Switched on and every Stripe setting there. Pro shows only then."""
+    """Switched on, every Stripe setting there, and email working. Pro shows
+    only then: a buyer who loses their key gets a new one by email, and
+    without it could never reach Manage subscription again."""
     s = config.get()
     return bool(s.genesis_pro_enabled and s.stripe_secret_key and s.genesis_pro_webhook_secret
-                and s.genesis_pro_price)
+                and s.genesis_pro_price and email_ready())
 
 
 def email_ready() -> bool:
     s = config.get()
     return bool(s.smtp_host and (s.genesis_pro_email_from or s.alert_from or s.alert_email))
+
+
+def problems() -> list:
+    """While Pro is switched on but not ready, what stops it, in plain words."""
+    s = config.get()
+    if not s.genesis_pro_enabled:
+        return []
+    out = []
+    if not s.stripe_secret_key:
+        out.append("Set STRIPE_SECRET_KEY to a restricted key from Stripe.")
+    if not s.genesis_pro_webhook_secret:
+        out.append("Set GENESIS_PRO_STRIPE_WEBHOOK_SECRET to the webhook endpoint's signing secret.")
+    if not s.genesis_pro_price:
+        out.append("Set GENESIS_PRO_STRIPE_PRICE to the monthly price id (price_...).")
+    if not email_ready():
+        out.append("Email isn't set up: set MTRX_SMTP_HOST (and its login) and GENESIS_PRO_EMAIL_FROM. "
+                   "Pro stays off until keys can be emailed, so a buyer who loses theirs can always get "
+                   "a new one.")
+    return out
 
 
 # ---------------------------------------------------------------- limits
@@ -327,8 +357,13 @@ def member_for_key(raw) -> dict | None:
     return dict(row)
 
 
-def is_pro(member: dict | None) -> bool:
-    return member is not None and member["status"] in PRO_STATES
+def is_pro(member, now: float | None = None) -> bool:
+    """Whether a member has Pro now: Stripe says paid up, and the time paid
+    for hasn't run out (even if Stripe's last event never arrived)."""
+    if member is None or member["status"] not in PRO_STATES:
+        return False
+    ends = member["ends_at"]
+    return not (ends and ends <= (time.time() if now is None else now))
 
 
 def pro_member(raw) -> dict | None:
@@ -379,7 +414,13 @@ def webhook(who: str, payload: bytes, header: str) -> tuple[int, dict]:
         return 400, {"error": "Not JSON."}
     if not isinstance(event, dict):
         return 400, {"error": "Not an event."}
-    return 200, {"ok": True, "result": apply_event(event)}
+    try:
+        result = apply_event(event)
+    except StripeError as e:
+        # Stripe sends the event again later, by when it can be asked.
+        LOG.warning("Genesis Pro: an event waits until Stripe can be asked (%s)", e)
+        return 503, {"error": "Stripe couldn't be asked just now. Send it again."}
+    return 200, {"ok": True, "result": result}
 
 
 def _id(value) -> str:
@@ -478,13 +519,19 @@ def apply_event(event: dict) -> str:
         return "ignored"
     created = _int(event.get("created")) or int(time.time())
     send = None
+    with db.connect() as conn:
+        if conn.execute("SELECT 1 FROM genesis_pro_events WHERE id = ?", (event_id[:255],)).fetchone():
+            return "repeat"
+    # Anything Stripe must be asked first, so nobody waits on it in the lock.
+    # Raises StripeError, and the event is then sent again later.
+    asked = _ask_stripe(kind, obj)
     with _applying, db.connect() as conn:
         if conn.execute("SELECT 1 FROM genesis_pro_events WHERE id = ?", (event_id[:255],)).fetchone():
             return "repeat"
-        if kind in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
+        if kind in CHECKOUT_EVENTS:
             # The second comes days later for a payment that takes time,
             # such as a bank debit: the checkout finished "unpaid".
-            result, send = _checkout_completed(conn, obj, created)
+            result, send = _checkout_completed(conn, obj, created, asked.get("subscription"))
         elif kind in ("customer.subscription.created", "customer.subscription.updated",
                       "customer.subscription.deleted"):
             result = _subscription_changed(conn, obj, created, kind.endswith("deleted"))
@@ -494,6 +541,8 @@ def apply_event(event: dict) -> str:
             result = _invoice_failed(conn, obj, created)
         elif kind == "charge.refunded":
             result = _refunded(conn, obj, created)
+        elif kind in DISPUTE_EVENTS:
+            result = _disputed(conn, obj, created, asked.get("customer", ""), kind.endswith("closed"))
         else:
             result = "ignored"
         conn.execute("INSERT INTO genesis_pro_events (id, at) VALUES (?, ?)", (event_id[:255], time.time()))
@@ -504,8 +553,42 @@ def apply_event(event: dict) -> str:
     return result
 
 
-def _checkout_completed(conn, obj: dict, created: int):
-    """A paid checkout makes a member (or brings one back) and a key to email."""
+def _paid_checkout(obj: dict) -> bool:
+    return (obj.get("mode") == "subscription" and _meta(obj).get("product") == PRODUCT
+            and obj.get("payment_status") in ("paid", "no_payment_required"))
+
+
+def _ask_stripe(kind: str, obj: dict) -> dict:
+    """What Stripe has to be asked before this event can be applied:
+    - for a paid checkout that makes a new member, the subscription as it
+      is now, since the checkout's event can arrive after the subscription
+      was cancelled (whose own event then found nobody to change);
+    - for a dispute, which Stripe customer paid the charge."""
+    if kind in CHECKOUT_EVENTS and _paid_checkout(obj):
+        subscription = _id(obj.get("subscription"))
+        if not subscription:
+            return {}
+        with db.connect() as conn:
+            if _by_subscription(conn, subscription) is not None:
+                return {}
+        found = _stripe(f"subscriptions/{subscription}", method="GET")
+        if _id(found.get("id")) != subscription:
+            raise StripeError("not that subscription")
+        return {"subscription": found}
+    if kind in DISPUTE_EVENTS:
+        charge = obj.get("charge")
+        if isinstance(charge, dict) and _id(charge.get("customer")):
+            return {"customer": _id(charge.get("customer"))}
+        if not _id(charge):
+            return {}
+        return {"customer": _id(_stripe(f"charges/{_id(charge)}", method="GET").get("customer"))}
+    return {}
+
+
+def _checkout_completed(conn, obj: dict, created: int, subscription_now: dict | None = None):
+    """A paid checkout makes a member (or brings one back) and a key to
+    email. `subscription_now` is Stripe's own copy of the subscription, read
+    just before, which decides its state."""
     if obj.get("mode") != "subscription" or _meta(obj).get("product") != PRODUCT:
         return "not ours", None
     if obj.get("payment_status") not in ("paid", "no_payment_required"):
@@ -540,6 +623,16 @@ def _checkout_completed(conn, obj: dict, created: int):
         "VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)",
         (member_id, customer, subscription, _hash(email.lower()) if email else "",
          _hash(session) if session else "", interval, cents, currency.lower()[:8], created, now, now))
+    if subscription_now:
+        added = conn.execute("SELECT * FROM genesis_pro_members WHERE id = ?", (member_id,)).fetchone()
+        _set_subscription(conn, added, subscription_now, created, False)
+    if customer and conn.execute("SELECT 1 FROM genesis_pro_early_refunds WHERE customer = ?",
+                                 (customer,)).fetchone():
+        # Fully refunded before this event arrived.
+        conn.execute("UPDATE genesis_pro_members SET status = 'refunded', renews_at = NULL, ends_at = ? "
+                     "WHERE id = ?", (now, member_id))
+    if not is_pro(conn.execute("SELECT * FROM genesis_pro_members WHERE id = ?", (member_id,)).fetchone()):
+        return "member added, already ended", None
     key = issue_key(conn, member_id, now)
     return "member added", ((email, key) if email else None)
 
@@ -550,6 +643,11 @@ def _subscription_changed(conn, obj: dict, created: int, deleted: bool) -> str:
         return "unknown"
     if created < member["event_at"]:
         return "old"
+    return _set_subscription(conn, member, obj, created, deleted)
+
+
+def _set_subscription(conn, member, obj: dict, created: int, deleted: bool) -> str:
+    """Write a subscription's state, from its event or from Stripe, onto a member."""
     status = "canceled" if deleted else obj.get("status")
     if not isinstance(status, str) or not status:
         return "ignored"
@@ -559,9 +657,6 @@ def _subscription_changed(conn, obj: dict, created: int, deleted: bool) -> str:
         # checkout is paid, so this is a late copy from the same moment
         # (Stripe's times are in whole seconds, its order not promised).
         return "old"
-    if member["status"] == "refunded" and status in PRO_STATES:
-        # Refunded stays refunded until a new payment arrives (invoice.paid).
-        status = "refunded"
     period_end = _period_end(obj)
     cancel_at = _int(obj.get("cancel_at")) or (period_end if obj.get("cancel_at_period_end") else None)
     cents, currency, interval = _price_of(obj)
@@ -572,10 +667,15 @@ def _subscription_changed(conn, obj: dict, created: int, deleted: bool) -> str:
     if pro:
         # Cancelled in Stripe's page: still Pro until the time paid for ends.
         renews, ends = (None, cancel_at) if cancel_at else (period_end, None)
-    elif status in ("canceled", "refunded"):
+    elif status == "canceled":
         renews, ends = None, member["ends_at"] or now
     else:
         renews, ends = None, None
+    if member["status"] in HELD and pro:
+        # Refunded stays refunded until a new payment arrives (invoice.paid),
+        # and disputed stays disputed until the dispute is won. The dates
+        # are still Stripe's, for when Pro comes back.
+        status = member["status"]
     conn.execute(
         "UPDATE genesis_pro_members SET status = ?, renews_at = ?, ends_at = ?, "
         "amount_cents = COALESCE(?, amount_cents), currency = COALESCE(?, currency), "
@@ -583,7 +683,7 @@ def _subscription_changed(conn, obj: dict, created: int, deleted: bool) -> str:
         "event_at = ?, updated_at = ? WHERE id = ?",
         (status, renews, ends, cents, currency, interval,
          _id(obj.get("customer")), created, now, member["id"]))
-    return ("cancelling" if pro and cancel_at else status)
+    return ("cancelling" if status in PRO_STATES and cancel_at else status)
 
 
 def _invoice_paid(conn, obj: dict, created: int) -> str:
@@ -626,6 +726,11 @@ def _refunded(conn, obj: dict, created: int) -> str:
     member = conn.execute("SELECT * FROM genesis_pro_members WHERE customer = ? "
                           "ORDER BY created_at DESC LIMIT 1", (customer,)).fetchone()
     if member is None:
+        if obj.get("refunded") is True:
+            # Perhaps a buyer whose checkout's event hasn't arrived yet:
+            # remembered, so that late event can't make them Pro.
+            conn.execute("INSERT OR REPLACE INTO genesis_pro_early_refunds (customer, at) VALUES (?, ?)",
+                         (customer, time.time()))
         return "not ours"
     cents = _int(obj.get("amount_refunded"))
     charge = _id(obj.get("id"))
@@ -641,6 +746,33 @@ def _refunded(conn, obj: dict, created: int) -> str:
                      (time.time(), created, time.time(), member["id"]))
         return "refunded"
     return "part refunded"
+
+
+def _disputed(conn, obj: dict, created: int, customer: str, closed: bool) -> str:
+    """A disputed payment (a chargeback) pauses Pro, as a failed payment
+    does; it comes back only if the dispute is won."""
+    if not customer:
+        return "not ours"
+    member = conn.execute("SELECT * FROM genesis_pro_members WHERE customer = ? "
+                          "ORDER BY created_at DESC LIMIT 1", (customer,)).fetchone()
+    if member is None:
+        return "not ours"
+    if created < member["event_at"]:
+        return "old"
+    if not closed:
+        if member["status"] not in PRO_STATES + ("past_due", "unpaid"):
+            return "noted"
+        conn.execute("UPDATE genesis_pro_members SET status = 'disputed', event_at = ?, updated_at = ? "
+                     "WHERE id = ?", (created, time.time(), member["id"]))
+        return "disputed"
+    if member["status"] != "disputed":
+        return "noted"
+    # "warning_closed": an inquiry that never became a chargeback.
+    if obj.get("status") in ("won", "warning_closed"):
+        conn.execute("UPDATE genesis_pro_members SET status = 'active', event_at = ?, updated_at = ? "
+                     "WHERE id = ?", (created, time.time(), member["id"]))
+        return "dispute won"
+    return "dispute lost"
 
 
 # ---------------------------------------------------------------- email
@@ -690,7 +822,10 @@ def resend(who: str, email) -> tuple[int, dict]:
     with db.connect() as conn:
         rows = conn.execute("SELECT * FROM genesis_pro_members WHERE email_hash = ? ORDER BY created_at DESC",
                             (_hash(email.lower()),)).fetchall()
-        member = next((r for r in rows if r["status"] in PRO_STATES), None)
+        # Someone whose payment failed needs their key too, to reach Manage
+        # subscription and fix it.
+        member = next((r for r in rows if is_pro(r)), None) \
+            or next((r for r in rows if r["status"] in ("past_due", "unpaid")), None)
         if member is not None and allow("pro_resend_member", member["id"]):
             key = issue_key(conn, member["id"])
         else:
@@ -721,7 +856,7 @@ def claim(who: str, session) -> tuple[int, dict]:
         if member["claimed_at"] is not None or time.time() - member["created_at"] > CLAIM_SECONDS:
             return 410, {"error": "This page has already shown its key. Your key is in your email, "
                                   "or ask Genesis for a new one."}
-        if member["status"] not in PRO_STATES:
+        if not is_pro(member):
             return 403, {"error": "This Genesis Pro isn't active any more."}
         taken = conn.execute("UPDATE genesis_pro_members SET claimed_at = ? WHERE id = ? AND claimed_at IS NULL",
                              (time.time(), member["id"])).rowcount
@@ -933,8 +1068,10 @@ def forget_old():
         conn.execute("DELETE FROM genesis_pro_events WHERE at < ?", (now - 60 * 86400,))
         conn.execute("DELETE FROM genesis_pro_spend WHERE at < ?", (now - 32 * 86400,))
         conn.execute("DELETE FROM genesis_pro_payments WHERE at < ?", (now - 400 * 86400,))
+        conn.execute("DELETE FROM genesis_pro_early_refunds WHERE at < ?", (now - EARLY_REFUND_DAYS * 86400,))
         conn.execute("DELETE FROM genesis_pro_backups WHERE member_id IN (SELECT id FROM genesis_pro_members "
-                     f"WHERE status NOT IN {PRO_STATES!r} AND updated_at < ?)", (now - BACKUP_KEEP_AFTER_END,))
+                     f"WHERE (status NOT IN {PRO_STATES!r} AND updated_at < ?) OR ends_at < ?)",
+                     (now - BACKUP_KEEP_AFTER_END, now - BACKUP_KEEP_AFTER_END))
         old = [r[0] for r in conn.execute(
             f"SELECT id FROM genesis_pro_members WHERE status NOT IN {PRO_STATES!r} AND updated_at < ?",
             (now - 400 * 86400,))]
@@ -969,7 +1106,7 @@ def numbers(now: float | None = None) -> dict | None:
                                 (now - 30 * 86400,)).fetchone()
     if not s.genesis_pro_enabled and not members:
         return None
-    active = [m for m in members if m["status"] in PRO_STATES]
+    active = [m for m in members if is_pro(m, now)]
     usd = [m for m in active if m["currency"] == "usd"]
     mrr = sum(m["amount_cents"] if m["interval"] == "month" else m["amount_cents"] / 12 for m in usd)
 
@@ -986,8 +1123,10 @@ def numbers(now: float | None = None) -> dict | None:
         "cancelling": sum(1 for m in active if m["ends_at"]),
         "past_due": sum(1 for m in members if m["status"] == "past_due"),
         "new_this_month": sum(1 for m in members if m["created_at"] >= this_month),
-        "ended_this_month": sum(1 for m in members if m["status"] not in PRO_STATES + ("past_due",)
+        "ended_this_month": sum(1 for m in members if m["status"] not in PRO_STATES + ("past_due", "disputed")
                                 and m["updated_at"] >= this_month),
+        "disputed": sum(1 for m in members if m["status"] == "disputed"),
+        "problems": problems(),
         "mrr_usd": round(mrr / 100, 2),
         "other_currency": len(active) - len(usd),
         "collected_usd": round((total("paid", this_month, now + 1) - total("refund", this_month, now + 1)) / 100, 2),
