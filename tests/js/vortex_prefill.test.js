@@ -1,4 +1,4 @@
-// The partner page's Apply button opens Chroma Vortex with the Partner form
+// The partner page's Apply button opens Orbyt with the Partner form
 // filled in: `node --test tests/js/vortex_prefill.test.js`.
 // tests/test_offers.py runs it too.
 "use strict";

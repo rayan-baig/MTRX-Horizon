@@ -1,4 +1,4 @@
-// The Chroma Vortex page: four paths, each a short form, and the released
+// The Orbyt page: four paths, each a short form, and the released
 // apps, each with buttons that open a form with that app picked. A form is sent
 // only when Send is pressed, to /api/vortex/send, with no cookie. Every
 // word a visitor typed is placed with textContent, never as HTML.

@@ -2,7 +2,7 @@
 
 The owner adds, edits, releases and deletes apps in the console. These check
 the founding apps are put in once, only the owner can change anything, every
-field is checked, and an app shows on Chroma Vortex (and can be chosen
+field is checked, and an app shows on Orbyt (and can be chosen
 there) exactly while it is released, never before.
 """
 
@@ -69,10 +69,10 @@ def test_an_app_url_setting_fills_its_address(client, monkeypatch):
     # A setting that isn't a whole address is ignored, as everywhere else.
     monkeypatch.setenv("RANKUP_URL", "rankup.example.com")
     assert catalog.get("rankup")["url"] == ""
-    page = client.get("/vortex").text
+    page = client.get("/orbyt").text
     assert 'href="rankup.example.com"' not in page
     monkeypatch.setenv("CYBERLOGIX_URL", "https://cyberlogix.example.com")
-    card = client.get("/vortex").text.split('data-app="cyberlogix"', 1)[1].split("</li>", 1)[0]
+    card = client.get("/orbyt").text.split('data-app="cyberlogix"', 1)[1].split("</li>", 1)[0]
     assert 'href="https://cyberlogix.example.com"' in card and "Open" in card
 
 
@@ -253,12 +253,12 @@ def test_an_edit_is_checked_too(client):
     assert add(client, {**NOVA, "key": "big", "name": "Big", "line": "x" * 20_000}).status_code == 400
 
 
-# ---------------------------------------------------------------- on Chroma Vortex
+# ---------------------------------------------------------------- on Orbyt
 
 def test_an_app_shows_on_vortex_only_while_released(client):
     owner(client)
     assert add(client).status_code == 200
-    page = client.get("/vortex").text
+    page = client.get("/orbyt").text
     assert "Nova Notes" not in page and "nova-notes" not in page and "nova.example.com" not in page
     # Unreleased: refused by both forms.
     for body in ({**PARTNER, "apps": ["nova-notes"]}, {**BUY, "apps": ["nova-notes"]}):
@@ -267,7 +267,7 @@ def test_an_app_shows_on_vortex_only_while_released(client):
     assert rows() == []
 
     assert act(client, "nova-notes", "release").status_code == 200
-    page = client.get("/vortex").text
+    page = client.get("/orbyt").text
     catalog = page.split('id="our-apps"', 1)[1].split("</section>", 1)[0]
     card = catalog.split('data-app="nova-notes"', 1)[1].split("</li>", 1)[0]
     assert "<h3>Nova Notes</h3>" in card and "Homework reminders that actually work." in card
@@ -289,7 +289,7 @@ def test_an_app_shows_on_vortex_only_while_released(client):
     # Back in development: gone from the page and refused again, while the
     # messages about it still say which app they were about.
     assert act(client, "nova-notes", "unrelease").status_code == 200
-    assert "Nova Notes" not in client.get("/vortex").text
+    assert "Nova Notes" not in client.get("/orbyt").text
     assert send(client, {**PARTNER, "apps": ["nova-notes"]}).status_code == 400
     assert [m["apps"] for m in client.get("/api/console/vortex").json()["messages"]][0] == ["Nova Notes"]
 
@@ -297,16 +297,16 @@ def test_an_app_shows_on_vortex_only_while_released(client):
 def test_a_founding_app_taken_back_into_development_leaves_vortex(client):
     owner(client)
     assert act(client, "omniarmor", "unrelease").status_code == 200
-    page = client.get("/vortex").text
+    page = client.get("/orbyt").text
     assert 'data-app="omniarmor"' not in page and 'name="apps" value="omniarmor"' not in page
     assert send(client, {**PARTNER, "apps": ["omniarmor"]}).status_code == 400
     assert send(client, {**PARTNER, "apps": ["cyberlogix"]}).status_code == 200
     assert act(client, "omniarmor", "release").status_code == 200
-    assert 'data-app="omniarmor"' in client.get("/vortex").text
+    assert 'data-app="omniarmor"' in client.get("/orbyt").text
 
 
 def test_the_vortex_page_lists_the_released_apps(client):
-    page = client.get("/vortex").text
+    page = client.get("/orbyt").text
     catalog = page.split('id="our-apps"', 1)[1].split("</section>", 1)[0]
     assert "<h2" in catalog and "Our apps" in catalog
     for key, name in (("rankup", "RankUp"), ("cyberlogix", "CyberLogix AI"), ("omniarmor", "OmniArmor.ai")):

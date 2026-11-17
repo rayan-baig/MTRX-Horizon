@@ -1,4 +1,4 @@
-// Chroma Vortex: the form rules, with nothing about the page in it.
+// Orbyt: the form rules, with nothing about the page in it.
 //
 // The same checks the server makes (horizon/vortex.py), so a visitor hears
 // about a mistake before anything is sent; the server checks everything

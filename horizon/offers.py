@@ -4,7 +4,7 @@ Both are about CyberLogix AI, and the bundle about OmniArmor.ai too. Their
 addresses and whether they are public come from the app catalog
 (catalog.py), read on every visit, so a button only links somewhere real.
 An app with no public address shows "coming soon" and a way to ask in
-Chroma Vortex instead.
+Orbyt instead.
 
 What the pages say about money is only what the apps' code does:
 
@@ -43,7 +43,7 @@ def partner_context() -> dict:
     # Apply opens the Partner form with CyberLogix AI picked and this kind
     # chosen (static/js/vortex-form.js, fromHash). If CyberLogix AI is not
     # public right now, the form opens with nothing picked.
-    apply = f"/vortex#partner/{PARTNER_APP}/{PARTNER_KIND}" if app else "/vortex#partner"
+    apply = f"/orbyt#partner/{PARTNER_APP}/{PARTNER_KIND}" if app else "/orbyt#partner"
     return {
         "app": app,
         "apply": apply,
@@ -56,9 +56,9 @@ def bundle_context() -> dict:
     picked = [apps[k] for k in BUNDLE_APPS if k in apps]
     base = apps.get(BUNDLE_APPS[0])
     trial = _signup(base["url"]) if base else ""
-    # With no address to send a visitor to, ask in Chroma Vortex, with the
+    # With no address to send a visitor to, ask in Orbyt, with the
     # bundle's apps already picked.
-    ask = "/vortex#partner/" + ",".join(a["key"] for a in picked) if picked else "/vortex#partner"
+    ask = "/orbyt#partner/" + ",".join(a["key"] for a in picked) if picked else "/orbyt#partner"
     return {
         "apps": picked,
         "complete": len(picked) == len(BUNDLE_APPS),

@@ -17,7 +17,7 @@
 <body class="legal-page offer-page offer-{{ page }}">
 {#- The partner page and the Kitchen Safety Bundle (horizon/offers.py): plain
     pages with no script, no form and no cookie. Their buttons are links to
-    the apps' own addresses or to Chroma Vortex. The early access and creator
+    the apps' own addresses or to Orbyt. The early access and creator
     pages (early_access.py, creators.py) use the same frame with a form and
     their own script. -#}
 <div class="sky" aria-hidden="true"></div>
@@ -32,7 +32,7 @@
   <nav class="mainnav" aria-label="Main">
     <a href="/">Home</a>
     <a href="/genesis">Genesis</a>
-    <a href="/vortex">Vortex</a>
+    <a href="/orbyt">Orbyt</a>
     <a href="/bundle"{% if page == "bundle" %} class="active" aria-current="page"{% endif %}>Bundle</a>
     <a href="/partners"{% if page == "partners" %} class="active" aria-current="page"{% endif %}>Partners</a>
   </nav>
@@ -47,7 +47,7 @@
   <span class="foot-brand">MTRX HORIZYN</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
   <nav class="foot-links" aria-label="About this site">
-    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/vortex">Chroma Vortex</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a>
+    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/orbyt">Orbyt</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a>
     {%- if early %}<a href="/early-access">Early access</a>{% endif %}{% if creators %}<a href="/creators">Creators</a>{% endif %}<a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
     {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>

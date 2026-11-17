@@ -2,7 +2,7 @@
 
 The owner adds and changes apps in the console. An app is either in
 development (private: shown nowhere on the public site) or released to the
-public. The moment one is released it is listed in Chroma Vortex's "Our
+public. The moment one is released it is listed in Orbyt's "Our
 apps", and can be chosen in the Partner and Buy forms; the server accepts
 exactly the released apps' keys there.
 
@@ -204,7 +204,7 @@ def edit(key: str, body: dict) -> dict | None:
 
 
 def release(key: str) -> dict | None:
-    """Release an app to the public. From now it shows on Chroma Vortex."""
+    """Release an app to the public. From now it shows on Orbyt."""
     with db.connect() as conn:
         changed = conn.execute("UPDATE apps SET status = 'released', released_at = ? WHERE key = ?",
                                (time.time(), key)).rowcount

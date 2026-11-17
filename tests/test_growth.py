@@ -166,12 +166,12 @@ def test_privacy_page_says_one_short_line_only_while_on(client, early, makers, m
     page = client.get("/privacy").text
     assert "The early access list keeps only your email and the apps you picked" in page
     assert "If you apply as a creator, we keep what you send" in page
-    assert "The one form is Chroma Vortex" not in page
+    assert "The one form is Orbyt" not in page
     monkeypatch.setenv("EARLY_ACCESS_ENABLED", "0")
     monkeypatch.setenv("CREATORS_ENABLED", "0")
     page = client.get("/privacy").text
     assert "early access" not in page.lower() and "creator" not in page.lower()
-    assert "The one form is Chroma Vortex" in page
+    assert "The one form is Orbyt" in page
 
 
 # ---------------------------------------------------------------- double opt-in

@@ -126,7 +126,7 @@ class _GzipText(GZipMiddleware):
 
     async def __call__(self, scope, receive, send):
         path = scope.get("path", "") if scope["type"] == "http" else ""
-        if path in ("/", "/privacy", "/terms", "/brand", "/genesis", "/vortex", "/partners", "/bundle",
+        if path in ("/", "/privacy", "/terms", "/brand", "/genesis", "/orbyt", "/partners", "/bundle",
                     "/early-access", "/creators", "/sitemap.xml") or (path.startswith(("/static/", "/console/assets/"))
                            and path.endswith(self.TEXT)):
             await super().__call__(scope, receive, send)
@@ -436,12 +436,12 @@ def genesis_pro_welcome(request: Request):
     return response
 
 
-# Chroma Vortex: the official place to partner with MTRX Horizyn, pitch an
+# Orbyt: the official place to partner with MTRX Horizyn, pitch an
 # idea, reach the company as an investor or ask about buying it or an app
 # (vortex.py). It keeps what the visitor chooses to send, for the owner to
 # reply to, and nothing else. Its app list is the released apps in the
 # catalog, read on every visit, so an app shows the moment it is released.
-@app.api_route("/vortex", methods=["GET", "HEAD"], response_class=HTMLResponse)
+@app.api_route("/orbyt", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def vortex_page(request: Request):
     return templates.TemplateResponse(request, "vortex.html", {
         "page": "vortex",
@@ -457,7 +457,7 @@ def vortex_page(request: Request):
 
 # The partner page: fridge and refrigeration repair firms, food safety
 # consultants and kitchen equipment sellers recommend CyberLogix AI to the
-# shops they visit (offers.py). Apply opens the Chroma Vortex Partner form,
+# shops they visit (offers.py). Apply opens the Orbyt Partner form,
 # filled in; nothing is sent from this page.
 @app.api_route("/partners", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def partners_page(request: Request):
@@ -481,9 +481,12 @@ def bundle_page(request: Request):
     })
 
 
+# The page was called Chroma Vortex, at /vortex, before it became Orbyt.
+# Old links and bookmarks still land on it.
+@app.api_route("/vortex", methods=["GET", "HEAD"])
 @app.api_route("/chroma-vortex", methods=["GET", "HEAD"])
 def chroma_vortex():
-    return RedirectResponse("/vortex", status_code=301)
+    return RedirectResponse("/orbyt", status_code=301)
 
 
 @app.api_route("/healthz", methods=["GET", "HEAD"])
@@ -492,7 +495,7 @@ def healthz():
 
 
 # The pages a search engine may list. The console is never one of them.
-PUBLIC_PAGES = ("/", "/genesis", "/vortex", "/partners", "/bundle", "/privacy", "/terms", "/brand")
+PUBLIC_PAGES = ("/", "/genesis", "/orbyt", "/partners", "/bundle", "/privacy", "/terms", "/brand")
 
 
 def public_pages() -> tuple:
@@ -798,7 +801,7 @@ def creator_link(request: Request, code: str):
 
 @app.post("/api/vortex/send")
 async def vortex_send(request: Request):
-    """A Chroma Vortex message. Open to every visitor, with no cookie: each
+    """An Orbyt message. Open to every visitor, with no cookie: each
     address may send a few (see vortex.claim). Like every change, it only
     comes from this site's own pages (see `guard`)."""
     body = await _json(request)
@@ -1083,7 +1086,7 @@ def signout(request: Request):
     return response
 
 
-# ---------------------------------------------------------------- Chroma Vortex, for the owner
+# ---------------------------------------------------------------- Orbyt, for the owner
 
 @app.get("/api/console/vortex")
 def vortex_inbox(request: Request, box: str = "inbox"):
@@ -1110,7 +1113,7 @@ def vortex_act(request: Request, message_id: str, action: str):
 
 # ---------------------------------------------------------------- the app catalog, for the owner
 # Every app, and whether it is released (catalog.py). Releasing one puts it
-# on Chroma Vortex at once. Like every change, these only come from this
+# on Orbyt at once. Like every change, these only come from this
 # site's own pages (see `guard`); each one is written to the activity list.
 
 def _catalog_answer() -> dict:

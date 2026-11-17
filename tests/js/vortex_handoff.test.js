@@ -1,4 +1,4 @@
-// The Genesis → Chroma Vortex hand-off and the Vortex form rules, run in Node:
+// The Genesis → Orbyt hand-off and the Vortex form rules, run in Node:
 // `node --test tests/js/vortex_handoff.test.js`. tests/test_vortex.py runs it too.
 "use strict";
 const test = require("node:test");
@@ -34,7 +34,7 @@ function genesisWith(...projects) {
   return local;
 }
 
-test("Pitch this in Chroma Vortex pre-fills the idea fields on the Vortex page", () => {
+test("Pitch this in Orbyt pre-fills the idea fields on the Vortex page", () => {
   const nova = S.create(idea).project;
   nova.notes = "my private notes";
   const other = S.create({ ...idea, name: "Orbit", pitch: "Cupcakes by bike" }).project;

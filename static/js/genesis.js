@@ -293,15 +293,15 @@
       el("div", { class: "g-side" }, stagePanel, ask, notes, danger)));
   }
 
-  // ---------------------------------------------------------------- Chroma Vortex
-  // Opens /vortex with this project ready to pitch. Only its id is handed
+  // ---------------------------------------------------------------- Orbyt
+  // Opens /orbyt with this project ready to pitch. Only its id is handed
   // over, through this tab's sessionStorage (GenesisStore.offerToVortex),
   // so the idea never goes into the address. Nothing is sent from here.
 
   function vortexLink(p) {
-    const link = el("a", { class: "g-vortex", href: "/vortex#pitch" },
+    const link = el("a", { class: "g-vortex", href: "/orbyt#pitch" },
       el("span", { class: "g-vortex-swirl", "aria-hidden": "true" }),
-      el("span", { text: "Pitch this in Chroma Vortex" }), el("span", { "aria-hidden": "true", text: " →" }));
+      el("span", { text: "Pitch this in Orbyt" }), el("span", { "aria-hidden": "true", text: " →" }));
     link.addEventListener("click", () => {
       flushNotes();
       let session = null;

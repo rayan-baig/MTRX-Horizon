@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS genesis_spend (
     at REAL NOT NULL,
     usd REAL NOT NULL
 );
--- Chroma Vortex (vortex.py): what a visitor chose to send through the form,
+-- Orbyt (vortex.py): what a visitor chose to send through the form,
 -- for the owner to read and reply to. Only the form's own fields, the time
 -- and the path; never the sender's address or a cookie. Deleted after 365 days.
 CREATE TABLE IF NOT EXISTS vortex_messages (

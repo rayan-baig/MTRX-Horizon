@@ -298,7 +298,7 @@
     }
   }
 
-  // ---------------------------------------------------------------- Chroma Vortex
+  // ---------------------------------------------------------------- Orbyt
   // Messages visitors sent from /vortex. Everything they wrote is placed
   // with textContent. The reply address is shown as text to copy and as a
   // mailto link; the server only accepts plain addresses, with nothing in
@@ -400,7 +400,7 @@
       list.replaceChildren(...data.messages.map(vxMessage));
       if (!data.messages.length) {
         list.append(el("li", { class: "vx-empty", text: vxBox === "archived"
-          ? "Nothing archived." : "No messages yet. They appear here when someone sends one from Chroma Vortex." }));
+          ? "Nothing archived." : "No messages yet. They appear here when someone sends one from Orbyt." }));
       }
     } catch (_) {
       /* the overview says when the console can't refresh */
@@ -416,7 +416,7 @@
   });
 
   // ---------------------------------------------------------------- the app catalog
-  // Every app MTRX Horizyn makes. Releasing one puts it on Chroma Vortex at
+  // Every app MTRX Horizyn makes. Releasing one puts it on Orbyt at
   // once; one in development is shown nowhere. What the owner typed is
   // placed with textContent.
 
@@ -510,11 +510,11 @@
       text: a.released ? "Back to development" : "Release to the public" });
     flip.addEventListener("click", () => {
       if (a.released) {
-        if (!confirm(`Take ${a.name} back into development? It leaves Chroma Vortex at once.`)) return;
+        if (!confirm(`Take ${a.name} back into development? It leaves Orbyt at once.`)) return;
         caAct(a, "unrelease", `${a.name} is back in development and no longer public.`);
       } else {
-        if (!confirm(`Release ${a.name} to the public? It appears on Chroma Vortex at once.`)) return;
-        caAct(a, "release", `${a.name} is now public on Chroma Vortex.`);
+        if (!confirm(`Release ${a.name} to the public? It appears on Orbyt at once.`)) return;
+        caAct(a, "release", `${a.name} is now public on Orbyt.`);
       }
     });
     const actions = el("div", { class: "ca-actions" }, edit, flip);

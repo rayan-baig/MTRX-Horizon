@@ -253,8 +253,8 @@
     return { get usable() { return usable; }, load, save, clear };
   }
 
-  // ---------------------------------------------------------------- Chroma Vortex
-  // "Pitch this in Chroma Vortex" hands a project to /vortex through this
+  // ---------------------------------------------------------------- Orbyt
+  // "Pitch this in Orbyt" hands a project to /orbyt through this
   // tab's sessionStorage. Only the project's id goes, never its words, so
   // the idea is never in an address or a server log; the Vortex page reads
   // the project back from this browser's own Genesis storage. The offer is

@@ -1,8 +1,8 @@
-"""Chroma Vortex: the official place to partner with MTRX Horizyn, pitch an
+"""Orbyt: the official place to partner with MTRX Horizyn, pitch an
 idea, reach the company as an investor, or ask about buying the company or
 one of its apps.
 
-A visitor picks one of four paths on /vortex and sends a short form. Each
+A visitor picks one of four paths on /orbyt and sends a short form. Each
 message is checked here, kept in the `vortex_messages` table so the owner
 can read it in the console and reply, and deleted after KEEP_DAYS.
 
@@ -245,10 +245,10 @@ def notice(row: dict) -> tuple[str, str]:
     if row["kind"] == "buy":
         # Which apps (or the company): names from the catalog, nothing typed.
         what += f"\nInterested in: {', '.join(interest(row['apps']))}"
-    subject = f"MTRX Horizyn: new Chroma Vortex message ({kind})"
-    body = (f"A new message arrived through Chroma Vortex.\n\n"
+    subject = f"MTRX Horizyn: new Orbyt message ({kind})"
+    body = (f"A new message arrived through Orbyt.\n\n"
             f"Path:  {kind}\n{what}\n\n"
-            f"Read it and reply from the console's Chroma Vortex section. The sender's details\n"
+            f"Read it and reply from the console's Orbyt section. The sender's details\n"
             f"and message are kept there only, not in this email.\n\n- MTRX Horizyn\n")
     return subject, body
 
@@ -257,7 +257,7 @@ def _send(subject: str, body: str):
     try:
         health.send_email(subject, body)
     except Exception as exc:  # the reason's kind only: an SMTP error can quote the login
-        LOG.warning("Chroma Vortex notice not sent: %s", type(exc).__name__)
+        LOG.warning("Orbyt notice not sent: %s", type(exc).__name__)
 
 
 def tell_owner(row: dict, wait: bool = False):

@@ -65,7 +65,7 @@ services:
       - key: GENESIS_PRO_MONTHLY_AI_USD
         value: "1.5"
       - key: VORTEX_PER_HOUR
-        value: "5"           # Chroma Vortex messages each visitor may send an hour
+        value: "5"           # Orbyt messages each visitor may send an hour
       - key: VORTEX_PER_DAY
         value: "20"
       # The early access list and the creator program

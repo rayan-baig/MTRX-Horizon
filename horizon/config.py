@@ -233,7 +233,7 @@ def get() -> Settings:
         genesis_ai_per_day=_whole_number(env.get("GENESIS_AI_PER_DAY"), 30),
         genesis_ai_input_price=_money(env.get("GENESIS_AI_INPUT_PRICE"), 10.0),
         genesis_ai_output_price=_money(env.get("GENESIS_AI_OUTPUT_PRICE"), 50.0),
-        # Chroma Vortex (vortex.py): messages each address may send.
+        # Orbyt (vortex.py): messages each address may send.
         vortex_per_hour=_whole_number(env.get("VORTEX_PER_HOUR"), 5),
         vortex_per_day=_whole_number(env.get("VORTEX_PER_DAY"), 20),
         # Genesis Pro (genesis_pro.py): a paid upgrade to Genesis. Off, and

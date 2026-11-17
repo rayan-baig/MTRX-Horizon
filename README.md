@@ -236,7 +236,7 @@ shows in the console's **Recent activity**.
 Set `MTRX_CONTACT_EMAIL` to the address business enquiries should go to, such as
 `hello@mtrxhorizyn.com`. The home page's About card, its footer and menu, and the privacy
 and terms pages then show it as an email link. Unset (or not a plain address), nothing is
-shown. Partners, ideas and investors have their own place: [Chroma Vortex](#chroma-vortex).
+shown. Partners, ideas and investors have their own place: [Orbyt](#chroma-vortex).
 
 ## Privacy and terms
 
@@ -263,7 +263,7 @@ move to another device), and **Delete all** clears them. The privacy page says t
 
 The rules and the saving are in `static/js/genesis-store.js`, which has no page code in it, so
 Node can test it: `node --test tests/js/genesis_store.test.js` (the Python tests run it too,
-with `tests/js/vortex_handoff.test.js` for the hand-off to Chroma Vortex).
+with `tests/js/vortex_handoff.test.js` for the hand-off to Orbyt).
 
 ### Ask Genesis: free AI help
 
@@ -371,21 +371,21 @@ Both are **off by default**: until switched on, no page mentions them and their 
 
 Both show on the console's **Numbers** section.
 
-## Chroma Vortex
+## Orbyt
 
-`/vortex` (and `/chroma-vortex`, which redirects there) is the official place to work with MTRX
+`/orbyt` (the old `/vortex` and `/chroma-vortex` addresses redirect there) is the official place to work with MTRX
 Horizyn, linked from the home page's menu and footer, the other pages and the sitemap. It has
 four paths, each a short form (four cards across, or two by two on tablets and phones):
 
 - **Partner with us**: name, organisation, email, which apps (any released app, see below),
   the kind of partnership (resell, integrate, refer customers, refer my customers (repair /
   food safety), co-marketing, something else) and a message. An address such as
-  `/vortex#partner/cyberlogix/refer-trade` opens it with those choices made (the partner page's
+  `/orbyt#partner/cyberlogix/refer-trade` opens it with those choices made (the partner page's
   Apply button).
 - **Pitch an idea**: name, email, the idea's name, a one-line pitch, who it's for, and an
   optional message. **Bring a project from Genesis** lists the visitor's Genesis projects from
   their own browser and fills in the idea fields. On a Genesis project, **Pitch this in Chroma
-  Vortex** opens `/vortex#pitch` with that project filled in: only the project's id is handed
+  Vortex** opens `/orbyt#pitch` with that project filled in: only the project's id is handed
   over, through the tab's `sessionStorage`, so the idea never appears in an address or a log.
   Nothing is sent until the visitor presses Send. The path asks anyone under 13 to have a parent
   or guardian send it.
@@ -433,14 +433,14 @@ button only links to an app that is released and has an address.
   AI's partner code does (its `partners.py` and `docs/PARTNERS.md`): a share of money actually
   collected in the last 30 days, nothing for a free trial or an unpaid or cancelled invoice,
   the rate agreed per partner (so no number is printed), paid by bank transfer. **Apply** opens
-  `/vortex#partner/cyberlogix/refer-trade`: the Partner form with CyberLogix AI picked and
+  `/orbyt#partner/cyberlogix/refer-trade`: the Partner form with CyberLogix AI picked and
   "Refer my customers (repair / food safety)" chosen. Nothing is sent until the visitor fills
   in their details and presses Send.
 - **`/bundle`**, the Kitchen Safety Bundle: CyberLogix AI's fridge and freezer alarms with
   OmniArmor.ai's inspection checklists, where CyberLogix AI fills in OmniArmor.ai's temperature
   checks each day. **Start with a free trial** goes to CyberLogix AI's `/signup` when
   `CYBERLOGIX_URL` (or its catalog address) is set; without one it says "Free trial coming
-  soon" and offers Chroma Vortex. Each app's **Open** button uses its catalog address, or says
+  soon" and offers Orbyt. Each app's **Open** button uses its catalog address, or says
   "Coming soon". The price reads "Ask about bundle pricing" until CyberLogix AI's `pricing.py`
   has a bundle add-on: then copy its monthly price into `BUNDLE_PRICE` in `horizon/offers.py`.
 
@@ -492,7 +492,7 @@ line, address and colour, releases it to the public or takes it back into develo
 deletes an app that has never been released. An app that has been public can't be deleted;
 take it back into development to hide it. Every change goes in the activity list.
 
-The moment an app is released it is on Chroma Vortex, in Our apps and in the Partner and Buy
+The moment an app is released it is on Orbyt, in Our apps and in the Partner and Buy
 forms, and the server accepts it there; taken back into development, it is gone from the page
 and refused again. Messages already sent about it still show its name in the inbox.
 
@@ -599,7 +599,7 @@ needs changing. The line shows counts only, never anyone's address.
   Genesis Pro, the paid upgrade (`docs/GENESIS-PRO.md`)
 - `templates/genesis.html`, `static/js/genesis*.js`, `static/css/genesis.css`: Genesis
 - `horizon/vortex.py`, `templates/vortex.html`, `static/js/vortex*.js`, `static/css/vortex.css`:
-  Chroma Vortex
+  Orbyt
 - `horizon/catalog.py`: the app catalog, and which apps are released
 - `horizon/offers.py`, `templates/partners.html`, `templates/bundle.html`, `static/css/offers.css`:
   the partner page and the Kitchen Safety Bundle

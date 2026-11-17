@@ -3,7 +3,7 @@
 Both are plain public pages: they keep the site's security rules, set no
 cookie and run no script. What they say about money is only what
 CyberLogix AI's code does, and every button goes somewhere real. Apply opens
-the Chroma Vortex Partner form with CyberLogix AI and the new partnership
+the Orbyt Partner form with CyberLogix AI and the new partnership
 kind picked.
 """
 
@@ -63,7 +63,7 @@ def test_the_page_is_listed_and_compressed(client, monkeypatch, path):
 
 
 def test_both_pages_are_linked_from_the_footers(client):
-    for path in ("/", "/vortex", "/genesis", "/privacy", "/terms", "/brand", "/partners", "/bundle"):
+    for path in ("/", "/orbyt", "/genesis", "/privacy", "/terms", "/brand", "/partners", "/bundle"):
         page = client.get(path).text
         footer = page.split('<footer class="footer">', 1)[1].split("</footer>", 1)[0]
         assert 'href="/partners"' in footer and 'href="/bundle"' in footer, path
@@ -115,7 +115,7 @@ def test_the_france_story_is_calm_and_names_no_company(client):
 def test_apply_opens_the_partner_form_with_cyberlogix_and_the_new_kind(client):
     page = client.get("/partners").text
     applies = re.findall(r'<a class="btn btn-primary" href="([^"]+)">Apply', page)
-    assert applies and set(applies) == {"/vortex#partner/cyberlogix/refer-trade"}
+    assert applies and set(applies) == {"/orbyt#partner/cyberlogix/refer-trade"}
     assert "Refer my customers (repair / food safety)" in page.replace("&#34;", '"')
 
 
@@ -123,11 +123,11 @@ def test_apply_still_opens_the_form_when_cyberlogix_is_not_public(client):
     from horizon import catalog
     catalog.unrelease("cyberlogix")
     page = client.get("/partners").text
-    assert "/vortex#partner/cyberlogix" not in page and 'href="/vortex#partner"' in page
+    assert "/orbyt#partner/cyberlogix" not in page and 'href="/orbyt#partner"' in page
 
 
 def test_the_partner_page_is_linked_from_chroma_vortex(client):
-    page = client.get("/vortex").text
+    page = client.get("/orbyt").text
     panel = _section(page, 'id="v-partner"')
     assert 'href="/partners"' in panel
 
@@ -145,7 +145,7 @@ def test_the_new_partnership_kind_is_accepted_and_shown_to_the_owner(client):
     shown = vortex._public({**row, "read_at": None, "archived_at": None}, names)
     assert shown["partnership"] == "Refer my customers (repair / food safety)"
     # The Vortex form offers it.
-    assert '<option value="refer-trade">Refer my customers (repair / food safety)</option>' in client.get("/vortex").text
+    assert '<option value="refer-trade">Refer my customers (repair / food safety)</option>' in client.get("/orbyt").text
 
 
 @pytest.mark.parametrize("kind", ["refer_trade", "Refer-trade", "refer-trade ", "refer-repair", ["refer-trade"]])
@@ -213,7 +213,7 @@ def test_an_app_with_no_address_says_coming_soon_and_offers_vortex(client):
     page = client.get("/bundle").text
     assert "Start with a free trial" not in page and "Free trial coming soon" in page
     assert page.count("Coming soon.") == 2
-    assert 'href="/vortex#partner/cyberlogix,omniarmor"' in page
+    assert 'href="/orbyt#partner/cyberlogix,omniarmor"' in page
     assert 'href="https://' not in page.split("<main", 1)[1].split("</main>", 1)[0]
 
 
@@ -223,7 +223,7 @@ def test_an_app_in_development_is_not_offered(client, monkeypatch):
     catalog.unrelease("omniarmor")
     page = client.get("/bundle").text
     assert "https://omniarmor.example" not in page
-    assert 'href="/vortex#partner/cyberlogix"' in page
+    assert 'href="/orbyt#partner/cyberlogix"' in page
 
 
 def test_the_bundle_is_linked_from_home_vortex_and_the_catalog(client):
@@ -231,7 +231,7 @@ def test_the_bundle_is_linked_from_home_vortex_and_the_catalog(client):
     menu = home.split('<nav class="sheet-card menu"', 1)[1].split("</nav>", 1)[0]
     about = _section(home, 'id="company"')
     assert 'href="/bundle"' in menu and 'href="/bundle"' in about
-    vortex = client.get("/vortex").text
+    vortex = client.get("/orbyt").text
     catalog = vortex.split('id="our-apps"', 1)[1].split("</section>", 1)[0]
     assert 'href="/bundle"' in catalog
     script = (ROOT / "static/js/home.js").read_text()

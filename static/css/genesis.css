@@ -194,7 +194,7 @@
 .g-for { color: var(--muted); margin: 0; overflow-wrap: anywhere; }
 .g-for b { color: var(--text); font-weight: 600; }
 .g-started { color: var(--faint); font-size: 13px; margin: 8px 0 0; }
-/* The way on to Chroma Vortex, in its own swirl of colour. */
+/* The way on to Orbyt, in its own swirl of colour. */
 .g-vortex {
   display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 7px 14px 7px 8px;
   border-radius: 999px; font: 600 13.5px var(--body); color: var(--text); text-decoration: none;

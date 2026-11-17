@@ -1,4 +1,4 @@
-"""Chroma Vortex: partners, ideas, investors and buyers at /vortex.
+"""Orbyt: partners, ideas, investors and buyers at /orbyt.
 
 A visitor sends a short form; it is kept so the owner can read it in the
 console and reply, then deleted after a year. These check the page keeps the
@@ -51,13 +51,13 @@ def rows():
 def test_vortex_opens_for_anyone_with_the_site_rules(client):
     from horizon import main
     for method in (client.get, client.head):
-        assert method("/vortex").status_code == 200
-    response = client.get("/vortex")
+        assert method("/orbyt").status_code == 200
+    response = client.get("/orbyt")
     assert response.headers["content-security-policy"] == main.CSP
     assert "set-cookie" not in response.headers
     assert "x-robots-tag" not in response.headers
     page = response.text
-    assert '<h1 class="v-title">Chroma <span>Vortex</span></h1>' in page
+    assert '<h1 class="v-title"><span>Orbyt</span></h1>' in page
     assert 'style="' not in page and "<style" not in page
     assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", page)
     assert not re.search(r"\son[a-z]+=", page)
@@ -71,14 +71,14 @@ def test_vortex_opens_for_anyone_with_the_site_rules(client):
         assert "action=" not in form and "method=" not in form
 
 
-def test_chroma_vortex_redirects_to_vortex(client):
+def test_chroma_vortex_redirects_to_orbyt(client):
     response = client.get("/chroma-vortex", follow_redirects=False)
-    assert response.status_code == 301 and response.headers["location"] == "/vortex"
-    assert client.get("/chroma-vortex").url.path == "/vortex"
+    assert response.status_code == 301 and response.headers["location"] == "/orbyt"
+    assert client.get("/chroma-vortex").url.path == "/orbyt"
 
 
 def test_the_four_paths_and_what_each_says(client):
-    page = client.get("/vortex").text
+    page = client.get("/orbyt").text
     for path in ('href="#partner"', 'href="#pitch"', 'href="#invest"', 'href="#buy"'):
         assert path in page
     for title in ("Partner with us", "Pitch an idea", "Investors", "Buy the company or an app"):
@@ -98,7 +98,7 @@ def test_the_four_paths_and_what_each_says(client):
 
 
 def test_the_honeypot_is_hidden_by_a_css_class(client):
-    page = client.get("/vortex").text
+    page = client.get("/orbyt").text
     assert page.count('<div class="v-trap" aria-hidden="true">') == 4
     assert 'name="website"' in page
     css = (ROOT / "static/css/vortex.css").read_text()
@@ -113,23 +113,23 @@ def test_vortex_is_linked_from_the_home_page_and_listed(client, monkeypatch):
     footer = page.split('<footer class="footer">', 1)[1].split("</footer>", 1)[0]
     menu = page.split('<nav class="sheet-card menu"', 1)[1].split("</nav>", 1)[0]
     for part in (nav, footer, menu):
-        assert 'href="/vortex"' in part
+        assert 'href="/orbyt"' in part
     for path in ("/genesis", "/privacy", "/terms", "/brand"):
         other = client.get(path).text
-        assert 'href="/vortex"' in other.split('class="mainnav"', 1)[1].split("</nav>", 1)[0], path
-    assert "/vortex" in main.PUBLIC_PAGES
+        assert 'href="/orbyt"' in other.split('class="mainnav"', 1)[1].split("</nav>", 1)[0], path
+    assert "/orbyt" in main.PUBLIC_PAGES
     monkeypatch.setenv("MTRX_PUBLIC_URL", "https://mtrx.example")
-    assert "<loc>https://mtrx.example/vortex</loc>" in client.get("/sitemap.xml").text
+    assert "<loc>https://mtrx.example/orbyt</loc>" in client.get("/sitemap.xml").text
 
 
 def test_vortex_page_is_compressed(client):
-    response = client.get("/vortex", headers={"Accept-Encoding": "gzip"})
+    response = client.get("/orbyt", headers={"Accept-Encoding": "gzip"})
     assert response.headers.get("content-encoding") == "gzip"
 
 
 def test_genesis_has_the_way_to_pitch_a_project():
     script = (ROOT / "static/js/genesis.js").read_text()
-    assert "Pitch this in Chroma Vortex" in script and 'href: "/vortex#pitch"' in script
+    assert "Pitch this in Orbyt" in script and 'href: "/orbyt#pitch"' in script
     assert "S.offerToVortex(session, p.id)" in script
 
 
@@ -172,7 +172,7 @@ def test_vortex_scripts_parse():
 
 
 def test_the_genesis_hand_off_pre_fills_in_node():
-    """Pitch this in Chroma Vortex: only the id is handed over, and the idea
+    """Pitch this in Orbyt: only the id is handed over, and the idea
     fields are filled from the visitor's own Genesis storage."""
     node = shutil.which("node")
     if node is None:
@@ -376,9 +376,9 @@ def test_the_owner_is_emailed_a_notice_with_no_personal_details(client, monkeypa
         time.sleep(0.05)
     assert len(sent) == 3
     subjects = sorted(s for s, _ in sent)
-    assert subjects == ["MTRX Horizyn: new Chroma Vortex message (Investors)",
-                        "MTRX Horizyn: new Chroma Vortex message (Partner with us)",
-                        "MTRX Horizyn: new Chroma Vortex message (Pitch an idea)"]
+    assert subjects == ["MTRX Horizyn: new Orbyt message (Investors)",
+                        "MTRX Horizyn: new Orbyt message (Partner with us)",
+                        "MTRX Horizyn: new Orbyt message (Pitch an idea)"]
     everything = "\n".join(s + "\n" + b for s, b in sent)
     assert "Idea: Nova" in everything and "Organisation: Example Logistics Ltd" in everything
     for private in (SECRET, "We run forty", "@example.com", "Ada", "Grace", "Sam Lee",
@@ -502,7 +502,7 @@ def test_the_console_has_a_chroma_vortex_section(client):
     assert 'id="vortex"' in page and 'id="vx-list"' in page
     script = client.get("/console/assets/console.js").text
     assert "/api/console/vortex" in script and "mailto:" in script
-    section = script.split("// ---------------------------------------------------------------- Chroma Vortex", 1)[1]
+    section = script.split("// ---------------------------------------------------------------- Orbyt", 1)[1]
     section = section.split("// ---------------------------------------------------------------- loading", 1)[0]
     assert ".innerHTML" not in section and "insertAdjacentHTML" not in section
 
@@ -522,11 +522,11 @@ def test_upkeep_deletes_messages_older_than_a_year(client):
 
 
 def test_the_schema_upgrades_a_database_that_already_has_data(tmp_path, monkeypatch, make_client):
-    """A live database from before Chroma Vortex gets the new table, and
+    """A live database from before Orbyt gets the new table, and
     keeps everything it had."""
     from horizon import db
     path = tmp_path / "test.db"  # the file the client fixture uses
-    old_schema = db.SCHEMA.split("-- Chroma Vortex", 1)[0]
+    old_schema = db.SCHEMA.split("-- Orbyt", 1)[0]
     assert "vortex" not in old_schema
     conn = sqlite3.connect(path)
     conn.executescript(old_schema)
@@ -551,7 +551,7 @@ def test_privacy_page_says_what_chroma_vortex_keeps(client):
     from horizon import main, vortex
     page = " ".join(client.get("/privacy").text.split())
     assert "No cookies for visitors." in page
-    assert "<h2>Chroma Vortex</h2>" in page
+    assert "<h2>Orbyt</h2>" in page
     assert "Until it opened, this site kept nothing that visitors typed." in page
     for field in ("your name, your email address and your message", "your organisation",
                   "which apps and the kind of partnership", "its name, its one-line pitch and who it's for"):
@@ -572,7 +572,7 @@ def test_terms_say_a_message_is_no_agreement_or_investment_offer(client):
 # ---------------------------------------------------------------- buying the company or an app
 
 def test_the_buy_path_shows_its_notice_and_choices(client):
-    page = client.get("/vortex").text
+    page = client.get("/orbyt").text
     section = page.split('id="v-buy"', 1)[1].split("</section>", 1)[0]
     notice = " ".join(section.split('<p class="v-notice v-notice-buy">', 1)[1].split("</p>", 1)[0].split())
     assert notice == BUY_NOTICE
@@ -642,7 +642,7 @@ def test_the_owner_hears_of_a_buy_message_without_personal_details(client, monke
     while not sent and time.time() < deadline:
         time.sleep(0.05)
     ((subject, body),) = sent
-    assert subject == "MTRX Horizyn: new Chroma Vortex message (Buy the company or an app)"
+    assert subject == "MTRX Horizyn: new Orbyt message (Buy the company or an app)"
     assert "Organisation: Example Holdings" in body
     assert "Interested in: MTRX Horizyn (the whole company), RankUp" in body
     for private in (SECRET, "Jo Buyer", "@example.com", "We'd like"):
@@ -673,3 +673,8 @@ def test_privacy_and_terms_cover_the_buy_path(client):
     terms = " ".join(client.get("/terms").text.split())
     assert ("Nothing on this site is an offer to sell the company or any app, and no sale happens "
             "through this site.") in terms
+
+def test_the_old_vortex_address_still_lands_on_orbyt(client):
+    response = client.get("/vortex", follow_redirects=False)
+    assert response.status_code == 301 and response.headers["location"] == "/orbyt"
+    assert "Orbyt" in client.get("/vortex").text

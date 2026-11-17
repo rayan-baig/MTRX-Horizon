@@ -4,6 +4,13 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.8.1 (17 November 2026)
+
+- **Chroma Vortex is now Orbyt.** The page lives at `/orbyt`; the old `/vortex` and `/chroma-vortex`
+  addresses redirect there, so old links and bookmarks still work. Every page, email, the console
+  and the sitemap use the new name. Behind the scenes the code, the database table and the form's
+  `/api/vortex/send` address keep their old names, so nothing stored had to move.
+
 ## 1.8.0 (15 November 2026)
 
 - **The early access list**, so the apps open with customers waiting. **Off by default**: until
