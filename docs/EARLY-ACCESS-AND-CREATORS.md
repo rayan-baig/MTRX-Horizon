@@ -49,8 +49,10 @@ from the footer and the menu.
 
 **The form** asks for an email address, which apps (tick boxes), and "I'm a grown-up (18+)".
 
-**Double opt-in.** We email a link; only people who press it are on the list ("confirmed").
-Until then they are "unconfirmed", and they are deleted after 7 days if they never press it.
+**Double opt-in.** We email a link; only people who open it and press **Confirm** are on the list
+("confirmed"). Opening the link alone changes nothing, because work and school mail often opens
+every link in an email to check it before the person sees it. Until then they are "unconfirmed",
+and they are deleted 7 days after they last signed up if they never confirm.
 The form says the same thing whether or not an address is already on the list, so nobody can
 use it to find out who is.
 
@@ -66,8 +68,9 @@ page at all. The link in the email opens a page with one **Unsubscribe** button 
 checker opening the link can't unsubscribe anyone by accident). Unsubscribing deletes the
 person from the list. Unsubscribe links keep working even if you switch early access off later.
 
-**Limits.** Each address may join 5 times an hour and 20 a day; one email address gets at most
-3 confirmation emails a day; at most 500 confirmation emails go out a day in all; and a
+**Limits.** Each address may join 5 times an hour and 20 a day; one inbox gets at most
+3 confirmation emails a day (counted with anything after a "+" taken off, and Gmail's dots,
+since those all reach the same inbox); at most 500 confirmation emails go out a day in all; and a
 network address that tries 30 wrong confirm or unsubscribe links in an hour waits. The tries
 are counted the way failed sign-ins are, and deleted after a day.
 

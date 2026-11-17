@@ -4,9 +4,20 @@
 {% block styles %}<link rel="stylesheet" href="{{ asset('css/grow.css') }}">{% endblock %}
 {% block head %}<meta name="robots" content="noindex">{% endblock %}
 {% block body %}
-{#- Where the link in the confirmation email lands (early_access.confirm). -#}
+{#- Where the link in the confirmation email lands. Opening it only shows the
+    Confirm button (early_access.confirm_check), since mail checkers open
+    links too; the button posts back to this same address
+    (early_access.confirm). -#}
 <section class="panel ea-done">
-  {% if status == 200 %}
+  {% if status == 200 and waiting and not done %}
+  <p class="eyebrow">Early access</p>
+  <h1 class="o-title">Confirm your early access</h1>
+  <p class="o-lede">Press Confirm and we'll email you the day {{ names }} opens.</p>
+  <form method="post" action="/early-access/confirm/{{ token }}">
+    <button class="btn btn-primary" type="submit">Confirm</button>
+  </form>
+  <p class="ea-small">Didn't ask for this? Just close this page. We'll delete the request in 7 days.</p>
+  {% elif status == 200 %}
   <span class="ea-tick" aria-hidden="true"></span>
   <p class="eyebrow">Confirmed</p>
   <h1 class="o-title">You're on the list!</h1>

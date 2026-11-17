@@ -716,11 +716,23 @@ def _early_page(request: Request, template: str, status: int, answer: dict) -> H
 
 
 @app.get("/early-access/confirm/{token}", response_class=HTMLResponse)
+def early_access_confirm_page(request: Request, token: str):
+    # Opening the link only shows a Confirm button: mail checkers open links
+    # too, and must not put someone on the list.
+    if not early_access.ready():
+        return not_found(request)
+    status, answer = early_access.confirm_check(client_ip(request), token)
+    return _early_page(request, "early_access_confirm.html", status, {"token": token, "done": False, **answer})
+
+
+@app.post("/early-access/confirm/{token}", response_class=HTMLResponse)
 def early_access_confirm(request: Request, token: str):
+    # The page's Confirm button. Not under /api/, like unsubscribing: the
+    # signed link is what proves it may.
     if not early_access.ready():
         return not_found(request)
     status, answer = early_access.confirm(client_ip(request), token)
-    return _early_page(request, "early_access_confirm.html", status, answer)
+    return _early_page(request, "early_access_confirm.html", status, {"token": token, "done": True, **answer})
 
 
 @app.get("/early-access/unsubscribe/{token}", response_class=HTMLResponse)

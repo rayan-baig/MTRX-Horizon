@@ -5,8 +5,8 @@
 {% block styles %}<link rel="stylesheet" href="{{ asset('css/grow.css') }}">{% endblock %}
 {% block body %}
 {#- The early access list (horizon/early_access.py). The form keeps an email
-    address and the apps ticked, once the person presses the link we email
-    them. Nothing else. -#}
+    address and the apps ticked, once the person opens the link we email
+    them and presses Confirm. Nothing else. -#}
 <section class="panel ea-hero">
   <div class="ea-hero-copy">
     <p class="eyebrow">Early access</p>
@@ -45,7 +45,7 @@
   <h2 class="o-h" id="ea-how-title">Short and simple</h2>
   <ul class="o-ticks">
     <li>Tick the apps you care about and press <b>Get early access</b>.</li>
-    <li>We email you a link. Tap it to confirm: only then are you on the list.</li>
+    <li>We email you a link. Tap it and press Confirm: only then are you on the list.</li>
     <li>When an app you picked opens, we email you, with your founding member code if you're a founding member.</li>
     <li>We keep only your email and the apps you picked. Unsubscribe in one click from any email.</li>
   </ul>

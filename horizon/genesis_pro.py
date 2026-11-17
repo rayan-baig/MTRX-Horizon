@@ -296,15 +296,20 @@ def _normal(raw) -> str | None:
 
 
 def issue_key(conn, member_id: str, now: float | None = None) -> str:
-    """A fresh key for a member. Only its hash is kept, and the member's
-    oldest keys go once they have more than KEYS_PER_MEMBER."""
+    """A fresh key for a member. Only its hash is kept. Once they have more
+    than KEYS_PER_MEMBER, the ones that go are those never used, oldest
+    first, then those used longest ago: anyone who knows a member's email
+    can ask for new keys to be sent, and that must never stop the key a
+    member's own browser uses."""
     now = time.time() if now is None else now
     key = new_key()
+    hashed = _hash(_normal(key) or "")
     conn.execute("INSERT INTO genesis_pro_keys (key_hash, member_id, created_at) VALUES (?, ?, ?)",
-                 (_hash(_normal(key) or ""), member_id, now))
-    conn.execute("DELETE FROM genesis_pro_keys WHERE member_id = ? AND key_hash NOT IN "
-                 "(SELECT key_hash FROM genesis_pro_keys WHERE member_id = ? "
-                 "ORDER BY created_at DESC, rowid DESC LIMIT ?)", (member_id, member_id, KEYS_PER_MEMBER))
+                 (hashed, member_id, now))
+    conn.execute("DELETE FROM genesis_pro_keys WHERE member_id = ? AND key_hash != ? AND key_hash NOT IN "
+                 "(SELECT key_hash FROM genesis_pro_keys WHERE member_id = ? AND key_hash != ? "
+                 "ORDER BY last_used IS NULL, COALESCE(last_used, created_at) DESC, rowid DESC LIMIT ?)",
+                 (member_id, hashed, member_id, hashed, KEYS_PER_MEMBER - 1))
     return key
 
 
@@ -476,7 +481,9 @@ def apply_event(event: dict) -> str:
     with _applying, db.connect() as conn:
         if conn.execute("SELECT 1 FROM genesis_pro_events WHERE id = ?", (event_id[:255],)).fetchone():
             return "repeat"
-        if kind == "checkout.session.completed":
+        if kind in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
+            # The second comes days later for a payment that takes time,
+            # such as a bank debit: the checkout finished "unpaid".
             result, send = _checkout_completed(conn, obj, created)
         elif kind in ("customer.subscription.created", "customer.subscription.updated",
                       "customer.subscription.deleted"):
@@ -547,6 +554,11 @@ def _subscription_changed(conn, obj: dict, created: int, deleted: bool) -> str:
     if not isinstance(status, str) or not status:
         return "ignored"
     status = status[:32]
+    if status in ("incomplete", "incomplete_expired"):
+        # Only before the first payment: a member is made only once the
+        # checkout is paid, so this is a late copy from the same moment
+        # (Stripe's times are in whole seconds, its order not promised).
+        return "old"
     if member["status"] == "refunded" and status in PRO_STATES:
         # Refunded stays refunded until a new payment arrives (invoice.paid).
         status = "refunded"

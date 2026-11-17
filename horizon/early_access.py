@@ -4,9 +4,11 @@ the owner's launch emails to them.
 Joining (POST /api/early-access/join):
 - A grown-up types an email address, ticks the apps they care about and
   ticks "I'm 18 or over". The form is on the home page and on /early-access.
-- Double opt-in: they get an email with a link, and only once they press it
-  are they on the list. Until then the sign-up is "unconfirmed", and it is
-  deleted after 7 days if the link is never pressed.
+- Double opt-in: they get an email with a link, and only once they open it
+  and press Confirm are they on the list (opening it alone changes nothing,
+  since mail checkers open links too). Until then the sign-up is
+  "unconfirmed", and it is deleted 7 days after the last sign-up if it is
+  never confirmed.
 - What is kept: the email address and the apps. Nothing else about the
   person: no name, no address, no age (the 18+ box must be ticked, and is
   not stored). If they came through a creator's link, the creator's code is
@@ -153,7 +155,7 @@ def confirmation_email(apps: list, confirm: str, unsubscribe: str) -> tuple[str,
     subject = "Confirm your MTRX Horizyn early access"
     body = (f"Hi,\n\n"
             f"Someone (we hope you) asked to hear first when {growth.names(apps)} opens.\n\n"
-            f"Tap this link to confirm:\n{confirm}\n\n"
+            f"Tap this link, then press Confirm:\n{confirm}\n\n"
             f"{perk}"
             f"Didn't ask for this? Just ignore this email. We'll delete the request in 7 days.\n\n"
             f"- MTRX Horizyn\n\n"
@@ -168,6 +170,17 @@ def _email(raw) -> str | None:
     if len(value) > 254 or not _EMAIL.fullmatch(value):
         return None
     return value.lower()
+
+
+def _inbox(email: str) -> str:
+    """The inbox an address lands in, for counting the emails sent to it:
+    most mail services ignore anything after a "+", and Gmail ignores dots,
+    so fan+1@... and fan+2@... are one person's inbox."""
+    local, _, domain = email.lower().partition("@")
+    local = local.split("+", 1)[0]
+    if domain in ("gmail.com", "googlemail.com"):
+        local, domain = local.replace(".", ""), "gmail.com"
+    return f"{local}@{domain}"
 
 
 def join(who: str, body: dict, base: str) -> tuple[int, dict]:
@@ -208,7 +221,7 @@ def join(who: str, body: dict, base: str) -> tuple[int, dict]:
                              "ref = CASE WHEN confirmed_at IS NULL AND ref = '' THEN ? ELSE ref END WHERE id = ?",
                              (pending, now, ref, signup_id))
                 wanted = _apps(pending)
-    if wanted and growth.allow("ea_email", growth.sha256(email), *RATES["ea_email"]) \
+    if wanted and growth.allow("ea_email", growth.sha256(_inbox(email)), *RATES["ea_email"]) \
             and growth.allow("ea_email_all", "all", *RATES["ea_email_all"]):
         confirm, unsubscribe = _links(base, signup_id)
         subject, text = confirmation_email(wanted, confirm, unsubscribe)
@@ -216,8 +229,28 @@ def join(who: str, body: dict, base: str) -> tuple[int, dict]:
     return 200, {"ok": True, "message": JOINED}
 
 
+def confirm_check(who: str, raw) -> tuple[int, dict]:
+    """What the confirm page shows when the link is opened, before Confirm
+    is pressed. Opening it changes nothing: work and school mail often
+    opens every link in an email to check it, before the person has."""
+    if not growth.under("ea_bad_link", who, *RATES["ea_bad_link"]):
+        return 429, {"error": growth.BUSY}
+    signup_id = _read("confirm", raw)
+    if signup_id is None:
+        growth.allow("ea_bad_link", who, *RATES["ea_bad_link"])
+        return 404, {}
+    with db.connect() as conn:
+        row = conn.execute("SELECT apps, pending FROM early_signups WHERE id = ?", (signup_id,)).fetchone()
+    if row is None:
+        return 410, {"error": "This link has run out. Sign up again and we'll send a new one."}
+    apps = _apps(_join(set(_apps(row["apps"])) | set(_apps(row["pending"]))))
+    return 200, {"apps": apps, "names": growth.names(apps), "first": False, "waiting": bool(_apps(row["pending"])),
+                 "unsubscribe": token("unsubscribe", signup_id)}
+
+
 def confirm(who: str, raw) -> tuple[int, dict]:
-    """The link in the confirmation email. Returns (status, what the page shows)."""
+    """The Confirm button on the page the email's link opens. Returns
+    (status, what the page shows)."""
     if not growth.under("ea_bad_link", who, *RATES["ea_bad_link"]):
         return 429, {"error": growth.BUSY}
     signup_id = _read("confirm", raw)
@@ -280,8 +313,10 @@ def forget_old(now: float | None = None):
     so do apps added later that were never confirmed."""
     now = time.time() if now is None else now
     with db.connect() as conn:
-        old = [r[0] for r in conn.execute("SELECT id FROM early_signups WHERE confirmed_at IS NULL AND created_at < ?",
-                                          (now - KEEP_UNCONFIRMED,))]
+        # Counted from the latest sign-up, whose email has a link that
+        # must keep working for the whole seven days.
+        old = [r[0] for r in conn.execute("SELECT id FROM early_signups WHERE confirmed_at IS NULL "
+                                          "AND COALESCE(pending_at, created_at) < ?", (now - KEEP_UNCONFIRMED,))]
         for signup_id in old:
             conn.execute("DELETE FROM early_signups WHERE id = ?", (signup_id,))
             conn.execute("DELETE FROM early_sends WHERE signup_id = ?", (signup_id,))

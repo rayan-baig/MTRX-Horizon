@@ -345,7 +345,8 @@ Both are **off by default**: until switched on, no page mentions them and their 
 - **The early access list** (`EARLY_ACCESS_ENABLED=1`, with email set up): a **Get early access**
   form on the home page (the first button, each app's card and Learn more) and on
   `/early-access`. Email, which apps, and "I'm a grown-up (18+)". Double opt-in: only people who
-  press the link in our email count, and the rest are deleted after 7 days. Only the email and
+  open the link in our email and press Confirm count (a mail checker opening it changes nothing),
+  and the rest are deleted 7 days after they last signed up. Only the email and
   the apps are kept. Every email has a one-click unsubscribe link and `List-Unsubscribe`
   headers. Founding members are promised a launch discount; each app's code is a Stripe
   promotion code in `FOUNDER_CODE_*`. The console's **Early access** section shows the counts and

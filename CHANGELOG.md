@@ -4,6 +4,32 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.8.2 (17 November 2026)
+
+Fixes found in a check before launch:
+
+- **Genesis Pro could be lost straight after paying.** Stripe often sends a subscription's
+  "incomplete" moment, its payment and the finished checkout in the same second, and doesn't
+  promise their order. If the "incomplete" one arrived last, a buyer who had paid had no Pro, and
+  the welcome page said it wasn't active. A late "incomplete" now changes nothing.
+- **Paying by bank debit never gave Pro.** For a payment that takes days, Checkout finishes
+  "unpaid" and Stripe says `checkout.session.async_payment_succeeded` when the money arrives; that
+  was ignored, so the buyer paid and got no key. It now makes them a member and emails the key.
+  Add that event to the Stripe webhook (`docs/GENESIS-PRO.md`, step 3).
+- **"Email a new key" could sign a member out.** Anyone who knows a member's email can ask for new
+  keys (three a day), and each new key pushed out the member's oldest, so within two days the key
+  their own browser used stopped working. Now a key that has never been used goes first, so a key
+  a browser is using is kept.
+- **Mail checkers confirmed early access sign-ups.** Work and school mail often opens every link in
+  an email to check it, and opening the confirm link was enough to put an address on the list (and
+  count a sign-up for a creator), so someone could sign up a stranger. The link now opens a page
+  with a **Confirm** button, like unsubscribing.
+- **One inbox could get far more than 3 confirmation emails a day**, as fan+1@..., fan+2@... or
+  Gmail's dotted spellings each counted as a new address. The limit now counts the inbox.
+- **Signing up again for early access gave a link that soon ran out.** Unconfirmed sign-ups were
+  deleted 7 days after the first try, so a link from a second try on day six stopped working hours
+  later. They now go 7 days after the last try.
+
 ## 1.8.1 (17 November 2026)
 
 - **Chroma Vortex is now Orbyt.** The page lives at `/orbyt`; the old `/vortex` and `/chroma-vortex`

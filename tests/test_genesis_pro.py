@@ -698,3 +698,53 @@ def test_every_pro_address_is_limited():
     assert set(PRO_PATHS) <= paths
     assert {"pro_checkout", "pro_claim", "pro_status", "pro_bad_key", "pro_resend", "pro_portal",
             "pro_backup", "pro_restore", "pro_webhook_bad"} <= set(genesis_pro.RATES)
+
+
+# ---------------------------------------------------------------- found before launch
+
+def test_a_late_incomplete_event_from_the_same_second_does_not_end_a_paid_pro(client, pro):
+    """Stripe makes a Checkout subscription "incomplete", takes the payment and
+    finishes the checkout, often all in one second, and doesn't promise to
+    deliver those events in order. The stale "incomplete" one must not take
+    Pro away from someone who has paid."""
+    now = int(time.time())
+    assert send(client, event("checkout.session.completed", completed(), now)).json()["result"] == "member added"
+    key = client.post("/api/genesis/pro/claim", json={"session": SESSION}, headers=ORIGIN).json()["key"]
+    for kind in ("customer.subscription.created", "customer.subscription.updated"):
+        send(client, event(kind, subscription(status="incomplete"), now))
+    answer = status(client, key)
+    assert answer["pro"] is True and answer["status"] == "active"
+
+
+def test_a_bank_payment_that_clears_later_still_gives_pro(client, pro):
+    """With a payment method that takes days (a bank debit), Checkout
+    finishes unpaid and Stripe says so again when the money arrives."""
+    assert send(client, event("checkout.session.completed", completed(payment_status="unpaid"))).json()[
+        "result"] == "unpaid"
+    assert client.post("/api/genesis/pro/claim", json={"session": SESSION}, headers=ORIGIN).status_code == 202
+    result = send(client, event("checkout.session.async_payment_succeeded", completed())).json()["result"]
+    assert result == "member added"
+    assert wait_for(lambda: len(pro["mail"]) == 1) and pro["mail"][0]["to"] == BUYER
+    claim = client.post("/api/genesis/pro/claim", json={"session": SESSION}, headers=ORIGIN)
+    assert claim.status_code == 200 and status(client, claim.json()["key"])["pro"] is True
+
+
+def test_lost_key_emails_never_sign_a_member_out_of_the_browser_they_use(client, pro):
+    """Anyone who knows a member's email can press "Email a new key" (three
+    a day). The new keys used to push out the member's oldest, so in two
+    days the key their own browser uses stopped working."""
+    from horizon import db, genesis_pro
+    key = buy(client)
+    assert status(client, key)["pro"] is True  # the Genesis page asks on every visit
+    for _ in range(3):  # three days
+        for _ in range(3):
+            assert client.post("/api/genesis/pro/resend", json={"email": BUYER}, headers=ORIGIN).status_code == 200
+        with db.connect() as conn:
+            conn.execute("DELETE FROM attempts WHERE kind LIKE 'pro_resend%'")
+    assert status(client, key)["pro"] is True
+    with db.connect() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM genesis_pro_keys").fetchone()[0] == genesis_pro.KEYS_PER_MEMBER
+    # The newest emailed key works too.
+    assert wait_for(lambda: len(pro["mail"]) == 10)
+    newest = re.search(r"GP(-[A-Z2-7]{4}){6}", pro["mail"][-1]["body"]).group(0)
+    assert status(client, newest)["pro"] is True

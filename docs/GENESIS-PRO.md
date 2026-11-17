@@ -138,7 +138,9 @@ page shows the amounts it reads from Stripe (once an hour).
 2. **The webhook is the only source of truth.** `POST /api/genesis/pro/stripe` checks Stripe's
    signature (HMAC-SHA256 of `timestamp.body` with the endpoint's secret, at most 5 minutes
    old), applies each event once (by its id), and ignores a subscription event older than the
-   last one applied. A paid `checkout.session.completed` makes a member: Stripe's customer and
+   last one applied, and a late "incomplete" one (that state only comes before the first
+   payment). A paid `checkout.session.completed` (or, for a payment that takes days such as a
+   bank debit, `checkout.session.async_payment_succeeded`) makes a member: Stripe's customer and
    subscription ids, the state, the price, and SHA-256 fingerprints of the email address and of
    the checkout's id. No email address is kept.
 3. **The key.** At once a Pro key (`GP-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`, 120 random bits) is
@@ -146,7 +148,9 @@ page shows the amounts it reads from Stripe (once an hour).
    page asks `POST /api/genesis/pro/claim` (until the webhook has arrived) and gets a key once,
    which it keeps in the browser's storage, so Pro is on there straight away. The page takes
    the checkout's id out of the address, and the server log leaves that address out. Only the
-   SHA-256 of each key is stored; a member keeps their 5 newest keys.
+   SHA-256 of each key is stored; a member keeps 5 keys. When a new one would make 6, a key that
+   has never been used goes first, so asking for new keys (which anyone who knows the email can
+   do) never stops a key a browser is using.
 4. **Using Pro.** The page sends the key in an `X-Genesis-Pro-Key` header (never a cookie) with
    Ask Genesis and the backup. **I have a Pro key** turns Pro on in another browser. **Email a
    new key** sends a fresh key to an address whose fingerprint matches a member with Pro; the
@@ -200,7 +204,8 @@ Do it all in **test mode** first, on staging (`docs/STAGING.md`), then again in 
    `STRIPE_SECRET_KEY` (never in the code or a commit).
 3. **Webhook.** Developers → Webhooks → **Add endpoint**:
    `https://mtrxhorizyn.com/api/genesis/pro/stripe`, with these events:
-   `checkout.session.completed`, `customer.subscription.created`,
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+   `customer.subscription.created`,
    `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`,
    `invoice.payment_failed`, `charge.refunded`. Copy its signing secret (`whsec_...`) into
    `GENESIS_PRO_STRIPE_WEBHOOK_SECRET`.

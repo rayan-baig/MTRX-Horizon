@@ -86,7 +86,7 @@ def joined(client, sent, email=EMAIL, apps=("rankup",), **extra):
     before = len(sent)
     assert join(client, email, apps, **extra).status_code == 200
     assert wait_for(lambda: len(sent) > before)
-    assert client.get(link(sent, "confirm", email)).status_code == 200
+    assert client.post(link(sent, "confirm", email)).status_code == 200
 
 
 def rows(sql, *args):
@@ -191,14 +191,14 @@ def test_double_opt_in_only_confirmed_people_count(client, early):
 
     counts = early_access.counts()
     assert counts["rankup"] == {"confirmed": 0, "unconfirmed": 1}
-    page = client.get(link(early, "confirm"))
+    page = client.post(link(early, "confirm"))
     assert page.status_code == 200 and "You're on the list!" in page.text
     assert page.headers["cache-control"] == "no-store"
     counts = early_access.counts()
     assert counts["rankup"] == {"confirmed": 1, "unconfirmed": 0}
     assert counts["omniarmor"] == {"confirmed": 1, "unconfirmed": 0}
     # Pressing it again changes nothing.
-    assert client.get(link(early, "confirm")).status_code == 200
+    assert client.post(link(early, "confirm")).status_code == 200
     assert early_access.counts()["rankup"]["confirmed"] == 1
 
 
@@ -217,7 +217,10 @@ def test_unconfirmed_sign_ups_are_deleted_after_seven_days(client, early):
     joined(client, early, "kept@example.com")
     from horizon import db
     with db.connect() as conn:
-        conn.execute("UPDATE early_signups SET created_at = ? WHERE email IN ('old@example.com', 'kept@example.com')",
+        conn.execute("UPDATE early_signups SET created_at = ?, pending_at = COALESCE(pending_at, ?) "
+                     "WHERE email IN ('old@example.com', 'kept@example.com')",
+                     (time.time() - 8 * 86400, time.time() - 8 * 86400))
+        conn.execute("UPDATE early_signups SET pending_at = ? WHERE email = 'old@example.com'",
                      (time.time() - 8 * 86400,))
     early_access.forget_old()
     left = {r["email"] for r in rows("SELECT email FROM early_signups")}
@@ -259,7 +262,7 @@ def test_the_answer_is_the_same_whether_or_not_someone_is_on_the_list(client, ea
     join(client, apps=["omniarmor"])
     assert wait_for(lambda: len([m for m in early if m["to"] == EMAIL]) == before + 1)
     assert early_access.counts()["omniarmor"] == {"confirmed": 0, "unconfirmed": 1}
-    client.get(link(early, "confirm"))
+    client.post(link(early, "confirm"))
     assert early_access.counts()["omniarmor"] == {"confirmed": 1, "unconfirmed": 0}
 
 
@@ -525,7 +528,7 @@ def test_a_creator_link_counts_each_visitor_once_a_day_and_forwards(client, make
     page = client.get(first.headers["location"]).text
     assert f'name="ref" value="{code}"' in page and 'value="rankup" checked' in page
     joined(client, early, ref=code)
-    client.get(link(early, "confirm"))
+    client.post(link(early, "confirm"))
     assert rows("SELECT signups FROM creator_days")[0]["signups"] == 1
 
 
@@ -675,3 +678,58 @@ def test_the_new_settings_tolerate_typos(monkeypatch):
     assert s.founder_codes["rankup"] == "" and s.founder_percent_off == 0
     assert s.creator_percent == 20 and s.creator_months == 12
     assert s.postal_address == "1 Example Street Bcc: x"
+
+
+# ---------------------------------------------------------------- found before launch
+
+def test_a_link_checker_opening_the_confirm_link_does_not_confirm(client, early):
+    """Work and school mail often opens every link in an email to check it
+    before the person sees it. That must not put an address on the list
+    (or count a sign-up for a creator): the person presses Confirm."""
+    from horizon import early_access
+    join(client)
+    assert wait_for(lambda: len(early) == 1)
+    url = link(early, "confirm")
+    page = client.get(url)
+    assert page.status_code == 200 and f'action="{url}"' in page.text
+    assert page.headers["cache-control"] == "no-store"
+    assert early_access.counts()["rankup"] == {"confirmed": 0, "unconfirmed": 1}
+    done = client.post(url)
+    assert done.status_code == 200 and "You're on the list!" in done.text
+    assert early_access.counts()["rankup"] == {"confirmed": 1, "unconfirmed": 0}
+    # Opened again later, it just says so.
+    assert "You're on the list!" in client.get(url).text
+
+
+def test_confirmation_emails_to_one_inbox_are_limited_however_the_address_is_written(client, early, monkeypatch):
+    """fan+1@..., fan+2@... and F.a.n@gmail.com all land in one inbox."""
+    from horizon import early_access
+    monkeypatch.setitem(early_access.RATES, "ea_join", (100, 3600))
+    monkeypatch.setitem(early_access.RATES, "ea_join_day", (100, 86400))
+    for n in range(6):
+        join(client, f"fan+{n}@example.com")
+    for local in ("victim", "v.ictim", "Vi.Ctim", "victim+a", "v.i.c.t.i.m+b", "victim+c"):
+        join(client, f"{local}@gmail.com")
+    time.sleep(0.3)
+    limit = early_access.RATES["ea_email"][0]
+    assert len([m for m in early if m["to"].endswith("@example.com")]) == limit
+    assert len([m for m in early if m["to"].endswith("@gmail.com")]) == limit
+
+
+def test_signing_up_again_gives_a_confirm_link_that_lasts_seven_days(client, early):
+    """Someone who ignored the first email and signs up again on day six
+    used to get a link that ran out a few hours later."""
+    from horizon import db, early_access
+    join(client)
+    with db.connect() as conn:
+        conn.execute("UPDATE early_signups SET created_at = ?, pending_at = ?",
+                     (time.time() - 6 * 86400, time.time() - 6 * 86400))
+    join(client)
+    assert wait_for(lambda: len(early) == 2)
+    early_access.forget_old(now=time.time() + 2 * 86400)
+    assert client.post(link(early, "confirm")).status_code == 200
+    assert early_access.counts()["rankup"] == {"confirmed": 1, "unconfirmed": 0}
+    # Never confirmed at all, it still goes seven days after the last sign-up.
+    join(client, "gone@example.com")
+    early_access.forget_old(now=time.time() + 8 * 86400)
+    assert {r["email"] for r in rows("SELECT email FROM early_signups")} == {EMAIL}
