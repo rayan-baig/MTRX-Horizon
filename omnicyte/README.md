@@ -100,7 +100,19 @@ internal mails and chat messages that must all come out safe. `tests/test_omnicy
 holds the phishing that must still be caught. If a false alarm turns up in real use, add it to the
 first file and make it pass without breaking the second.
 
-## Run it
+## Install it
+
+**Most people:** download the app for Windows, Mac or Linux and double-click it. No Python
+needed. See **[INSTALL.md](INSTALL.md)**. The first time, a setup window asks for your company's
+name, email domains and security team's address, and whether to start at login. Change them any
+time from the buddy's right-click menu, under **Settings…**.
+
+Every push builds the apps on real Windows, macOS and Linux machines. The
+[Omnicyte app workflow](../.github/workflows/omnicyte.yml) runs the tests, builds with PyInstaller
+(`packaging/omnicyte.spec`), starts each packaged app to run its self-test, and offers it as a
+download. A tag like `omnicyte-v0.2.0` publishes a GitHub release.
+
+## Run it from source
 
 Omnicyte needs Python 3.11 or newer. It uses nothing outside the standard library. On Linux,
 install Tk for the buddy (`sudo apt install python3-tk`).
@@ -196,6 +208,10 @@ the signal codes, the link's host, the sender's domain, and what the person did 
 | `omnicyte/core.py` | Where every watcher reports: decides, logs, de-duplicates, alerts the buddy |
 | `omnicyte/server.py` | The local service for the browser extension |
 | `omnicyte/buddy.py` | The desktop buddy |
+| `omnicyte/settings.py` | The first-run setup and Settings window |
+| `omnicyte/autostart.py` | Starting at login on Windows, macOS and Linux |
+| `omnicyte/ui.py`, `omnicyte/icon.py` | Fonts, colours, buttons and the icon |
+| `launch.py`, `packaging/` | What the app is built from |
 | `extension/` | The Chrome/Edge extension (Manifest V3) |
 | `tests/` | Tests: `python -m pytest omnicyte/tests` from the repository root |
 
@@ -209,7 +225,12 @@ The product's web address is set in one place, `WEBSITE` in `omnicyte/policy.py`
   for Teams), which is a server-side integration.
 - **Microsoft 365 / Google sign-in without app passwords:** the inbox watcher uses IMAP.
   An admin-consented Microsoft Graph or Gmail API connector would avoid app passwords.
-- **Installers:** no signed `.msi` or `.pkg` yet, and no auto-start at login. Today it runs from
-  Python. PyInstaller can bundle it into a single app.
+- **Code signing:** the apps aren't signed (Windows) or notarised (Apple) yet, so the first open
+  shows a warning (INSTALL.md says how to get past it). Signing needs a code-signing certificate
+  and an Apple Developer account in the company's name, then a signing step in the workflow.
+- **The extension in the stores:** it's loaded by hand today. Publishing it in the Chrome Web
+  Store and Edge Add-ons would let IT force-install it.
+- **Intel Macs:** the Mac build is for Apple silicon. An Intel or universal build needs an Intel
+  build machine.
 - **An optional AI second opinion** for borderline messages. That would send message content to
   an AI provider, so it should be an organisation's explicit choice, off by default.

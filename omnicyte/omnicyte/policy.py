@@ -25,6 +25,7 @@ Example policy.json:
 
 import json
 import os
+import re
 import platform
 import secrets
 from dataclasses import dataclass, field
@@ -63,6 +64,8 @@ class Policy:
     mailboxes: list = field(default_factory=list)
     alert_on: str = "danger"     # "danger", or "caution" to also pop up for the weaker warnings
     paused_until: float = 0.0
+    managed: tuple = ()          # the fields IT set in the policy file, which people can't change
+    set_up: bool = False         # the first-run setup has been done (or IT did it)
 
     @property
     def events_path(self) -> Path:
@@ -89,19 +92,32 @@ def _domains(values) -> list:
     return out
 
 
+# Fields a person may fill in themselves when IT hasn't set them: a small
+# business with no IT team sets its own company details in the setup window.
+SELF_SERVICE = ("org_name", "org_domains", "report_to", "alert_on")
+
+
 def load() -> Policy:
     org = _read(org_policy_path())
     mine = _read(home() / "settings.json")
+    managed = tuple(k for k in SELF_SERVICE + ("trusted_domains", "clipboard_watch", "allow_user_trust",
+                                               "event_log", "mailboxes") if k in org)
+
+    def pick(key, default=""):
+        return org[key] if key in org else mine.get(key, default)
+
     p = Policy(
-        org_name=str(org.get("org_name", "")),
-        org_domains=_domains(org.get("org_domains")),
+        org_name=str(pick("org_name"))[:80],
+        org_domains=_domains(pick("org_domains", [])),
         trusted_domains=_domains(org.get("trusted_domains")),
-        report_to=str(org.get("report_to", "")),
+        report_to=str(pick("report_to"))[:200],
         event_log=str(org.get("event_log", "")),
         clipboard_watch=bool(org.get("clipboard_watch", True)),
         allow_user_trust=bool(org.get("allow_user_trust", True)),
         mailboxes=[m for m in org.get("mailboxes", []) if isinstance(m, dict)],
-        alert_on="caution" if org.get("alert_on") == "caution" else "danger",
+        alert_on="caution" if pick("alert_on", "danger") == "caution" else "danger",
+        managed=managed,
+        set_up=bool(org) or bool(mine.get("set_up")),
     )
     if p.allow_user_trust:
         p.trusted_domains += [d for d in _domains(mine.get("trusted_domains")) if d not in p.trusted_domains]
@@ -110,6 +126,13 @@ def load() -> Policy:
     p.mailboxes += [m for m in mine.get("mailboxes", []) if isinstance(m, dict)]
     p.paused_until = float(mine.get("paused_until", 0) or 0)
     return p
+
+
+def clean_domains(values) -> list:
+    """Domains as a person typed them ("Acme.com, https://acme.co.uk/") made tidy."""
+    if isinstance(values, str):
+        values = re.split(r"[\s,;]+", values)
+    return _domains(values)
 
 
 def save_user(**changes) -> None:

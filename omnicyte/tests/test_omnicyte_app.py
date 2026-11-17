@@ -132,7 +132,9 @@ def test_people_can_trust_a_site_when_allowed(omnicyte_home):
 
 
 def test_token_is_stable_and_private(omnicyte_home):
+    import platform
     a = policy_mod.token()
     assert a == policy_mod.token() and len(a) >= 24
     path = policy_mod.home() / "token"
-    assert oct(path.stat().st_mode & 0o777) == "0o600"
+    if platform.system() != "Windows":   # Windows keeps it private by the user's own profile folder instead
+        assert oct(path.stat().st_mode & 0o777) == "0o600"

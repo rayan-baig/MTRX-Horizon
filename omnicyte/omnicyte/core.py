@@ -19,6 +19,7 @@ class Guardian:
     def __init__(self, pol: policy_mod.Policy | None = None):
         self.policy = pol or policy_mod.load()
         self.alerts: "queue.Queue[engine.Verdict]" = queue.Queue()
+        self.notices: "queue.Queue[str]" = queue.Queue()   # short things for the buddy to say
         self._seen: dict[str, float] = {}
         self._lock = threading.Lock()
         self.counts = {"checked": 0, "warned": 0}

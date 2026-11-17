@@ -28,3 +28,7 @@ dist/
 .DS_Store
 *.egg-info/
 build/
+omnicyte/packaging/icon.png
+omnicyte/out/
+selftest.json
+*.spec.bak

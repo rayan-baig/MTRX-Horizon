@@ -10,7 +10,9 @@ Built on Tkinter, which comes with Python on Windows and macOS (on Linux,
 install python3-tk), so there is nothing else to install.
 """
 
+import logging
 import math
+import queue
 import random
 import time
 import tkinter as tk
@@ -18,8 +20,10 @@ import webbrowser
 from tkinter import simpledialog
 from urllib.parse import quote
 
-from . import engine, policy as policy_mod, urls
+from . import engine, policy as policy_mod, settings, ui, urls
 from .signals import TIPS
+
+LOG = logging.getLogger("omnicyte")
 
 SIZE = 128
 KEY = "#ff00fe"          # the colour made see-through where the system allows it
@@ -32,16 +36,17 @@ IDLE_TIPS = (
     "Tip: read web addresses right to left. The bit before .com is who you're really talking to.",
     "Tip: not sure about a message? Report it. Security would rather check ten safe ones than miss one.",
 )
-FONT = ("Segoe UI", 10)
-FONT_B = ("Segoe UI", 11, "bold")
-FONT_S = ("Segoe UI", 9)
 
 
 class Buddy:
     def __init__(self, guardian, demo: bool = False):
         self.g = guardian
+        ui.sharp_text()
         self.root = tk.Tk()
         self.root.title("Omnicyte")
+        ui.setup_fonts(self.root)
+        self._icon = ui.app_icon(self.root)
+        self.root.report_callback_exception = self._on_error
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
         self.bg = KEY
@@ -88,8 +93,11 @@ class Buddy:
         self.root.after(30, self._tick)
         self.root.after(250, self._poll_alerts)
         self.root.after(1500, self._poll_clipboard)
-        self.root.after(1200, lambda: self.say("Hi! I'm Omnicyte. I'll keep an eye on your mail, chats and "
-                                               "browser, and shout if something looks phishy.", seconds=7))
+        if not guardian.policy.set_up:
+            self.root.after(900, lambda: settings.open_window(self.root, self.g, first_run=True, on_saved=self._welcome))
+        else:
+            self.root.after(1200, lambda: self.say("I'm here, keeping an eye out. Right-click me any time.", seconds=4))
+        self.root.after(1000, self._poll_notices)
         if demo:
             self.root.after(4000, self._demo)
 
@@ -145,12 +153,12 @@ class Buddy:
         elif mood == "sleep":
             c.create_oval(cx - 3, my - 2, cx + 3, my + 3, outline="#14202b", width=2)
             z = (t * 0.6) % 1
-            c.create_text(cx + 34 + z * 10, cy - 34 - z * 20, text="z", font=("Segoe UI", int(10 + z * 6), "bold"),
+            c.create_text(cx + 34 + z * 10, cy - 34 - z * 20, text="z", font=(ui.FONTS["body"][0], int(10 + z * 6), "bold"),
                           fill="#d8f3ff")
         else:
             c.create_arc(cx - 9, my - 8, cx + 9, my + 5, start=200, extent=140, style="arc", outline="#14202b", width=3)
         if self.g.paused:
-            c.create_text(cx, 10, text="paused", font=FONT_S, fill="#c8d2e0")
+            c.create_text(cx, 10, text="paused", font=ui.FONTS["small"], fill="#c8d2e0")
 
     def _asleep(self, now: float) -> bool:
         return now - self.last_activity > 120 and not self.bubble
@@ -174,6 +182,11 @@ class Buddy:
             self.say(random.choice(IDLE_TIPS), seconds=9)
             self.next_tip = now + random.uniform(20 * 60, 40 * 60)
         if not self.drag:
+            sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+            # Back on screen if the display changed (a monitor unplugged, a new resolution).
+            self.floor = min(max(0, self.floor), sh - SIZE)
+            self.x = min(max(0, self.x), sw - SIZE)
+            self.target_x = min(max(0, self.target_x), sw - SIZE)
             if abs(self.target_x - self.x) > 1:
                 self.x += int(max(-3, min(3, self.target_x - self.x)))
             jump = 0
@@ -225,15 +238,32 @@ class Buddy:
         m.add_command(label=("Stop" if self.g.policy.clipboard_watch else "Start") + " watching copied links",
                       command=self._toggle_clipboard)
         m.add_command(label="Pair the browser extension…", command=self._pair)
+        m.add_command(label="Settings…", command=lambda: settings.open_window(self.root, self.g))
         m.add_separator()
         m.add_command(label="About Omnicyte", command=lambda: webbrowser.open(policy_mod.WEBSITE))
         m.add_command(label="Quit", command=self.root.destroy)
         m.tk_popup(e.x_root, e.y_root)
 
+    def _welcome(self):
+        self.say("All set! I'll keep an eye on your mail, chats and browser, and shout if something looks "
+                 "phishy. Drag me anywhere; right-click me for options.", seconds=9)
+
+    def _on_error(self, exc, value, tb):
+        """A bug in one alert or animation must never take the buddy down."""
+        LOG.error("unexpected error", exc_info=(exc, value, tb))
+
+    def _poll_notices(self):
+        try:
+            while True:
+                self.say(self.g.notices.get_nowait(), seconds=4)
+        except queue.Empty:
+            pass
+        self.root.after(500, self._poll_notices)
+
     def _pause(self, seconds: int):
         policy_mod.save_user(paused_until=time.time() + seconds if seconds else 0)
         self.g.reload()
-        self.say("OK, I'm taking a break for an hour." if seconds else "I'm back on watch.", seconds=4)
+        self.say("OK, I'm taking a break for an hour." if seconds else "I'm back on watch.", seconds=4, force=True)
 
     def _toggle_clipboard(self):
         policy_mod.save_user(clipboard_watch=not self.g.policy.clipboard_watch)
@@ -246,13 +276,13 @@ class Buddy:
         v = self.g.see(engine.Message(source="manual", text=link if "://" in link or " " in link else "https://" + link),
                        alert=False)
         if v.level == "safe":
-            self.say("That one looks fine to me. Still, only open links you were expecting.", seconds=6)
+            self.say("That one looks fine to me. Still, only open links you were expecting.", seconds=6, force=True)
         else:
             self.alert(v)
 
     def _pair(self):
         self.say("Paste this pairing code into the Omnicyte browser extension:", seconds=60,
-                 extra=("Copy code", lambda: self._copy(policy_mod.token())), code=policy_mod.token())
+                 extra=("Copy code", lambda: self._copy(policy_mod.token())), code=policy_mod.token(), force=True)
 
     def _copy(self, text: str):
         self.root.clipboard_clear()
@@ -306,12 +336,15 @@ class Buddy:
         except tk.TclError:
             pass
 
-    def say(self, text: str, seconds: int = 6, extra=None, code: str = ""):
+    def say(self, text: str, seconds: int = 6, extra=None, code: str = "", force: bool = False):
+        # Chatter (tips, hellos) never covers a warning the person hasn't dealt with yet.
+        if self.current and self.bubble and not force:
+            return
         def body(frame, colors):
-            tk.Label(frame, text=text, font=FONT, fg=colors["fg"], bg=colors["bg"], wraplength=280,
+            tk.Label(frame, text=text, font=ui.FONTS["body"], fg=colors["fg"], bg=colors["bg"], wraplength=280,
                      justify="left").pack(anchor="w")
             if code:
-                tk.Label(frame, text=code, font=("Consolas", 10), fg=colors["fg"], bg=colors["card"],
+                tk.Label(frame, text=code, font=ui.FONTS["mono"], fg=colors["fg"], bg=colors["card"],
                          padx=6, pady=4).pack(anchor="w", pady=(8, 0), fill="x")
             if extra:
                 self._button(frame, extra[0], extra[1], colors, primary=True).pack(anchor="e", pady=(8, 0))
@@ -323,7 +356,7 @@ class Buddy:
     def _alert_body(self, v: engine.Verdict):
         def body(frame, colors):
             accent = {"danger": "#ff8095", "caution": "#ffd27a"}.get(v.level, "#7ee8dc")
-            tk.Label(frame, text=("⚠  " if v.level == "danger" else "")+v.headline, font=FONT_B, fg=accent,
+            tk.Label(frame, text=("⚠  " if v.level == "danger" else "")+v.headline, font=ui.FONTS["bold"], fg=accent,
                      bg=colors["bg"], wraplength=300, justify="left").pack(anchor="w")
             context = []
             if v.sender:
@@ -336,9 +369,9 @@ class Buddy:
             if dest:
                 context.append(f"Link really goes to: {urls.decode_host(urls.host_of(dest))}")
             if context:
-                tk.Label(frame, text="\n".join(context), font=FONT_S, fg=colors["muted"], bg=colors["bg"],
+                tk.Label(frame, text="\n".join(context), font=ui.FONTS["small"], fg=colors["muted"], bg=colors["bg"],
                          wraplength=300, justify="left").pack(anchor="w", pady=(4, 6))
-            tk.Label(frame, text="Why I think so:", font=("Segoe UI", 9, "bold"), fg=colors["fg"],
+            tk.Label(frame, text="Why I think so:", font=ui.FONTS["small_bold"], fg=colors["fg"],
                      bg=colors["bg"]).pack(anchor="w")
             seen = set()
             for s in v.signals:
@@ -347,12 +380,12 @@ class Buddy:
                 seen.add(s.title)
                 row = tk.Frame(frame, bg=colors["bg"])
                 row.pack(anchor="w", fill="x", pady=1)
-                tk.Label(row, text="•", font=FONT, fg=accent, bg=colors["bg"]).pack(side="left", anchor="n")
-                tk.Label(row, text=s.title, font=FONT_S, fg=colors["fg"], bg=colors["bg"], wraplength=285,
+                tk.Label(row, text="•", font=ui.FONTS["body"], fg=accent, bg=colors["bg"]).pack(side="left", anchor="n")
+                tk.Label(row, text=s.title, font=ui.FONTS["small"], fg=colors["fg"], bg=colors["bg"], wraplength=285,
                          justify="left").pack(side="left", anchor="w")
             top = next((s for s in v.signals if TIPS.get(s.code)), None)
             if top:
-                tk.Label(frame, text="Spot it next time: " + top.tip, font=FONT_S, fg=colors["fg"], bg=colors["card"],
+                tk.Label(frame, text="Spot it next time: " + top.tip, font=ui.FONTS["small"], fg=colors["fg"], bg=colors["card"],
                          wraplength=290, justify="left", padx=8, pady=6).pack(anchor="w", fill="x", pady=(8, 4))
             buttons = tk.Frame(frame, bg=colors["bg"])
             buttons.pack(anchor="e", pady=(6, 0))
@@ -399,7 +432,7 @@ class Buddy:
 
     def _open_bubble(self, fill):
         self._close_bubble()
-        colors = {"bg": "#1b1f2b", "fg": "#eef2f8", "muted": "#9aa6b8", "card": "#262c3c", "edge": "#3a4256"}
+        colors = ui.COLORS
         win = tk.Toplevel(self.root)
         win.overrideredirect(True)
         win.attributes("-topmost", True)
@@ -408,8 +441,8 @@ class Buddy:
         inner.pack(padx=1, pady=1)
         head = tk.Frame(inner, bg=colors["bg"])
         head.pack(fill="x")
-        tk.Label(head, text="Omnicyte", font=("Segoe UI", 8, "bold"), fg=colors["muted"], bg=colors["bg"]).pack(side="left")
-        close = tk.Label(head, text="✕", font=FONT_S, fg=colors["muted"], bg=colors["bg"], cursor="hand2")
+        tk.Label(head, text="Omnicyte", font=ui.FONTS["tiny"], fg=colors["muted"], bg=colors["bg"]).pack(side="left")
+        close = tk.Label(head, text="✕", font=ui.FONTS["small"], fg=colors["muted"], bg=colors["bg"], cursor="hand2")
         close.pack(side="right")
         close.bind("<Button-1>", lambda e: self._close_bubble(user=True))
         body = tk.Frame(inner, bg=colors["bg"])
@@ -438,10 +471,7 @@ class Buddy:
 
     @staticmethod
     def _button(parent, text, command, colors, primary=False):
-        b = tk.Label(parent, text=text, font=("Segoe UI", 9, "bold"), cursor="hand2", padx=10, pady=5,
-                     fg="#0d1a1f" if primary else colors["fg"], bg="#3ad6c5" if primary else colors["card"])
-        b.bind("<Button-1>", lambda e: command())
-        return b
+        return ui.button(parent, text, command, primary=primary)
 
     def run(self):
         self.root.mainloop()

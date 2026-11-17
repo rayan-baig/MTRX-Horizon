@@ -4,4 +4,4 @@ Everything is decided on the employee's own computer. No message, link or
 page is sent anywhere else.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

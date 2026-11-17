@@ -99,6 +99,10 @@ def make_handler(guardian, pairing_token: str):
                 return self._send(200, page(guardian, body))
             if self.path == "/v1/message":
                 return self._send(200, message(guardian, body))
+            if self.path == "/v1/show":
+                # Omnicyte was opened again while already running.
+                guardian.notices.put("I'm already here! Right-click me for options.")
+                return self._send(200, {"ok": True})
             return self._send(404, {"error": "not found"})
 
     return Handler
