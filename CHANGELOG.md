@@ -4,6 +4,34 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.8.4 (17 November 2026)
+
+Faster and easier on a phone, especially the first time:
+
+- **The home page appears much sooner on a phone.** On a slow connection its big picture took
+  about 3.5 seconds to show; now it takes about 2. The page asks for the picture straight away,
+  and phones get a copy made for their screen. Every public page now loads in under 2.5 seconds
+  on a slow phone, and nothing on them jumps while loading (`docs/PERFORMANCE.md`).
+- **Every page is lighter**: a smaller logo picture in the top bar, a font file that holds only
+  the weights the site uses, and a small logo picture on the brand page. About 20 KB less on
+  every page, 125 KB less on the home page.
+- **On a phone, the home page now says what MTRX Horizyn is, and shows both buttons.** To fit on
+  one screen it used to hide the sentence about the company, and on smaller phones the buttons
+  too. On a phone the page now scrolls a little instead. Computers and tablets still fit on one
+  screen.
+- **The first sentence says what each app does**: RankUp, a chores game for families; CyberLogix
+  AI, equipment alarms for businesses; and OmniArmor.ai, compliance checklists for businesses.
+- **"Watch Video" is now "Quick tour"**, because it is a short slideshow, not a video.
+- **Buttons and links are easier to tap on a phone**: the app tiles' buttons, the search and
+  bell buttons, the footer links, the Home link and logo at the top of each page, Genesis's
+  Import and other small buttons, Orbyt's buttons under each app, the brand page's download
+  links, the "I'm a grown-up" tick box, and the × and links in the home page's pop-ups are all
+  at least 40 pixels tall.
+- **Small fixes on narrow phones**: "Early access" on the app tiles no longer breaks over two
+  lines, Genesis shows "Launched" in full instead of "Launc...", and the version number at the
+  foot of the home page stays on one line.
+- **New:** `tools/measure_pages.py` measures every public page on a slowed-down phone.
+
 ## 1.8.3 (17 November 2026)
 
 More fixes from the check before launch:

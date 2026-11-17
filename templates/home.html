@@ -14,6 +14,12 @@
 <meta property="og:image:height" content="512">
 <meta name="twitter:card" content="summary">
 <link rel="canonical" href="{{ base }}/">
+{#- The picture at the top is the biggest thing on the page, and the
+    stylesheet names it, so a phone would only ask for it once the
+    stylesheet had arrived. Asked for now, it arrives with the stylesheet.
+    Each screen asks only for its own size (site.css picks the same one). -#}
+<link rel="preload" href="/static/img/hero-phone.webp" as="image" type="image/webp" media="(max-width: 720px)" fetchpriority="high">
+<link rel="preload" href="/static/img/hero-wide.webp" as="image" type="image/webp" media="(min-width: 721px)" fetchpriority="high">
 {% if early %}<link rel="stylesheet" href="{{ asset('css/grow.css') }}">{% endif %}
 </head>
 <body class="home">
@@ -78,16 +84,16 @@
       <p class="eyebrow">Welcome to MTRX Horizyn</p>
       <h1><span class="line">One Vision.</span> <span class="line gradient-text">Infinite Possibilities.</span></h1>
       <p class="lede">MTRX Horizyn is the parent company of {{ how_many }} apps{% if more %}, including{% else %}:{% endif %}
-        <a href="#learn-rankup">RankUp</a>, <a href="#learn-cyberlogix">CyberLogix AI</a> and
-        <a href="#learn-omniarmor">OmniArmor.ai</a>. We build digital solutions that empower
-        people, businesses, and communities.</p>
+        <a href="#learn-rankup">RankUp</a>, a chores game for families;
+        <a href="#learn-cyberlogix">CyberLogix AI</a>, equipment alarms for businesses; and
+        <a href="#learn-omniarmor">OmniArmor.ai</a>, compliance checklists for businesses.</p>
       <div class="cta-row">
         {#- While early access is on, it takes the first button. -#}
         {% if early %}<a class="btn btn-primary" href="#early-access">Get early access <span aria-hidden="true">→</span></a>
         {% else %}<a class="btn btn-primary" href="#apps">Explore Our Apps <span aria-hidden="true">→</span></a>{% endif %}
         <a class="btn btn-ghost" href="#tour">
           <svg class="play" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg>
-          Watch Video</a>
+          Quick tour</a>
       </div>
     </div>
   </section>
@@ -330,7 +336,7 @@
     <a href="#projects">Projects</a>
     <a href="#company">About MTRX Horizyn</a>
     <a href="#updates">What's new</a>
-    <a href="#tour">Watch the video</a>
+    <a href="#tour">Quick tour of the apps</a>
     <a href="#settings">Settings</a>
     {% if not demo %}<a href="/privacy">Privacy</a>
     <a href="/terms">Terms</a>{% endif %}
@@ -338,7 +344,7 @@
   </nav>
 </section>
 
-<section class="sheet" id="tour" aria-label="Video: a quick tour">
+<section class="sheet" id="tour" aria-label="A quick tour of the apps">
   <a class="sheet-shut" href="#" aria-label="Close"></a>
   <div class="sheet-card tour-card">
     <a class="sheet-x" href="#" aria-label="Close">×</a>

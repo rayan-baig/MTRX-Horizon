@@ -149,7 +149,8 @@
   .o-joined { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 720px) {
-  .o-home { display: inline-block; }
+  .o-home { display: inline-flex; align-items: center; min-height: 40px; margin-block: -4px; padding-inline: 4px; }
+  .offer .btn-small { min-height: 40px; }
   .offer { padding: 18px 16px 44px; gap: 18px; }
   .o-hero { grid-template-columns: minmax(0, 1fr); padding: 24px 18px; }
   .o-hero-art { display: none; }

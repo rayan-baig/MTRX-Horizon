@@ -410,15 +410,17 @@
   .g-danger { order: 5; }
 }
 @media (max-width: 720px) {
-  .g-home { display: inline-block; }
+  .g-home { display: inline-flex; align-items: center; min-height: 40px; margin-block: -4px; padding-inline: 4px; }
+  .g-tool, .btn-small { min-height: 40px; }
   .genesis { padding: 18px 16px 44px; gap: 14px; }
   .g-hero { padding: 22px 18px; gap: 18px; }
   .g-hero-art { background: radial-gradient(ellipse 90% 45% at 80% 100%, rgba(251, 191, 36, 0.45), rgba(244, 114, 182, 0.2) 50%, transparent 75%); }
   .g-hero-art .g-spark { right: 18px; top: 18px; width: 40px; height: 40px; }
   .g-path { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
-  .g-path li { padding: 8px 4px; text-align: center; }
+  .g-path li { padding: 8px 2px; text-align: center; }
   .g-path b { font-size: 18px; }
-  .g-path span { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; }
+  /* "Launched" whole on a 360px phone, not cut to "Launc...". */
+  .g-path span { font-size: clamp(9.5px, 2.8vw, 10.5px); overflow: hidden; text-overflow: ellipsis; }
   .g-checklist, .g-progress, .g-notes-panel, .g-danger { padding: 16px; }
   .g-item { padding: 8px 4px; }
   .g-pro-buy .btn { flex: 1 1 100%; }

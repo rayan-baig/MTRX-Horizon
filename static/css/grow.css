@@ -39,7 +39,8 @@
   background: color-mix(in srgb, var(--ac) 12%, rgba(8, 16, 42, .8));
 }
 .ea-app input, .ea-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--cyan); }
-.ea-check { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14.5px; }
+.ea-check { display: flex; align-items: center; gap: 10px; min-height: 40px; cursor: pointer; font-size: 14.5px; }
+.ea-check input { flex: none; }
 .ea-trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .ea-go { justify-content: center; }
 .ea-msg { min-height: 1.3em; font-size: 14px; color: var(--muted); }

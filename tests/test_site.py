@@ -155,7 +155,8 @@ def test_demo_reads_rankup_themes_as_text(tmp_path, monkeypatch):
 def test_home_page_is_one_screen(client):
     """The owner wants the home page on one screen with no scrolling: it is
     all inside the .page frame, which is the height of the window, and the
-    Learn more lists open over the page rather than making it longer."""
+    Learn more lists open over the page rather than making it longer.
+    Phones are the one exception (see the next test)."""
     page = client.get("/").text
     assert '<div class="page">' in page
     # Every pop-up is outside the frame, so opening one cannot move it.
@@ -166,6 +167,19 @@ def test_home_page_is_one_screen(client):
     css = open("static/css/site.css", encoding="utf-8").read()
     frame = css.split(".page {", 1)[1].split("}", 1)[0]
     assert "height: 100dvh" in frame and "overflow: hidden" in frame
+
+
+def test_on_a_phone_the_home_page_never_hides_what_it_is_or_where_to_go():
+    """Held to one screen, a phone had no room for the hero's words: the
+    line saying what MTRX Horizyn is was hidden, and on a 360x740 phone the
+    buttons too. On a phone the page may now scroll, so all of it shows."""
+    css = open("static/css/site.css", encoding="utf-8").read()
+    phone = css.split("@media (max-width: 720px) {\n  /* A phone may scroll", 1)[1].split("\n}\n", 1)[0]
+    assert "height: auto" in phone and "min-height: 100dvh" in phone
+    assert "@container" not in css
+    for words in (".lede", ".cta-row"):
+        for rule in css.split("}"):
+            assert not (words in rule.split("{")[0] and "display: none" in rule), rule
 
 
 def test_home_page_numbers_are_real_or_say_they_are_coming(client):

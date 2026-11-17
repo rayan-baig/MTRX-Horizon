@@ -249,6 +249,10 @@ p { margin: 0; }
   .mainnav { display: none; }
   .foot-values { border-left: 0; padding-left: 0; }
   .foot-line { margin: 0; }
+  /* Big enough for a thumb (40px), without making the bars any taller. */
+  .topbar a.brand { min-height: 40px; margin-block: -4px; }
+  .foot-links { gap: 0 12px; }
+  .foot-links a { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; }
 }
 
 /* ======================================================================
@@ -662,6 +666,12 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 .company-contact a { color: var(--cyan); overflow-wrap: anywhere; }
 .company-legal { color: var(--muted); margin: 16px 0 0; font-size: 13px; }
 .company-legal i { color: var(--faint); margin: 0 6px; font-style: normal; }
+/* On a phone, everything in the pop-ups is big enough for a thumb. */
+@media (max-width: 720px) {
+  .sheet-x { top: 8px; right: 10px; width: 40px; height: 40px; }
+  .company-apps span a { display: inline-flex; align-items: center; min-height: 40px; margin-block: -10px; }
+  .company-legal a { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; }
+}
 
 /* The video: a sixteen-second tour, one picture per app, on a loop. */
 .tour-card { width: min(860px, 100%); padding: 0; overflow: hidden; }
@@ -753,14 +763,29 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .live { grid-template-columns: 1fr 1fr; column-gap: 14px; }
 }
 @media (max-width: 720px) {
-  /* No room beside the words: the whole picture goes above them instead. */
-  .page .hero { flex-direction: column; align-items: stretch; justify-content: center; gap: 6px; }
+  /* A phone may scroll the home page. Held to one screen, a phone had room
+     for the picture or the words, and the words lost: the line saying what
+     MTRX Horizyn is went first, and on smaller phones the buttons too. Now
+     everything is shown, the first screen still holds the picture, the
+     words and both buttons, and every button is big enough for a thumb. */
+  body:has(> .page), html:has(> body > .page) { height: auto; overflow: auto; }
+  .page { height: auto; min-height: 100vh; min-height: 100dvh; overflow: visible; }
+  /* No room beside the words: the whole picture goes above them instead.
+     A picture made for phone screens: a third of the bytes, the same look. */
+  .page .hero { flex: 1 0 auto; container-type: normal; flex-direction: column; align-items: stretch; justify-content: center; gap: 6px; }
   .page .hero-art {
     position: relative; inset: auto; flex: none; width: calc(100% + 24px); margin: 0 -12px;
     aspect-ratio: 1111 / 400; background-position: center;
+    background-image: url("/static/img/hero-phone.webp");
   }
-  /* The words size against the room left under the picture. */
-  .page .hero-copy { max-width: none; flex: 1; min-height: 0; container: words / size; display: flex; flex-direction: column; justify-content: center; }
+  .page .hero-copy { max-width: none; flex: none; padding-block: 4px 8px; }
+  .page .hero .eyebrow { font-size: 11px; margin-bottom: 10px; }
+  .page .hero h1 { margin-bottom: 12px; }
+  .page .lede { margin-bottom: 16px; }
+  .page .cta-row .btn { min-height: 44px; padding: 0 20px; font-size: 14px; }
+  .page .app-card.green .app-art { --art: url("/static/img/rankup-art-sm.webp"); }
+  .page .app-card.blue .app-art { --art: url("/static/img/cyberlogix-art-sm.webp"); }
+  .page .app-card.violet .app-art { --art: url("/static/img/omniarmor-art-sm.webp"); }
   /* Three small tiles across: icon, name and Manage. */
   .page .apps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
   .page .app-card { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 8px; }
@@ -768,19 +793,21 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .app-head > div { grid-column: auto; grid-row: auto; }
   .page .app-card .tags, .page .app-card .app-lede { display: none; }
   .page .card-actions { grid-column: auto; grid-row: auto; flex-direction: column; gap: 5px; }
-  .page .card-actions .btn { width: 100%; justify-content: center; min-height: 28px; padding: 0 6px; font-size: 12px; gap: 6px; }
+  .page .card-actions .btn { width: 100%; justify-content: center; min-height: 40px; padding: 0 4px; font-size: 12px; gap: 6px; white-space: nowrap; }
   /* The tile already says which app it is. */
   .page .card-actions .app-name, .page .card-actions .arrow { display: none; }
   .page .topbar { gap: 10px; padding-inline: 12px; }
   .page .brand-mark { width: 40px; height: 31px; }
   .tools { gap: 4px; }
-  .search, .bell { width: 34px; }
+  .search, .bell { width: 40px; height: 40px; }
+  /* Folded, the search box is all tap area, edge to edge. */
+  .search:not(:focus-within) { border-width: 0; }
   .me-name, .me svg { display: none; }
   .me { padding: 2px; }
   .page .demo-note { font-size: 11px; line-height: 1.3; padding: 4px 12px; }
   .page main { gap: 8px; padding: 0 12px 6px; }
-  .page .hero h1 { font-size: clamp(20px, min(7.4vw, 16cqh), 36px); }
-  .page .lede { font-size: clamp(12px, 6cqh, 13.5px); text-shadow: 0 1px 8px var(--bg); }
+  .page .hero h1 { font-size: clamp(22px, 7.4vw, 36px); }
+  .page .lede { font-size: 13.5px; text-shadow: 0 1px 8px var(--bg); }
   .page .cta-row { gap: 10px; }
   .page .app-card { padding: 8px 10px; column-gap: 10px; }
   .page .app-icon { grid-row: 1; width: 38px; height: 38px; border-radius: 10px; }
@@ -801,21 +828,16 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .live-note { font-size: 10px; }
   .page .footer { font-size: 10.5px; justify-content: center; text-align: center; padding-block: 4px 6px; }
   .page .foot-values, .page .foot-line, .page .foot-brand { display: none; }
-  /* Under the picture, only what fits in the room left: first the
-     paragraph makes way, then the two buttons (both point at things
-     already on screen, or in the menu), so the city and the planet stay
-     whole. Measured against that room itself, not the window, so a phone
-     with room for the buttons shows them. */
-  @container words (max-height: 205px) { .page .lede { display: none; } }
-  @container words (max-height: 95px) { .page .cta-row { display: none; } }
-  /* Narrower than 345px the paragraph runs to more lines and the buttons
-     stack, so each needs more room. */
-  @container words (max-width: 320px) and (max-height: 275px) { .page .lede { display: none; } }
-  @container words (max-width: 320px) and (max-height: 145px) { .page .cta-row { display: none; } }
   /* Open, the search box spans the bar rather than pushing the name aside.
      16px text, or iPhones zoom the whole page in while typing. */
   .search:focus-within { position: absolute; z-index: 20; left: 12px; right: 12px; top: 50%; margin-top: -19px; width: auto; background: #060c22; }
   .search input { font-size: 16px; }
+}
+/* Small phones: the bar closes up so the name and its line stay whole
+   beside the three 40px buttons. */
+@media (max-width: 380px) {
+  .page .topbar { gap: 6px; }
+  .tools { gap: 0; }
 }
 /* The smallest phones: the line under the name would be too small to read. */
 @media (max-width: 340px) {
@@ -853,10 +875,11 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 .brand-logos li { display: grid; justify-items: start; gap: 8px; }
 .brand-logos img { width: 96px; height: 96px; border-radius: 18px; background: var(--bg); padding: 8px; }
 .brand-logos span { display: grid; gap: 2px; color: var(--text); }
+.brand-logos a { justify-self: start; display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; }
 .brand-colours { list-style: none; padding: 0 !important; }
 .brand-colours li { display: flex; align-items: center; gap: 10px; }
 .brand-colours b { color: var(--text); min-width: 4.5em; }
 .sw { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); flex: none; }
 .sw-bg { background: #050816; } .sw-cyan { background: #22d3ee; } .sw-blue { background: #3b82f6; }
 .sw-violet { background: #8b5cf6; } .sw-pink { background: #d946ef; } .sw-text { background: #eef3ff; }
-.foot-version { color: var(--faint); margin-left: 6px; }
+.foot-version { color: var(--faint); margin-left: 6px; white-space: nowrap; }
