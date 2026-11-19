@@ -30,7 +30,7 @@ import unicodedata
 
 import anthropic
 
-from . import config, db, genesis_pro
+from . import config, db, genesis_pro, outbound
 
 # The SDK writes whole request bodies to its log at debug level, and the
 # bodies hold visitors' ideas. Never let it, whatever the site's log level.
@@ -51,6 +51,8 @@ PRO_MAX_ANSWER_CHARS = 6000
 # and the longest fields allowed are well under it.
 INPUT_GUESS = 3000
 TIMEOUT_SECONDS = 30
+# A provider that can't be reached at all is given up on sooner.
+CONNECT_SECONDS = 5
 KEEP_ASKS_SECONDS = 24 * 3600
 
 HELPERS = {
@@ -241,7 +243,8 @@ def spent_today() -> float:
 def _call(message: str, pro: bool = False):
     """One short request to the AI provider. Returns the SDK's message."""
     settings = config.get()
-    client = anthropic.Anthropic(api_key=settings.genesis_ai_key, timeout=TIMEOUT_SECONDS,
+    client = anthropic.Anthropic(api_key=settings.genesis_ai_key,
+                                 timeout=anthropic.Timeout(TIMEOUT_SECONDS, connect=CONNECT_SECONDS),
                                  max_retries=1)
     extra = {}
     if settings.genesis_ai_effort in ("low", "medium", "high"):
@@ -284,7 +287,15 @@ def answer(who: str, body: dict, pro_key: str | None = None) -> tuple[int, dict]
         return 429, {"error": busy or FAILED, **extra}
     settings = config.get()
     try:
-        response = _call(message, pro=pro)
+        # One of a few places for AI calls (outbound.py): while the provider
+        # is slow, extra asks are told to try again instead of taking every
+        # worker the site's pages need.
+        with outbound.place("ai"):
+            response = _call(message, pro=pro)
+    except outbound.Busy:
+        LOG.warning("Ask Genesis: every place for AI calls is taken")
+        settle_spend(spend_id, 0)
+        return 503, {"error": FAILED, **extra}
     except anthropic.APITimeoutError:
         LOG.warning("Ask Genesis: the AI provider timed out")
         settle_spend(spend_id, 0)

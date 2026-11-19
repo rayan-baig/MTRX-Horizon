@@ -6,6 +6,7 @@ import io
 import ipaddress
 import json
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
@@ -23,7 +24,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
 from . import (catalog, config, costs, creators, db, early_access, errors, genesis_ai, genesis_pro, growth, health,
-               lock, numbers, offers, stats, upkeep, vortex)
+               lock, numbers, offers, ready, stats, upkeep, vortex)
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -41,9 +42,35 @@ CSP = (
     "base-uri 'none'; form-action 'self'"
 )
 
+def _setup_logging():
+    """One line per event, with the time (UTC) and how serious it is.
+
+    Messages never hold a visitor's words, address or email, or a secret:
+    every module logs a failure by its kind only.
+    """
+    log = logging.getLogger("horizon")
+    if log.handlers:
+        return
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter("%(asctime)s %(levelname)s horizon: %(message)s", "%Y-%m-%dT%H:%M:%SZ")
+    formatter.converter = time.gmtime
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
+    log.setLevel(logging.INFO)
+
+
+_setup_logging()
+
+
 @asynccontextmanager
 async def lifespan(_app):
-    db.init()
+    # On the live site, a missing setting it can't do without stops the start
+    # here, with a plain message in the log (ready.py).
+    ready.check_startup()
+    try:
+        db.init()
+    except Exception as exc:
+        raise ready.database_problem(exc) from None
     upkeep.start()
     try:
         yield
@@ -100,16 +127,9 @@ def asset(path: str) -> str:
 templates.env.globals["asset"] = asset
 
 
-def _read_version() -> str:
-    try:
-        return (config.ROOT / "VERSION").read_text().strip() or "dev"
-    except OSError:
-        return "dev"
-
-
 # Shown at the foot of the home page and the console, and by /healthz, so
 # the owner can see which version is live. CHANGELOG.md says what is in it.
-VERSION = _read_version()
+VERSION = config.version()
 templates.env.globals["version"] = VERSION
 
 
@@ -489,9 +509,21 @@ def chroma_vortex():
     return RedirectResponse("/orbyt", status_code=301)
 
 
+# Is the server answering at all? Never touches the database, so the host's
+# own health check (render.yaml) only restarts a server that is really stuck.
 @app.api_route("/healthz", methods=["GET", "HEAD"])
 def healthz():
     return {"ok": True, "version": VERSION}
+
+
+# Is it ready to do its work: the database can be written to, the settings
+# are complete and the background jobs are running (ready.py)? 503 if not.
+# For an uptime monitor, not the host's health check: restarting the server
+# would hide a stopped job or a lost disk instead of telling the owner.
+@app.api_route("/readyz", methods=["GET", "HEAD"])
+def readyz():
+    status, answer = ready.readiness()
+    return JSONResponse(answer, status_code=status, headers={"Cache-Control": "no-store"})
 
 
 # The pages a search engine may list. The console is never one of them.

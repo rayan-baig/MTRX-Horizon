@@ -40,12 +40,25 @@ jobs:
         run: |
           docker volume create horizon-data
           docker run -d --name horizon -p 8000:8000 -v horizon-data:/app/data \
-            -e MTRX_SETUP_TOKEN=ci-setup-token-1234567890 horizon:ci
+            -e MTRX_SETUP_TOKEN=ci-setup-token-1234567890 \
+            -e MTRX_PUBLIC_URL=https://ci.example -e MTRX_KNOCK="logo logo omniarmor rankup" horizon:ci
           for i in $(seq 1 30); do
             curl -fsS http://localhost:8000/healthz && break
             sleep 1
           done
           curl -fsS http://localhost:8000/healthz | grep -F "\"version\":\"$(cat VERSION)\""
+          curl -fsS http://localhost:8000/readyz | grep -F '"ok":true'
           test "$(docker exec horizon sh -c 'ps -o user= -p 1 2>/dev/null || stat -c %U /proc/1')" = horizon
           docker exec -u horizon horizon test -O /app/data/horizon.db
           docker logs horizon | tail -20
+      - name: The image refuses to start without the live site's settings
+        run: |
+          set +e
+          timeout 60 docker run --rm horizon:ci > refused.log 2>&1
+          code=$?
+          set -e
+          cat refused.log
+          test "$code" -ne 0 && test "$code" -ne 124
+          grep -F "can't start, because of its settings" refused.log
+          grep -F "MTRX_KNOCK isn't set" refused.log
+          grep -F "MTRX_PUBLIC_URL must be" refused.log

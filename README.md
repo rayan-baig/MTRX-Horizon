@@ -301,8 +301,9 @@ Free means the company pays, so it is fenced in:
 Before each ask, the most it could cost is set aside against the day's cap; when the answer
 arrives, that is replaced by its real cost from the token counts. Each answer is at most 1,200
 tokens and each request a few hundred words. A visitor over their limit, or everyone once the
-cap is reached, gets a friendly message, and the provider is not called. Timeouts (30 seconds)
-and provider errors also get a friendly message. Set a monthly spend limit in the Anthropic
+cap is reached, gets a friendly message, and the provider is not called. Timeouts (30 seconds,
+5 to connect) and provider errors also get a friendly message, and so does an ask made while 8
+others are already waiting on a slow provider, so the rest of the site never waits behind them. Set a monthly spend limit in the Anthropic
 Console as well, as a second fence.
 
 ### Genesis Pro: the paid upgrade
@@ -571,7 +572,16 @@ The domain and the apps' subdomains are set up as in
 
 **Running all four apps** (uptime checks, releasing, backups, what to do when something breaks, support, costs): [docs/RUNNING-MTRX-HORIZYN.md](docs/RUNNING-MTRX-HORIZYN.md).
 
-**Uptime monitor:** check `https://mtrxhorizyn.com/healthz` (answers `{"ok":true}` to GET or HEAD).
+**Uptime monitor:** check `https://mtrxhorizyn.com/healthz` (is the site answering?) and
+`https://mtrxhorizyn.com/readyz` (can it do its work: database, settings, background jobs?). Both
+answer GET or HEAD; `/readyz` answers 503 when something is wrong. What to do for each alert:
+[docs/OPERATIONS.md](docs/OPERATIONS.md), "If the app is down".
+
+**Settings check at start:** the image sets `MTRX_PRODUCTION=1`, so on Render (and staging) the site
+won't start without a working `MTRX_KNOCK` and an `https://` `MTRX_PUBLIC_URL`, or with `MTRX_DEV=1`.
+The log then says "MTRX Horizyn can't start" and what to set. Running it on a computer, without
+`MTRX_PRODUCTION`, nothing is checked.
+
 The site must be served over **https**, because browsers only make device keys on secure
 sites.
 
@@ -594,7 +604,9 @@ needs changing. The line shows counts only, never anyone's address.
 - `horizon/lock.py`: the three locks
 - `horizon/stats.py`: the console's numbers, and the project list
 - `horizon/health.py`: the apps' health checks, and the alerts when one is down
-- `horizon/upkeep.py`: the jobs the server runs on its own once a minute
+- `horizon/upkeep.py`: the jobs the server runs on its own once a minute, and their watchdog
+- `horizon/ready.py`: the settings check at start, and the readiness check (`/readyz`)
+- `horizon/outbound.py`: how many calls to the AI provider and Stripe may wait at once
 - `horizon/genesis_ai.py`: Ask Genesis, its limits and its system prompt
 - `horizon/genesis_pro.py`, `static/js/genesis-pro*.js`, `templates/genesis_pro_welcome.html`:
   Genesis Pro, the paid upgrade (`docs/GENESIS-PRO.md`)

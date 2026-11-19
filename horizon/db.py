@@ -334,6 +334,13 @@ CREATE TABLE IF NOT EXISTS done_once (
     job TEXT PRIMARY KEY,
     at REAL NOT NULL
 );
+-- When something last happened: "upkeep" is the end of the background jobs'
+-- latest round, "readyz" the latest readiness check (it writes here to
+-- prove the database can still be written to). One row each.
+CREATE TABLE IF NOT EXISTS heartbeats (
+    name TEXT PRIMARY KEY,
+    at REAL NOT NULL
+);
 """
 
 

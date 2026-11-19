@@ -3,6 +3,8 @@ services:
     name: mtrx-horizon
     runtime: docker
     plan: starter            # the free plan has no disk, so approved devices would be forgotten
+    # Only "is it answering?". /readyz is for the uptime monitor: Render restarting
+    # the site over a stopped job would hide it (docs/OPERATIONS.md).
     healthCheckPath: /healthz
     numInstances: 1
     disk:

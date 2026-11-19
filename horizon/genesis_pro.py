@@ -47,7 +47,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from . import config, db, health
+from . import config, db, health, outbound, stats
 
 LOG = logging.getLogger("horizon")
 
@@ -201,9 +201,17 @@ def _stripe(path: str, fields: dict | None = None, method: str = "POST") -> dict
     request.add_header("Authorization", "Bearer " + config.get().stripe_secret_key)
     if data is not None:
         request.add_header("Content-Type", "application/x-www-form-urlencoded")
+    # The timeout given to urlopen is for each read; the deadline is for the
+    # whole answer, so a trickle of bytes can't hold a worker for longer.
+    deadline = time.monotonic() + STRIPE_TIMEOUT
     try:
-        with urllib.request.urlopen(request, timeout=STRIPE_TIMEOUT) as response:
-            body = json.loads(response.read(1_000_000).decode())
+        # One of a few places for Stripe calls (outbound.py): while Stripe is
+        # slow, extra calls fail at once ("try again") instead of taking
+        # every worker the site's pages need.
+        with outbound.place("stripe"), urllib.request.urlopen(request, timeout=STRIPE_TIMEOUT) as response:
+            body = json.loads(stats._read(response, deadline, limit=1_000_000).decode())
+    except outbound.Busy:
+        raise StripeError("busy") from None
     except urllib.error.HTTPError as exc:
         raise StripeError(f"Stripe answered {exc.code}") from None
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:

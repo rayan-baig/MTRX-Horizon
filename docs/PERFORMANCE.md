@@ -85,3 +85,33 @@ Already in place before this, and checked again:
 - Scripts never hold up drawing the page (`defer`).
 
 `tests/test_speed.py` checks that these stay true.
+
+## The server, and staying fast when something is slow (19 November 2026, version 1.9.0)
+
+How long the server takes to answer each page, measured on a computer with nothing else
+running (60 requests each, the time until the whole answer arrived):
+
+| Page | Middle | Slowest 1 in 20 |
+|---|---|---|
+| `/` | 4.2 ms | 5.3 ms |
+| `/genesis` | 2.1 ms | 4.5 ms |
+| `/orbyt` | 3.3 ms | 5.4 ms |
+| `/partners` | 3.2 ms | 3.5 ms |
+| `/privacy` | 2.2 ms | 2.7 ms |
+| `/healthz` | 1.3 ms | 1.6 ms |
+| `/readyz` | 1.0 ms | 2.2 ms |
+
+Every page is a few thousandths of a second, so the server is not what a phone waits for (the
+network is; see above). Nothing was changed for speed in 1.9.0.
+
+What was slow was the site **while an outside service hung**. Pages and calls to the AI provider
+or Stripe share one pool of 40 workers. With 45 Ask Genesis requests stuck on a provider that
+never answered:
+
+| | Before (1.8.4) | After (1.9.0) |
+|---|---|---|
+| Home page | 59 s | 0.04 s |
+| Asks | 40 waited about 60 s, then failed; 5 more waited 120 s and gave up | 8 waited for the provider; 37 were told "try again" at once |
+
+Now at most 8 calls to each outside service wait at once (`horizon/outbound.py`), so most workers
+are always free for pages. `tests/test_reliability.py` checks it.

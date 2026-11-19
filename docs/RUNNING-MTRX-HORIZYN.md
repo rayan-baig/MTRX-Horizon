@@ -26,6 +26,7 @@ monitor email or text you.
 | App | Check this address | Notes |
 |---|---|---|
 | MTRX Horizyn | `https://mtrxhorizyn.com/healthz` | Answers GET and HEAD |
+| MTRX Horizyn, second check | `https://mtrxhorizyn.com/readyz` | Answers 503 when its database, settings or background jobs are wrong. Uptime monitor only, never the host's health check. What each answer means: [OPERATIONS.md](OPERATIONS.md) |
 | RankUp | `https://rankup.mtrxhorizyn.com/api/health` | Shallow and public. With `Authorization: Bearer <CRON_SECRET>` it lists every scheduled job and answers 503 if one is late |
 | CyberLogix | `https://cyberlogix.mtrxhorizyn.com/api/health` | Use this for the host's health check |
 | CyberLogix, second check | `https://cyberlogix.mtrxhorizyn.com/api/watchdog` | Answers 503 when the alert sweep has stopped. Put this in the uptime monitor only, never in the host's health check (the host would restart the server and hide the problem) |
@@ -77,7 +78,8 @@ Stay calm, write down the time, then:
 
 | What you see | First step |
 |---|---|
-| An uptime monitor says an app is down | Open the host's dashboard for that app (Render or Cloudflare) and look at the latest deploy and logs. If the newest deploy broke it, roll back to the previous one in the dashboard. |
+| An uptime monitor says MTRX Horizyn is down | Follow [OPERATIONS.md](OPERATIONS.md), "If the app is down". |
+| An uptime monitor says another app is down | Open the host's dashboard for that app (Render or Cloudflare) and look at the latest deploy and logs. If the newest deploy broke it, roll back to the previous one in the dashboard. |
 | CyberLogix watchdog says the sweep stopped | This is the important one: freezers are not being watched. Restart the CyberLogix service in Render. Then read CyberLogix `docs/OPERATIONS.md`, "dead man's switch". |
 | Emails stopped arriving | Check the email service's dashboard for bounces or a suspended account. CyberLogix and OmniArmor keep unsent mail and send it when mail works again; RankUp's sign-in emails go through Supabase, so check its email settings too. |
 | Payments failing | Look at the Stripe dashboard's webhook page for errors. Each app's payments doc explains its webhook; Genesis Pro's is in [GENESIS-PRO.md](GENESIS-PRO.md). |

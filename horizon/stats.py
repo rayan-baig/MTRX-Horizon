@@ -7,9 +7,11 @@
 """
 
 import json
+import logging
 import threading
 import os
 import shutil
+import sqlite3
 import time
 import urllib.parse
 import urllib.request
@@ -289,16 +291,24 @@ def public_numbers() -> dict:
     # away kept its old numbers on the home page forever.
     connected = [key for key in APPS if config.get().stats_urls.get(key)]
     latest = {}
-    with db.connect() as conn:
-        for key in connected:
-            row = conn.execute(
-                "SELECT online, users, active_users FROM app_snapshots"
-                " WHERE app = ? ORDER BY at DESC LIMIT 1",
-                (key,),
-            ).fetchone()
-            if row is not None:
-                latest[key] = row
-    recent = history(30)
+    try:
+        with db.connect() as conn:
+            for key in connected:
+                row = conn.execute(
+                    "SELECT online, users, active_users FROM app_snapshots"
+                    " WHERE app = ? ORDER BY at DESC LIMIT 1",
+                    (key,),
+                ).fetchone()
+                if row is not None:
+                    latest[key] = row
+        recent = history(30)
+    except (sqlite3.Error, OSError) as exc:
+        # The database can't be read (its disk gone, say). The home page
+        # still loads, with no numbers, as before any app reported;
+        # /readyz and the server log say what is wrong.
+        logging.getLogger("horizon").warning(
+            "Home page numbers: the database can't be read (%s)", type(exc).__name__)
+        latest, connected, recent = {}, [], {}
     uptimes = [recent[k]["uptime"] for k in connected if recent[k]["uptime"] is not None]
 
     def total(field):

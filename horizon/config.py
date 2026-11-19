@@ -22,6 +22,14 @@ APP_KEYS = ("rankup", "cyberlogix", "omniarmor")
 KNOCK_TARGETS = ("logo", "rankup", "cyberlogix", "omniarmor", "mark")
 
 
+def version() -> str:
+    """The number in VERSION: which version of the site this is."""
+    try:
+        return (ROOT / "VERSION").read_text().strip() or "dev"
+    except OSError:
+        return "dev"
+
+
 @dataclass(frozen=True)
 class Settings:
     db_path: Path

@@ -12,7 +12,9 @@ once only (the `done_once` table remembers it), as released. Their
 used for that app, whatever the table says.
 """
 
+import logging
 import re
+import sqlite3
 import time
 import unicodedata
 
@@ -92,9 +94,27 @@ def everything() -> list:
     return [_row(r, settings) for r in rows]
 
 
+def _for_the_public() -> list:
+    """everything(), or the three founding apps if the database can't be
+    read (its disk gone, say). The public pages that list apps keep working
+    and show the founding apps as "soon", with no Open button: which apps
+    the owner has released is in the database, so no address is shown
+    until it can be read again. The readiness check (/readyz) and the
+    server log say what is wrong."""
+    try:
+        return everything()
+    except (sqlite3.Error, OSError) as exc:
+        logging.getLogger("horizon").warning(
+            "App list: the database can't be read (%s); showing the founding apps", type(exc).__name__)
+    settings = config.get()
+    rows = [{"key": key, "name": name, "line": line, "url": "", "accent": accent,
+             "status": "released", "released_at": 0} for key, name, line, accent in FOUNDING]
+    return [{**_row(r, settings), "url": "", "url_from_setting": False} for r in rows]
+
+
 def released() -> list:
     """The apps the public may see, oldest first."""
-    return [a for a in everything() if a["released"]]
+    return [a for a in _for_the_public() if a["released"]]
 
 
 def released_keys() -> list:
@@ -251,7 +271,7 @@ def for_home() -> dict:
     in development shows "soon" instead of its Open button. Any other app
     joins the About list and the project list once it is released.
     """
-    apps = everything()
+    apps = _for_the_public()
     urls = {key: "" for key in config.APP_KEYS}
     for a in apps:
         if a["founding"] and a["released"]:

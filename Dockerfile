@@ -10,6 +10,10 @@ COPY static static
 COPY VERSION ./
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 ENV MTRX_DB_PATH=/app/data/horizon.db
+# This image is the live site (or staging): at start it checks the settings
+# the site can't do without (horizon/ready.py), and stops with a plain
+# message in the log if one is missing, rather than half-working.
+ENV MTRX_PRODUCTION=1
 # The site runs as "horizon", not root. The entrypoint starts as root only to
 # give the data disk to that user, then drops to it.
 RUN useradd --create-home --shell /usr/sbin/nologin horizon \

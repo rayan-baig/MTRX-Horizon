@@ -4,6 +4,32 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.9.0 (19 November 2026)
+
+Keeps working when something goes wrong, and tells you quickly when it can't:
+
+- **A second health address, `/readyz`**, for a free uptime monitor. It answers 503 when the site
+  can't write to its database, a setting it needs is missing, or its background jobs (checking the
+  other apps, launch emails, tidying old data) stopped running. `/healthz` stays as it was, for
+  Render. What to do for each alert: `docs/OPERATIONS.md`, "If the app is down". **Before
+  launch:** add both addresses to an uptime monitor (that page says how).
+- **The background jobs are watched.** If they stop, `/readyz` says so; if their thread dies, it
+  is started again; a job that fails 3 times in a row is emailed to you like a server error.
+- **A slow AI provider or Stripe can't slow the whole site down.** Measured before: with 45 asks
+  stuck on an AI provider that never answered, the home page took 59 seconds to load. Now it takes
+  0.04 seconds: at most 8 asks (and 8 Stripe calls) wait at once, and the rest are told to try
+  again straight away. The AI provider now gets 5 seconds to connect, and a Stripe answer 15
+  seconds in all, not 15 seconds for each piece.
+- **The public pages keep loading if the database can't be read** (its disk gone, say). The home
+  page, Orbyt, Partners and the Bundle used to show "Something went wrong"; now they load, with
+  the three founding apps shown as "soon".
+- **The live site checks its settings when it starts.** On Render it won't start without a
+  working `MTRX_KNOCK` and an `https://` `MTRX_PUBLIC_URL`, or with `MTRX_DEV=1`, and the log
+  says plainly what to set. Features switched on but not set up (Genesis Pro without Stripe, say)
+  don't stop it; the log lists what they still need. The `Dockerfile` sets `MTRX_PRODUCTION=1`
+  to turn this on; you never set it yourself.
+- **Clearer logs**: every line from the site starts with the time (UTC) and how serious it is.
+
 ## 1.8.4 (17 November 2026)
 
 Faster and easier on a phone, especially the first time:
