@@ -89,47 +89,56 @@
     <div class="v-hero-copy">
       <p class="eyebrow v-eyebrow">MTRX Horizyn</p>
       <h1 class="v-title"><span>Orbyt</span></h1>
-      <p class="v-line">Where partners, ideas, investors and buyers meet MTRX Horizyn.</p>
-      <p class="v-text">The official place to work with us. MTRX Horizyn is the parent company of
-        RankUp, CyberLogix AI and OmniArmor.ai{% if apps | rejectattr("icon") | list %}, and more{% endif %}. Choose a
-        path, tell us a little, and we'll reply by email.</p>
+      <p class="v-line">Want to work with MTRX Horizyn? Start here.</p>
+      <p class="v-text">Pick what fits you below, write us a short note, and we'll reply by email. We
+        make RankUp, CyberLogix AI and OmniArmor.ai{% if apps | rejectattr("icon") | list %}, and more{% endif %}.</p>
+      <ul class="v-promises">
+        <li>Takes about 2 minutes</li>
+        <li>A real person reads every message</li>
+        <li>Nobody pays or gets paid here</li>
+      </ul>
     </div>
   </section>
 
   <nav class="v-paths" aria-label="Choose a path">
-    <a class="v-path path-partner" href="#partner" data-path="partner">
-      <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="12" r="5"/><circle cx="15.5" cy="12" r="5"/></svg></span>
-      <span class="v-path-text"><b>Partner with us</b>
-        <span>Resell, integrate with, or work alongside one of our apps.</span></span>
-      <em class="v-path-go">Partner <span aria-hidden="true">→</span></em>
-    </a>
     <a class="v-path path-pitch" href="#pitch" data-path="pitch">
       <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.2 6.6 6.8.2-5.4 4.2 1.9 6.6L12 16.2 6.5 20.1l1.9-6.6L3 9.3l6.8-.2z"/></svg></span>
-      <span class="v-path-text"><b>Pitch an idea</b>
-        <span>Have a business or app idea? Tell us about it, or bring one from Genesis.</span></span>
+      <span class="v-path-text"><small class="v-who">I have an idea</small><b>Pitch an idea</b>
+        <span>Tell us about a business or app idea, or bring one from Genesis.</span></span>
       <em class="v-path-go">Pitch <span aria-hidden="true">→</span></em>
+    </a>
+    <a class="v-path path-partner" href="#partner" data-path="partner">
+      <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="12" r="5"/><circle cx="15.5" cy="12" r="5"/></svg></span>
+      <span class="v-path-text"><small class="v-who">I run a business</small><b>Partner with us</b>
+        <span>Resell, connect with, or recommend one of our apps.</span></span>
+      <em class="v-path-go">Partner <span aria-hidden="true">→</span></em>
     </a>
     <a class="v-path path-invest" href="#invest" data-path="invest">
       <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></svg></span>
-      <span class="v-path-text"><b>Investors</b>
-        <span>Interested in MTRX Horizyn? Leave your details and we'll get back to you.</span></span>
+      <span class="v-path-text"><small class="v-who">I'm an investor</small><b>Investors</b>
+        <span>Curious about MTRX Horizyn? Say hello and we'll get back to you.</span></span>
       <em class="v-path-go">Get in touch <span aria-hidden="true">→</span></em>
     </a>
     <a class="v-path path-buy" href="#buy" data-path="buy">
       <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M12 15v2"/></svg></span>
-      <span class="v-path-text"><b>Buy the company or an app</b>
-        <span>Interested in acquiring MTRX Horizyn or one of its apps? Start the conversation.</span></span>
+      <span class="v-path-text"><small class="v-who">I'd like to buy</small><b>Buy the company or an app</b>
+        <span>Interested in taking on MTRX Horizyn or one of its apps? Start a conversation.</span></span>
       <em class="v-path-go">Ask about buying <span aria-hidden="true">→</span></em>
     </a>
   </nav>
 
-  <p class="v-choose" id="v-choose">Choose a path above to begin.</p>
+  <ol class="v-how" id="v-choose" aria-label="How Orbyt works">
+    <li><b>1</b><span><strong>Pick a path</strong> The one that sounds most like you.</span></li>
+    <li><b>2</b><span><strong>Write a short note</strong> Your name, email and a few lines.</span></li>
+    <li><b>3</b><span><strong>We reply by email</strong> Only to you. Nothing you send is made public.</span></li>
+  </ol>
 
   <section class="panel v-panel path-partner" id="v-partner" hidden>
     <p class="eyebrow v-kicker">Partner with us</p>
     <h2 class="v-h">Work with our apps</h2>
-    <p class="v-lede">For businesses that want to resell, integrate with, or work with one of our
-      apps. Tell us who you are and what you have in mind.</p>
+    <p class="v-lede">For businesses that want to resell, connect with, or recommend one of our
+      apps. Tell us who you are and what you have in mind; if it's a fit, we'll email you to talk it
+      through.</p>
     <p class="v-more">Repair fridges, advise kitchens on food safety or sell kitchen equipment?
       <a href="/partners">See how partners earn with CyberLogix AI</a>.</p>
     <form class="v-form" data-kind="partner" novalidate>
@@ -164,7 +173,7 @@
     <p class="eyebrow v-kicker">Pitch an idea</p>
     <h2 class="v-h">Tell us your idea</h2>
     <p class="v-lede">For anyone with a business or app idea. A name, one line on what it does and
-      who it's for is plenty to start.</p>
+      who it's for is plenty to start. We read every idea, and email you if we'd like to hear more.</p>
     <p class="v-young">If you're under 13, ask a parent or guardian to send this for you.</p>
     <div class="v-genesis">
       <button class="btn btn-ghost btn-small v-genesis-btn" type="button" id="v-from-genesis">
@@ -188,9 +197,9 @@
   <section class="panel v-panel path-invest" id="v-invest" hidden>
     <p class="eyebrow v-kicker">Investors</p>
     <h2 class="v-h">Talk to MTRX Horizyn</h2>
-    <p class="v-notice">This page is not an offer to sell or a request to buy any shares or other
-      investment. MTRX Horizyn is not raising money through this site. If you'd like to talk, leave
-      your details and we'll get back to you.</p>
+    <p class="v-notice">Just so you know: we're not selling shares or asking anyone for money here, and
+      nothing on this site is an investment. If you'd like to talk, leave your details and we'll get
+      back to you.</p>
     <form class="v-form" data-kind="invest" novalidate>
       <div class="v-grid">
         {{ field("invest", "name", "Your name", limits.name, "name") }}
@@ -205,8 +214,8 @@
   <section class="panel v-panel path-buy" id="v-buy" hidden>
     <p class="eyebrow v-kicker">Buy the company or an app</p>
     <h2 class="v-h">Ask about buying</h2>
-    <p class="v-notice v-notice-buy">This is a place to start a conversation. Nothing here is an offer to
-      sell, and no sale happens through this site. Any deal would need proper agreements and advice.</p>
+    <p class="v-notice v-notice-buy">This only starts a conversation. Nothing is for sale on this page and
+      nobody can buy or pay for anything here.</p>
     <form class="v-form" data-kind="buy" novalidate>
       <div class="v-grid">
         {{ field("buy", "name", "Your name", limits.name, "name") }}
@@ -233,6 +242,15 @@
     <p class="v-sent-line" id="v-sent-line" role="status"></p>
     <p class="v-sent-small">Check your spam folder if you don't hear from us. We keep your message only to
       reply, for up to {{ keep_days }} days.</p>
+    <div class="v-next" id="v-next">
+      <p class="v-next-head">While you wait</p>
+      <a class="v-next-link path-pitch" data-next="pitch" href="/genesis" hidden>
+        <b>Keep building your idea in Genesis</b><span>Tick off small steps from Spark to Launch, free.</span></a>
+      <a class="v-next-link path-partner" data-next="partner" href="/partners" hidden>
+        <b>See how partners earn with CyberLogix AI</b><span>For repair firms, food safety advisers and kitchen suppliers.</span></a>
+      <a class="v-next-link path-invest path-buy" data-next="invest buy" href="#our-apps" hidden>
+        <b>Look around our apps</b><span>What each one does, and who it's for.</span></a>
+    </div>
     <div class="cta-row">
       <a class="btn btn-ghost btn-small" href="#" id="v-again">Send another</a>
       <a class="btn btn-ghost btn-small" href="/">Back to MTRX Horizyn</a>
@@ -267,11 +285,17 @@
         <p class="v-app-line">{{ a.line }}</p>
         <div class="v-app-actions">
           <a class="btn btn-ghost btn-small v-app-pick path-partner" href="#partner" data-pick="{{ a.key }}">Partner on this</a>
-          <a class="btn btn-ghost btn-small v-app-pick path-buy" href="#buy" data-pick="{{ a.key }}">Ask about buying</a>
+          <a class="v-app-buy path-buy" href="#buy" data-pick="{{ a.key }}">Ask about buying</a>
         </div>
       </li>
       {% endfor %}
     </ul>
+  </section>
+  {%- else %}
+  <section class="panel v-catalog-empty" id="our-apps">
+    <h2 class="v-h">Our apps</h2>
+    <p class="v-lede">Our apps will be listed here while they're open to the public. You can still pitch an
+      idea or get in touch above.</p>
   </section>
   {%- endif %}
 </main>

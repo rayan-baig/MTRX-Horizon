@@ -230,7 +230,8 @@ def test_the_offer_shows_stripes_prices_and_says_a_grown_up_pays(client, pro):
     page = client.get("/genesis").text
     assert "Get Pro · $4.99 a month" in page
     assert "$49.90 a year · 2 months free" in page
-    assert "100 AI answers a day" in page and "The free plan has 30" in page
+    # Free and Pro side by side: the free plan's answers against Pro's.
+    assert "<td>30</td><td>Up to 100, all yours</td>" in page
     assert "genesis-pro.js" in page
     response = client.get("/genesis")
     assert response.headers["content-security-policy"] == main.CSP
@@ -461,7 +462,9 @@ def test_each_member_has_a_daily_cap(client, pro, provider, monkeypatch):  # noq
     key = buy(client)
     codes = [ask(client, headers=pro_headers(key)).status_code for _ in range(4)]
     assert codes == [200, 200, 200, 429]
-    assert "tomorrow" in ask(client, headers=pro_headers(key)).json()["error"]
+    capped = ask(client, headers=pro_headers(key)).json()
+    assert "tomorrow" in capped["error"]
+    assert "limit" not in capped  # a member is never shown the upgrade note
     # Another member, and free visitors, are not held up by it.
     other = buy(client, session="cs_test_other", sub="sub_other", customer="cus_other", email="b@example.com")
     assert ask(client, headers=pro_headers(other)).status_code == 200

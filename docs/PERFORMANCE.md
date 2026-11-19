@@ -115,3 +115,18 @@ never answered:
 
 Now at most 8 calls to each outside service wait at once (`horizon/outbound.py`), so most workers
 are always free for pages. `tests/test_reliability.py` checks it.
+
+## Genesis and Orbyt (19 November 2026, version 1.10.0)
+
+The same first-visit phone test, before (1.9.0) and after (1.10.0), middle of 3 runs:
+
+| Page | LCP before | LCP after | KB before | KB after | Requests before | Requests after | Shift |
+|---|---|---|---|---|---|---|---|
+| `/genesis` | 1.76 s | 1.79 s | 133 KB | 144 KB | 9 | 9 | 0.00 |
+| `/orbyt` | 1.70 s | 1.75 s | 137 KB | 141 KB | 14 | 14 | 0.00 |
+
+Both stay well under 2.5 s, with no extra files to fetch and nothing jumping; the few hundredths
+are noise. Genesis is about 10 KB bigger for today's spark and idea cards, kept in the files it
+already loads instead of a new one. On a phone, Orbyt's swirl no longer blurs (the costliest
+part of drawing it) and only its inner ring turns, and its app list is drawn only as it comes
+near the screen (`content-visibility`).

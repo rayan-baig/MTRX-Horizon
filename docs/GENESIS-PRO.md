@@ -23,6 +23,7 @@ of `horizon/genesis_ai.py` (Pro asks), `static/js/genesis-pro.js` and
 | Cloud backup | no | the last 3 copies of all projects, private, restore any time |
 | Download plan | no | any project as a tidy text file, made in the browser |
 | Download / Import (JSON) | yes | yes |
+| Today's spark, streaks, idea cards | yes | yes |
 
 There is **no public publishing or sharing** of anything a member makes. A backup is readable
 only with that member's key, never shown in the console, and never used for anything else, so
@@ -30,6 +31,19 @@ there is nothing to moderate.
 
 Pro asks have their own allowance: they never use, or wait on, the free plan's
 `GENESIS_AI_DAILY_CAP_USD`, so Pro also leaves more of the free budget to free visitors.
+
+### How the page tells free and Pro apart (1.10.0)
+
+- The Pro panel on `/genesis` shows the same comparison as a small table, Free next to Pro, and
+  says Genesis is free to use and Pro is only for people who ask for help a lot.
+- **The one upgrade moment:** when a free visitor's Ask Genesis help is used up for now (their
+  own hourly or daily limit, or the shared daily budget), the answer `429` carries
+  `"limit": "free"`, and only then, while Pro is on and this browser doesn't have it, the page adds
+  one calm line under the message: everything else keeps working, Pro has its own answers each
+  day, and a grown-up can get it. No timer, no pop-up, no locked buttons, nothing anywhere else.
+  A member who reaches Pro's own limits never sees it.
+- Idea cards are made and shared by the visitor from their own browser. Nothing a member (or
+  anyone) makes is published on the site, so this doesn't change the paragraph above.
 
 ## The cost sums
 

@@ -117,7 +117,7 @@
 .v-text { color: var(--muted); font-size: 15px; }
 
 /* ---------- the four paths ---------- */
-/* Four across, or two by two: never one card on a row of its own. */
+/* Four across, two by two on tablets, one row each on phones (below). */
 .v-paths { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .v-path {
   position: relative; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; gap: 12px;
@@ -140,12 +140,36 @@
   background: color-mix(in srgb, var(--pc) 14%, rgba(5, 8, 22, 0.6));
 }
 .v-path-icon svg { width: 24px; height: 24px; fill: none; stroke: var(--pc); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.v-path-text { display: grid; gap: 6px; }
+.v-path-text { display: grid; gap: 6px; align-content: start; }
 .v-path-text b { font: 700 19px/1.2 var(--head); }
 .v-path-text span { color: var(--muted); font-size: 14px; }
 .v-path-go { font-style: normal; font-weight: 600; font-size: 14px; color: var(--pc); }
 
-.v-choose { margin: 0; text-align: center; color: var(--faint); font-size: 14px; }
+.v-who {
+  font: 600 11.5px/1.2 var(--head); letter-spacing: 0.12em; text-transform: uppercase; color: var(--pc);
+}
+
+/* ---------- the first five seconds ---------- */
+.v-promises { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.v-promises li {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+  font-size: 13.5px; color: var(--text); border: 1px solid var(--line-strong); background: rgba(5, 8, 22, 0.55);
+}
+.v-promises li::before { content: "✓"; color: var(--v-green); font-weight: 700; }
+.v-how {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+}
+.v-how li {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start;
+  padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--line); background: rgba(5, 8, 22, 0.5);
+}
+.v-how b {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font: 800 15px/1 var(--head); color: #0d0820; background: var(--chroma-line);
+}
+.v-how span { color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+.v-how strong { display: block; color: var(--text); font: 700 15px/1.3 var(--head); margin-bottom: 2px; }
 
 /* ---------- a path's form ---------- */
 .v-panel {
@@ -319,6 +343,28 @@
 .v-sent-line { font-size: clamp(16px, 2vw, 19px); max-width: 640px; overflow-wrap: anywhere; }
 .v-sent-small { color: var(--faint); font-size: 13px; max-width: 520px; margin-bottom: 8px; }
 .v-sent .cta-row { justify-content: center; gap: 12px; }
+.v-next { display: grid; gap: 8px; width: min(520px, 100%); margin: 6px 0 4px; }
+.v-next-head { margin: 0; font: 600 12px/1.2 var(--head); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+.v-next-link {
+  display: grid; gap: 2px; padding: 12px 16px; border-radius: 14px; text-align: left; text-decoration: none; color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--pc) 50%, var(--line)); background: color-mix(in srgb, var(--pc) 8%, rgba(5, 8, 22, 0.6));
+}
+.v-next-link:hover { border-color: var(--pc); }
+.v-next-link b { font: 700 15px/1.3 var(--head); }
+.v-next-link b::after { content: " →"; color: var(--pc); }
+.v-next-link span { color: var(--muted); font-size: 13.5px; }
+
+/* Buying is for very few visitors: a quiet link beside the main button. */
+.v-app-actions { align-items: center; }
+.v-app-buy {
+  display: inline-flex; align-items: center; min-height: 34px; padding: 0 6px;
+  font-size: 13px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px;
+}
+.v-app-buy:hover { color: var(--pc); }
+.v-catalog-empty { padding: clamp(20px, 3.5vw, 30px); }
+.v-catalog-empty .v-lede { margin: 0; }
+/* The apps are below the fold: a phone draws them only when they come near. */
+.v-catalog { content-visibility: auto; contain-intrinsic-size: auto 900px; }
 
 /* ---------- narrower screens ---------- */
 @media (max-width: 1060px) {
@@ -329,24 +375,34 @@
   .v-path-text b { font-size: 17px; }
   .v-path-text span { font-size: 13.5px; }
 }
-/* Phones: still two by two, each card a small tile. */
+/* Phones: one clear row per path, easy to read and tap. */
 @media (max-width: 600px) {
-  .v-paths { gap: 10px; }
-  .v-path { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; align-items: start; padding: 12px; gap: 8px; }
-  .v-path-icon { grid-row: auto; width: 38px; height: 38px; border-radius: 11px; }
-  .v-path-icon svg { width: 20px; height: 20px; }
-  .v-path-go { grid-column: auto; font-size: 13px; }
-  .v-path-text { gap: 4px; }
-  .v-path-text b { font-size: 15px; }
-  .v-path-text span { font-size: 12.5px; line-height: 1.4; }
+  .v-paths { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .v-path { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto; align-items: center; padding: 14px; gap: 14px; }
+  .v-path-icon { grid-row: auto; width: 42px; height: 42px; border-radius: 12px; }
+  .v-path-icon svg { width: 22px; height: 22px; }
+  .v-path-go { grid-column: auto; font-size: 0; }
+  .v-path-go span { font-size: 20px; }
+  .v-path-text { gap: 3px; }
+  .v-path-text b { font-size: 16.5px; }
+  .v-path-text span { font-size: 13px; line-height: 1.4; }
+  .v-how { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .v-how li { padding: 10px 14px; }
 }
 @media (max-width: 720px) {
   .v-home { display: inline-flex; align-items: center; min-height: 40px; margin-block: -4px; padding-inline: 4px; }
   .btn-small, .v-app-actions .btn { min-height: 40px; }
   .vortex { padding: 18px 16px 44px; gap: 14px; }
   .v-hero { grid-template-columns: minmax(0, 1fr); padding: 24px 18px; }
-  .v-hero-art { position: absolute; right: -70px; top: -60px; margin: 0; opacity: .55; }
-  .v-hero-art .v-swirl { width: 220px; }
+  .v-hero-art { position: absolute; right: 14px; top: 18px; margin: 0; }
+  .v-hero-art .v-swirl { width: 76px; }
+  .v-hero-copy .v-eyebrow { padding-right: 84px; }
+  .v-title { padding-right: 84px; }
+  /* Lighter on a phone's battery: no blurs, and one ring turning. */
+  .v-ring { filter: none !important; }
+  .v-ring.r1, .v-ring.r2 { animation: none; }
+  .v-core { box-shadow: 0 0 18px 6px rgba(178, 107, 255, 0.45); }
+  .v-promises li { font-size: 12.5px; padding: 5px 10px; }
   .v-hero-copy { position: relative; }
   .v-grid { grid-template-columns: minmax(0, 1fr); }
   .v-panel { padding: 20px 16px; }

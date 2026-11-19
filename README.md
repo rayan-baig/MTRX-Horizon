@@ -256,6 +256,22 @@ people it's for, the simplest first version, try it with 3 real people, a privac
 to contact you, backups, a launch day...), progress per stage and overall, and notes. The list
 shows every project as a card, with an empty state that invites the first idea.
 
+- **The first minute:** the top of the page says what Genesis is in one line, with **Start my
+  idea**, **Try an example** (`/genesis#example` opens the form filled with one of
+  `GenesisStore.EXAMPLES`; nothing is saved until Start is pressed) and three "how it works" steps.
+  The row of counts per stage shows only once there are projects.
+- **Your next step:** each project shows the first open step of its stage at the top, with a
+  **Done** button, or **Move to (next stage)** once a stage is finished.
+- **Today's spark:** a new idea prompt every day (`GenesisStore.PROMPTS`, the same for everyone
+  on the same day), answered in one line and kept only in the browser (`mtrx-genesis-daily`).
+  A streak counts the days in a row; every streak has one **freeze** that covers a single missed
+  day, earned back after 7 more answers. No reminders, no countdowns. **Turn it into a project**
+  opens the form with the answer as the pitch.
+- **Idea cards:** **Make an idea card** draws the project's name, pitch, who it's for and
+  progress as a picture in the browser (a `<canvas>`), to save, share with the phone's own share
+  menu, or copy as words. Never the notes or ticks, and no link carries an idea, so nothing a
+  visitor wrote ends up on a page of ours for others to see.
+
 **Nothing about a project is kept on the server** (unless a Genesis Pro member backs their
 projects up, below). Projects live only in the visitor's own browser (`localStorage`). If the browser blocks storage, Genesis still works for that visit
 and says so. **Download** saves every project as a JSON file, **Import** reads one back (to
@@ -377,7 +393,11 @@ Both show on the console's **Numbers** section.
 
 `/orbyt` (the old `/vortex` and `/chroma-vortex` addresses redirect there) is the official place to work with MTRX
 Horizyn, linked from the home page's menu and footer, the other pages and the sitemap. It has
-four paths, each a short form (four cards across, or two by two on tablets and phones):
+four paths, each a short form (four cards across, two by two on tablets, and one row each on
+phones). The top says in a line what it is for, with three promises (about 2 minutes, a real
+person reads every message, nobody pays or gets paid here), and three "how it works" steps sit
+under the paths. After sending, each path suggests one next step (Genesis for an idea, the
+partner page for a partner, the apps for investors and buyers).
 
 - **Partner with us**: name, organisation, email, which apps (any released app, see below),
   the kind of partnership (resell, integrate, refer customers, refer my customers (repair /
@@ -386,18 +406,18 @@ four paths, each a short form (four cards across, or two by two on tablets and p
   Apply button).
 - **Pitch an idea**: name, email, the idea's name, a one-line pitch, who it's for, and an
   optional message. **Bring a project from Genesis** lists the visitor's Genesis projects from
-  their own browser and fills in the idea fields. On a Genesis project, **Pitch this in Chroma
-  Vortex** opens `/orbyt#pitch` with that project filled in: only the project's id is handed
+  their own browser and fills in the idea fields. On a Genesis project, **Pitch this in
+  Orbyt** opens `/orbyt#pitch` with that project filled in: only the project's id is handed
   over, through the tab's `sessionStorage`, so the idea never appears in an address or a log.
   Nothing is sent until the visitor presses Send. The path asks anyone under 13 to have a parent
   or guardian send it.
-- **Investors**: name, organisation (optional), email and message, under a clear notice that
-  the page is not an offer of shares or any investment and the company is not raising money
-  through the site.
+- **Investors**: name, organisation (optional), email and message, under a plain notice that
+  no shares are sold and nobody is asked for money here, and nothing on the site is an
+  investment.
 - **Buy the company or an app**: name, organisation (optional), email, what they're interested in
   (MTRX Horizyn as a whole, one or more released apps, or both) and a message, under the notice
-  "This is a place to start a conversation. Nothing here is an offer to sell, and no sale happens
-  through this site. Any deal would need proper agreements and advice." Kept as the `buy` kind,
+  "This only starts a conversation. Nothing is for sale on this page and nobody can buy or pay for
+  anything here." Kept as the `buy` kind,
   with the choices in the `apps` column (`company` for the whole company).
 
 Below the forms, **Our apps** has a card for each released app: its name, its one line, **Open**

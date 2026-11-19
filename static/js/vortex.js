@@ -127,6 +127,10 @@
     sentKind = kind;
     for (const k of V.KINDS) $(`v-${k}`).hidden = true;
     $("v-sent-line").textContent = V.sentLine(email);
+    // A useful next step for this path, while the visitor waits for a reply.
+    document.querySelectorAll("[data-next]").forEach((link) => {
+      link.hidden = !link.dataset.next.split(" ").includes(kind);
+    });
     $("v-sent").hidden = false;
     $("v-sent").scrollIntoView({ block: "center" });
   }

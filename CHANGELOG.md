@@ -4,6 +4,53 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.10.0 (19 November 2026)
+
+Genesis and Orbyt are easier to understand on the first visit, and Genesis has a reason to come
+back tomorrow:
+
+- **Genesis says what it is straight away.** "Turn your idea into a real plan, one small step at
+  a time", with **Start my idea**, **Try an example** and three "how it works" steps. Before,
+  a first visit saw a row of five zeros and two Start buttons. The row of counts now shows only
+  once you have projects.
+- **No blank page.** **Try an example** (and "Stuck? Fill in an example" on the form) fills in one
+  of eight example ideas to change and make your own. Nothing is saved until you press Start.
+- **Today's spark: a new idea prompt every day.** Answer it in one line, see the last 7 days as
+  dots, and build a streak. Every streak has one **freeze**, so one day off doesn't reset it; you
+  earn it back after 7 more sparks. No reminders, no countdowns, no "don't lose your streak".
+  **Turn it into a project** starts a project from your answer. Like projects, your sparks stay in
+  your browser and are never sent to us; **Clear my sparks** deletes them.
+- **Your next step**, at the top of every project: the first step still to do, with a **Done**
+  button, or "Move to Plan" once a stage is finished. No more reading the whole checklist to
+  know where you are.
+- **Idea cards.** **Make an idea card** turns a project into a picture (its name, one-line pitch,
+  who it's for and how far along it is) to save, send with your phone's share button, or copy as
+  words. It is drawn in your browser; your notes and ticks are never on it, and it reminds you
+  to leave out names, school, address and phone number. There is no link that shows someone's
+  idea on our site, so nobody can use one to put words on a page of ours.
+- **Free and Genesis Pro, side by side.** While Pro is on, its panel shows a small table of what
+  is free and what Pro adds. When your free Ask Genesis answers run out for now, one calm line
+  says what Pro would change and that a grown-up can get it. Nothing else changed about Pro, and
+  the prices are the same.
+- **Orbyt makes sense in five seconds.** "Want to work with MTRX Horizyn? Start here", three
+  promises (about 2 minutes, a real person reads every message, nobody pays or gets paid here),
+  each path saying who it's for ("I have an idea", "I run a business", "I'm an investor", "I'd
+  like to buy"), and three "how it works" steps. Pitch an idea now comes first.
+- **Orbyt on a phone:** one clear row per path instead of four squashed tiles, the swirl beside
+  the title instead of behind it, and no blur effects in its animation, which is easier on a
+  phone's battery.
+- **Next steps after sending:** an idea gets "Keep building it in Genesis", a partner the partner
+  page, investors and buyers the apps.
+- **Plain words:** the investor and buying notices now say simply that no shares are sold, nobody
+  is asked for money, and nothing can be bought or paid for on the page. "Ask about buying" under
+  each app is a quiet link beside "Partner on this". If no app is released, Orbyt says so instead
+  of leaving a gap.
+- **Fixes:** Ask Genesis no longer shows an "AI · free" badge while AI help is switched off, and
+  on a phone that panel moves below the checklist. The privacy page mentions daily sparks and idea
+  cards (both stay in your browser), so its date is now 19 November 2026.
+- Ask Genesis's "too busy" answer for free visitors now carries `"limit": "free"`, so the page
+  knows when to show the Pro line. No new settings.
+
 ## 1.9.0 (19 November 2026)
 
 Keeps working when something goes wrong, and tells you quickly when it can't:

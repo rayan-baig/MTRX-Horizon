@@ -16,6 +16,11 @@
   let asking = false;
   const Pro = window.GenesisPro || null; // only while Genesis Pro is switched on
   const isPro = () => Boolean(Pro && Pro.active());
+  const proOffered = Boolean(document.getElementById("pro")); // Pro is switched on here
+  const base = $("genesis").dataset.base || "";
+  const local = (() => { try { return window.localStorage; } catch (_) { return null; } })();
+  const daily = S.openDaily(local);
+  let prefill = null; // what the form starts with next time it opens
 
   function el(tag, props = {}, ...children) {
     const node = document.createElement(tag);
@@ -66,6 +71,11 @@
     $("g-count").textContent = projects.length ? `${projects.length} project${projects.length === 1 ? "" : "s"}` : "";
     $("g-empty").hidden = projects.length > 0;
     $("g-tools-data").hidden = projects.length === 0;
+    // A first visit sees how Genesis works; a returning one, where their projects are.
+    $("g-list-head").hidden = projects.length === 0;
+    $("g-how").hidden = projects.length > 0;
+    $("g-path").hidden = projects.length === 0;
+    drawDaily();
     const cards = $("g-cards");
     cards.hidden = projects.length === 0;
     cards.replaceChildren(...sorted.map(card));
@@ -96,6 +106,101 @@
           el("small", { text: `${pr.percent}% · ${pr.done} of ${pr.total} done` }))));
   }
 
+  // ---------------------------------------------------------------- today's spark
+  // A new prompt every day, answered in one line. The answers and the streak
+  // live only in this browser (GenesisStore.openDaily). It never nags: no
+  // reminders, no countdowns, and a missed day is covered by a freeze.
+
+  const DOT_WORDS = { done: "spark saved", frozen: "covered by your freeze", missed: "no spark", today: "today" };
+  let editingDaily = false;
+  const longDay = (key) => {
+    const [y, m, d] = key.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+  };
+
+  function drawDaily() {
+    const now = new Date();
+    const today = S.dayKey(now);
+    const days = daily.load();
+    const answer = days[today] || "";
+    const st = S.streak(days, today);
+    $("g-daily").hidden = false;
+    $("g-daily-date").textContent = `· ${now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })}`;
+    $("g-daily-title").textContent = S.promptFor(today).text;
+    const writing = !answer || editingDaily;
+    $("g-daily-form").hidden = !writing;
+    $("g-daily-done").hidden = writing;
+    $("g-daily-answer").textContent = answer;
+    $("g-daily").classList.toggle("done", Boolean(answer) && !editingDaily);
+
+    const streakLine = $("g-streak");
+    streakLine.hidden = st.streak === 0;
+    streakLine.replaceChildren(el("b", { text: String(st.streak) }),
+      el("span", { text: st.streak === 1 ? " day streak" : " days in a row" }),
+      ...(st.freezes ? [el("small", { class: "g-freeze", text: "1 freeze ready" })] : []));
+
+    $("g-week").replaceChildren(...S.lastDays(days, today, 7).map((d) => {
+      const [y, m, dd] = d.key.split("-").map(Number);
+      const letter = new Date(y, m - 1, dd).toLocaleDateString([], { weekday: "narrow" });
+      return el("li", { class: `g-day ${d.state}`, title: `${longDay(d.key)}: ${DOT_WORDS[d.state]}` },
+        el("span", { class: "g-day-dot", "aria-hidden": "true" }),
+        el("small", { text: letter }),
+        el("span", { class: "visually-hidden", text: `${longDay(d.key)}: ${DOT_WORDS[d.state]}` }));
+    }));
+
+    const yesterday = S.dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+    let note;
+    if (!answer && st.frozen.includes(yesterday)) note = "You had a day off yesterday, so your freeze covered it. Your streak is safe.";
+    else if (answer && !st.freezes) note = `A new spark arrives tomorrow. Your freeze comes back after ${st.toEarn} more spark${st.toEarn === 1 ? "" : "s"}.`;
+    else if (answer) note = "A new spark arrives tomorrow. Come back if you like: one day off is covered by your freeze.";
+    else if (st.total) note = st.streak ? "One line is enough. Your answers stay in this browser."
+      : "Start a new streak today. Every streak comes with a freeze for a day off.";
+    else note = "One line is enough, and it stays in this browser. Answer on more days to build a streak; one day off won't reset it.";
+    $("g-daily-note").textContent = note;
+
+    const past = Object.keys(days).filter((k) => k !== today).sort().reverse().slice(0, 30);
+    $("g-daily-more").hidden = past.length === 0;
+    $("g-daily-past").replaceChildren(...past.map((k) => el("li", {},
+      el("small", { text: `${longDay(k)} · ${S.promptFor(k).text}` }), el("span", { text: days[k] }))));
+  }
+
+  $("g-daily-input").maxLength = S.DAILY_LIMIT;
+  $("g-daily-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const text = S.line($("g-daily-input").value).slice(0, S.DAILY_LIMIT);
+    if (!text) { $("g-daily-input").focus(); toast("Write one line first: any idea counts."); return; }
+    const today = S.dayKey(new Date());
+    const days = daily.load();
+    const first = !days[today];
+    days[today] = text;
+    if (!daily.save(days) && daily.usable) toast("Your browser wouldn't save that.", true);
+    editingDaily = false;
+    $("g-daily-input").value = "";
+    const st = S.streak(days, today);
+    if (first) toast(st.streak > 1 ? `Spark saved. ${st.streak} days in a row!` : "Spark saved. Nice one.");
+    else toast("Spark changed.");
+    drawDaily();
+  });
+  $("g-daily-edit").addEventListener("click", () => {
+    editingDaily = true;
+    drawDaily();
+    $("g-daily-input").value = daily.load()[S.dayKey(new Date())] || "";
+    $("g-daily-input").focus();
+  });
+  $("g-daily-project").addEventListener("click", () => {
+    const answer = daily.load()[S.dayKey(new Date())];
+    if (!answer) return;
+    prefill = { pitch: answer.slice(0, S.LIMITS.pitch), note: "From today's spark. Give it a name and say who it's for." };
+    window.location.hash = "#new";
+  });
+  $("g-daily-clear").addEventListener("click", () => {
+    if (!confirm("Clear all your sparks from this browser? Your streak starts again.")) return;
+    daily.clear();
+    editingDaily = false;
+    toast("Sparks cleared from this browser.");
+    drawDaily();
+  });
+
   // ---------------------------------------------------------------- the form
 
   function count(input, out, limit) {
@@ -117,17 +222,40 @@
     else say("address", "Looks like a real address. Check it's free with a domain registrar.", "ok");
   }
 
-  function showForm() {
+  function showForm(start) {
     $("g-form").reset();
     addressEdited = false;
+    $("g-example-note").textContent = "";
     for (const f of ["name", "pitch", "audience"]) {
       say(f, "");
       count($(`g-${f}`), $(`g-${f}-count`), S.LIMITS[f]);
     }
     drawAddress();
     $("g-form-error").textContent = "";
+    if (start) fillForm(start);
     if (window.matchMedia("(min-width: 721px)").matches) $("g-name").focus({ preventScroll: true });
   }
+
+  // Put an example (or today's spark) into the form. Nothing is saved until
+  // Start is pressed, and every word can be changed first.
+  function fillForm(start) {
+    for (const f of ["name", "pitch", "audience"]) {
+      if (typeof start[f] !== "string") continue;
+      $(`g-${f}`).value = start[f].slice(0, S.LIMITS[f]);
+      count($(`g-${f}`), $(`g-${f}-count`), S.LIMITS[f]);
+      say(f, "");
+    }
+    if (!addressEdited) { $("g-address").value = S.suggestAddress($("g-name").value); drawAddress(); }
+    $("g-example-note").textContent = start.note || "";
+  }
+
+  let exampleAt = -1;
+  function nextExample() {
+    exampleAt = exampleAt < 0 ? S.example().index : exampleAt + 1;
+    const ex = S.example(exampleAt);
+    return { ...ex, note: "An example to start from. Change any of it to make it yours." };
+  }
+  $("g-example").addEventListener("click", () => fillForm(nextExample()));
 
   for (const f of ["name", "pitch", "audience"]) {
     $(`g-${f}`).maxLength = S.LIMITS[f] + 20; // a little over, so the counter can say so
@@ -205,7 +333,8 @@
       el("p", { class: "g-pitch", text: p.pitch }),
       el("p", { class: "g-for" }, el("span", { text: "For " }), el("b", { text: p.audience })),
       el("p", { class: "g-started", text: `Started ${when(p.created)}` }),
-      vortexLink(p), planButton(p));
+      nextBox(p, pr),
+      el("div", { class: "g-head-actions" }, shareButton(p), vortexLink(p), planButton(p)));
 
     const moves = el("div", { class: "g-moves" });
     if (here > 0) {
@@ -293,6 +422,253 @@
       el("div", { class: "g-side" }, stagePanel, ask, notes, danger)));
   }
 
+  // ---------------------------------------------------------------- the next step
+  // One clear thing to do now, at the top of the project, so nobody has to
+  // read the whole checklist to know where they are.
+
+  function nextBox(p, pr) {
+    const here = S.STAGES.findIndex((s) => s.key === p.stage);
+    const box = el("div", { class: `g-next${pr.launched ? " launched" : ""}` });
+    if (pr.launched) {
+      box.append(el("span", { class: "g-next-label", text: "Launched" }),
+        el("b", { class: "g-next-step", text: "Every step is done. Well done!" }),
+        el("small", { text: "Make an idea card to show people what you made." }));
+      return box;
+    }
+    const step = S.nextStep(p);
+    const stepAt = step ? S.STAGES.findIndex((s) => s.key === step.stage) : S.STAGES.length;
+    if (stepAt > here) {
+      const next = S.STAGES[here + 1];
+      const go = el("button", { class: "btn btn-genesis btn-small", type: "button", text: `Move to ${next.name} →` });
+      go.addEventListener("click", () => { update(p, (q) => { q.stage = next.key; }); toast(`On to ${next.name}.`); drawProject(p); });
+      box.append(el("span", { class: "g-next-label", text: "Next step" }),
+        el("b", { class: "g-next-step", text: `Every ${S.STAGES[here].name} step is done.` }),
+        el("small", { text: next.line }), go);
+      return box;
+    }
+    const done = el("button", { class: "btn btn-genesis btn-small", type: "button", text: "Done ✓" });
+    done.addEventListener("click", () => {
+      update(p, (q) => { q.ticks[step.key] = true; });
+      toast(S.progress(p).launched ? `${p.name} is launched!` : "Ticked. On to the next one.");
+      drawProject(p);
+    });
+    box.append(el("span", { class: "g-next-label", text: "Your next step" }),
+      el("b", { class: "g-next-step", text: step.label }),
+      step.hint ? el("small", { text: step.hint }) : null, done);
+    return box;
+  }
+
+  // ---------------------------------------------------------------- idea cards
+  // A picture of the project to save or send, drawn here in the browser.
+  // Only what the card shows leaves this page, and only if the visitor
+  // saves or shares it: never the notes or ticks, and nothing is sent to us.
+
+  const STAGE_COLOURS = { spark: "#fbbf24", plan: "#f472b6", build: "#a78bfa", launch: "#22d3ee", launched: "#34e89e" };
+  let sharing = null;
+
+  function shareButton(p) {
+    const b = el("button", { class: "g-tool g-tool-strong g-card-btn", type: "button", text: "Make an idea card" });
+    b.addEventListener("click", () => openShare(p));
+    return b;
+  }
+
+  // Words broken into lines that fit `width`, at most `most` lines (the last
+  // one ends "…" when cut).
+  function wrap(ctx, text, width, most) {
+    const words = text.split(" ");
+    const lines = [];
+    let now = "";
+    for (const word of words) {
+      const next = now ? `${now} ${word}` : word;
+      if (ctx.measureText(next).width <= width || !now) now = next;
+      else { lines.push(now); now = word; }
+    }
+    if (now) lines.push(now);
+    if (lines.length > most) {
+      const kept = lines.slice(0, most);
+      let last = kept[most - 1];
+      while (last && ctx.measureText(`${last}…`).width > width) last = last.slice(0, -1);
+      kept[most - 1] = `${last.replace(/\s+$/, "")}…`;
+      return kept;
+    }
+    return lines.map((l) => {
+      let cut = l;
+      while (cut.length > 1 && ctx.measureText(cut).width > width) cut = cut.slice(0, -1);
+      return cut === l ? l : `${cut}…`;
+    });
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function star(ctx, cx, cy, size) {
+    const k = size * 0.2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - size);
+    ctx.lineTo(cx + k, cy - k); ctx.lineTo(cx + size, cy); ctx.lineTo(cx + k, cy + k);
+    ctx.lineTo(cx, cy + size); ctx.lineTo(cx - k, cy + k); ctx.lineTo(cx - size, cy); ctx.lineTo(cx - k, cy - k);
+    ctx.closePath();
+  }
+
+  function drawCard(canvas, p) {
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height, pad = 84;
+    const pr = S.progress(p);
+    const look = pr.launched ? "launched" : p.stage;
+    const colour = STAGE_COLOURS[look];
+    ctx.clearRect(0, 0, W, H);
+    // The night sky, with the dawn coming up in the corner.
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, "#060a1e"); sky.addColorStop(1, "#140b33");
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+    const glow = ctx.createRadialGradient(W * 0.85, H * 1.02, 10, W * 0.85, H * 1.02, W * 0.75);
+    glow.addColorStop(0, "rgba(251,191,36,0.55)"); glow.addColorStop(0.45, "rgba(244,114,182,0.25)"); glow.addColorStop(1, "rgba(139,92,246,0)");
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+    const edge = ctx.createLinearGradient(0, 0, W, 0);
+    edge.addColorStop(0, "#fbbf24"); edge.addColorStop(0.45, "#f472b6"); edge.addColorStop(0.75, "#a78bfa"); edge.addColorStop(1, "#22d3ee");
+    roundRect(ctx, 24, 24, W - 48, H - 48, 44);
+    ctx.lineWidth = 4; ctx.strokeStyle = edge; ctx.stroke();
+
+    // Genesis, with its spark.
+    const sparkFill = ctx.createRadialGradient(pad + 26, pad + 26, 2, pad + 26, pad + 26, 30);
+    sparkFill.addColorStop(0, "#ffffff"); sparkFill.addColorStop(0.35, "#fbbf24"); sparkFill.addColorStop(1, "#f472b6");
+    star(ctx, pad + 26, pad + 26, 30); ctx.fillStyle = sparkFill; ctx.fill();
+    ctx.fillStyle = "#eef3ff"; ctx.textBaseline = "middle";
+    ctx.font = '700 34px "Montserrat", system-ui, sans-serif';
+    ctx.fillText("GENESIS", pad + 74, pad + 28);
+
+    // The stage, as a chip on the right.
+    const chip = pr.launched ? "LAUNCHED" : S.STAGES.find((s) => s.key === p.stage).name.toUpperCase();
+    ctx.font = '700 28px "Montserrat", system-ui, sans-serif';
+    const cw = ctx.measureText(chip).width + 56;
+    roundRect(ctx, W - pad - cw, pad + 2, cw, 52, 26);
+    ctx.fillStyle = `${colour}26`; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = colour; ctx.stroke();
+    ctx.fillStyle = colour; ctx.fillText(chip, W - pad - cw + 28, pad + 29);
+
+    // The name, the pitch, and who it's for.
+    const width = W - pad * 2;
+    let y = pad + 170;
+    ctx.textBaseline = "alphabetic";
+    let size = 104;
+    ctx.font = `800 ${size}px "Montserrat", system-ui, sans-serif`;
+    while (size > 64 && ctx.measureText(p.name).width > width) {
+      size -= 4;
+      ctx.font = `800 ${size}px "Montserrat", system-ui, sans-serif`;
+    }
+    const nameLines = wrap(ctx, p.name, width, 2);
+    const nameFill = ctx.createLinearGradient(pad, 0, pad + width, 0);
+    nameFill.addColorStop(0, "#fbbf24"); nameFill.addColorStop(0.5, "#f472b6"); nameFill.addColorStop(1, "#a78bfa");
+    ctx.fillStyle = nameFill;
+    for (const l of nameLines) { y += size * 0.95; ctx.fillText(l, pad, y); y += size * 0.12; }
+    y += 40;
+    ctx.fillStyle = "#eef3ff";
+    ctx.font = '500 50px "Inter", system-ui, sans-serif';
+    for (const l of wrap(ctx, p.pitch, width, 4)) { y += 50; ctx.fillText(l, pad, y); y += 16; }
+    y += 28;
+    ctx.fillStyle = "#a9b6d8";
+    ctx.font = '400 38px "Inter", system-ui, sans-serif';
+    for (const l of wrap(ctx, `For ${p.audience}`, width, 2)) { y += 38; ctx.fillText(l, pad, y); y += 12; }
+
+    // How far along it is: one bar per stage, and the percent.
+    const barY = H - pad - 150, gap = 14, seg = (width - gap * 3) / 4;
+    pr.stages.forEach((st, i) => {
+      const x = pad + i * (seg + gap);
+      roundRect(ctx, x, barY, seg, 16, 8); ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.fill();
+      if (st.done) {
+        roundRect(ctx, x, barY, Math.max(16, seg * (st.done / st.total)), 16, 8);
+        ctx.fillStyle = STAGE_COLOURS[st.key]; ctx.fill();
+      }
+      ctx.fillStyle = st.key === p.stage && !pr.launched ? STAGE_COLOURS[st.key] : "#a9b6d8";
+      ctx.font = '600 26px "Inter", system-ui, sans-serif';
+      ctx.fillText(st.name, x, barY + 56);
+    });
+    ctx.fillStyle = "#eef3ff";
+    ctx.font = '700 30px "Inter", system-ui, sans-serif';
+    const pct = `${pr.percent}% of the way to launch`;
+    ctx.fillText(pct, pad, barY - 26);
+
+    // Where it was made.
+    const home = (/^https?:\/\/[^\s/]+$/.test(base) ? base.replace(/^https?:\/\//, "") : window.location.host) || "mtrxhorizyn.com";
+    ctx.fillStyle = "#a9b6d8";
+    ctx.font = '400 28px "Inter", system-ui, sans-serif';
+    ctx.fillText(`Made with Genesis · ${home}/genesis`, pad, H - pad + 10);
+  }
+
+  function cardBlob(canvas) {
+    return new Promise((resolve) => {
+      try { canvas.toBlob((blob) => resolve(blob), "image/png"); } catch (_) { resolve(null); }
+    });
+  }
+
+  async function openShare(p) {
+    flushNotes();
+    sharing = p;
+    const dialog = $("g-share");
+    $("g-share-msg").textContent = "";
+    const canvas = $("g-share-canvas");
+    // The card uses the site's own fonts; wait for them so it looks right.
+    try {
+      await Promise.all(['800 40px "Montserrat"', '700 40px "Montserrat"', '500 40px "Inter"', '400 40px "Inter"']
+        .map((f) => document.fonts.load(f)));
+    } catch (_) { /* the card still draws with the fallback font */ }
+    drawCard(canvas, p);
+    $("g-share-native").hidden = !(navigator.share && navigator.canShare);
+    if (typeof dialog.showModal === "function") { if (!dialog.open) dialog.showModal(); }
+    else dialog.setAttribute("open", "");
+  }
+
+  function closeShare() {
+    const dialog = $("g-share");
+    if (typeof dialog.close === "function") dialog.close();
+    else dialog.removeAttribute("open");
+    sharing = null;
+  }
+  $("g-share-close").addEventListener("click", closeShare);
+  $("g-share").addEventListener("click", (event) => { if (event.target === $("g-share")) closeShare(); });
+
+  $("g-share-save").addEventListener("click", async () => {
+    if (!sharing) return;
+    const blob = await cardBlob($("g-share-canvas"));
+    if (!blob) { $("g-share-msg").textContent = "Your browser couldn't make the picture."; return; }
+    const url = URL.createObjectURL(blob);
+    const a = el("a", { href: url, download: S.cardFileName(sharing) });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    $("g-share-msg").textContent = "Saved. Look in your downloads or photos.";
+  });
+
+  $("g-share-native").addEventListener("click", async () => {
+    if (!sharing) return;
+    const text = S.shareText(sharing, base);
+    const blob = await cardBlob($("g-share-canvas"));
+    const data = { title: sharing.name, text };
+    if (blob) {
+      const file = new File([blob], S.cardFileName(sharing), { type: "image/png" });
+      if (navigator.canShare({ files: [file] })) data.files = [file];
+    }
+    try { await navigator.share(data); } catch (_) { /* closed without sharing */ }
+  });
+
+  $("g-share-copy").addEventListener("click", async () => {
+    if (!sharing) return;
+    try {
+      await navigator.clipboard.writeText(S.shareText(sharing, base));
+      $("g-share-msg").textContent = "Copied. Paste it anywhere.";
+    } catch (_) {
+      $("g-share-msg").textContent = "Your browser wouldn't copy. Save the picture instead.";
+    }
+  });
+
   // ---------------------------------------------------------------- Orbyt
   // Opens /orbyt with this project ready to pitch. Only its id is handed
   // over, through this tab's sessionStorage (GenesisStore.offerToVortex),
@@ -349,7 +725,7 @@
   function askPanel(p) {
     const pro = isPro();
     const head = el("div", { class: "g-row" }, el("h2", { class: "g-h2" }, "Ask Genesis"),
-      el("span", { class: `g-ai-badge${pro ? " pro" : ""}`, text: pro ? "AI · Pro" : "AI · free" }));
+      aiOn ? el("span", { class: `g-ai-badge${pro ? " pro" : ""}`, text: pro ? "AI · Pro" : "AI · free" }) : null);
     const note = el("p", { class: "g-ask-note", text: "Don't type personal details. Your question is sent to our AI provider to answer it; we don't keep it. AI answers can be wrong, so check what matters." });
     if (!aiOn) {
       return el("section", { class: "panel g-ask off" }, head,
@@ -387,6 +763,13 @@
     }
     if (last.error) {
       out.append(el("p", { class: "g-msg bad", text: last.error }));
+      // The free help is used up for now. Say plainly what Pro would change,
+      // once, with no timer and no pressure: the free plan keeps working.
+      if (last.limit && proOffered && !isPro()) {
+        out.append(el("p", { class: "g-upgrade" },
+          el("span", { text: "Everything else in Genesis keeps working. If you use Ask Genesis a lot, Genesis Pro has its own answers each day, never shared, " }),
+          el("a", { href: "#pro", text: "and a grown-up can get it here" }), el("span", { text: "." })));
+      }
       return;
     }
     const save = el("button", { class: "g-tool", type: "button", text: last.saved ? "Saved to notes" : "Save to notes" });
@@ -430,7 +813,7 @@
       if (Pro) Pro.answered(data);
       result = res.ok && data.answer
         ? { label, text: data.answer, refused: Boolean(data.refused) }
-        : { label, error: data.error || "Genesis couldn't answer just now. Please try again in a minute." };
+        : { label, error: data.error || "Genesis couldn't answer just now. Please try again in a minute.", limit: data.limit === "free" };
     } catch (_) {
       result = { label, error: "No connection. Check you're online and try again." };
     }
@@ -498,7 +881,7 @@
     flushNotes();
     const hash = window.location.hash;
     const match = hash.match(/^#p\/([A-Za-z0-9-]{1,64})$/);
-    const view = hash === "#new" ? "new" : match ? "project" : "list";
+    const view = hash === "#new" || hash === "#example" ? "new" : match ? "project" : "list";
     let project = null;
     if (view === "project") {
       // Another tab may have changed things.
@@ -510,7 +893,10 @@
     $("g-new").hidden = view !== "new";
     $("g-detail").hidden = view !== "project";
     if (view === "list") { current = null; projects = store.usable ? store.load() : projects; drawList(); }
-    else if (view === "new") showForm();
+    else if (view === "new") {
+      showForm(hash === "#example" ? nextExample() : prefill);
+      prefill = null;
+    }
     else drawProject(project);
     const pro = hash === "#pro" && document.getElementById("pro");
     if (pro) pro.scrollIntoView();
@@ -519,7 +905,7 @@
 
   window.addEventListener("hashchange", route);
   window.addEventListener("storage", (event) => {
-    if (event.key === S.KEY && $("g-detail").hidden && $("g-new").hidden) { projects = store.load(); drawList(); }
+    if ((event.key === S.KEY || event.key === S.DAILY_KEY) && $("g-detail").hidden && $("g-new").hidden) { projects = store.load(); drawList(); }
   });
   if (Pro) {
     Pro.connect({

@@ -207,3 +207,164 @@ test("Download plan: a project as plain text with its checklist and notes", () =
   assert.equal(S.planFileName(project), "nova-plan.txt");
   assert.equal(S.planText({ name: "" }), "");
 });
+
+// ---------------------------------------------------------------- 1.10.0: the first minute, today's spark, idea cards
+
+test("every example is a project that would start, and any number picks one", () => {
+  assert.ok(S.EXAMPLES.length >= 6);
+  for (const ex of S.EXAMPLES) {
+    const made = S.create(ex);
+    assert.ok(made.project, ex.name);
+    assert.equal(S.nameWarning(ex.name), null, ex.name);
+  }
+  assert.equal(S.example(0).name, S.EXAMPLES[0].name);
+  assert.equal(S.example(S.EXAMPLES.length + 1).name, S.EXAMPLES[1].name);
+  assert.equal(S.example(-1).name, S.EXAMPLES[S.EXAMPLES.length - 1].name);
+  for (let i = 0; i < 20; i += 1) {
+    const any = S.example();
+    assert.equal(any.name, S.EXAMPLES[any.index].name);
+  }
+});
+
+test("the next step is the first open one in the stage the project is at", () => {
+  const { project } = S.create(idea);
+  assert.equal(S.nextStep(project).key, "name");
+  project.ticks.name = true;
+  assert.equal(S.nextStep(project).key, "problem");
+  project.stage = "build";
+  assert.equal(S.nextStep(project).key, "build");
+  project.ticks = Object.fromEntries(S.CHECKLIST.filter((i) => i.stage === "build").map((i) => [i.key, true]));
+  assert.equal(S.nextStep(project).stage, "spark"); // an earlier step still open
+  project.ticks = Object.fromEntries(S.CHECKLIST.map((i) => [i.key, true]));
+  assert.equal(S.nextStep(project), null);
+});
+
+test("days are the visitor's own calendar days, and real ones only", () => {
+  assert.equal(S.dayKey(new Date(2026, 0, 5, 23, 59)), "2026-01-05");
+  assert.equal(S.dayNumber("1970-01-02"), 1);
+  assert.equal(S.dayNumber("2026-02-30"), NaN);
+  assert.equal(S.dayNumber("2026-1-5"), NaN);
+  assert.equal(S.dayNumber(null), NaN);
+});
+
+test("a new prompt every day, and every prompt before any comes round again", () => {
+  const start = S.dayNumber("2026-11-19");
+  const seen = new Set();
+  let last = null;
+  for (let d = 0; d < S.PROMPTS.length; d += 1) {
+    const key = new Date((start + d) * 86400000).toISOString().slice(0, 10);
+    const p = S.promptFor(key);
+    assert.notEqual(p.index, last);
+    assert.equal(p.text, S.PROMPTS[p.index]);
+    seen.add(p.index);
+    last = p.index;
+  }
+  assert.equal(seen.size, S.PROMPTS.length);
+  assert.deepEqual(S.promptFor("2026-11-19"), S.promptFor("2026-11-19"));
+  for (const text of S.PROMPTS) assert.ok(text.length <= 100, text);
+});
+
+const days = (...keys) => Object.fromEntries(keys.map((k) => [k, "an idea"]));
+
+test("a streak counts days in a row, and today not answered yet breaks nothing", () => {
+  assert.deepEqual(S.streak({}, "2026-11-19"), { streak: 0, best: 0, freezes: 1, frozen: [], today: false, total: 0, toEarn: 0 });
+  let s = S.streak(days("2026-11-17", "2026-11-18", "2026-11-19"), "2026-11-19");
+  assert.equal(s.streak, 3);
+  assert.equal(s.today, true);
+  assert.equal(s.freezes, 1);
+  s = S.streak(days("2026-11-17", "2026-11-18"), "2026-11-19");
+  assert.equal(s.streak, 2);
+  assert.equal(s.today, false);
+  assert.deepEqual(s.frozen, []);
+});
+
+test("one missed day uses the freeze and the streak carries on", () => {
+  const s = S.streak(days("2026-11-15", "2026-11-16", "2026-11-18", "2026-11-19"), "2026-11-19");
+  assert.equal(s.streak, 4);
+  assert.deepEqual(s.frozen, ["2026-11-17"]);
+  assert.equal(s.freezes, 0);
+  assert.equal(s.toEarn, S.FREEZE_EARN - 2);
+  // Yesterday missed and today not answered yet: the freeze already covers yesterday.
+  const y = S.streak(days("2026-11-16", "2026-11-17"), "2026-11-19");
+  assert.equal(y.streak, 2);
+  assert.deepEqual(y.frozen, ["2026-11-18"]);
+});
+
+test("two missed days in a row start a new streak, with its own freeze", () => {
+  const s = S.streak(days("2026-11-10", "2026-11-11", "2026-11-12", "2026-11-15"), "2026-11-15");
+  assert.equal(s.streak, 1);
+  assert.equal(s.best, 3);
+  assert.equal(s.freezes, 1);
+  assert.deepEqual(s.frozen, []);
+  // A missed day after the freeze was used ends the streak too.
+  const t = S.streak(days("2026-11-01", "2026-11-03", "2026-11-05"), "2026-11-05");
+  assert.equal(t.streak, 1);
+  assert.equal(t.best, 2);
+});
+
+test("the freeze comes back after enough answered days", () => {
+  const keys = ["2026-11-01", "2026-11-03"]; // the 2nd is covered
+  for (let d = 4; d < 4 + S.FREEZE_EARN; d += 1) keys.push(`2026-11-${String(d).padStart(2, "0")}`);
+  const s = S.streak(days(...keys), keys[keys.length - 1]);
+  assert.equal(s.freezes, 1);
+  assert.equal(s.toEarn, 0);
+  assert.equal(s.streak, keys.length);
+  // ...so another single missed day is covered again.
+  const later = S.streak(days(...keys, "2026-11-12"), "2026-11-12");
+  assert.equal(later.streak, keys.length + 1);
+  assert.deepEqual(later.frozen, ["2026-11-02", "2026-11-11"]);
+});
+
+test("the row of the last 7 days says what each day was", () => {
+  const row = S.lastDays(days("2026-11-15", "2026-11-16", "2026-11-18"), "2026-11-19", 7);
+  assert.deepEqual(row.map((d) => d.key), ["2026-11-13", "2026-11-14", "2026-11-15", "2026-11-16", "2026-11-17", "2026-11-18", "2026-11-19"]);
+  assert.deepEqual(row.map((d) => d.state), ["missed", "missed", "done", "done", "frozen", "done", "today"]);
+});
+
+test("answers are kept in storage, cleaned, and survive blocked storage", () => {
+  const data = new Map();
+  const first = S.openDaily(memoryStorage(data));
+  assert.equal(first.usable, true);
+  assert.equal(first.save({ "2026-11-19": "  A   plant\u0000 reminder  ", "not a day": "x", "2026-11-18": "" }), true);
+  assert.deepEqual(S.openDaily(memoryStorage(data)).load(), { "2026-11-19": "A plant reminder" });
+  assert.equal(JSON.parse(data.get(S.DAILY_KEY)).format, 1);
+  // A long answer is cut to the length of a pitch.
+  first.save({ "2026-11-19": "y".repeat(500) });
+  assert.equal(first.load()["2026-11-19"].length, S.DAILY_LIMIT);
+  assert.equal(S.DAILY_LIMIT <= S.LIMITS.pitch, true);
+  // Junk in storage is no answers, not an error.
+  data.set(S.DAILY_KEY, "{not json");
+  assert.deepEqual(S.openDaily(memoryStorage(data)).load(), {});
+  first.clear();
+  assert.equal(data.has(S.DAILY_KEY), false);
+  // Projects and answers live under different keys.
+  assert.notEqual(S.DAILY_KEY, S.KEY);
+  const off = S.openDaily(blocked);
+  assert.equal(off.usable, false);
+  assert.equal(off.save({ "2026-11-19": "kept for this visit" }), false);
+  assert.deepEqual(off.load(), { "2026-11-19": "kept for this visit" });
+});
+
+test("only the newest answers are kept", () => {
+  const many = {};
+  for (let d = 0; d < 450; d += 1) many[new Date((20000 + d) * 86400000).toISOString().slice(0, 10)] = "idea";
+  const kept = S.cleanDays(many);
+  assert.equal(Object.keys(kept).length, 400);
+  assert.ok(kept[new Date((20000 + 449) * 86400000).toISOString().slice(0, 10)]);
+  assert.equal(kept[new Date(20000 * 86400000).toISOString().slice(0, 10)], undefined);
+});
+
+test("an idea card's words say only what the card shows: never the notes or ticks", () => {
+  const { project } = S.create(idea);
+  project.ticks.name = true;
+  project.notes = "my secret note";
+  const text = S.shareText(project, "https://mtrxhorizyn.com");
+  assert.equal(text, "Nova: Homework reminders that work\nFor Students\nSpark · 5% of the way to launch\nMade with Genesis · mtrxhorizyn.com/genesis");
+  assert.ok(!text.includes("secret") && !text.includes("nova.com\n"));
+  // A strange base address falls back to the company's own.
+  assert.match(S.shareText(project, "javascript:alert(1)"), /mtrxhorizyn\.com\/genesis$/);
+  assert.match(S.shareText(project, ""), /mtrxhorizyn\.com\/genesis$/);
+  assert.equal(S.shareText({ name: "" }), "");
+  assert.equal(S.cardFileName(project), "nova-card.png");
+  assert.equal(S.cardFileName({ name: "!!!" }), "genesis-card.png");
+});

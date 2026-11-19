@@ -350,11 +350,263 @@
     return `${base}-plan.txt`;
   }
 
+  // ---------------------------------------------------------------- the first minute
+  // Example ideas, so nobody starts at a blank page. "Try an example" fills
+  // the form with one; nothing is saved until the visitor presses Start.
+
+  const EXAMPLES = [
+    { name: "Plant Pal", pitch: "Reminds you to water your plants, and tells you how much", audience: "people who keep forgetting their houseplants" },
+    { name: "Swap Shelf", pitch: "Swap books you've finished for ones you haven't read", audience: "readers who'd rather trade than buy new" },
+    { name: "Pocket Coach", pitch: "Ten-minute workouts you can do in a small room", audience: "busy people with no time for the gym" },
+    { name: "Lunch Lab", pitch: "Healthy packed lunches planned in two minutes a week", audience: "families who run out of lunch ideas" },
+    { name: "Pet Sitter Hub", pitch: "Find a trusted neighbour to feed your pet while you're away", audience: "pet owners going away for a few days" },
+    { name: "Quiet Hours", pitch: "Shows which cafés and libraries near you are quiet right now", audience: "students and remote workers who need to focus" },
+    { name: "Fix It Friday", pitch: "Short videos that show how to fix everyday things at home", audience: "people who'd rather fix than replace" },
+    { name: "Club Kit", pitch: "Sign-ups, reminders and a shared calendar for small clubs", audience: "people who run a local club or team" },
+  ];
+
+  function example(n) {
+    const i = Number.isInteger(n) ? ((n % EXAMPLES.length) + EXAMPLES.length) % EXAMPLES.length
+      : Math.floor(Math.random() * EXAMPLES.length);
+    return { ...EXAMPLES[i], index: i };
+  }
+
+  // ---------------------------------------------------------------- today's spark
+  // A new idea prompt every day, the same for everyone on the same day. A
+  // visitor's answers are kept only in their own browser, under DAILY_KEY,
+  // like their projects. A streak counts the days in a row they answered.
+  // Every streak starts with one freeze, which covers a single missed day so
+  // one day off never resets it; once used, it comes back after FREEZE_EARN
+  // more answered days. Nothing here ever nags: missing two days in a row
+  // only means a new streak starts.
+
+  const DAILY_KEY = "mtrx-genesis-daily";
+  const DAILY_LIMIT = 140; // the same as a pitch, so an answer can become one
+  const DAILY_KEEP = 400; // days of answers kept, newest first
+  const FREEZE_EARN = 7;
+  const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+  const PROMPTS = [
+    "What takes too long every morning? How could an app make it quicker?",
+    "Think of something you lose all the time. What would help you find it?",
+    "What's a chore nobody likes? Invent a way to make it fun.",
+    "Pick a hobby you love. What tool is missing for people who do it?",
+    "What do people near you always complain about? Fix it in one line.",
+    "Design something that helps a grandparent stay in touch.",
+    "What could make a rainy day less boring?",
+    "Invent a way to waste less food at home.",
+    "What would help someone feel welcome on their first day somewhere new?",
+    "Think of a small shop near you. What would bring them more customers?",
+    "What's something you learned the hard way? Make it easier for the next person.",
+    "Invent a game that gets people outside.",
+    "What would make saving money feel like a win?",
+    "Pets: what problem do their owners have that nobody has solved?",
+    "What could help people sleep better?",
+    "Think of a sport or team. What would make practice better?",
+    "Invent something that helps people share instead of buying new.",
+    "What's annoying about planning a trip? Make it simple.",
+    "What would help someone learn a new language a little every day?",
+    "Design a way for neighbours to help each other.",
+    "What could make cooking dinner faster on a busy night?",
+    "Invent something that makes a long journey more fun.",
+    "What would help people drink more water?",
+    "Think of a job someone you know does. What tool would save them an hour?",
+    "What could make tidying up take five minutes, not fifty?",
+    "Invent a way to keep track of things you've lent to friends.",
+    "What would help a small club or group stay organised?",
+    "What's one thing that's hard to do on a phone? Make it easy.",
+    "Invent something that helps people be kinder online.",
+    "What would make recycling easier to get right?",
+    "Design something for people who love music but can't play an instrument.",
+    "What could help someone remember birthdays?",
+    "Invent a way to make homework or study less stressful.",
+    "What do new parents need help with most?",
+    "Think of the weather. What could you build that it makes useful?",
+    "What would help people find a quiet place to think?",
+    "Invent something that makes a garden or balcony easier to look after.",
+    "What would make a queue less annoying?",
+    "Design a way to help local artists sell their work.",
+    "What could help people keep a habit going?",
+    "Invent a better way to split chores fairly.",
+    "What would make a museum or library visit more exciting?",
+    "Think of something you'd pay a little for every month. Why?",
+    "Invent a way to help people fix things instead of throwing them away.",
+    "What's a problem only you seem to notice? Write the fix.",
+  ];
+  // Steps through every prompt before any comes round again, never two
+  // neighbours on neighbouring days (17 shares no factor with 45 prompts).
+  const PROMPT_STEP = 17;
+
+  const pad = (n) => String(n).padStart(2, "0");
+
+  // A day as "YYYY-MM-DD" in the visitor's own time zone.
+  function dayKey(date) {
+    const d = date instanceof Date ? date : new Date(date || Date.now());
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  // Whole days since 1 Jan 1970 for a "YYYY-MM-DD" key, or NaN.
+  function dayNumber(key) {
+    if (typeof key !== "string" || !DAY.test(key)) return NaN;
+    const [y, m, d] = key.split("-").map(Number);
+    const t = Date.UTC(y, m - 1, d);
+    const back = new Date(t);
+    if (back.getUTCFullYear() !== y || back.getUTCMonth() !== m - 1 || back.getUTCDate() !== d) return NaN;
+    return Math.round(t / 86400000);
+  }
+
+  function keyOfNumber(n) {
+    const d = new Date(n * 86400000);
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  }
+
+  function promptFor(key) {
+    const n = dayNumber(key);
+    const i = Number.isFinite(n) ? (((n * PROMPT_STEP) % PROMPTS.length) + PROMPTS.length) % PROMPTS.length : 0;
+    return { index: i, text: PROMPTS[i] };
+  }
+
+  // Answers from anywhere (storage), made safe: real days, one line each,
+  // the newest DAILY_KEEP only.
+  function cleanDays(raw) {
+    const out = {};
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+    const keys = Object.keys(raw).filter((k) => Number.isFinite(dayNumber(k))).sort().reverse().slice(0, DAILY_KEEP);
+    for (const k of keys) {
+      const text = line(raw[k]).slice(0, DAILY_LIMIT);
+      if (text) out[k] = text;
+    }
+    return out;
+  }
+
+  // The streak on `today` from the days answered. Walks forward from the
+  // first answer: an answered day adds one; a missed day uses the freeze if
+  // it is there (the streak carries on), and otherwise starts it again. Today
+  // not answered yet changes nothing: there's still time.
+  function streak(days, today) {
+    const t = dayNumber(today);
+    const answered = new Set(Object.keys(days || {}).map(dayNumber).filter((n) => Number.isFinite(n) && n <= t));
+    const out = { streak: 0, best: 0, freezes: 1, frozen: [], today: answered.has(t), total: answered.size, toEarn: 0 };
+    if (!answered.size || !Number.isFinite(t)) return out;
+    let since = 0;
+    for (let d = Math.max(Math.min(...answered), t - DAILY_KEEP); d <= t; d += 1) {
+      if (answered.has(d)) {
+        out.streak += 1;
+        out.best = Math.max(out.best, out.streak);
+        if (out.freezes === 0 && ++since >= FREEZE_EARN) { out.freezes = 1; since = 0; }
+      } else if (d === t) {
+        // Today isn't over.
+      } else if (out.streak > 0 && out.freezes > 0) {
+        out.freezes = 0;
+        since = 0;
+        out.frozen.push(keyOfNumber(d));
+      } else if (out.streak > 0) {
+        // A fresh start, with its own freeze.
+        out.streak = 0;
+        out.frozen = [];
+        out.freezes = 1;
+        since = 0;
+      }
+    }
+    out.toEarn = out.freezes ? 0 : FREEZE_EARN - since;
+    return out;
+  }
+
+  // The last `n` days, oldest first, each "done", "frozen", "missed" or
+  // "today" (today, not answered yet), for the little row of dots.
+  function lastDays(days, today, n = 7) {
+    const t = dayNumber(today);
+    const s = streak(days, today);
+    const out = [];
+    for (let d = t - n + 1; d <= t; d += 1) {
+      const key = keyOfNumber(d);
+      const state = days && days[key] ? "done" : s.frozen.includes(key) ? "frozen" : d === t ? "today" : "missed";
+      out.push({ key, state });
+    }
+    return out;
+  }
+
+  // Wraps localStorage for the answers, like open() does for projects.
+  function openDaily(storage) {
+    let usable = false;
+    try {
+      if (storage) {
+        storage.setItem(DAILY_KEY + ":test", "1");
+        storage.removeItem(DAILY_KEY + ":test");
+        usable = true;
+      }
+    } catch (_) { usable = false; }
+    let memory = {};
+
+    function load() {
+      if (!usable) return { ...memory };
+      try {
+        const raw = storage.getItem(DAILY_KEY);
+        if (!raw) return {};
+        const data = JSON.parse(raw);
+        return cleanDays(data && data.days);
+      } catch (_) {
+        return { ...memory };
+      }
+    }
+
+    function save(days) {
+      memory = cleanDays(days);
+      if (!usable) return false;
+      try {
+        storage.setItem(DAILY_KEY, JSON.stringify({ format: FORMAT, days: memory }));
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function clear() {
+      memory = {};
+      if (!usable) return true;
+      try { storage.removeItem(DAILY_KEY); return true; } catch (_) { return false; }
+    }
+
+    return { get usable() { return usable; }, load, save, clear };
+  }
+
+  // ---------------------------------------------------------------- sharing a card
+  // A project as a few lines of words to paste anywhere. Only what the card
+  // shows: never the notes, the ticks or anything about the visitor.
+
+  function shareText(project, base) {
+    const p = clean(project);
+    if (!p) return "";
+    const pr = progress(p);
+    const stage = pr.launched ? "Launched" : (STAGES.find((s) => s.key === p.stage) || STAGES[0]).name;
+    const home = typeof base === "string" && /^https?:\/\/[^\s/]+$/.test(base) ? base.replace(/^https?:\/\//, "") : "mtrxhorizyn.com";
+    return [`${p.name}: ${p.pitch}`, `For ${p.audience}`, `${stage} · ${pr.percent}% of the way to launch`,
+      `Made with Genesis · ${home}/genesis`].join("\n");
+  }
+
+  // A file name for the card picture: "nova-notes-card.png".
+  function cardFileName(project) {
+    const base = suggestAddress(project && project.name).replace(/\.com$/, "") || "genesis";
+    return `${base}-card.png`;
+  }
+
+  // The first step not ticked yet, the stage it belongs to first, or null
+  // when every step of the project is done.
+  function nextStep(project) {
+    const ticks = (project && project.ticks) || {};
+    const here = (project && project.stage) || "spark";
+    const open = CHECKLIST.filter((i) => !ticks[i.key]);
+    return open.find((i) => i.stage === here) || open[0] || null;
+  }
+
   const api = {
     KEY, LIMITS, STAGES, CHECKLIST, line, block, addressProblem, suggestAddress, nameWarning,
     check, create, progress, clean, cleanList, exportText, importText, open,
     HANDOFF_KEY, offerToVortex, takeVortexOffer,
     PRO_KEY, proKey, readProKey, keepProKey, forgetProKey, planText, planFileName,
+    EXAMPLES, example, nextStep,
+    DAILY_KEY, DAILY_LIMIT, FREEZE_EARN, PROMPTS, dayKey, dayNumber, promptFor, cleanDays, streak, lastDays, openDaily,
+    shareText, cardFileName,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.GenesisStore = api;

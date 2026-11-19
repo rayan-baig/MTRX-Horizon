@@ -32,8 +32,8 @@ INVEST = {"kind": "invest", "name": "Sam Lee", "organisation": "", "email": "sam
           "message": f"I'd like to hear about your plans. {SECRET}"}
 BUY = {"kind": "buy", "name": "Jo Buyer", "organisation": "Example Holdings", "email": "jo@example.com",
        "apps": ["rankup", "company"], "message": f"We'd like to talk about buying. {SECRET}"}
-BUY_NOTICE = ("This is a place to start a conversation. Nothing here is an offer to sell, and no sale "
-              "happens through this site. Any deal would need proper agreements and advice.")
+BUY_NOTICE = ("This only starts a conversation. Nothing is for sale on this page and nobody can buy or "
+              "pay for anything here.")
 
 
 def send(client, body, headers=None):
@@ -89,9 +89,9 @@ def test_the_four_paths_and_what_each_says(client):
     assert "If you're under 13, ask a parent or guardian to send this for you." in page
     assert "Bring a project from Genesis" in page
     notice = " ".join(page.split('<p class="v-notice">', 1)[1].split("</p>", 1)[0].split())
-    assert notice == ("This page is not an offer to sell or a request to buy any shares or other "
-                      "investment. MTRX Horizyn is not raising money through this site. If you'd like "
-                      "to talk, leave your details and we'll get back to you.")
+    assert notice == ("Just so you know: we're not selling shares or asking anyone for money here, and "
+                      "nothing on this site is an investment. If you'd like to talk, leave your details "
+                      "and we'll get back to you.")
     # No promises about money anywhere on the page.
     for word in ("return on", "returns", "valuation", "raising a round", "equity offered"):
         assert word not in page.lower()
@@ -560,7 +560,7 @@ def test_privacy_page_says_what_chroma_vortex_keeps(client):
     assert "It is never shared" in page and "We don't keep your network address with it" in page
     assert "kept for 24 hours" in page
     assert "no forms" not in page
-    assert main.LEGAL_UPDATED == "5 November 2026"
+    assert main.LEGAL_UPDATED == "19 November 2026"
 
 
 def test_terms_say_a_message_is_no_agreement_or_investment_offer(client):
@@ -678,3 +678,52 @@ def test_the_old_vortex_address_still_lands_on_orbyt(client):
     response = client.get("/vortex", follow_redirects=False)
     assert response.status_code == 301 and response.headers["location"] == "/orbyt"
     assert "Orbyt" in client.get("/vortex").text
+
+
+# ---------------------------------------------------------------- 1.10.0: clear in five seconds
+
+def test_orbyt_says_who_it_is_for_and_how_it_works_at_once(client):
+    page = client.get("/orbyt").text
+    hero = page.split('<section class="v-hero panel">', 1)[1].split("</section>", 1)[0]
+    assert "Want to work with MTRX Horizyn? Start here." in hero
+    for promise in ("Takes about 2 minutes", "A real person reads every message", "Nobody pays or gets paid here"):
+        assert f"<li>{promise}</li>" in hero
+    paths = page.split('<nav class="v-paths"', 1)[1].split("</nav>", 1)[0]
+    # The most common visitor first, each with who it's for in their words.
+    assert [m for m in re.findall(r'data-path="(\w+)"', paths)] == ["pitch", "partner", "invest", "buy"]
+    for who in ("I have an idea", "I run a business", "I&#39;m an investor", "I&#39;d like to buy"):
+        assert who in paths or who.replace("&#39;", "'") in paths, who
+    how = page.split('<ol class="v-how" id="v-choose"', 1)[1].split("</ol>", 1)[0]
+    assert how.count("<li>") == 3 and "We reply by email" in how
+
+
+def test_after_sending_each_path_gets_a_next_step(client):
+    page = client.get("/orbyt").text
+    sent = page.split('<section class="panel v-sent"', 1)[1].split("</section>", 1)[0]
+    links = dict(re.findall(r'data-next="([a-z ]+)" href="([^"]+)" hidden', sent))
+    assert links == {"pitch": "/genesis", "partner": "/partners", "invest buy": "#our-apps"}
+    script = (ROOT / "static/js/vortex.js").read_text()
+    assert 'link.dataset.next.split(" ").includes(kind)' in script
+
+
+def test_buying_is_a_quiet_link_and_no_money_moves_on_orbyt(client):
+    page = client.get("/orbyt").text
+    assert page.count('class="v-app-buy path-buy" href="#buy"') == 3
+    # Nothing here takes money, offers shares or promises anything.
+    lowered = page.lower()
+    for word in ("checkout", "stripe", "card number", "invest now", "buy now", "guaranteed", "profit"):
+        assert word not in lowered, word
+    for script in ("static/js/vortex.js", "static/js/vortex-form.js"):
+        text = (ROOT / script).read_text().lower()
+        assert "checkout" not in text and "stripe" not in text and "/api/genesis/pro" not in text
+
+
+def test_with_no_apps_released_orbyt_says_so_instead_of_an_empty_gap(client):
+    from horizon import catalog
+    for key in catalog.released_keys():
+        catalog.unrelease(key)
+    page = client.get("/orbyt").text
+    assert '<section class="panel v-catalog-empty" id="our-apps">' in page
+    assert "Our apps will be listed here while they&#39;re open to the public." in page \
+        or "Our apps will be listed here while they're open to the public." in page
+    assert "No apps are open to partners right now." in page

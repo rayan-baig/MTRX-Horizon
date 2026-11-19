@@ -381,12 +381,13 @@ def _projects(extra: list) -> list:
                              for a in extra if a["name"] not in known]
 
 
-# The date the privacy page and the terms last changed in substance.
-LEGAL_UPDATED = "5 November 2026"
+# The date the privacy page and the terms last changed in substance (the
+# daily spark and idea cards, in 1.10.0, changed every version of the page).
+LEGAL_UPDATED = "19 November 2026"
 # The same, while Genesis Pro is on: its parts of both pages are shown only then.
-PRO_LEGAL_UPDATED = "14 November 2026"
+PRO_LEGAL_UPDATED = "19 November 2026"
 # The same, while the early access list or the creator program is on.
-GROWTH_LEGAL_UPDATED = "17 November 2026"
+GROWTH_LEGAL_UPDATED = "19 November 2026"
 
 
 def _legal(request: Request, page: str) -> HTMLResponse:

@@ -284,6 +284,10 @@ def answer(who: str, body: dict, pro_key: str | None = None) -> tuple[int, dict]
         settle_spend = settle
     extra: dict = {"pro": True} if pro else ({"pro": False} if pro_key else {})
     if busy or spend_id is None:
+        # The page says what Genesis Pro would change only when the free
+        # help is used up (and only while Pro is on there).
+        if not pro and busy in (BUSY_VISITOR, BUSY_DAY):
+            extra["limit"] = "free"
         return 429, {"error": busy or FAILED, **extra}
     settings = config.get()
     try:

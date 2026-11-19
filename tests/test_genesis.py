@@ -125,3 +125,65 @@ def test_genesis_page_is_compressed(client):
 def test_the_owner_console_links_to_genesis(client):
     owner(client)
     assert 'href="/genesis"' in client.get("/console").text
+
+
+# ---------------------------------------------------------------- 1.10.0
+
+def test_a_first_visit_never_starts_at_a_blank_page(client):
+    """What Genesis is, in one line, a one-tap example, and how it works in
+    three steps; the row of counts waits until there are projects to count."""
+    page = client.get("/genesis").text
+    hero = page.split('<section class="g-hero panel">', 1)[1].split("</section>", 1)[0]
+    assert "Turn your idea into a real plan, one small step at a time." in hero
+    assert 'href="#new">Start my idea' in hero and 'href="#example"' in hero
+    assert hero.count("<li class=\"stage-") == 3
+    assert '<ol class="g-path" id="g-path" hidden>' in hero
+    assert 'id="g-example"' in page  # "Stuck? Fill in an example" on the form
+    script = (ROOT / "static/js/genesis.js").read_text()
+    assert 'hash === "#example"' in script and "S.example(" in script
+
+
+def test_todays_spark_is_kept_in_the_browser_and_never_nags(client):
+    page = client.get("/genesis").text
+    daily = page.split('<section class="panel g-daily"', 1)[1].split("</section>", 1)[0]
+    assert 'id="g-daily-form" novalidate' in daily and "Turn it into a project" in daily
+    assert "Clear my sparks" in daily
+    script = (ROOT / "static/js/genesis.js").read_text()
+    section = script.split("// ---------------------------------------------------------------- today's spark", 1)[1] \
+        .split("// ---------------------------------------------------------------- the form", 1)[0]
+    # Only this browser's storage: nothing is sent, and nothing reminds or counts down.
+    for call in ("fetch(", "Notification", "serviceWorker", "setInterval", "PushManager", "vibrate"):
+        assert call not in section, call
+    assert "S.openDaily(" in script and "freeze" in section
+    for pressure in ("don't lose", "hurry", "last chance", "or lose", "expires"):
+        assert pressure not in section.lower(), pressure
+
+
+def test_an_idea_card_is_drawn_in_the_browser_from_the_card_fields_only(client):
+    page = client.get("/genesis").text
+    dialog = page.split('<dialog class="g-share"', 1)[1].split("</dialog>", 1)[0]
+    assert '<canvas id="g-share-canvas" width="1080" height="1080">' in dialog
+    assert "leave out full\n      names, your school, address or phone number" in dialog
+    script = (ROOT / "static/js/genesis.js").read_text()
+    card = script.split("function drawCard(", 1)[1].split("function cardBlob(", 1)[0]
+    assert "notes" not in card and ".ticks" not in card
+    # No link carries an idea: nothing a visitor wrote is put in an address.
+    for leak in ("btoa(", "encodeURIComponent(", "location.search", "#see/", "?idea="):
+        assert leak not in script, leak
+    assert script.count("fetch(") == 1
+
+
+def test_free_and_pro_side_by_side_only_while_pro_is_on(client):
+    page = client.get("/genesis").text
+    assert "g-compare" not in page and "Genesis Pro" not in page
+    script = (ROOT / "static/js/genesis.js").read_text()
+    # The upgrade note shows only when the free help is used up, Pro is
+    # switched on here and this browser doesn't have it.
+    assert "if (last.limit && proOffered && !isPro())" in script
+
+
+def test_privacy_page_says_where_sparks_and_cards_stay(client):
+    page = " ".join(client.get("/privacy").text.split())
+    assert ("Your answers to Genesis's daily spark, and your streak, are kept the same way: in your browser "
+            "only, never sent to us") in page
+    assert "An idea card is drawn in your browser too" in page

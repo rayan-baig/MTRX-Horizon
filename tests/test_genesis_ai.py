@@ -169,6 +169,8 @@ def test_each_visitor_has_an_hourly_and_daily_limit(client, provider, monkeypatc
     assert ask(client, headers=one).status_code == 200
     busy = ask(client, headers=one)
     assert busy.status_code == 429 and "a lot" in busy.json()["error"]
+    # Marked as the free help being used up, so the page can say what Pro changes.
+    assert busy.json()["limit"] == "free"
     # Someone else is not held back by it.
     assert ask(client, headers=two).status_code == 200
     assert len(provider["calls"]) == 3
@@ -186,6 +188,7 @@ def test_the_daily_spend_cap_stops_asks_for_everyone(client, provider, monkeypat
     monkeypatch.setenv("GENESIS_AI_DAILY_CAP_USD", "0.05")
     response = ask(client)
     assert response.status_code == 429 and "resting" in response.json()["error"]
+    assert response.json()["limit"] == "free"
     assert provider["calls"] == []
     monkeypatch.setenv("GENESIS_AI_DAILY_CAP_USD", "0.12")
     assert ask(client).status_code == 200

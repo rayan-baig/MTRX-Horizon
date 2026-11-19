@@ -34,7 +34,7 @@
   <a class="g-home" href="/">Home</a>
 </header>
 
-<main class="genesis" id="genesis" data-ai="{{ 'on' if ai else 'off' }}">
+<main class="genesis" id="genesis" data-ai="{{ 'on' if ai else 'off' }}" data-base="{{ base }}">
   <noscript><p class="panel g-noscript">Genesis runs in your browser, so it needs JavaScript turned on.</p></noscript>
 
   <div id="g-list-view">
@@ -43,18 +43,54 @@
       <div class="g-hero-copy">
         <p class="eyebrow g-eyebrow">MTRX Horizyn</p>
         <h1 class="g-title">Genesis</h1>
-        <p class="g-line">Where new ideas begin.</p>
-        <p class="g-text">Write your idea down, say who it's for, and take it from Spark to Launch with a
-          checklist in plain words. Your projects stay in this browser: nothing is sent to us.</p>
-        <div class="cta-row"><a class="btn btn-genesis" href="#new">Start a project <span aria-hidden="true">→</span></a></div>
+        <p class="g-line">Turn your idea into a real plan, one small step at a time.</p>
+        <p class="g-text">Write it in three lines, then tick off easy steps from Spark to Launch. Free,
+          and your ideas stay in this browser: nothing is sent to us.</p>
+        <div class="cta-row">
+          <a class="btn btn-genesis" href="#new">Start my idea <span aria-hidden="true">→</span></a>
+          <a class="btn btn-ghost" href="#example">Try an example</a>
+        </div>
       </div>
-      <ol class="g-path" id="g-path"></ol>
+      <ol class="g-how" id="g-how">
+        <li class="stage-spark"><b>1</b><span><strong>Write it down</strong> A name, one line, and who it's for.</span></li>
+        <li class="stage-plan"><b>2</b><span><strong>Tick small steps</strong> 19 steps in plain words, in any order.</span></li>
+        <li class="stage-launch"><b>3</b><span><strong>Launch it</strong> Show someone, or pitch it to us in Orbyt.</span></li>
+      </ol>
+      <ol class="g-path" id="g-path" hidden></ol>
+    </section>
+
+    {#- Today's spark: a new prompt each day, answered in this browser only
+        (genesis-store.js, DAILY_KEY). static/js/genesis.js fills it in. #}
+    <section class="panel g-daily" id="g-daily" aria-labelledby="g-daily-title" hidden>
+      <div class="g-daily-head">
+        <p class="eyebrow g-daily-eyebrow">Today's spark <span id="g-daily-date"></span></p>
+        <p class="g-streak" id="g-streak" hidden></p>
+      </div>
+      <h2 class="g-daily-prompt" id="g-daily-title"></h2>
+      <form class="g-daily-form" id="g-daily-form" novalidate>
+        <input id="g-daily-input" autocomplete="off" placeholder="Your idea in one line" aria-label="Your idea in one line">
+        <button class="btn btn-genesis btn-small" type="submit">Save my spark</button>
+      </form>
+      <div class="g-daily-done" id="g-daily-done" hidden>
+        <p class="g-daily-answer" id="g-daily-answer"></p>
+        <div class="g-tools">
+          <button class="g-tool g-tool-strong" type="button" id="g-daily-project">Turn it into a project →</button>
+          <button class="g-tool" type="button" id="g-daily-edit">Change it</button>
+        </div>
+      </div>
+      <ol class="g-week" id="g-week" aria-label="The last 7 days"></ol>
+      <p class="g-daily-note" id="g-daily-note"></p>
+      <details class="g-daily-more" id="g-daily-more" hidden>
+        <summary>Your past sparks</summary>
+        <ul class="g-daily-past" id="g-daily-past"></ul>
+        <button class="g-tool danger" type="button" id="g-daily-clear">Clear my sparks</button>
+      </details>
     </section>
 
     <p class="g-storage-note" id="g-storage-note" hidden>Your browser is blocking saved data for this site,
       so your projects last only until you close this tab. Use <b>Download</b> to keep a copy.</p>
 
-    <div class="g-list-head">
+    <div class="g-list-head" id="g-list-head">
       <h2>Your projects <span class="g-hint" id="g-count"></span></h2>
       <div class="g-tools">
         <span class="g-tools-data" id="g-tools-data">
@@ -70,11 +106,13 @@
       <span class="g-spark g-spark-big" aria-hidden="true"></span>
       <h2>Every big thing starts as a spark.</h2>
       <p>RankUp, CyberLogix AI and OmniArmor.ai each began as one line. Write yours: a name, the
-        problem it solves in a sentence, and who it's for.</p>
+        problem it solves in a sentence, and who it's for. Not sure yet? Try an example and change it.</p>
       <div class="cta-row">
-        <a class="btn btn-genesis" href="#new">Start your first project <span aria-hidden="true">→</span></a>
-        <button class="btn btn-ghost" type="button" id="g-import-empty">Import a file</button>
+        <a class="btn btn-genesis" href="#new">Start my idea <span aria-hidden="true">→</span></a>
+        <a class="btn btn-ghost" href="#example">Try an example</a>
       </div>
+      <p class="g-empty-small">Have a Genesis file from another device?
+        <button class="g-link" type="button" id="g-import-empty">Import it</button></p>
     </section>
 
     {%- if pro %}
@@ -89,17 +127,20 @@
       </div>
 
       <div class="g-pro-offer" id="g-pro-offer">
-        <ul class="g-pro-perks">
-          <li><b>Up to {{ pro.per_day }} AI answers a day</b>
-            <span>The free plan has {{ pro.free_per_day }}. Pro's are all yours, so it's never too busy
-              (with a fair monthly allowance).</span></li>
-          <li><b>Longer, deeper answers</b>
-            <span>And three more helpers: a four-week plan, words for your website, and price ideas.</span></li>
-          <li><b>Private cloud backup</b>
-            <span>Your projects stay safe even if this browser is cleared. Only you can see them.</span></li>
-          <li><b>Download a plan</b>
-            <span>Any project as a tidy file, to print or show a mentor.</span></li>
-        </ul>
+        <p class="g-pro-lede">Genesis is free to use. Pro is only for people who ask Genesis for help
+          a lot.</p>
+        <table class="g-compare">
+          <thead><tr><th scope="col"><span class="visually-hidden">What you get</span></th><th scope="col">Free</th><th scope="col">Pro</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Projects, the launch checklist, today's spark and idea cards</th><td>Yes</td><td>Yes</td></tr>
+            <tr><th scope="row">Ask Genesis answers a day</th><td>{{ pro.free_per_day }}</td><td>Up to {{ pro.per_day }}, all yours</td></tr>
+            <tr><th scope="row">Longer answers, plus a four-week plan, website words and price ideas</th><td>No</td><td>Yes</td></tr>
+            <tr><th scope="row">Private cloud backup, if this browser is cleared</th><td>No</td><td>Yes</td></tr>
+            <tr><th scope="row">Download a project as a tidy plan</th><td>No</td><td>Yes</td></tr>
+          </tbody>
+        </table>
+        <p class="g-pro-small">Pro's answers come with a fair monthly allowance. Only you can see your
+          projects and backups.</p>
         <div class="g-pro-buy">
           <button class="btn btn-genesis g-pro-plan" type="button" data-plan="month">Get Pro
             {%- if pro.month %} · {{ pro.month.label }} a month{% endif %}</button>
@@ -166,6 +207,8 @@
     <p class="eyebrow g-eyebrow">Spark</p>
     <h1 class="g-form-title">Start a project</h1>
     <p class="g-form-lede">Three lines and you're off. You can change your mind about all of it later.</p>
+    <p class="g-form-example"><button class="g-tool" type="button" id="g-example">Stuck? Fill in an example</button>
+      <small id="g-example-note"></small></p>
     <form id="g-form" novalidate>
       <label class="g-field">
         <span class="g-label">Name <small class="g-count" id="g-name-count"></small></span>
@@ -207,6 +250,24 @@
     {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>
 </footer>
+
+<dialog class="g-share" id="g-share" aria-labelledby="g-share-title">
+  <div class="g-share-inner">
+    <div class="g-row">
+      <h2 class="g-h2" id="g-share-title">Your idea card</h2>
+      <button class="g-tool" type="button" id="g-share-close">Close</button>
+    </div>
+    <div class="g-share-frame"><canvas id="g-share-canvas" width="1080" height="1080">Your idea card</canvas></div>
+    <p class="g-share-check"><b>Check it first.</b> Anyone you send it to sees exactly this, so leave out full
+      names, your school, address or phone number. Your notes and ticks are never on it.</p>
+    <div class="g-tools g-share-tools">
+      <button class="btn btn-genesis btn-small" type="button" id="g-share-save">Save picture</button>
+      <button class="btn btn-ghost btn-small" type="button" id="g-share-native" hidden>Share…</button>
+      <button class="btn btn-ghost btn-small" type="button" id="g-share-copy">Copy words</button>
+    </div>
+    <p class="g-msg" id="g-share-msg" role="status"></p>
+  </div>
+</dialog>
 
 <p class="g-toast" id="g-toast" role="status" aria-live="polite"></p>
 
