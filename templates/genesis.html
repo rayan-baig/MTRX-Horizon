@@ -26,7 +26,7 @@
   <nav class="mainnav" aria-label="Main">
     <a href="/">Home</a>
     <a href="/genesis" class="active" aria-current="page">Genesis</a>
-    <a href="/orbyt">Orbyt</a>
+    <a href="/orbyt">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>
     <a href="/privacy">Privacy</a>
     <a href="/terms">Terms</a>
     <a href="/brand">Brand</a>
@@ -73,6 +73,7 @@
       </form>
       <div class="g-daily-done" id="g-daily-done" hidden>
         <p class="g-daily-answer" id="g-daily-answer"></p>
+        <p class="g-daily-saved" id="g-daily-saved" role="status"></p>
         <div class="g-tools">
           <button class="g-tool g-tool-strong" type="button" id="g-daily-project">Turn it into a project →</button>
           <button class="g-tool" type="button" id="g-daily-edit">Change it</button>
@@ -133,8 +134,12 @@
           <thead><tr><th scope="col"><span class="visually-hidden">What you get</span></th><th scope="col">Free</th><th scope="col">Pro</th></tr></thead>
           <tbody>
             <tr><th scope="row">Projects, the launch checklist, today's spark and idea cards</th><td>Yes</td><td>Yes</td></tr>
+            {#- Rows about Ask Genesis only while it is on (Pro itself is
+                only offered then: genesis_pro.ready). -#}
+            {%- if pro.ai %}
             <tr><th scope="row">Ask Genesis answers a day</th><td>{{ pro.free_per_day }}</td><td>Up to {{ pro.per_day }}, all yours</td></tr>
             <tr><th scope="row">Longer answers, plus a four-week plan, website words and price ideas</th><td>No</td><td>Yes</td></tr>
+            {%- endif %}
             <tr><th scope="row">Private cloud backup, if this browser is cleared</th><td>No</td><td>Yes</td></tr>
             <tr><th scope="row">Download a project as a tidy plan</th><td>No</td><td>Yes</td></tr>
           </tbody>
@@ -142,8 +147,9 @@
         <p class="g-pro-small">Pro's answers come with a fair monthly allowance. Only you can see your
           projects and backups.</p>
         <div class="g-pro-buy">
-          <button class="btn btn-genesis g-pro-plan" type="button" data-plan="month">Get Pro
-            {%- if pro.month %} · {{ pro.month.label }} a month{% endif %}</button>
+          {#- Stripe's own figure once read; until then (or while Stripe
+              can't be reached) the price as written in the settings. -#}
+          <button class="btn btn-genesis g-pro-plan" type="button" data-plan="month">Get Pro · {{ pro.month.label if pro.month else pro.month_text }} a month</button>
           {%- if pro.yearly %}
           <button class="btn btn-ghost g-pro-plan" type="button" data-plan="year">
             {%- if pro.year %}{{ pro.year.label }} a year{% else %}Pay yearly{% endif %}
@@ -151,7 +157,7 @@
           {%- endif %}
         </div>
         {%- if not pro.month %}
-        <p class="g-pro-price-note">You'll see the price before paying.</p>
+        <p class="g-pro-price-note">You'll see the exact price before paying.</p>
         {%- endif %}
         <p class="g-pro-adult"><b>A grown-up pays.</b> Checkout is for adults, so ask a parent or carer
           to buy Pro with you. Cancel any time.</p>
@@ -246,7 +252,7 @@
   <span class="foot-brand">MTRX HORIZYN</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
   <nav class="foot-links" aria-label="About this site">
-    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/orbyt">Orbyt</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
+    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/orbyt">Orbyt: Work with MTRX Horizyn</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
     {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>
 </footer>

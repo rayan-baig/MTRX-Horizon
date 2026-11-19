@@ -177,12 +177,15 @@
     editingDaily = false;
     $("g-daily-input").value = "";
     const st = S.streak(days, today);
-    if (first) toast(st.streak > 1 ? `Spark saved. ${st.streak} days in a row!` : "Spark saved. Nice one.");
-    else toast("Spark changed.");
     drawDaily();
+    // Said inside the card, under the answer, where it covers nothing.
+    $("g-daily-saved").textContent = first
+      ? (st.streak > 1 ? `Spark saved. ${st.streak} days in a row!` : "Spark saved. Nice one.")
+      : "Spark changed.";
   });
   $("g-daily-edit").addEventListener("click", () => {
     editingDaily = true;
+    $("g-daily-saved").textContent = "";
     drawDaily();
     $("g-daily-input").value = daily.load()[S.dayKey(new Date())] || "";
     $("g-daily-input").focus();
@@ -258,7 +261,7 @@
   $("g-example").addEventListener("click", () => fillForm(nextExample()));
 
   for (const f of ["name", "pitch", "audience"]) {
-    $(`g-${f}`).maxLength = S.LIMITS[f] + 20; // a little over, so the counter can say so
+    $(`g-${f}`).maxLength = S.LIMITS[f]; // the same limit the counter shows
     $(`g-${f}`).addEventListener("input", () => {
       count($(`g-${f}`), $(`g-${f}-count`), S.LIMITS[f]);
       if (f !== "name") say(f, "");
@@ -361,8 +364,9 @@
         el("span", {}, meter(pr.done, pr.total, "big"), el("small", { text: `${pr.done} of ${pr.total} steps done` }))),
       el("p", { class: "g-note", text: note }));
 
-    const groups = pr.stages.map((s) => {
-      const items = S.CHECKLIST.filter((i) => i.stage === s.key).map((item) => {
+    const all = S.steps(p);
+    const groups = pr.stages.map((s, at) => {
+      const items = all.filter((i) => i.stage === s.key).map((item) => {
         const box = el("input", { type: "checkbox" });
         box.checked = Boolean(p.ticks[item.key]);
         box.addEventListener("change", () => {
@@ -371,20 +375,58 @@
           if (after.launched) toast(`${p.name} is launched!`);
           drawProject(p);
         });
-        return el("li", {}, el("label", { class: `g-item${box.checked ? " done" : ""}` },
-          box, el("span", { class: "g-box" }),
-          el("span", { class: "g-item-text" }, el("b", { text: item.label }), item.hint ? el("small", { text: item.hint }) : null)));
+        // Hide a step that doesn't fit this idea (it can come back), or
+        // remove one of the visitor's own.
+        const hide = el("button", { class: "g-item-hide", type: "button",
+          "aria-label": `${item.custom ? "Remove" : "Hide"} “${item.label}”`, text: item.custom ? "Remove" : "Hide" });
+        hide.addEventListener("click", () => {
+          let result = null;
+          update(p, (q) => { result = S.hideStep(q, item.key); });
+          if (result.error) { toast(result.error, true); return; }
+          toast(result.removed ? "Your step is removed." : "Step hidden. Bring it back under Hidden steps.");
+          drawProject(p);
+        });
+        return el("li", { class: `g-item-row${item.custom ? " mine" : ""}` },
+          el("label", { class: `g-item${box.checked ? " done" : ""}` },
+            box, el("span", { class: "g-box" }),
+            el("span", { class: "g-item-text" }, el("b", { text: item.label }),
+              item.hint ? el("small", { text: item.hint }) : item.custom ? el("small", { text: "Your own step" }) : null)),
+          hide);
       });
-      return el("div", { class: `g-group stage-${s.key}${s.key === p.stage ? " here" : ""}` },
-        el("div", { class: "g-group-head" },
+      // Later stages start folded, so the steps that matter now come first;
+      // earlier ones stay open while they have steps left. A stage opened or
+      // closed by hand stays that way for this visit.
+      const remembered = folds[p.id] && folds[p.id][s.key];
+      const open = remembered !== undefined ? remembered : at === here || (at < here && s.done < s.total);
+      const group = el("details", { class: `g-group stage-${s.key}${s.key === p.stage ? " here" : ""}` },
+        el("summary", { class: "g-group-head" },
           el("span", { class: "g-dot" }),
           el("span", {}, el("b", { text: s.name }), el("small", { text: s.line })),
           el("span", { class: "g-group-count", text: `${s.done}/${s.total}` })),
         meter(s.done, s.total),
-        el("ul", { class: "g-items" }, ...items));
+        el("ul", { class: "g-items" }, ...items),
+        addStepForm(p, s));
+      group.open = open;
+      group.addEventListener("toggle", () => { (folds[p.id] = folds[p.id] || {})[s.key] = group.open; });
+      return group;
     });
+    const hiddenOnes = S.hiddenSteps(p);
+    const hiddenList = hiddenOnes.length ? el("details", { class: "g-hidden-steps" },
+      el("summary", { text: `Hidden steps (${hiddenOnes.length})` }),
+      el("ul", {}, ...hiddenOnes.map((item) => {
+        const back = el("button", { class: "g-tool", type: "button", text: "Show again",
+          "aria-label": `Show “${item.label}” again` });
+        back.addEventListener("click", () => {
+          update(p, (q) => { S.showStep(q, item.key); });
+          toast("Step back in the checklist.");
+          drawProject(p);
+        });
+        return el("li", {}, el("span", { text: item.label }), back);
+      }))) : null;
     const checklist = el("section", { class: "panel g-checklist" },
-      el("h2", { class: "g-h2" }, "Launch checklist"), ...groups);
+      el("h2", { class: "g-h2" }, "Launch checklist"),
+      el("p", { class: "g-checklist-note", text: "Every idea is different: hide steps that don't fit yours, and add your own. It all stays in this browser." }),
+      ...groups, hiddenList);
 
     // Notes save themselves a moment after typing stops.
     const area = el("textarea", { class: "g-notes", rows: "8", placeholder: "Ideas, people to ask, links, what you learned…" });
@@ -422,6 +464,32 @@
       el("div", { class: "g-side" }, stagePanel, ask, notes, danger)));
   }
 
+  // Which stages the visitor opened or folded by hand, per project, for this visit.
+  const folds = {};
+
+  // "Add a step" under a stage: a button that opens a one-line form.
+  function addStepForm(p, s) {
+    const input = el("input", { type: "text", class: "g-add-input", autocomplete: "off",
+      placeholder: `A step of your own for ${s.name}`, "aria-label": `A step of your own for ${s.name}` });
+    input.maxLength = S.LIMITS.step;
+    const form = el("form", { class: "g-add-form" }, input,
+      el("button", { class: "btn btn-genesis btn-small", type: "submit", text: "Add" }));
+    form.hidden = true;
+    const open = el("button", { class: "g-add-open", type: "button", text: "+ Add a step" });
+    open.addEventListener("click", () => { form.hidden = false; open.hidden = true; input.focus(); });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const copy = { ...p, custom: (p.custom || []).slice() };
+      const result = S.addStep(copy, s.key, input.value);
+      if (result.error) { toast(result.error, true); input.focus(); return; }
+      update(p, (q) => { q.custom = copy.custom; });
+      (folds[p.id] = folds[p.id] || {})[s.key] = true;
+      toast("Step added.");
+      drawProject(p);
+    });
+    return el("div", { class: "g-add" }, open, form);
+  }
+
   // ---------------------------------------------------------------- the next step
   // One clear thing to do now, at the top of the project, so nobody has to
   // read the whole checklist to know where they are.
@@ -452,9 +520,23 @@
       toast(S.progress(p).launched ? `${p.name} is launched!` : "Ticked. On to the next one.");
       drawProject(p);
     });
+    // Ask Genesis sits below the whole checklist on a phone; this goes
+    // straight to it. Only while AI help is on.
+    let ask = null;
+    if (aiOn) {
+      ask = el("button", { class: "btn btn-ghost btn-small g-next-ask", type: "button", text: "Ask Genesis" });
+      ask.addEventListener("click", () => {
+        const panel = document.querySelector(".g-ask");
+        if (!panel) return;
+        panel.scrollIntoView({ block: "start", behavior: "smooth" });
+        const input = panel.querySelector(".g-question-input");
+        if (input) input.focus({ preventScroll: true });
+      });
+    }
     box.append(el("span", { class: "g-next-label", text: "Your next step" }),
       el("b", { class: "g-next-step", text: step.label }),
-      step.hint ? el("small", { text: step.hint }) : null, done);
+      step.hint ? el("small", { text: step.hint }) : null,
+      el("div", { class: "g-next-actions" }, done, ask));
     return box;
   }
 

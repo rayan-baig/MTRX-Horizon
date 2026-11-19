@@ -363,6 +363,9 @@ def home(request: Request):
         "urls": apps["urls"],
         "more_apps": apps["extra"],
         "app_count": apps["count"],
+        # "3 in development" until launch, from the catalog (catalog.apps_line).
+        "apps_line": apps["line"],
+        "apps_open": apps["counts"]["open"],
         "contact": settings.contact_email,
         "numbers": stats.public_numbers(),
         "projects": _projects(apps["extra"]),
@@ -377,7 +380,8 @@ def home(request: Request):
 def _projects(extra: list) -> list:
     """The hand-kept project list, then each newer released app."""
     known = {p["name"] for p in stats.PROJECTS}
-    return stats.PROJECTS + [{"name": a["name"], "kind": a["line"], "status": "Released", "next": ""}
+    return stats.PROJECTS + [{"name": a["name"], "kind": a["line"],
+                              "status": "Open" if a["open"] else "Opening soon", "next": ""}
                              for a in extra if a["name"] not in known]
 
 
@@ -464,11 +468,14 @@ def genesis_pro_welcome(request: Request):
 # catalog, read on every visit, so an app shows the moment it is released.
 @app.api_route("/orbyt", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def vortex_page(request: Request):
+    apps = [catalog.public(a) for a in catalog.released()]
     return templates.TemplateResponse(request, "vortex.html", {
         "page": "vortex",
         "contact": config.get().contact_email,
         "base": base_url(request),
-        "apps": [catalog.public(a) for a in catalog.released()],
+        "apps": apps,
+        # "Our apps (opening soon)" until one of them is open (catalog.opening).
+        "opening": catalog.opening(apps),
         "company": {"key": vortex.COMPANY, "name": vortex.COMPANY_NAME},
         "partnerships": vortex.PARTNERSHIPS,
         "limits": vortex.LIMITS,

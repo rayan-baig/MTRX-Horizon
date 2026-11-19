@@ -216,7 +216,15 @@
 
 .g-group { padding: 14px 0 6px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
 .g-group:first-of-type { border-top: 0; padding-top: 0; }
-.g-group-head { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.g-group-head { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; cursor: pointer; list-style: none; }
+.g-group-head::-webkit-details-marker { display: none; }
+/* Folded or open: a small arrow at the end of the stage's line. */
+.g-group-head::after {
+  content: ""; width: 8px; height: 8px; margin: 0 4px 3px; border: solid var(--muted); border-width: 0 2px 2px 0;
+  transform: rotate(45deg); transition: transform .15s ease;
+}
+.g-group:not([open]) > .g-group-head::after { transform: rotate(-45deg); margin-bottom: 0; }
+.g-group:not([open]) { padding-bottom: 14px; }
 .g-group-head b { display: block; font: 700 15px/1.2 var(--head); color: var(--st); }
 .g-group-head small { color: var(--faint); font-size: 12.5px; }
 .g-group-count { font: 600 14px var(--body); color: var(--muted); }
@@ -245,6 +253,32 @@
 .g-item-text b { font-weight: 500; font-size: 14.5px; }
 .g-item-text small { color: var(--faint); font-size: 12.5px; }
 .g-item.done .g-item-text b { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--st) 70%, transparent); }
+/* A step and its Hide button side by side. */
+.g-item-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 4px; }
+.g-item-row.mine .g-item-text small { color: var(--st); }
+.g-item-hide {
+  margin-top: 6px; padding: 4px 10px; border-radius: 999px; font: 500 12px var(--body); color: var(--faint);
+  background: none; border: 1px solid transparent; cursor: pointer;
+}
+.g-item-hide:hover, .g-item-hide:focus-visible { color: var(--text); border-color: var(--line-strong); }
+.g-checklist-note { margin: -6px 0 12px; color: var(--faint); font-size: 13px; }
+.g-add { margin: 2px 0 4px; }
+.g-add-open {
+  padding: 6px 8px; border-radius: 8px; font: 600 13px var(--body); color: var(--st);
+  background: none; border: 0; cursor: pointer;
+}
+.g-add-open:hover { text-decoration: underline; }
+.g-add-form { display: flex; gap: 8px; }
+.g-add-form[hidden] { display: none; }
+.g-add-input {
+  flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; font: 400 14.5px var(--body); color: var(--text);
+  background: rgba(5, 8, 22, 0.6); border: 1px solid var(--line-strong);
+}
+.g-add-input:focus { outline: none; border-color: var(--st); }
+.g-hidden-steps { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+.g-hidden-steps summary { cursor: pointer; color: var(--muted); font-size: 13.5px; }
+.g-hidden-steps ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.g-hidden-steps li { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; color: var(--muted); }
 
 .g-track { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); position: relative; }
 .g-track li { display: grid; justify-items: center; gap: 4px; text-align: center; position: relative; }
@@ -309,8 +343,9 @@
 }
 .g-delete:hover { background: rgba(244, 63, 94, 0.12); }
 
+/* At the top of the screen, clear of the buttons and lists a visitor just used. */
 .g-toast {
-  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; z-index: 20;
+  position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -20px); opacity: 0; z-index: 20;
   width: max-content; max-width: calc(100vw - 32px); text-align: center;
   padding: 10px 18px; border-radius: 999px; background: var(--panel-solid); border: 1px solid var(--plan);
   font-size: 14px; transition: opacity .2s ease, transform .2s ease; pointer-events: none; margin: 0;
@@ -448,6 +483,8 @@
 .g-daily-form input { flex: 1 1 260px; min-width: 0; }
 .g-daily-form .btn { min-height: 46px; }
 .g-daily-done { display: grid; gap: 12px; }
+.g-daily-saved { margin: -4px 0 0; font-size: 13.5px; font-weight: 600; color: var(--launched); }
+.g-daily-saved:empty { display: none; }
 .g-daily-answer {
   margin: 0; padding: 12px 16px; border-radius: 12px; font-size: 17px; overflow-wrap: anywhere;
   border: 1px solid rgba(52, 232, 158, 0.4); background: rgba(52, 232, 158, 0.07);
@@ -485,6 +522,8 @@
 }
 .g-next > * { grid-column: 1; }
 .g-next .btn { grid-column: 2; grid-row: 1 / span 3; }
+.g-next > .g-next-actions { grid-column: 2; grid-row: 1 / span 3; display: flex; flex-direction: column; gap: 8px; }
+.g-next-actions .btn { justify-content: center; }
 .g-next-label { font: 600 11.5px/1.3 var(--head); letter-spacing: 0.14em; text-transform: uppercase; color: var(--st); }
 .g-next-step { font: 700 17px/1.35 var(--head); overflow-wrap: anywhere; }
 .g-next small { color: var(--muted); font-size: 13px; }
@@ -559,6 +598,10 @@
   .g-week { justify-content: space-between; gap: 4px; }
   .g-next { grid-template-columns: minmax(0, 1fr); }
   .g-next .btn { grid-column: 1; grid-row: auto; margin-top: 8px; justify-self: start; }
+  .g-next > .g-next-actions { grid-column: 1; grid-row: auto; flex-direction: row; flex-wrap: wrap; margin-top: 8px; }
+  .g-next-actions .btn { margin-top: 0; }
+  .g-item-hide { min-height: 40px; margin-top: 0; }
+  .g-add-open { min-height: 40px; }
   .g-compare th, .g-compare td { padding: 8px 6px; font-size: 13px; }
   .g-plan { margin-left: 0; }
 }

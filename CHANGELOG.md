@@ -4,6 +4,62 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.11.0 (19 November 2026)
+
+Fixes from an honest review of the home page, Genesis and Orbyt: the site now says plainly what
+is ready and what isn't, and nothing looks alive unless it is.
+
+**Home page**
+
+- **The apps are "in development" everywhere until launch.** The cards said "Early access",
+  the figures said "Total Apps 3 Available" and Orbyt said "Released to the public". Now the
+  figure says "Our apps: 3, In development", the opening line says "three apps, all in
+  development", and Orbyt says "Our apps (opening soon)". One place decides (the app catalog),
+  so it all changes together on launch day.
+- **New setting, `MTRX_OPEN_APPS`.** An app counts as open only once its key is listed there
+  (`rankup,cyberlogix,omniarmor`, or `all`) and it has an address. Until then there is no Open
+  button or link to it anywhere, even if its address is set. **On launch day, set this.**
+- **Nothing pretends.** The bell no longer shows a "3" that never goes away. The live-activity
+  panel (an empty map with dashes) and its "Analytics" link are hidden until an app reports
+  real numbers. "Settings" held only calm mode, so it is called **Calm mode** now. The round
+  button that looked like a profile picture is a plain three-line **Menu** button.
+- **Plain words.** The headline is "Three apps that watch, warn and motivate." The cards say
+  what each app does: "Chores that turn into points and games", "Fridge and freezer alarms that
+  call you", "Safety checklists that count the deadlines", and phones show that line too.
+  "Global Reach: 12 Industries" is now "Built for 12 industries".
+- **On phones**, Genesis and Orbyt have their own row under the apps, and the menu always fits
+  on the screen (a long one scrolls inside itself).
+
+**Genesis**
+
+- **Genesis Pro is only offered while Ask Genesis is on.** Before, Pro could be shown and bought
+  with AI help switched off, and its table promised daily answers that couldn't come. Ask
+  Genesis is now part of Pro's own readiness check, and the console says when it is the missing
+  piece. Prices and the free daily limit are unchanged.
+- **The Pro price always shows.** When Stripe can't be reached, the button says "Get Pro ·
+  $4.99 a month" from a new setting, `GENESIS_PRO_PRICE_TEXT`, instead of no price at all.
+- **Ask Genesis is one tap away.** "Your next step" has an **Ask Genesis** button (only while AI
+  help is on), and later stages of the checklist start folded so the steps that matter now come
+  first.
+- **Every checklist can fit its idea.** Hide steps that don't fit (and bring them back), and add
+  your own to any stage. It stays in your browser like everything else, and Pro backups keep it.
+- **Rough edges:** the name, pitch and "who it's for" boxes stop at the same limit their counters
+  show; a day once "covered by your freeze" stays that way in the week of dots after a streak
+  ends; "Spark saved" is said inside the spark card, and other messages appear at the top of the
+  screen, so they no longer cover what you just used.
+
+**Orbyt**
+
+- "Our apps (opening soon)" until an app is open, each app marked "Opening soon", and no more
+  "Ask about buying" link on every app (buying is still its own path).
+- **Pitch and Partner come first;** Investors and Buy are a smaller "Other ways to talk to us"
+  row below them. The home menu says "Orbyt: work with us".
+- **Before you send:** the pitch form says ideas sent here aren't confidential and that we may
+  already be working on something similar. Every form, and the Sent page, says we reply within 7
+  days, even if the answer is no. Every form now has the under-13 note, not just Pitch.
+- Orbyt always says what it is for: "Orbyt · Work with MTRX Horizyn" in every menu, footer and
+  page title. Still: nobody pays or gets paid on Orbyt.
+
 ## 1.10.0 (19 November 2026)
 
 Genesis and Orbyt are easier to understand on the first visit, and Genesis has a reason to come

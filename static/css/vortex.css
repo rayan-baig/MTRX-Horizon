@@ -117,10 +117,12 @@
 .v-text { color: var(--muted); font-size: 15px; }
 
 /* ---------- the four paths ---------- */
-/* Four across, two by two on tablets, one row each on phones (below). */
-.v-paths { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+/* Pitch and Partner first, side by side; then a quieter row, "Other ways to
+   talk to us", for investors and buyers. One row each on phones (below). */
+.v-paths { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .v-path {
-  position: relative; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; gap: 12px;
+  position: relative; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr);
+  align-items: center; gap: 6px 16px;
   padding: 20px; border-radius: var(--radius); color: var(--text); text-decoration: none;
   border: 1px solid color-mix(in srgb, var(--pc) 40%, var(--line));
   background: radial-gradient(ellipse 70% 80% at 100% 0, color-mix(in srgb, var(--pc) 16%, transparent), transparent 70%), var(--panel);
@@ -141,9 +143,22 @@
 }
 .v-path-icon svg { width: 24px; height: 24px; fill: none; stroke: var(--pc); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .v-path-text { display: grid; gap: 6px; align-content: start; }
+.v-path-icon { grid-row: 1 / span 2; }
 .v-path-text b { font: 700 19px/1.2 var(--head); }
 .v-path-text span { color: var(--muted); font-size: 14px; }
-.v-path-go { font-style: normal; font-weight: 600; font-size: 14px; color: var(--pc); }
+.v-path-go { grid-column: 2; font-style: normal; font-weight: 600; font-size: 14px; color: var(--pc); }
+.v-paths-other {
+  grid-column: 1 / -1; margin: 6px 0 -4px; font: 600 12px/1.2 var(--head); letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--faint);
+}
+.v-path-small { grid-template-columns: auto minmax(0, 1fr) auto; padding: 12px 16px; gap: 12px; }
+.v-path-small .v-path-icon { grid-row: auto; width: 36px; height: 36px; border-radius: 10px; }
+.v-path-small .v-path-icon svg { width: 18px; height: 18px; }
+.v-path-small .v-who { display: none; }
+.v-path-small .v-path-text { gap: 2px; }
+.v-path-small .v-path-text b { font-size: 15px; }
+.v-path-small .v-path-text span { font-size: 13px; }
+.v-path-small .v-path-go { grid-column: auto; font-size: 13px; white-space: nowrap; }
 
 .v-who {
   font: 600 11.5px/1.2 var(--head); letter-spacing: 0.12em; text-transform: uppercase; color: var(--pc);
@@ -246,6 +261,9 @@
 .v-error { color: #fda4af; font-size: 14px; margin: 0; }
 .v-error:empty { display: none; }
 .v-send { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+/* Said before Send, in plain words. */
+.v-open-ideas, .v-reply { margin: 0; font-size: 13.5px; color: var(--muted); max-width: 720px; }
+.v-open-ideas { padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line-strong); background: rgba(5, 8, 22, 0.5); color: var(--text); }
 .v-private { flex: 1 1 260px; font-size: 12.5px; color: var(--faint); margin: 0; }
 .v-private a { color: var(--muted); }
 
@@ -305,6 +323,10 @@
   color: var(--ac); text-decoration: none; border: 1px solid color-mix(in srgb, var(--ac) 60%, transparent);
 }
 .v-app-open:hover { background: color-mix(in srgb, var(--ac) 14%, transparent); }
+.v-app-soon {
+  margin-left: auto; flex: none; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--muted); border: 1px dashed var(--line-strong); white-space: nowrap;
+}
 .v-app-pick { border-color: color-mix(in srgb, var(--pc) 55%, transparent); color: var(--text); }
 .v-app-pick:hover { border-color: var(--pc); }
 
@@ -354,13 +376,7 @@
 .v-next-link b::after { content: " →"; color: var(--pc); }
 .v-next-link span { color: var(--muted); font-size: 13.5px; }
 
-/* Buying is for very few visitors: a quiet link beside the main button. */
 .v-app-actions { align-items: center; }
-.v-app-buy {
-  display: inline-flex; align-items: center; min-height: 34px; padding: 0 6px;
-  font-size: 13px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px;
-}
-.v-app-buy:hover { color: var(--pc); }
 .v-catalog-empty { padding: clamp(20px, 3.5vw, 30px); }
 .v-catalog-empty .v-lede { margin: 0; }
 /* The apps are below the fold: a phone draws them only when they come near. */
@@ -368,17 +384,18 @@
 
 /* ---------- narrower screens ---------- */
 @media (max-width: 1060px) {
-  .v-paths { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .v-path { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto; align-items: center; padding: 14px 16px; gap: 4px 14px; }
-  .v-path-icon { grid-row: 1 / span 2; }
-  .v-path-go { grid-column: 2; }
+  .v-paths { gap: 12px; }
+  .v-path:not(.v-path-small) { padding: 14px 16px; gap: 4px 14px; }
   .v-path-text b { font-size: 17px; }
   .v-path-text span { font-size: 13.5px; }
 }
 /* Phones: one clear row per path, easy to read and tap. */
 @media (max-width: 600px) {
   .v-paths { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .v-path { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto; align-items: center; padding: 14px; gap: 14px; }
+  .v-path:not(.v-path-small) { grid-template-columns: auto minmax(0, 1fr) auto; padding: 14px; gap: 14px; }
+  .v-path-small { padding: 10px 14px; }
+  /* Just the arrow, as on the big paths: the words get the room. */
+  .v-path-small .v-path-go { font-size: 0; }
   .v-path-icon { grid-row: auto; width: 42px; height: 42px; border-radius: 12px; }
   .v-path-icon svg { width: 22px; height: 22px; }
   .v-path-go { grid-column: auto; font-size: 0; }

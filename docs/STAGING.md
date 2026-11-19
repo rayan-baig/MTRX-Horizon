@@ -79,6 +79,7 @@ paste in the live ones.
 | `RANKUP_STATS_URL`, `CYBERLOGIX_STATS_URL`, `OMNIARMOR_STATS_URL` | empty, or the apps' staging copies | Never live's apps (section 4) |
 | `RANKUP_HEALTH_URL`, `CYBERLOGIX_HEALTH_URL`, `OMNIARMOR_HEALTH_URL` | empty, or the apps' staging copies | So staging's alerts are about staging |
 | `RANKUP_URL`, `CYBERLOGIX_URL`, `OMNIARMOR_URL` | empty, or the apps' staging copies | The "Open app" buttons |
+| `MTRX_OPEN_APPS` | empty, or `all` to try launch day | Which apps count as open; until then every page says "in development" |
 | `MTRX_ALERT_EMAIL` and `MTRX_SMTP_*` | empty, or a test inbox | Section 4 |
 | `MTRX_CONTACT_EMAIL` | empty | Nobody should write to staging |
 | `MTRX_DEV` | unset | Never on a site on the internet, staging included |

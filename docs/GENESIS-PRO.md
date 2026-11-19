@@ -4,9 +4,13 @@ Genesis Pro is a paid upgrade to Genesis (`/genesis`) for the people who use it 
 **$4.99 a month**, or **$49.90 a year** ("2 months free", ten months' price, as the other apps
 do). The free plan does not change at all.
 
-It is **off by default**. Until `GENESIS_PRO_ENABLED=1`, every Stripe setting below is set and
-email works (`MTRX_SMTP_*`), every Pro address answers "page not found", and no page, the privacy page and terms included,
-says anything about Pro.
+It is **off by default**. Until `GENESIS_PRO_ENABLED=1`, every Stripe setting below is set,
+email works (`MTRX_SMTP_*`) and Ask Genesis is on (`GENESIS_AI_KEY` and `GENESIS_AI_MODEL`),
+every Pro address answers "page not found", and no page, the privacy page and terms included,
+says anything about Pro. Since 1.11.0 Ask Genesis is part of that check: most of what Pro adds
+is more Ask Genesis, so it is never shown or sold while AI help is off. As with email, turning AI
+help off later switches all of Pro off (Stripe keeps retrying its webhook events for days, so
+none is lost while it is back on within that time).
 
 The code is `horizon/genesis_pro.py` (members, keys, Stripe, backups, numbers), the Pro parts
 of `horizon/genesis_ai.py` (Pro asks), `static/js/genesis-pro.js` and
@@ -131,6 +135,7 @@ than the real ones, or the estimate (and so the cap) would be too low.
 | `GENESIS_PRO_STRIPE_WEBHOOK_SECRET` | empty | the signing secret (`whsec_...`) of the webhook endpoint below |
 | `GENESIS_PRO_STRIPE_PRICE` | empty | the monthly price's id (`price_...`) |
 | `GENESIS_PRO_YEARLY_STRIPE_PRICE` | empty | the yearly price's id (`price_...`); without it only monthly is offered |
+| `GENESIS_PRO_PRICE_TEXT` | `$4.99` | the monthly price as written on the button while Stripe's own figure can't be read (Stripe slow or down); only the words, never the price charged |
 | `GENESIS_PRO_PER_DAY` / `GENESIS_PRO_PER_HOUR` | 100 / 30 | Ask Genesis answers per member |
 | `GENESIS_PRO_MONTHLY_AI_USD` | 1.5 | the most one member's AI help may cost in any 31 days, in US dollars |
 | `GENESIS_PRO_EMAIL_FROM` | `MTRX_ALERT_FROM` | the address Pro keys are emailed from |

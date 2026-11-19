@@ -82,6 +82,7 @@ def test_pages_cannot_be_framed_by_a_sibling(client):
 def test_open_app_buttons_go_to_the_app_subdomains(client, monkeypatch):
     for key in ("rankup", "cyberlogix", "omniarmor"):
         monkeypatch.setenv(f"{key.upper()}_URL", f"https://{key}.example.com")
+    monkeypatch.setenv("MTRX_OPEN_APPS", "all")
     page = client.get("/").text
     for key in ("rankup", "cyberlogix", "omniarmor"):
         assert f'href="https://{key}.example.com"' in page

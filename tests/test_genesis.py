@@ -187,3 +187,45 @@ def test_privacy_page_says_where_sparks_and_cards_stay(client):
     assert ("Your answers to Genesis's daily spark, and your streak, are kept the same way: in your browser "
             "only, never sent to us") in page
     assert "An idea card is drawn in your browser too" in page
+
+
+# ---------------------------------------------------------------- 1.11.0: rough edges
+
+def test_typing_stops_at_the_limit_the_counter_shows():
+    """The counters said 60/140/120 while the boxes took 80/160/140."""
+    script = (ROOT / "static/js/genesis.js").read_text()
+    assert "$(`g-${f}`).maxLength = S.LIMITS[f];" in script
+    assert "S.LIMITS[f] + 20" not in script
+    store = (ROOT / "static/js/genesis-store.js").read_text()
+    assert "name: 60, pitch: 140, audience: 120" in store
+
+
+def test_a_saved_spark_is_said_in_the_card_and_toasts_never_cover_the_list(client):
+    page = client.get("/genesis").text
+    done = page.split('id="g-daily-done"', 1)[1].split("</div>", 1)[0]
+    assert '<p class="g-daily-saved" id="g-daily-saved" role="status"></p>' in done
+    script = (ROOT / "static/js/genesis.js").read_text()
+    section = script.split("// ---------------------------------------------------------------- today's spark", 1)[1] \
+        .split("// ---------------------------------------------------------------- the form", 1)[0]
+    assert '$("g-daily-saved").textContent' in section and 'toast(st.streak' not in section
+    css = (ROOT / "static/css/genesis.css").read_text()
+    toast = css.split(".g-toast {", 1)[1].split("}", 1)[0]
+    assert "top: calc(12px" in toast and "bottom:" not in toast
+
+
+def test_the_next_step_box_leads_to_ask_genesis_only_while_ai_is_on():
+    script = (ROOT / "static/js/genesis.js").read_text()
+    box = script.split("function nextBox(", 1)[1].split("// ---------------------------------------------------------------- idea cards", 1)[0]
+    assert 'if (aiOn) {' in box and '"Ask Genesis"' in box and 'document.querySelector(".g-ask")' in box
+
+
+def test_later_stages_start_folded_and_steps_can_be_hidden_or_added():
+    script = (ROOT / "static/js/genesis.js").read_text()
+    project = script.split("function drawProject(", 1)[1].split("// ---------------------------------------------------------------- the next step", 1)[0]
+    assert 'el("details", { class: `g-group' in project
+    assert "at === here || (at < here && s.done < s.total)" in project
+    assert "S.hideStep(" in project and "S.showStep(" in project and "S.steps(p)" in project
+    assert "Hidden steps (" in project
+    assert "S.addStep(" in script and "input.maxLength = S.LIMITS.step;" in script
+    # Every word a visitor typed goes in with textContent, never as HTML.
+    assert "innerHTML" not in script and "insertAdjacentHTML" not in script

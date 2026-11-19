@@ -3,9 +3,9 @@
 <head>
 {% include "_head.html" %}
 <link rel="stylesheet" href="{{ asset('css/vortex.css') }}">
-<title>Orbyt · MTRX Horizyn</title>
+<title>Orbyt · Work with MTRX Horizyn</title>
 <meta name="description" content="Orbyt, the official place to work with MTRX Horizyn: partner with one of our apps, pitch a business or app idea, get in touch as an investor, or ask about buying the company or an app.">
-<meta property="og:title" content="Orbyt · MTRX Horizyn">
+<meta property="og:title" content="Orbyt · Work with MTRX Horizyn">
 <meta property="og:description" content="Partner with us, pitch an idea, get in touch as an investor, or ask about buying the company or an app.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MTRX Horizyn">
@@ -45,13 +45,22 @@
   {{ app_badge(a) }}<span>{{ a.name }}</span></label>
 {% endfor %}
 {%- endmacro -%}
-{%- macro send_row() -%}
+{#- Every form says this: the youngest visitors send through a grown-up. -#}
+{%- macro young() -%}
+<p class="v-young">If you're under 13, ask a parent or guardian to send this for you.</p>
+{%- endmacro -%}
+{%- macro send_row(kind) -%}
 {#- The honeypot: hidden by a CSS class, so people never see it, while simple
     bots fill it in. A message with it filled is answered "sent" and dropped. -#}
 <div class="v-trap" aria-hidden="true">
   <label>Leave this empty <input name="website" type="text" tabindex="-1" autocomplete="off"></label>
 </div>
 <p class="v-error" data-error></p>
+{%- if kind == "pitch" %}
+<p class="v-open-ideas">Ideas sent here aren't confidential, and MTRX Horizyn may already be working on
+  something similar.</p>
+{%- endif %}
+<p class="v-reply">We reply within 7 days, even if the answer is no.</p>
 <div class="v-send">
   <button class="btn btn-vortex" type="submit">Send <span aria-hidden="true">→</span></button>
   <p class="v-private">We keep what you send here only to reply to you, for up to {{ keep_days }} days, and
@@ -70,7 +79,7 @@
   <nav class="mainnav" aria-label="Main">
     <a href="/">Home</a>
     <a href="/genesis">Genesis</a>
-    <a href="/orbyt" class="active" aria-current="page">Orbyt</a>
+    <a href="/orbyt" class="active" aria-current="page">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>
     <a href="/privacy">Privacy</a>
     <a href="/terms">Terms</a>
     <a href="/brand">Brand</a>
@@ -87,7 +96,7 @@
       <span class="v-swirl"><i class="v-ring r1"></i><i class="v-ring r2"></i><i class="v-ring r3"></i><i class="v-core"></i></span>
     </div>
     <div class="v-hero-copy">
-      <p class="eyebrow v-eyebrow">MTRX Horizyn</p>
+      <p class="eyebrow v-eyebrow">Work with MTRX Horizyn</p>
       <h1 class="v-title"><span>Orbyt</span></h1>
       <p class="v-line">Want to work with MTRX Horizyn? Start here.</p>
       <p class="v-text">Pick what fits you below, write us a short note, and we'll reply by email. We
@@ -95,6 +104,7 @@
       <ul class="v-promises">
         <li>Takes about 2 minutes</li>
         <li>A real person reads every message</li>
+        <li>A reply within 7 days</li>
         <li>Nobody pays or gets paid here</li>
       </ul>
     </div>
@@ -113,13 +123,14 @@
         <span>Resell, connect with, or recommend one of our apps.</span></span>
       <em class="v-path-go">Partner <span aria-hidden="true">→</span></em>
     </a>
-    <a class="v-path path-invest" href="#invest" data-path="invest">
+    <p class="v-paths-other">Other ways to talk to us</p>
+    <a class="v-path v-path-small path-invest" href="#invest" data-path="invest">
       <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></svg></span>
       <span class="v-path-text"><small class="v-who">I'm an investor</small><b>Investors</b>
         <span>Curious about MTRX Horizyn? Say hello and we'll get back to you.</span></span>
       <em class="v-path-go">Get in touch <span aria-hidden="true">→</span></em>
     </a>
-    <a class="v-path path-buy" href="#buy" data-path="buy">
+    <a class="v-path v-path-small path-buy" href="#buy" data-path="buy">
       <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M12 15v2"/></svg></span>
       <span class="v-path-text"><small class="v-who">I'd like to buy</small><b>Buy the company or an app</b>
         <span>Interested in taking on MTRX Horizyn or one of its apps? Start a conversation.</span></span>
@@ -130,7 +141,7 @@
   <ol class="v-how" id="v-choose" aria-label="How Orbyt works">
     <li><b>1</b><span><strong>Pick a path</strong> The one that sounds most like you.</span></li>
     <li><b>2</b><span><strong>Write a short note</strong> Your name, email and a few lines.</span></li>
-    <li><b>3</b><span><strong>We reply by email</strong> Only to you. Nothing you send is made public.</span></li>
+    <li><b>3</b><span><strong>We reply by email</strong> Within 7 days, even if it's a no. Only to you; nothing you send is made public.</span></li>
   </ol>
 
   <section class="panel v-panel path-partner" id="v-partner" hidden>
@@ -141,6 +152,7 @@
       through.</p>
     <p class="v-more">Repair fridges, advise kitchens on food safety or sell kitchen equipment?
       <a href="/partners">See how partners earn with CyberLogix AI</a>.</p>
+    {{ young() }}
     <form class="v-form" data-kind="partner" novalidate>
       <div class="v-grid">
         {{ field("partner", "name", "Your name", limits.name, "name") }}
@@ -165,7 +177,7 @@
         </label>
         {{ message("Message", "What you do, who your customers are, and how you'd like to work together.") }}
       </div>
-      {{ send_row() }}
+      {{ send_row("partner") }}
     </form>
   </section>
 
@@ -174,7 +186,7 @@
     <h2 class="v-h">Tell us your idea</h2>
     <p class="v-lede">For anyone with a business or app idea. A name, one line on what it does and
       who it's for is plenty to start. We read every idea, and email you if we'd like to hear more.</p>
-    <p class="v-young">If you're under 13, ask a parent or guardian to send this for you.</p>
+    {{ young() }}
     <div class="v-genesis">
       <button class="btn btn-ghost btn-small v-genesis-btn" type="button" id="v-from-genesis">
         <span class="v-genesis-spark" aria-hidden="true"></span>Bring a project from Genesis</button>
@@ -190,7 +202,7 @@
         {{ field("pitch", "audience", "Who it's for", limits.audience, wide=true, placeholder="Students who forget what's due") }}
         {{ message("Message", "Anything else: what you've done so far, and what you'd like from us.", required=false) }}
       </div>
-      {{ send_row() }}
+      {{ send_row("pitch") }}
     </form>
   </section>
 
@@ -200,6 +212,7 @@
     <p class="v-notice">Just so you know: we're not selling shares or asking anyone for money here, and
       nothing on this site is an investment. If you'd like to talk, leave your details and we'll get
       back to you.</p>
+    {{ young() }}
     <form class="v-form" data-kind="invest" novalidate>
       <div class="v-grid">
         {{ field("invest", "name", "Your name", limits.name, "name") }}
@@ -207,7 +220,7 @@
         {{ field("invest", "email", "Email", limits.email, "email", wide=true, kind_of="email") }}
         {{ message("Message", "Who you are, and what you'd like to talk about.") }}
       </div>
-      {{ send_row() }}
+      {{ send_row("invest") }}
     </form>
   </section>
 
@@ -216,6 +229,7 @@
     <h2 class="v-h">Ask about buying</h2>
     <p class="v-notice v-notice-buy">This only starts a conversation. Nothing is for sale on this page and
       nobody can buy or pay for anything here.</p>
+    {{ young() }}
     <form class="v-form" data-kind="buy" novalidate>
       <div class="v-grid">
         {{ field("buy", "name", "Your name", limits.name, "name") }}
@@ -232,7 +246,7 @@
         </fieldset>
         {{ message("Message", "Who you are, what you'd like to buy, and anything we should know to start talking.") }}
       </div>
-      {{ send_row() }}
+      {{ send_row("buy") }}
     </form>
   </section>
 
@@ -240,8 +254,8 @@
     <span class="v-swirl v-swirl-small" aria-hidden="true"><i class="v-ring r1"></i><i class="v-ring r2"></i><i class="v-core"></i></span>
     <h2 class="v-sent-title">Sent.</h2>
     <p class="v-sent-line" id="v-sent-line" role="status"></p>
-    <p class="v-sent-small">Check your spam folder if you don't hear from us. We keep your message only to
-      reply, for up to {{ keep_days }} days.</p>
+    <p class="v-sent-small">We reply within 7 days, even if it's a no. Check your spam folder if you don't
+      hear from us. We keep your message only to reply, for up to {{ keep_days }} days.</p>
     <div class="v-next" id="v-next">
       <p class="v-next-head">While you wait</p>
       <a class="v-next-link path-pitch" data-next="pitch" href="/genesis" hidden>
@@ -258,14 +272,17 @@
   </section>
 
   {#- Our apps: every app released to the public, straight from the app
-      catalog. An app joins this list the moment it is released. -#}
+      catalog. An app joins this list the moment it is released; until one
+      of them has a public address to open (catalog.opening), the list says
+      they are opening soon. -#}
   {%- if apps %}
   <section class="v-catalog" id="our-apps" aria-labelledby="v-apps-title">
     <div class="v-catalog-head">
-      <p class="eyebrow v-eyebrow">Released to the public</p>
-      <h2 class="v-h" id="v-apps-title">Our apps</h2>
-      <p class="v-lede">Every app MTRX Horizyn has released to the public. New ones join this list the
-        day they launch.</p>
+      <p class="eyebrow v-eyebrow">{% if opening %}In development{% else %}Open to the public{% endif %}</p>
+      <h2 class="v-h" id="v-apps-title">Our apps{% if opening %} (opening soon){% endif %}</h2>
+      <p class="v-lede">{% if opening %}The apps MTRX Horizyn is making. They're in development now, and each
+        one gets an Open button the day it launches.{% else %}Every app MTRX Horizyn makes. New ones join this
+        list as they launch.{% endif %}</p>
     </div>
     <a class="v-bundle" href="/bundle">
       <span class="v-bundle-icons" aria-hidden="true"><img src="/static/img/cyberlogix-icon.svg" alt="" width="34" height="34"><img src="/static/img/omniarmor-icon.svg" alt="" width="34" height="34"></span>
@@ -280,12 +297,12 @@
           {%- if a.icon %}<img src="{{ a.icon }}" alt="" width="44" height="44">
           {%- else %}<span class="v-badge accent-{{ a.accent }}" aria-hidden="true">{{ a.letter }}</span>{% endif %}
           <h3>{{ a.name }}</h3>
-          {% if a.url %}<a class="v-app-open" href="{{ a.url }}" rel="noopener">Open <span aria-hidden="true">↗</span></a>{% endif %}
+          {% if a.open %}<a class="v-app-open" href="{{ a.url }}" rel="noopener">Open <span aria-hidden="true">↗</span></a>
+          {%- else %}<span class="v-app-soon">Opening soon</span>{% endif %}
         </div>
         <p class="v-app-line">{{ a.line }}</p>
         <div class="v-app-actions">
           <a class="btn btn-ghost btn-small v-app-pick path-partner" href="#partner" data-pick="{{ a.key }}">Partner on this</a>
-          <a class="v-app-buy path-buy" href="#buy" data-pick="{{ a.key }}">Ask about buying</a>
         </div>
       </li>
       {% endfor %}
@@ -304,7 +321,7 @@
   <span class="foot-brand">MTRX HORIZYN</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
   <nav class="foot-links" aria-label="About this site">
-    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/orbyt">Orbyt</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
+    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/orbyt">Orbyt: Work with MTRX Horizyn</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
     {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>
 </footer>

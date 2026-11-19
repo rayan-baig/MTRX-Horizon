@@ -23,17 +23,20 @@
   });
   [
     ["Projects", "Where everything stands", "#projects", "projects status roadmap"],
+  ].concat(document.getElementById("activity") ? [
+    // Only once the apps report real numbers; until then there is no panel.
     ["Analytics", "Live activity across the apps", "#activity", "analytics numbers users uptime activity"],
+  ] : []).concat([
     ["About", "What MTRX Horizyn is and the apps it makes", "#company", "about company parent apps values team contact business"],
     ["What's new", "Latest updates", "#updates", "news updates notifications new"],
     ["Quick tour", "A quick tour of the three apps", "#tour", "video tour watch"],
-    ["Settings", "Display and calm mode", "#settings", "settings calm motion display"],
-  ].concat(document.querySelector('a[href="/privacy"]') ? [
+    ["Calm mode", "Less motion on this page", "#settings", "settings calm motion display animation"],
+  ]).concat(document.querySelector('a[href="/privacy"]') ? [
     ["Privacy", "What this site keeps, and what it doesn't", "/privacy", "privacy data cookies logs"],
     ["Terms", "The terms of using this site", "/terms", "terms legal rules"],
   ] : []).concat(document.querySelector('a[href="/orbyt"]') ? [
     ["Genesis", "Turn your idea into a launch", "/genesis", "genesis idea start project launch"],
-    ["Orbyt", "Partner with us, pitch an idea, talk to us as an investor, or ask about buying", "/orbyt",
+    ["Orbyt", "Work with MTRX Horizyn: pitch an idea, partner with us, or talk to us", "/orbyt",
       "vortex partner partnership business resell integrate pitch idea investor invest contact buy acquire purchase"],
     ["Kitchen Safety Bundle", "CyberLogix AI and OmniArmor.ai together for kitchens", "/bundle",
       "bundle kitchen safety restaurant cafe pharmacy school fridge freezer alarm checklist inspection temperature"],

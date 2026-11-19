@@ -9,7 +9,8 @@
 
   const KEY = "mtrx-genesis";
   const FORMAT = 1;
-  const LIMITS = { projects: 100, name: 60, pitch: 140, audience: 120, address: 253, notes: 5000, file: 1000000 };
+  const LIMITS = { projects: 100, name: 60, pitch: 140, audience: 120, address: 253, notes: 5000, file: 1000000,
+    custom: 30, step: 120 };
   const STAGES = [
     { key: "spark", name: "Spark", line: "The idea, and a name that's yours" },
     { key: "plan", name: "Plan", line: "Decide what the first version is" },
@@ -51,6 +52,9 @@
   ];
   const CHECKLIST_KEYS = new Set(CHECKLIST.map((i) => i.key));
   const STAGE_KEYS = STAGES.map((s) => s.key);
+  // A step of the visitor's own: "c-" and a few letters and digits, so it
+  // can never be mistaken for one of the CHECKLIST keys above.
+  const CUSTOM_KEY = /^c-[a-z0-9]{1,12}$/;
 
   // Names already taken by MTRX Horizyn and its apps: a gentle nudge only.
   const KNOWN = ["rankup", "cyberlogix", "cyberlogixai", "omniarmor", "omniarmorai", "mtrxhorizyn", "horizyn"];
@@ -130,18 +134,92 @@
     const { fields, errors } = check(input);
     if (Object.keys(errors).length) return { errors };
     const at = now || Date.now();
-    return { project: { id: newId(), ...fields, stage: "spark", ticks: {}, notes: "", created: at, updated: at } };
+    return { project: { id: newId(), ...fields, stage: "spark", ticks: {}, hidden: {}, custom: [], notes: "",
+      created: at, updated: at } };
+  }
+
+  // ---------------------------------------------------------------- the project's own checklist
+  // Every project starts with the same CHECKLIST, but no two ideas are the
+  // same: a visitor can hide a step that doesn't fit (project.hidden) and add
+  // steps of their own (project.custom). Both stay in this browser like
+  // everything else, and both can be undone.
+
+  // The steps this project shows, stage by stage: the built-in ones not
+  // hidden, then the visitor's own.
+  function steps(project) {
+    const hidden = (project && project.hidden) || {};
+    const custom = project && Array.isArray(project.custom) ? project.custom : [];
+    const out = [];
+    for (const s of STAGES) {
+      for (const i of CHECKLIST) if (i.stage === s.key && !hidden[i.key]) out.push(i);
+      for (const c of custom) if (c.stage === s.key) out.push({ key: c.key, stage: c.stage, label: c.label, custom: true });
+    }
+    return out;
+  }
+
+  // The built-in steps this project has hidden, to bring back.
+  function hiddenSteps(project) {
+    const hidden = (project && project.hidden) || {};
+    return CHECKLIST.filter((i) => hidden[i.key]);
+  }
+
+  function stepKey(project) {
+    const taken = new Set((project.custom || []).map((c) => c.key));
+    for (;;) {
+      const key = "c-" + Math.random().toString(36).slice(2, 10).replace(/[^a-z0-9]/g, "");
+      if (CUSTOM_KEY.test(key) && !taken.has(key)) return key;
+    }
+  }
+
+  // Add a step of the visitor's own to a stage. Changes the project.
+  function addStep(project, stage, label) {
+    const text = line(label);
+    if (!STAGE_KEYS.includes(stage)) return { error: "Choose a stage for the step." };
+    if (!text) return { error: "Write the step first." };
+    if (text.length > LIMITS.step) return { error: `Keep it to ${LIMITS.step} characters.` };
+    const custom = Array.isArray(project.custom) ? project.custom : [];
+    if (custom.length >= LIMITS.custom) return { error: `A project can have ${LIMITS.custom} steps of your own.` };
+    const step = { key: stepKey(project), stage, label: text };
+    project.custom = custom.concat([step]);
+    return { step };
+  }
+
+  // Hide a built-in step, or remove one of the visitor's own. Changes the
+  // project. At least one step always stays.
+  function hideStep(project, key) {
+    if (steps(project).length <= 1) return { error: "Keep at least one step." };
+    if (CUSTOM_KEY.test(key)) {
+      const custom = (project.custom || []).filter((c) => c.key !== key);
+      if (custom.length === (project.custom || []).length) return { error: "That step isn't there." };
+      project.custom = custom;
+      if (project.ticks) delete project.ticks[key];
+      return { removed: true };
+    }
+    if (!CHECKLIST_KEYS.has(key)) return { error: "That step isn't there." };
+    project.hidden = { ...(project.hidden || {}), [key]: true };
+    return { hidden: true };
+  }
+
+  // Bring a hidden built-in step back. Changes the project.
+  function showStep(project, key) {
+    if (!project.hidden || !project.hidden[key]) return false;
+    const hidden = { ...project.hidden };
+    delete hidden[key];
+    project.hidden = hidden;
+    return true;
   }
 
   function progress(project) {
+    const all = steps(project);
+    const ticks = (project && project.ticks) || {};
     const stages = STAGES.map((s) => {
-      const items = CHECKLIST.filter((i) => i.stage === s.key);
-      return { ...s, total: items.length, done: items.filter((i) => project.ticks[i.key]).length };
+      const items = all.filter((i) => i.stage === s.key);
+      return { ...s, total: items.length, done: items.filter((i) => ticks[i.key]).length };
     });
     const done = stages.reduce((n, s) => n + s.done, 0);
-    const total = CHECKLIST.length;
-    return { stages, done, total, percent: Math.round((100 * done) / total),
-      launched: project.stage === "launch" && done === total };
+    const total = all.length;
+    return { stages, done, total, percent: total ? Math.round((100 * done) / total) : 0,
+      launched: project.stage === "launch" && total > 0 && done === total };
   }
 
   // One project from anywhere (storage, an imported file), made safe, or null.
@@ -150,16 +228,35 @@
     const { fields, errors } = check(raw);
     if (errors.name || errors.pitch || errors.audience) return null;
     if (errors.address) fields.address = "";
+    const custom = [];
+    for (const c of Array.isArray(raw.custom) ? raw.custom : []) {
+      if (custom.length >= LIMITS.custom) break;
+      if (!c || typeof c !== "object") continue;
+      const label = line(c.label);
+      if (typeof c.key !== "string" || !CUSTOM_KEY.test(c.key) || custom.some((d) => d.key === c.key)) continue;
+      if (!STAGE_KEYS.includes(c.stage) || !label || label.length > LIMITS.step) continue;
+      custom.push({ key: c.key, stage: c.stage, label });
+    }
+    let hidden = {};
+    if (raw.hidden && typeof raw.hidden === "object") {
+      for (const key of Object.keys(raw.hidden)) if (CHECKLIST_KEYS.has(key) && raw.hidden[key] === true) hidden[key] = true;
+    }
+    // Never an empty checklist: with every step hidden and none of their own,
+    // the built-in steps come back.
+    if (!custom.length && CHECKLIST.every((i) => hidden[i.key])) hidden = {};
+    const mine = new Set(custom.map((c) => c.key));
     const ticks = {};
     if (raw.ticks && typeof raw.ticks === "object") {
-      for (const key of Object.keys(raw.ticks)) if (CHECKLIST_KEYS.has(key) && raw.ticks[key] === true) ticks[key] = true;
+      for (const key of Object.keys(raw.ticks)) {
+        if ((CHECKLIST_KEYS.has(key) || mine.has(key)) && raw.ticks[key] === true) ticks[key] = true;
+      }
     }
     const id = typeof raw.id === "string" && /^[A-Za-z0-9-]{1,64}$/.test(raw.id) ? raw.id : newId();
     const time = (t) => (Number.isFinite(t) && t > 0 && t < 8.64e15 ? Math.floor(t) : Date.now());
     return {
       id, ...fields,
       stage: STAGE_KEYS.includes(raw.stage) ? raw.stage : "spark",
-      ticks, notes: block(raw.notes).slice(0, LIMITS.notes),
+      ticks, hidden, custom, notes: block(raw.notes).slice(0, LIMITS.notes),
       created: time(raw.created), updated: time(raw.updated),
     };
   }
@@ -333,8 +430,9 @@
     ];
     if (p.address) out.push(`Web address idea: ${p.address}`);
     out.push(`Stage: ${pr.launched ? "Launched" : stage.name} (${pr.done} of ${pr.total} steps done, ${pr.percent}%)`, "");
+    const all = steps(p);
     for (const s of STAGES) {
-      const items = CHECKLIST.filter((i) => i.stage === s.key);
+      const items = all.filter((i) => i.stage === s.key);
       out.push(`## ${s.name}: ${s.line}`, "");
       for (const item of items) out.push(`- [${p.ticks[item.key] ? "x" : " "}] ${item.label}`);
       out.push("");
@@ -486,7 +584,12 @@
   function streak(days, today) {
     const t = dayNumber(today);
     const answered = new Set(Object.keys(days || {}).map(dayNumber).filter((n) => Number.isFinite(n) && n <= t));
-    const out = { streak: 0, best: 0, freezes: 1, frozen: [], today: answered.has(t), total: answered.size, toEarn: 0 };
+    // `covered` is every day a freeze ever covered; `frozen` only those of
+    // the streak running now. `covered` is never cleared, so a day once shown
+    // as covered by a freeze stays that way in the row of days after a
+    // streak ends.
+    const covered = [];
+    const out = { streak: 0, best: 0, freezes: 1, frozen: [], covered, today: answered.has(t), total: answered.size, toEarn: 0 };
     if (!answered.size || !Number.isFinite(t)) return out;
     let since = 0;
     for (let d = Math.max(Math.min(...answered), t - DAILY_KEEP); d <= t; d += 1) {
@@ -500,6 +603,7 @@
         out.freezes = 0;
         since = 0;
         out.frozen.push(keyOfNumber(d));
+        covered.push(keyOfNumber(d));
       } else if (out.streak > 0) {
         // A fresh start, with its own freeze.
         out.streak = 0;
@@ -520,7 +624,7 @@
     const out = [];
     for (let d = t - n + 1; d <= t; d += 1) {
       const key = keyOfNumber(d);
-      const state = days && days[key] ? "done" : s.frozen.includes(key) ? "frozen" : d === t ? "today" : "missed";
+      const state = days && days[key] ? "done" : s.covered.includes(key) ? "frozen" : d === t ? "today" : "missed";
       out.push({ key, state });
     }
     return out;
@@ -595,13 +699,14 @@
   function nextStep(project) {
     const ticks = (project && project.ticks) || {};
     const here = (project && project.stage) || "spark";
-    const open = CHECKLIST.filter((i) => !ticks[i.key]);
+    const open = steps(project).filter((i) => !ticks[i.key]);
     return open.find((i) => i.stage === here) || open[0] || null;
   }
 
   const api = {
     KEY, LIMITS, STAGES, CHECKLIST, line, block, addressProblem, suggestAddress, nameWarning,
     check, create, progress, clean, cleanList, exportText, importText, open,
+    steps, hiddenSteps, addStep, hideStep, showStep,
     HANDOFF_KEY, offerToVortex, takeVortexOffer,
     PRO_KEY, proKey, readProKey, keepProKey, forgetProKey, planText, planFileName,
     EXAMPLES, example, nextStep,

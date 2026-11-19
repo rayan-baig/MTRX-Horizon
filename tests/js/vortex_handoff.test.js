@@ -129,5 +129,5 @@ test("only the chosen path's fields are sent, with the hidden field", () => {
     organisation: "should not go", apps: ["rankup"], website: "" });
   assert.deepEqual(Object.keys(body).sort(), ["audience", "email", "idea", "kind", "message", "name", "pitch", "website"]);
   assert.equal(body.name, "Ada");
-  assert.equal(V.sentLine("ada@example.com"), "We'll reply to ada@example.com as soon as we can.");
+  assert.equal(V.sentLine("ada@example.com"), "We'll reply to ada@example.com within 7 days, even if the answer is no.");
 });

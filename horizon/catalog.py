@@ -6,6 +6,13 @@ public. The moment one is released it is listed in Orbyt's "Our
 apps", and can be chosen in the Partner and Buy forms; the server accepts
 exactly the released apps' keys there.
 
+Released is not the same as open. An app is "open" (launched) only once it
+is released, has a public address (its own, or from its `RANKUP_URL`-style
+setting) and is named in MTRX_OPEN_APPS (or that says "all"). Until then the
+public site says it is in development, everywhere, from here (`opening`,
+`counts` and `apps_line`), and shows no Open button or link to it, so it all
+flips together the day the owner names it.
+
 The three founding apps are put in the table the first time the site starts,
 once only (the `done_once` table remembers it), as released. Their
 `RANKUP_URL`-style settings still work: when one is set, it is the address
@@ -81,6 +88,9 @@ def _row(r, settings) -> dict:
         "accent": r["accent"] if r["accent"] in ACCENTS else ACCENTS[0],
         "status": r["status"], "status_name": STATUSES.get(r["status"], r["status"]),
         "released": r["status"] == "released", "released_at": r["released_at"],
+        # Open to the public: released, with an address, and launched.
+        "open": (r["status"] == "released" and bool(from_setting or r["url"])
+                 and ("*" in settings.open_apps or r["key"] in settings.open_apps)),
         "deletable": r["released_at"] is None, "icon": _icon(r["key"]),
         "letter": r["name"][:1].upper(), "founding": r["key"] in config.APP_KEYS,
     }
@@ -129,8 +139,36 @@ def names() -> dict:
 
 
 def public(app: dict) -> dict:
-    """What a page may show about a released app."""
-    return {k: app[k] for k in ("key", "name", "line", "url", "accent", "icon", "letter")}
+    """What a page may show about a released app. Its address only once it
+    is open: until launch, no page links to it."""
+    out = {k: app[k] for k in ("key", "name", "line", "url", "accent", "icon", "letter", "open")}
+    if not app["open"]:
+        out["url"] = ""
+    return out
+
+
+# ---------------------------------------------------------------- open or not
+
+def counts(apps: list) -> dict:
+    """How many of these apps are open, and how many still in development."""
+    opened = sum(1 for a in apps if a.get("open"))
+    return {"total": len(apps), "open": opened, "developing": len(apps) - opened}
+
+
+def apps_line(apps: list) -> str:
+    """The apps in a few plain words, true today: "3 in development" until
+    launch, "2 open, 1 in development" part way, "3 open" after."""
+    c = counts(apps)
+    if not c["open"]:
+        return f"{c['total']} in development"
+    if not c["developing"]:
+        return f"{c['total']} open"
+    return f"{c['open']} open, {c['developing']} in development"
+
+
+def opening(apps: list) -> bool:
+    """True while none of these apps is open yet: the lists say "opening soon"."""
+    return not any(a.get("open") for a in apps)
 
 
 def get(key: str) -> dict | None:
@@ -274,7 +312,11 @@ def for_home() -> dict:
     apps = _for_the_public()
     urls = {key: "" for key in config.APP_KEYS}
     for a in apps:
-        if a["founding"] and a["released"]:
+        if a["founding"] and a["open"]:
             urls[a["key"]] = a["url"]
     extra = [public(a) for a in apps if a["released"] and not a["founding"]]
-    return {"urls": urls, "extra": extra, "count": len(config.APP_KEYS) + len(extra)}
+    # Every app the home page shows: the three founding cards (open only with
+    # an address) and the newer released ones.
+    shown = [{"open": bool(urls[key])} for key in config.APP_KEYS] + extra
+    return {"urls": urls, "extra": extra, "count": len(shown), "counts": counts(shown),
+            "line": apps_line(shown), "opening": opening(shown)}

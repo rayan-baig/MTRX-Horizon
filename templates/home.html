@@ -5,7 +5,7 @@
 <title>MTRX Horizyn</title>
 <meta name="description" content="MTRX Horizyn is the parent company of RankUp, CyberLogix AI and OmniArmor.ai: software that watches, warns and motivates, so people can get on with the work that matters.">
 <meta property="og:title" content="MTRX Horizyn">
-<meta property="og:description" content="One vision. Infinite possibilities. MTRX Horizyn, the company behind RankUp, CyberLogix AI and OmniArmor.ai.">
+<meta property="og:description" content="Three apps that watch, warn and motivate: RankUp, CyberLogix AI and OmniArmor.ai, from MTRX Horizyn.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MTRX Horizyn">
 <meta property="og:url" content="{{ base }}/">
@@ -33,6 +33,15 @@
 {%- set more = more_apps or [] -%}
 {%- set total = app_count or 3 -%}
 {%- set how_many = {3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}.get(total, total) -%}
+{#- Open or in development, from the catalog alone (catalog.for_home): an app
+    is open once it has a public address. Until then every part of the page
+    says the apps are in development, and the day addresses are set it all
+    changes together. -#}
+{%- set opened = apps_open or 0 -%}
+{%- set apps_now = "In development" if opened == 0 else ("Open now" if opened == total else apps_line) -%}
+{%- set apps_words = "all in development" if opened == 0 else ("all open now" if opened == total else apps_line) -%}
+{#- The live panel shows only once an app has reported real numbers. -#}
+{%- set live = n.total_users is not none -%}
 {%- from "_early_form.html" import early_form, early_promise -%}
 {%- macro count(value) -%}{{ "{:,}".format(value) if value is number else "—" }}{%- endmacro -%}
 <input type="checkbox" id="calm" class="calm-switch" aria-hidden="true" tabindex="-1">
@@ -51,11 +60,10 @@
     <a href="#top" class="active">Home</a>
     <a href="#apps">Apps</a>
     <a href="#projects">Projects</a>
-    <a href="#activity">Analytics</a>
+    {% if live %}<a href="#activity">Analytics</a>{% endif %}
     <a href="#company">About</a>
     {% if not demo %}<a href="/genesis" class="nav-genesis">Genesis</a>
-    <a href="/orbyt" class="nav-vortex">Orbyt</a>{% endif %}
-    <a href="#settings">Settings</a>
+    <a href="/orbyt" class="nav-vortex">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>{% endif %}
   </nav>
   <div class="tools">
     <form class="search" role="search" id="search">
@@ -64,14 +72,16 @@
       <kbd>⌘ K</kbd>
       <div class="search-results" id="search-results" role="listbox" hidden></div>
     </form>
-    <a class="bell" href="#updates" aria-label="What's new: 3 updates">
+    {#- No count on the bell: the updates are the same for everyone, so a
+        number would never go away and would only nag. -#}
+    <a class="bell" href="#updates" aria-label="What's new">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
-      <span class="bell-count">3</span>
     </a>
-    <a class="me" href="#menu" aria-label="MTRX Horizyn menu">
-      <span class="me-mark" aria-hidden="true"></span>
-      <span class="me-name">MTRX Horizyn</span>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+    {#- A plain menu button: there are no accounts here, so nothing that
+        looks like a profile picture. -#}
+    <a class="menu-btn" href="#menu" aria-label="Menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <span class="menu-word" aria-hidden="true">Menu</span>
     </a>
   </div>
 </header>
@@ -82,8 +92,8 @@
     <div class="hero-art" role="img" aria-label="The MTRX Horizyn city under a ringed planet"></div>
     <div class="hero-copy">
       <p class="eyebrow">Welcome to MTRX Horizyn</p>
-      <h1><span class="line">One Vision.</span> <span class="line gradient-text">Infinite Possibilities.</span></h1>
-      <p class="lede">MTRX Horizyn is the parent company of {{ how_many }} apps{% if more %}, including{% else %}:{% endif %}
+      <h1><span class="line">Three apps that watch,</span> <span class="line gradient-text">warn and motivate.</span></h1>
+      <p class="lede">MTRX Horizyn is the parent company of {{ how_many }} apps, {{ apps_words }}{% if more %}, including{% else %}:{% endif %}
         <a href="#learn-rankup">RankUp</a>, a chores game for families;
         <a href="#learn-cyberlogix">CyberLogix AI</a>, equipment alarms for businesses; and
         <a href="#learn-omniarmor">OmniArmor.ai</a>, compliance checklists for businesses.</p>
@@ -99,13 +109,14 @@
   </section>
 
   <section id="apps" class="apps" aria-label="The apps MTRX Horizyn makes">
+    {#- One plain line each, saying what the app does. -#}
     {% for key, name, full, tags, lede in [
-      ("rankup", "RankUp", "RankUp", ["Gamification", "Growth", "Rewards"],
-       "Turn daily chores into achievements and build better habits."),
-      ("cyberlogix", "CyberLogix", "CyberLogix AI", ["Enterprise", "Security", "Solutions"],
-       "Secure, intelligent solutions for your business."),
-      ("omniarmor", "OmniArmor", "OmniArmor.ai", ["Business", "Protection", "Platform"],
-       "Protect what matters with advanced security."),
+      ("rankup", "RankUp", "RankUp", ["Families", "Chores", "Games"],
+       "Chores that turn into points and games"),
+      ("cyberlogix", "CyberLogix", "CyberLogix AI", ["Fridges", "Freezers", "Alarms"],
+       "Fridge and freezer alarms that call you"),
+      ("omniarmor", "OmniArmor", "OmniArmor.ai", ["Checklists", "Deadlines", "Records"],
+       "Safety checklists that count the deadlines"),
     ] %}
     <article class="app-card {{ {'rankup': 'green', 'cyberlogix': 'blue', 'omniarmor': 'violet'}[key] }}" data-app="{{ key }}">
       <div class="app-art" aria-hidden="true"></div>
@@ -127,7 +138,14 @@
     {% endfor %}
   </section>
 
-  <section class="bottom">
+  {#- On a phone the top links are folded into the menu, so Genesis and
+      Orbyt get a row of their own here. -#}
+  {% if not demo %}<nav class="more-places" aria-label="More from MTRX Horizyn">
+    <a class="place place-genesis" href="/genesis"><b>Genesis</b><span>Turn your idea into a plan, free</span></a>
+    <a class="place place-orbyt" href="/orbyt"><b>Orbyt</b><span>Work with MTRX Horizyn</span></a>
+  </nav>{% endif %}
+
+  <section class="bottom{% if not live %} solo{% endif %}">
     <div class="panel about" id="about">
       <div class="about-side">
         <div class="about-brand">
@@ -144,7 +162,7 @@
       <dl class="facts">
         <div>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
-          <dt>Global Reach</dt><dd>12</dd><span>Industries</span>
+          <dt>Built for</dt><dd>12</dd><span>Industries</span>
         </div>
         <div>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 6 5"/></svg>
@@ -158,12 +176,14 @@
         </div>
         <div>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 4.5 9-4.5"/></svg>
-          <dt>Total Apps</dt><dd>{{ total }}</dd><span>Available</span>
+          <dt>Our apps</dt><dd>{{ total }}</dd><span>{{ apps_now }}</span>
         </div>
       </dl>
     </div>
 
-    <div class="panel activity" id="activity">
+    {#- Only once there is real activity to show: an empty map with dashes
+        looked alive and said nothing. -#}
+    {% if live %}<div class="panel activity" id="activity">
       <p class="eyebrow">Real-time global activity</p>
       <div class="activity-body">
         <div class="map" aria-hidden="true">
@@ -177,8 +197,7 @@
           <li><b class="ring"></b><span>Uptime</span><em>{% if n.uptime is not none %}{{ n.uptime }}%{% else %}—{% endif %}</em></li>
         </ul>
       </div>
-      {% if n.total_users is none %}<p class="live-note">Live numbers appear here as soon as the apps launch.</p>{% endif %}
-    </div>
+    </div>{% endif %}
   </section>
 </main>
 
@@ -188,7 +207,7 @@
   <span class="foot-line">Technology for a stronger tomorrow.</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.{% if not demo %} <span class="foot-version">Version {{ version }}</span>{% endif %}</span>
   {% if not demo %}<nav class="foot-links" aria-label="About this site">
-    <a href="#company">About</a><a href="/genesis">Genesis</a><a href="/orbyt">Orbyt</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a>
+    <a href="#company">About</a><a href="/genesis">Genesis</a><a href="/orbyt">Orbyt: Work with MTRX Horizyn</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a>
     {%- if early %}<a href="/early-access">Early access</a>{% endif %}{% if creators %}<a href="/creators">Creators</a>{% endif %}<a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
     {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>{% endif %}
@@ -199,17 +218,17 @@
     #company, ...), so they work with no script at all; the dimmed backdrop
     and the × both close by going back to plain #. -#}
 {%- for key, name, full, lede, points in [
-  ("rankup", "RankUp", "RankUp", "Turn daily chores into achievements and build better habits.", [
+  ("rankup", "RankUp", "RankUp", "Chores that turn into points and games.", [
     "A parent sets a chore, the child does it and snaps a photo as proof.",
     "A smart photo check gives its opinion. The parent always makes the call.",
     "Approved chores earn points, levels and arcade tokens across 15 game worlds and 24 games.",
     "Free for one child. Standard and Elite plans add more."]),
-  ("cyberlogix", "CyberLogix", "CyberLogix AI", "Secure, intelligent solutions for your business.", [
+  ("cyberlogix", "CyberLogix", "CyberLogix AI", "Fridge and freezer alarms that call you.", [
     "Wireless sensors watch freezers, server racks, vaccine fridges and more.",
     "A problem sends a text, then a phone call, then the next person, until someone answers.",
     "Every reading is kept in a sealed record, ready for an insurance claim.",
     "Built for 12 industries, from restaurants to data centers."]),
-  ("omniarmor", "OmniArmor", "OmniArmor.ai", "Protect what matters with advanced security.", [
+  ("omniarmor", "OmniArmor", "OmniArmor.ai", "Safety checklists that count the deadlines.", [
     "500 compliance checks across 50 industries, each naming the rule it comes from.",
     "Counts the days by itself and emails the team before anything is due.",
     "Keeps a record an inspector, auditor or insurer can be shown.",
@@ -257,7 +276,7 @@
     <a class="sheet-x" href="#" aria-label="Close">×</a>
     <p class="eyebrow">About</p>
     <h2>About MTRX Horizyn</h2>
-    <p>MTRX Horizyn is a software company. It is the parent company of {{ how_many }} apps, and
+    <p>MTRX Horizyn is a software company. It is the parent company of {{ how_many }} apps ({{ apps_line }}), and
       each one takes a worry off someone's plate, from a family's chore list to a
       business's freezer at 3am.</p>
     <ul class="company-apps">
@@ -296,12 +315,12 @@
   </div>
 </section>
 
-<section class="sheet" id="settings" aria-label="Settings">
+<section class="sheet" id="settings" aria-label="Calm mode">
   <a class="sheet-shut" href="#" aria-label="Close"></a>
   <div class="sheet-card">
     <a class="sheet-x" href="#" aria-label="Close">×</a>
-    <p class="eyebrow">Settings</p>
-    <h2>Display</h2>
+    <p class="eyebrow">Display</p>
+    <h2>Calm mode</h2>
     <label class="toggle" for="calm">
       <span><b>Calm mode</b><small>Stops the drifting stars and moving pictures.</small></span>
       <span class="toggle-ui" aria-hidden="true"></span>
@@ -328,7 +347,7 @@
   <nav class="sheet-card menu" aria-label="MTRX Horizyn menu">
     <a href="#apps">Our apps</a>
     {% if not demo %}<a href="/genesis">Genesis: start your own idea</a>
-    <a href="/orbyt">Orbyt: partner, pitch, invest or buy</a>
+    <a href="/orbyt">Orbyt: work with us</a>
     <a href="/bundle">Kitchen Safety Bundle: alarms and checklists together</a>
     <a href="/partners">Partners: recommend CyberLogix AI and earn</a>
     {% if early %}<a href="#early-access">Early access: be first in line</a>{% endif %}
@@ -337,7 +356,7 @@
     <a href="#company">About MTRX Horizyn</a>
     <a href="#updates">What's new</a>
     <a href="#tour">Quick tour of the apps</a>
-    <a href="#settings">Settings</a>
+    <a href="#settings">Calm mode: less motion</a>
     {% if not demo %}<a href="/privacy">Privacy</a>
     <a href="/terms">Terms</a>{% endif %}
     {% if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}

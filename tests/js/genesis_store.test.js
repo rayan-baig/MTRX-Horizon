@@ -267,7 +267,7 @@ test("a new prompt every day, and every prompt before any comes round again", ()
 const days = (...keys) => Object.fromEntries(keys.map((k) => [k, "an idea"]));
 
 test("a streak counts days in a row, and today not answered yet breaks nothing", () => {
-  assert.deepEqual(S.streak({}, "2026-11-19"), { streak: 0, best: 0, freezes: 1, frozen: [], today: false, total: 0, toEarn: 0 });
+  assert.deepEqual(S.streak({}, "2026-11-19"), { streak: 0, best: 0, freezes: 1, frozen: [], covered: [], today: false, total: 0, toEarn: 0 });
   let s = S.streak(days("2026-11-17", "2026-11-18", "2026-11-19"), "2026-11-19");
   assert.equal(s.streak, 3);
   assert.equal(s.today, true);
@@ -367,4 +367,99 @@ test("an idea card's words say only what the card shows: never the notes or tick
   assert.equal(S.shareText({ name: "" }), "");
   assert.equal(S.cardFileName(project), "nova-card.png");
   assert.equal(S.cardFileName({ name: "!!!" }), "genesis-card.png");
+});
+
+test("a day once covered by a freeze stays covered after the streak ends", () => {
+  // The 17th was covered by the freeze; then the 18th and 19th were missed
+  // too, so the streak ended. The row of days must not rewrite the 17th.
+  const before = S.lastDays(days("2026-11-15", "2026-11-16"), "2026-11-18", 7);
+  assert.equal(before.find((d) => d.key === "2026-11-17").state, "frozen");
+  const after = S.lastDays(days("2026-11-15", "2026-11-16"), "2026-11-20", 7);
+  assert.equal(after.find((d) => d.key === "2026-11-17").state, "frozen");
+  assert.equal(after.find((d) => d.key === "2026-11-18").state, "missed");
+  // The streak itself still starts again: the current streak has no freeze used.
+  const s = S.streak(days("2026-11-15", "2026-11-16", "2026-11-20"), "2026-11-20");
+  assert.equal(s.streak, 1);
+  assert.deepEqual(s.frozen, []);
+  assert.deepEqual(s.covered, ["2026-11-17"]);
+});
+
+test("a project's checklist is its own: steps can be hidden, brought back and added", () => {
+  const { project: p } = S.create(idea);
+  assert.deepEqual(p.hidden, {});
+  assert.deepEqual(p.custom, []);
+  const full = S.progress(p).total;
+  assert.equal(full, S.CHECKLIST.length);
+
+  // Hide one that doesn't fit this idea.
+  p.ticks.terms = true;
+  assert.deepEqual(S.hideStep(p, "terms"), { hidden: true });
+  assert.equal(S.progress(p).total, full - 1);
+  assert.equal(S.progress(p).done, 0, "a hidden step's tick doesn't count");
+  assert.deepEqual(S.hiddenSteps(p).map((i) => i.key), ["terms"]);
+  assert.ok(!S.steps(p).some((i) => i.key === "terms"));
+  assert.equal(S.showStep(p, "terms"), true);
+  assert.equal(S.progress(p).done, 1, "brought back, its tick is still there");
+
+  // Add one of their own to a stage.
+  const added = S.addStep(p, "build", "  Ask the school\u0000 if   I can test it  ");
+  assert.equal(added.step.label, "Ask the school if I can test it");
+  assert.match(added.step.key, /^c-[a-z0-9]{1,12}$/);
+  assert.equal(S.progress(p).total, full + 1);
+  const build = S.steps(p).filter((i) => i.stage === "build");
+  assert.equal(build[build.length - 1].key, added.step.key);
+  assert.equal(build[build.length - 1].custom, true);
+  p.ticks[added.step.key] = true;
+  assert.equal(S.progress(p).done, 2);
+
+  // Refusals, in plain words.
+  assert.ok(S.addStep(p, "build", "   ").error);
+  assert.ok(S.addStep(p, "nowhere", "A step").error);
+  assert.ok(S.addStep(p, "build", "x".repeat(S.LIMITS.step + 1)).error);
+
+  // Saved and read back, the steps and ticks survive; a reload cleans them.
+  const back = S.clean(JSON.parse(JSON.stringify(p)));
+  assert.deepEqual(back.custom, p.custom);
+  assert.equal(back.ticks[added.step.key], true);
+
+  // Removing their own step takes its tick with it.
+  assert.deepEqual(S.hideStep(p, added.step.key), { removed: true });
+  assert.ok(!(added.step.key in p.ticks));
+  assert.equal(S.progress(p).total, full);
+});
+
+test("the next step, the plan and launched all follow the project's own checklist", () => {
+  const { project: p } = S.create(idea);
+  S.hideStep(p, "name");
+  assert.equal(S.nextStep(p).key, "problem");
+  const mine = S.addStep(p, "spark", "Draw it on paper").step;
+  for (const i of S.CHECKLIST) if (!p.hidden[i.key]) p.ticks[i.key] = true;
+  p.stage = "launch";
+  assert.equal(S.progress(p).launched, false, "their own step isn't done yet");
+  assert.equal(S.nextStep(p).key, mine.key);
+  const plan = S.planText(p, Date.UTC(2026, 10, 19));
+  assert.ok(plan.includes("- [ ] Draw it on paper"));
+  assert.ok(!plan.includes("Pick a name and check nobody else uses it"));
+  p.ticks[mine.key] = true;
+  assert.equal(S.progress(p).launched, true);
+});
+
+test("hiding is never allowed to empty the checklist, and odd saved steps are dropped", () => {
+  const { project: p } = S.create(idea);
+  for (const i of S.CHECKLIST.slice(0, -1)) assert.deepEqual(S.hideStep(p, i.key), { hidden: true });
+  assert.ok(S.hideStep(p, S.CHECKLIST[S.CHECKLIST.length - 1].key).error);
+  assert.equal(S.progress(p).total, 1);
+  // Everything hidden in a saved project (edited by hand, say): all come back.
+  const all = Object.fromEntries(S.CHECKLIST.map((i) => [i.key, true]));
+  assert.deepEqual(S.clean({ ...idea, id: "p1", hidden: all }).hidden, {});
+  const odd = S.clean({ ...idea, id: "p2", hidden: { nope: true, terms: "yes", privacy: true },
+    custom: [{ key: "name", stage: "spark", label: "Sneaky" }, { key: "c-ok1", stage: "moon", label: "x" },
+      { key: "c-ok2", stage: "plan", label: "" }, { key: "c-ok3", stage: "plan", label: "Fine" },
+      { key: "c-ok3", stage: "plan", label: "Twice" }, "text"],
+    ticks: { "c-ok3": true, "c-gone": true, name: true } });
+  assert.deepEqual(odd.hidden, { privacy: true });
+  assert.deepEqual(odd.custom, [{ key: "c-ok3", stage: "plan", label: "Fine" }]);
+  assert.deepEqual(odd.ticks, { "c-ok3": true, name: true });
+  const many = Array.from({ length: S.LIMITS.custom + 5 }, (_, n) => ({ key: `c-k${n}`, stage: "build", label: `Step ${n}` }));
+  assert.equal(S.clean({ ...idea, id: "p3", custom: many }).custom.length, S.LIMITS.custom);
 });

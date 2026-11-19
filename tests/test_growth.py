@@ -546,6 +546,7 @@ def test_a_creator_link_never_forwards_anywhere_it_shouldnt(client, makers, owne
         assert client.get(path, follow_redirects=False).status_code == 404, path
     # Once the app is open at its own address, it goes there with the code.
     monkeypatch.setenv("RANKUP_URL", "https://rankup.mtrxhorizyn.com")
+    monkeypatch.setenv("MTRX_OPEN_APPS", "rankup")
     where = client.get(f"/c/{code}", follow_redirects=False).headers["location"]
     assert where == f"https://rankup.mtrxhorizyn.com/?ref={code}"
     # An address typed into the catalog that isn't an allowed host is not used.

@@ -28,6 +28,11 @@ services:
         value: https://cyberlogix.mtrxhorizyn.com
       - key: OMNIARMOR_URL
         value: https://omniarmor.mtrxhorizyn.com
+      # Which apps are open to the public (launched): rankup,cyberlogix,omniarmor
+      # or all. Until an app is named here, every page says it is in
+      # development and nothing links to its address. Set on launch day.
+      - key: MTRX_OPEN_APPS
+        sync: false
       - key: RANKUP_HEALTH_URL
         value: https://rankup.mtrxhorizyn.com/api/health
       - key: CYBERLOGIX_HEALTH_URL

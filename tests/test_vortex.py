@@ -551,7 +551,7 @@ def test_privacy_page_says_what_chroma_vortex_keeps(client):
     from horizon import main, vortex
     page = " ".join(client.get("/privacy").text.split())
     assert "No cookies for visitors." in page
-    assert "<h2>Orbyt</h2>" in page
+    assert "<h2>Orbyt: work with MTRX Horizyn</h2>" in page
     assert "Until it opened, this site kept nothing that visitors typed." in page
     for field in ("your name, your email address and your message", "your organisation",
                   "which apps and the kind of partnership", "its name, its one-line pitch and who it's for"):
@@ -706,9 +706,13 @@ def test_after_sending_each_path_gets_a_next_step(client):
     assert 'link.dataset.next.split(" ").includes(kind)' in script
 
 
-def test_buying_is_a_quiet_link_and_no_money_moves_on_orbyt(client):
+def test_buying_is_only_the_buy_path_and_no_money_moves_on_orbyt(client):
     page = client.get("/orbyt").text
-    assert page.count('class="v-app-buy path-buy" href="#buy"') == 3
+    # No "Ask about buying" on each app: buying is one quiet path, under
+    # "Other ways to talk to us".
+    catalog = page.split('id="our-apps"', 1)[1].split("</section>", 1)[0]
+    assert "v-app-buy" not in page and 'href="#buy"' not in catalog and "Ask about buying" not in catalog
+    assert page.count('href="#buy" data-path="buy"') == 1
     # Nothing here takes money, offers shares or promises anything.
     lowered = page.lower()
     for word in ("checkout", "stripe", "card number", "invest now", "buy now", "guaranteed", "profit"):
@@ -727,3 +731,54 @@ def test_with_no_apps_released_orbyt_says_so_instead_of_an_empty_gap(client):
     assert "Our apps will be listed here while they&#39;re open to the public." in page \
         or "Our apps will be listed here while they're open to the public." in page
     assert "No apps are open to partners right now." in page
+
+
+# ---------------------------------------------------------------- 1.11.0: honest and plain
+
+def test_orbyt_says_the_apps_are_opening_soon_until_one_has_an_address(client, monkeypatch):
+    page = client.get("/orbyt").text
+    catalog = page.split('id="our-apps"', 1)[1].split("</section>", 1)[0]
+    assert "Our apps (opening soon)" in catalog and "Released to the public" not in page
+    assert catalog.count('<span class="v-app-soon">Opening soon</span>') == 3
+    monkeypatch.setenv("RANKUP_URL", "https://rankup.example.com")
+    assert "rankup.example.com" not in client.get("/orbyt").text  # not launched yet
+    monkeypatch.setenv("MTRX_OPEN_APPS", "rankup")
+    catalog = client.get("/orbyt").text.split('id="our-apps"', 1)[1].split("</section>", 1)[0]
+    assert "(opening soon)" not in catalog and "Open to the public" in catalog
+    assert 'href="https://rankup.example.com"' in catalog and catalog.count("Opening soon") == 2
+
+
+def test_pitch_and_partner_first_then_other_ways_to_talk(client):
+    page = client.get("/orbyt").text
+    paths = page.split('<nav class="v-paths"', 1)[1].split("</nav>", 1)[0]
+    other = paths.index("Other ways to talk to us")
+    assert paths.index('data-path="pitch"') < paths.index('data-path="partner"') < other
+    assert other < paths.index('data-path="invest"') and other < paths.index('data-path="buy"')
+    assert paths.count("v-path-small") == 2
+
+
+def test_every_form_has_the_under_13_note_and_the_7_day_reply(client):
+    page = client.get("/orbyt").text
+    for kind in ("partner", "pitch", "invest", "buy"):
+        panel = page.split(f'id="v-{kind}"', 1)[1].split("</section>", 1)[0]
+        assert "If you're under 13, ask a parent or guardian to send this for you." in panel, kind
+        assert "We reply within 7 days, even if the answer is no." in panel, kind
+        # Only the pitch form says ideas aren't confidential, just above Send.
+        open_ideas = "Ideas sent here aren't confidential, and MTRX Horizyn may already be working on"
+        before_send = panel.split('<div class="v-send">', 1)[0]
+        assert (open_ideas in " ".join(before_send.split())) == (kind == "pitch"), kind
+    sent = page.split('<section class="panel v-sent"', 1)[1].split("</section>", 1)[0]
+    assert "We reply within 7 days, even if it's a no." in " ".join(sent.split()).replace("&#39;", "'")
+    assert "within 7 days, even if the answer is no." in (ROOT / "static/js/vortex-form.js").read_text()
+    # Still: nobody pays or gets paid here.
+    assert "Nobody pays or gets paid here" in page
+
+
+def test_orbyt_always_says_it_is_for_working_with_mtrx_horizyn(client):
+    for path in ("/", "/genesis", "/orbyt", "/privacy", "/terms", "/partners", "/bundle"):
+        page = client.get(path).text
+        for link in re.findall(r'<a href="/orbyt"[^>]*>(.*?)</a>', page, re.DOTALL):
+            assert "Work with MTRX Horizyn" in link or "work with us" in link, (path, link)
+    page = client.get("/orbyt").text
+    assert "<title>Orbyt · Work with MTRX Horizyn</title>" in page
+    assert '<p class="eyebrow v-eyebrow">Work with MTRX Horizyn</p>' in page

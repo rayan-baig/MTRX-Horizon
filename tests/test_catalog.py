@@ -72,6 +72,7 @@ def test_an_app_url_setting_fills_its_address(client, monkeypatch):
     page = client.get("/orbyt").text
     assert 'href="rankup.example.com"' not in page
     monkeypatch.setenv("CYBERLOGIX_URL", "https://cyberlogix.example.com")
+    monkeypatch.setenv("MTRX_OPEN_APPS", "cyberlogix")
     card = client.get("/orbyt").text.split('data-app="cyberlogix"', 1)[1].split("</li>", 1)[0]
     assert 'href="https://cyberlogix.example.com"' in card and "Open" in card
 
@@ -255,7 +256,8 @@ def test_an_edit_is_checked_too(client):
 
 # ---------------------------------------------------------------- on Orbyt
 
-def test_an_app_shows_on_vortex_only_while_released(client):
+def test_an_app_shows_on_vortex_only_while_released(client, monkeypatch):
+    monkeypatch.setenv("MTRX_OPEN_APPS", "nova-notes")
     owner(client)
     assert add(client).status_code == 200
     page = client.get("/orbyt").text
@@ -273,7 +275,10 @@ def test_an_app_shows_on_vortex_only_while_released(client):
     assert "<h3>Nova Notes</h3>" in card and "Homework reminders that actually work." in card
     assert 'href="https://nova.example.com"' in card and 'rel="noopener"' in card
     assert 'href="#partner" data-pick="nova-notes"' in card and "Partner on this" in card
-    assert 'href="#buy" data-pick="nova-notes"' in card and "Ask about buying" in card
+    # Buying goes through the Buy path only: no per-app buying link.
+    assert 'href="#buy"' not in card and "Ask about buying" not in card
+    # It has an address, so it is open: the list no longer says "opening soon".
+    assert "Opening soon" not in card and "Our apps (opening soon)" not in page
     assert 'class="v-badge accent-amber"' in card
     for form in ("v-partner", "v-buy"):
         section = page.split(f'id="{form}"', 1)[1].split("</section>", 1)[0]
@@ -318,19 +323,22 @@ def test_the_vortex_page_lists_the_released_apps(client):
 
 # ---------------------------------------------------------------- the home page and the console
 
-def test_the_home_page_picks_up_a_released_app(client):
+def test_the_home_page_picks_up_a_released_app(client, monkeypatch):
+    monkeypatch.setenv("MTRX_OPEN_APPS", "nova-notes")
     owner(client)
     assert add(client).status_code == 200
     home = client.get("/").text
-    assert "Nova Notes" not in home and "<dt>Total Apps</dt><dd>3</dd>" in home
+    assert "Nova Notes" not in home and "<dt>Our apps</dt><dd>3</dd><span>In development</span>" in home
     assert act(client, "nova-notes", "release").status_code == 200
     home = client.get("/").text
     about = home.split('id="company"', 1)[1].split("</section>", 1)[0]
     assert "<b>Nova Notes</b>" in about and 'href="https://nova.example.com"' in about
     assert "parent company of four apps" in about
-    assert "<dt>Total Apps</dt><dd>4</dd>" in home
+    # Nova Notes has an address, so it is open; the founding three aren't yet.
+    assert "<dt>Our apps</dt><dd>4</dd><span>1 open, 3 in development</span>" in home
+    assert "parent company of four apps, 1 open, 3 in development" in home
     projects = home.split('id="projects"', 1)[1].split("</section>", 1)[0]
-    assert "<b>Nova Notes</b>" in projects and '<em class="status">Released</em>' in projects
+    assert "<b>Nova Notes</b>" in projects and '<em class="status">Open</em>' in projects
     assert 'style="' not in home
     # The three founding cards stay; one in development shows "soon".
     assert act(client, "rankup", "unrelease").status_code == 200
@@ -342,6 +350,7 @@ def test_the_home_page_picks_up_a_released_app(client):
 def test_a_founding_app_in_development_has_no_open_button_even_with_its_setting(client, monkeypatch):
     owner(client)
     monkeypatch.setenv("RANKUP_URL", "https://rankup.example")
+    monkeypatch.setenv("MTRX_OPEN_APPS", "all")
     assert 'aria-label="Open RankUp"' in client.get("/").text
     assert act(client, "rankup", "unrelease").status_code == 200
     assert 'aria-label="Open RankUp"' not in client.get("/").text

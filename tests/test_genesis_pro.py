@@ -113,7 +113,10 @@ def pro(monkeypatch, stripe, mail):
     monkeypatch.setenv("GENESIS_PRO_STRIPE_WEBHOOK_SECRET", SECRET)
     monkeypatch.setenv("GENESIS_PRO_STRIPE_PRICE", "price_month1")
     monkeypatch.setenv("GENESIS_PRO_YEARLY_STRIPE_PRICE", "price_year1")
-    for name in ("GENESIS_PRO_PER_HOUR", "GENESIS_PRO_PER_DAY", "GENESIS_PRO_MONTHLY_AI_USD"):
+    # Pro is offered only while Ask Genesis is on.
+    monkeypatch.setenv("GENESIS_AI_KEY", "test-key")
+    monkeypatch.setenv("GENESIS_AI_MODEL", "test-model-from-a-setting")
+    for name in ("GENESIS_PRO_PER_HOUR", "GENESIS_PRO_PER_DAY", "GENESIS_PRO_MONTHLY_AI_USD", "GENESIS_PRO_PRICE_TEXT"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(genesis_pro, "_prices", {"at": 0.0, "for": (), "month": None, "year": None})
     return {"stripe": stripe, "mail": mail}
@@ -202,6 +205,37 @@ def test_pro_is_off_by_default_and_nothing_about_it_shows(client, monkeypatch, s
     assert client.get("/api/console/numbers").json()["pro"] is None
 
 
+@pytest.mark.parametrize("missing", ["GENESIS_AI_KEY", "GENESIS_AI_MODEL"])
+def test_pro_is_never_offered_or_sold_while_ask_genesis_is_off(client, pro, monkeypatch, missing):
+    """Most of Pro is more Ask Genesis: with AI help off it isn't shown, its
+    table can't promise answers, and checkout is "page not found"."""
+    from horizon import genesis_pro
+    monkeypatch.delenv(missing, raising=False)
+    assert not genesis_pro.ready()
+    assert any("Ask Genesis is off" in p for p in genesis_pro.problems())
+    page = client.get("/genesis").text
+    assert "Genesis <b>Pro</b>" not in page and "Ask Genesis answers a day" not in page
+    assert client.post("/api/genesis/pro/checkout", json={"plan": "month"}, headers=ORIGIN).status_code == 404
+    # Back on, Pro and its Ask Genesis rows are back.
+    monkeypatch.setenv(missing, "test-value")
+    page = client.get("/genesis").text
+    assert "Genesis <b>Pro</b>" in page and "Ask Genesis answers a day" in page
+
+
+def test_a_written_price_shows_while_stripe_cant_be_reached(client, pro, monkeypatch):
+    from horizon import genesis_pro
+    pro["stripe"]["down"] = True
+    genesis_pro.refresh_prices(force=True)
+    page = client.get("/genesis").text
+    assert "Get Pro · $4.99 a month" in page
+    monkeypatch.setenv("GENESIS_PRO_PRICE_TEXT", "4,99 €")
+    assert "Get Pro · 4,99 € a month" in client.get("/genesis").text
+    # Anything that isn't a plain price is ignored, never put on the page.
+    monkeypatch.setenv("GENESIS_PRO_PRICE_TEXT", "<b>free</b>")
+    page = client.get("/genesis").text
+    assert "Get Pro · $4.99 a month" in page and "<b>free</b>" not in page
+
+
 @pytest.mark.parametrize("missing", ["STRIPE_SECRET_KEY", "GENESIS_PRO_STRIPE_WEBHOOK_SECRET",
                                      "GENESIS_PRO_STRIPE_PRICE"])
 def test_switched_on_without_every_stripe_setting_it_stays_off(client, pro, monkeypatch, missing):
@@ -225,7 +259,9 @@ def test_the_offer_shows_stripes_prices_and_says_a_grown_up_pays(client, pro):
     page = client.get("/genesis").text
     assert "Genesis <b>Pro</b>" in page and "A grown-up pays." in page
     assert "Checkout is for adults" in page
-    assert "You'll see the price before paying." in page  # not read from Stripe yet
+    # Not read from Stripe yet: the price as written in the settings, never none.
+    assert "You'll see the exact price before paying." in page
+    assert "Get Pro · $4.99 a month" in page
     genesis_pro.refresh_prices()
     page = client.get("/genesis").text
     assert "Get Pro · $4.99 a month" in page
@@ -619,6 +655,22 @@ def test_a_member_can_back_up_restore_and_delete_their_projects(client, pro):
     assert client.post("/api/genesis/pro/backup/delete", headers=pro_headers(key)).json()["backups"] == []
     assert client.post("/api/genesis/pro/restore", json={"id": latest["id"]},
                        headers=pro_headers(key)).status_code == 404
+
+
+def test_a_backup_keeps_the_steps_a_member_added_or_hid(client, pro):
+    key = buy(client)
+    mine = {**PROJECTS[0], "hidden": {"terms": True, "evil": "yes", "Bad": True},
+            "custom": [{"key": "c-abc123", "stage": "build", "label": "Ask the school"},
+                       {"key": "name", "stage": "build", "label": "Not a custom key"},
+                       {"key": "c-x", "stage": "moon", "label": "Bad stage"},
+                       {"key": "c-y", "stage": "plan", "label": "x" * 121}],
+            "ticks": {"name": True, "c-abc123": True, "c-nothere": True}}
+    saved = client.post("/api/genesis/pro/backup", json={"projects": [mine]}, headers=pro_headers(key)).json()
+    back = client.post("/api/genesis/pro/restore", json={"id": saved["backups"][0]["id"]},
+                       headers=pro_headers(key)).json()["projects"][0]
+    assert back["custom"] == [{"key": "c-abc123", "stage": "build", "label": "Ask the school"}]
+    assert back["hidden"] == {"terms": True}
+    assert back["ticks"] == {"name": True, "c-abc123": True}
 
 
 def test_a_backup_is_only_for_its_member_and_only_while_pro(client, pro):

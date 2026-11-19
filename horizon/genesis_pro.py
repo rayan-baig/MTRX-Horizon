@@ -133,12 +133,21 @@ def enabled() -> bool:
 
 
 def ready() -> bool:
-    """Switched on, every Stripe setting there, and email working. Pro shows
-    only then: a buyer who loses their key gets a new one by email, and
-    without it could never reach Manage subscription again."""
+    """Switched on, every Stripe setting there, email working and Ask
+    Genesis switched on. Pro shows only then: a buyer who loses their key
+    gets a new one by email, and without it could never reach Manage
+    subscription again; and most of what Pro adds is more Ask Genesis, so it
+    is never offered, or sold, while AI help is off."""
     s = config.get()
     return bool(s.genesis_pro_enabled and s.stripe_secret_key and s.genesis_pro_webhook_secret
-                and s.genesis_pro_price and email_ready())
+                and s.genesis_pro_price and email_ready() and ai_ready())
+
+
+def ai_ready() -> bool:
+    """Ask Genesis is switched on (genesis_ai.enabled, read here from the
+    settings so the two modules don't import each other)."""
+    s = config.get()
+    return bool(s.genesis_ai_key and s.genesis_ai_model)
 
 
 def email_ready() -> bool:
@@ -162,6 +171,9 @@ def problems() -> list:
         out.append("Email isn't set up: set MTRX_SMTP_HOST (and its login) and GENESIS_PRO_EMAIL_FROM. "
                    "Pro stays off until keys can be emailed, so a buyer who loses theirs can always get "
                    "a new one.")
+    if not ai_ready():
+        out.append("Ask Genesis is off: set GENESIS_AI_KEY and GENESIS_AI_MODEL. Pro stays off while AI "
+                   "help is off, since its extra answers are most of what it adds.")
     return out
 
 
@@ -279,7 +291,11 @@ def offer() -> dict | None:
         months_free = free if free >= 1 else None
     return {"month": month, "year": year, "yearly": bool(s.genesis_pro_yearly_price),
             "months_free": months_free, "per_day": s.genesis_pro_per_day,
-            "free_per_day": s.genesis_ai_per_day}
+            "free_per_day": s.genesis_ai_per_day,
+            # While Stripe's figure can't be read: the price as the owner wrote it.
+            "month_text": s.genesis_pro_price_text,
+            # Ask Genesis is on (always, while Pro is ready): its rows show only then.
+            "ai": ai_ready()}
 
 
 def checkout(who: str, plan, base: str) -> tuple[int, dict]:
@@ -975,6 +991,9 @@ def settle_ask(spend_id: int, usd: float):
 _PROJECT_ID = re.compile(r"[A-Za-z0-9-]{1,64}")
 _TEXT = {"name": 60, "pitch": 140, "audience": 120, "address": 253, "notes": 5000}
 _STAGES = ("spark", "plan", "build", "launch")
+_CUSTOM_KEY = re.compile(r"c-[a-z0-9]{1,12}")
+_CUSTOM_MOST = 30
+_STEP_LIMIT = 120
 
 
 def _clean_project(raw) -> dict | None:
@@ -994,9 +1013,27 @@ def _clean_project(raw) -> dict | None:
     if not (out["name"] and out["pitch"] and out["audience"]):
         return None
     out["stage"] = raw.get("stage") if raw.get("stage") in _STAGES else "spark"
+    # The visitor's own steps (each a key starting "c-", a stage and a label)
+    # and the built-in steps they hid. genesis-store.js has the same rules.
+    custom = []
+    for step in raw.get("custom") if isinstance(raw.get("custom"), list) else []:
+        if len(custom) >= _CUSTOM_MOST:
+            break
+        if not isinstance(step, dict):
+            continue
+        key, stage, label = step.get("key"), step.get("stage"), step.get("label")
+        if (isinstance(key, str) and _CUSTOM_KEY.fullmatch(key) and stage in _STAGES
+                and isinstance(label, str) and 0 < len(label) <= _STEP_LIMIT
+                and all(c["key"] != key for c in custom)):
+            custom.append({"key": key, "stage": stage, "label": label})
+    out["custom"] = custom
+    hidden = _dict(raw.get("hidden"))
+    out["hidden"] = {k: True for k, v in list(hidden.items())[:40]
+                     if isinstance(k, str) and re.fullmatch(r"[a-z]{1,20}", k) and v is True}
     ticks = _dict(raw.get("ticks"))
-    out["ticks"] = {k: True for k, v in list(ticks.items())[:40]
-                    if isinstance(k, str) and re.fullmatch(r"[a-z]{1,20}", k) and v is True}
+    mine = {c["key"] for c in custom}
+    out["ticks"] = {k: True for k, v in list(ticks.items())[:80]
+                    if isinstance(k, str) and (re.fullmatch(r"[a-z]{1,20}", k) or k in mine) and v is True}
     for field in ("created", "updated"):
         value = raw.get(field)
         out[field] = int(value) if (isinstance(value, (int, float)) and not isinstance(value, bool)

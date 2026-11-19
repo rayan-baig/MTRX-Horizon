@@ -1,5 +1,5 @@
 // The Orbyt page: four paths, each a short form, and the released
-// apps, each with buttons that open a form with that app picked. A form is sent
+// apps, each with a button that opens the Partner form with that app picked. A form is sent
 // only when Send is pressed, to /api/vortex/send, with no cookie. Every
 // word a visitor typed is placed with textContent, never as HTML.
 (() => {
@@ -224,8 +224,7 @@
 
   window.addEventListener("hashchange", () => route(true));
 
-  // "Partner on this" and "Ask about buying" on an app: open that form with
-  // only that app picked.
+  // "Partner on this" on an app: open that form with only that app picked.
   document.querySelectorAll("[data-pick]").forEach((link) => {
     link.addEventListener("click", (event) => {
       const kind = link.getAttribute("href").slice(1);

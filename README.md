@@ -171,6 +171,13 @@ To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_U
 `https://rankup.mtrxhorizyn.com`. An address without `https://` shows no button, rather
 than a link to nowhere.
 
+**Launch day: `MTRX_OPEN_APPS`.** An address alone doesn't open an app to the public. Until
+an app's key is in `MTRX_OPEN_APPS` (`rankup,cyberlogix,omniarmor`, or `all`), every page says
+it is in development ("3 in development" on the home page, "Our apps (opening soon)" on Orbyt),
+and nothing links to its address: no Open button, no bundle trial link, creator links go to
+its early access form. Name it there and every page changes together (`horizon/catalog.py`,
+`apps_line` and `opening`).
+
 ## Admin links and costs in the console
 
 Each app's card in **Our platforms** has an **Admin →** link to that app's own admin
@@ -331,7 +338,8 @@ shared free budget), longer and more detailed answers, three more helpers (a fou
 words for a one-page website, price ideas), a private cloud backup of the member's projects, and
 **Download plan** (a project as a text file). Nothing a member makes is ever published or shared.
 
-It is **off until `GENESIS_PRO_ENABLED=1`**, Stripe is set up and email works; until then no page mentions it
+It is **off until `GENESIS_PRO_ENABLED=1`**, Stripe is set up, email works and Ask Genesis is on
+(`GENESIS_AI_KEY` and `GENESIS_AI_MODEL`: most of Pro is more Ask Genesis); until then no page mentions it
 and every Pro address is "page not found". Payment is a Stripe Checkout subscription, and
 Stripe's signed webhook is the only thing that makes anyone Pro or stops them (cancelled,
 payment failed, refunded, disputed). There are no accounts: the buyer gets a **Pro key** on the page Stripe
@@ -345,6 +353,7 @@ button says a grown-up pays and checkout is for adults.
 | `STRIPE_SECRET_KEY` | empty | Stripe's (restricted) secret key |
 | `GENESIS_PRO_STRIPE_WEBHOOK_SECRET` | empty | the signing secret of `https://mtrxhorizyn.com/api/genesis/pro/stripe` |
 | `GENESIS_PRO_STRIPE_PRICE` / `GENESIS_PRO_YEARLY_STRIPE_PRICE` | empty | the monthly and yearly price ids; Stripe holds the amounts |
+| `GENESIS_PRO_PRICE_TEXT` | `$4.99` | the monthly price as written on the page while Stripe's figure can't be read |
 | `GENESIS_PRO_PER_DAY` / `GENESIS_PRO_PER_HOUR` | 100 / 30 | Ask Genesis answers per member |
 | `GENESIS_PRO_MONTHLY_AI_USD` | 1.5 | the most one member's AI help may cost in any 31 days |
 | `GENESIS_PRO_EMAIL_FROM` | `MTRX_ALERT_FROM` | where Pro keys are emailed from (through `MTRX_SMTP_*`) |
@@ -508,6 +517,8 @@ violet, cyan, magenta, amber), its status (`in_development` or `released`) and `
 The first start fills it with RankUp, CyberLogix AI and OmniArmor.ai, as released, once only
 (the `done_once` table remembers it). `RANKUP_URL`, `CYBERLOGIX_URL` and `OMNIARMOR_URL` still
 work: when one is set, it is the address used for that app.
+Released means listed on Orbyt and in its forms; **open** means released, with an address,
+and named in `MTRX_OPEN_APPS` (see above). Only an open app gets an Open button.
 
 In the console, **Manage apps** adds an app (it starts in development, private), edits its name,
 line, address and colour, releases it to the public or takes it back into development, and

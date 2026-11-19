@@ -202,6 +202,7 @@ def test_the_bundle_price_matches_cyberlogix_and_can_be_hidden(client, monkeypat
 def test_the_trial_and_open_buttons_go_to_the_apps_own_addresses(client, monkeypatch):
     monkeypatch.setenv("CYBERLOGIX_URL", "https://cyberlogix.example")
     monkeypatch.setenv("OMNIARMOR_URL", "https://omniarmor.example/")
+    monkeypatch.setenv("MTRX_OPEN_APPS", "all")
     page = client.get("/bundle").text
     assert page.count('href="https://cyberlogix.example/signup" rel="noopener">Start with a free trial') == 2
     assert 'href="https://cyberlogix.example" rel="noopener">Open CyberLogix AI' in page

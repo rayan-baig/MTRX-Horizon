@@ -3,6 +3,7 @@
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
 import pytest
 
@@ -11,7 +12,7 @@ from tests.test_lock import ORIGIN, make_client, client, owner  # noqa: F401
 
 def test_home_page_shows_all_three_apps(client):
     page = client.get("/").text
-    for name in ("RankUp", "CyberLogix AI", "OmniArmor.ai", "One Vision."):
+    for name in ("RankUp", "CyberLogix AI", "OmniArmor.ai", "Three apps that watch,"):
         assert name in page
 
 
@@ -34,6 +35,7 @@ def test_home_page_has_no_inline_styles_or_scripts(client):
 def test_open_app_button_only_when_a_url_is_set(client, monkeypatch):
     assert "Open RankUp" not in client.get("/").text
     monkeypatch.setenv("RANKUP_URL", "https://rankup.example")
+    monkeypatch.setenv("MTRX_OPEN_APPS", "rankup")
     page = client.get("/").text
     assert "Open RankUp" in page and "https://rankup.example" in page
 
@@ -184,8 +186,11 @@ def test_on_a_phone_the_home_page_never_hides_what_it_is_or_where_to_go():
 
 def test_home_page_numbers_are_real_or_say_they_are_coming(client):
     page = client.get("/").text
-    assert "Live numbers appear here as soon as the apps launch." in page
-    assert "Soon" in page
+    assert "Soon" in page and "Counted from launch" in page
+    # No live panel, and no Analytics link to it, until an app has reported:
+    # an empty map with dashes looked alive and said nothing.
+    assert 'id="activity"' not in page and 'href="#activity"' not in page
+    assert '<section class="bottom solo">' in page
 
 
 def test_home_page_shows_what_the_apps_reported(client, monkeypatch):
@@ -219,6 +224,7 @@ def test_projects_on_the_home_page_are_the_real_list(client):
 
 def test_each_app_has_open_and_learn_more(client, monkeypatch):
     monkeypatch.setenv("CYBERLOGIX_URL", "https://cyberlogix.example")
+    monkeypatch.setenv("MTRX_OPEN_APPS", "all")
     page = client.get("/").text
     for key in ("rankup", "cyberlogix", "omniarmor"):
         assert f'href="#learn-{key}"' in page and f'id="learn-{key}"' in page
@@ -524,7 +530,7 @@ def test_home_page_presents_mtrx_horizon_as_the_parent_company(client):
     page = client.get("/").text
     assert "MTRX Horizyn is the parent company of RankUp, CyberLogix AI and OmniArmor.ai" in page
     hero = page.split('class="hero-copy"', 1)[1].split("</section>", 1)[0]
-    assert "MTRX Horizyn is the parent company of three apps" in hero
+    assert "MTRX Horizyn is the parent company of three apps, all in development:" in hero
     # Each app is named in that first paragraph, and each name opens its card.
     for key, name in (("rankup", "RankUp"), ("cyberlogix", "CyberLogix AI"),
                       ("omniarmor", "OmniArmor.ai")):
@@ -536,6 +542,7 @@ def test_home_page_presents_mtrx_horizon_as_the_parent_company(client):
 
 def test_about_lists_the_three_apps_with_their_links(client, monkeypatch):
     monkeypatch.setenv("OMNIARMOR_URL", "https://omniarmor.example.com")
+    monkeypatch.setenv("MTRX_OPEN_APPS", "all")
     about = _sheet(client.get("/").text, "company")
     assert "MTRX Horizyn is a software company" in about and "parent company of three apps" in about
     for key in ("rankup", "cyberlogix", "omniarmor"):
@@ -887,3 +894,116 @@ def test_no_error_email_when_email_is_not_set_up(client, monkeypatch):
     except RuntimeError as exc:
         errors.report("GET", "/x", exc, "1", wait=True)
     assert sent == []
+
+
+# ---------------------------------------------------------------- 1.11.0: an honest home page
+
+def test_until_launch_every_part_of_the_home_page_says_the_apps_are_in_development(client):
+    """Cards said "Early access", the figures said "3 Available" and Orbyt said
+    "Released to the public". Now one place, the catalog, decides, and every
+    part of the page agrees."""
+    page = client.get("/").text
+    assert "<dt>Our apps</dt><dd>3</dd><span>In development</span>" in page
+    assert "Available" not in page and "Total Apps" not in page
+    assert "parent company of three apps, all in development" in page
+    assert "parent company of three apps (3 in development)" in page
+    # Released in the console but with no address: still in development.
+    assert "Open RankUp" not in page and "RankUp opens to the public soon." in page
+
+
+def test_the_day_the_apps_open_the_home_page_says_so(client, monkeypatch):
+    for key in ("RANKUP", "CYBERLOGIX", "OMNIARMOR"):
+        monkeypatch.setenv(f"{key}_URL", f"https://{key.lower()}.example.com")
+    # Addresses alone don't launch anything: still in development, no Open
+    # button and no link to the apps anywhere on the page.
+    page = client.get("/").text
+    assert "<dt>Our apps</dt><dd>3</dd><span>In development</span>" in page
+    assert "rankup.example.com" not in page and 'aria-label="Open RankUp"' not in page
+    # Named in MTRX_OPEN_APPS: open, everywhere at once.
+    monkeypatch.setenv("MTRX_OPEN_APPS", "all")
+    page = client.get("/").text
+    assert "<dt>Our apps</dt><dd>3</dd><span>Open now</span>" in page
+    assert "parent company of three apps, all open now" in page
+    assert "In development" not in page and 'aria-label="Open RankUp"' in page
+    monkeypatch.setenv("MTRX_OPEN_APPS", "rankup, cyberlogix")
+    page = client.get("/").text
+    assert "<span>2 open, 1 in development</span>" in page
+    assert 'aria-label="Open OmniArmor.ai"' not in page and "omniarmor.example.com" not in page
+
+
+def test_the_catalog_words_for_open_and_in_development():
+    from horizon import catalog
+    assert catalog.apps_line([{"open": False}] * 3) == "3 in development"
+    assert catalog.apps_line([{"open": True}, {"open": False}, {"open": False}]) == "1 open, 2 in development"
+    assert catalog.apps_line([{"open": True}] * 3) == "3 open"
+    assert catalog.opening([{"open": False}, {}]) and not catalog.opening([{"open": False}, {"open": True}])
+
+
+def test_nothing_on_the_home_page_looks_alive_without_being_so(client):
+    page = client.get("/").text
+    top = page.split('<header class="topbar">', 1)[1].split("</header>", 1)[0]
+    # The bell has no count that never goes away.
+    assert "bell-count" not in page and 'aria-label="What\'s new"' in top
+    # A plain three-line Menu button, not a round picture like a profile.
+    assert '<a class="menu-btn" href="#menu" aria-label="Menu">' in top and "me-mark" not in page
+    assert '<path d="M4 7h16M4 12h16M4 17h16"/>' in top
+    # Settings held only calm mode: it is called that now, and not a top link.
+    nav = top.split('class="mainnav"', 1)[1].split("</nav>", 1)[0]
+    assert "Settings" not in nav and 'href="#activity"' not in nav
+    menu = page.split('id="menu"', 1)[1].split("</section>", 1)[0]
+    assert '<a href="#settings">Calm mode: less motion</a>' in menu
+    assert "<h2>Calm mode</h2>" in page.split('id="settings"', 1)[1].split("</section>", 1)[0]
+    script = Path("static/js/home.js").read_text(encoding="utf-8")
+    assert 'document.getElementById("activity") ?' in script
+
+
+def test_the_live_panel_comes_back_once_an_app_reports(client, monkeypatch):
+    import time
+
+    from horizon import db
+    monkeypatch.setenv("RANKUP_STATS_URL", "http://127.0.0.1:9/stats")
+    with db.connect() as conn:
+        conn.execute("INSERT INTO app_snapshots (app, at, online, users, active_users) VALUES (?, ?, ?, ?, ?)",
+                     ("rankup", time.time(), 1, 1234, 56))
+    page = client.get("/").text
+    assert 'id="activity"' in page and '<a href="#activity">Analytics</a>' in page
+    assert '<section class="bottom">' in page
+
+
+def test_the_home_page_says_plainly_what_the_company_makes(client):
+    page = client.get("/").text
+    hero = page.split('class="hero-copy"', 1)[1].split("</section>", 1)[0]
+    assert '<h1><span class="line">Three apps that watch,</span> <span class="line gradient-text">warn and motivate.</span></h1>' in hero
+    assert "One Vision." not in hero and "Infinite Possibilities." not in hero
+    # Plain lines on the cards, never vague ones; and they show on phones too.
+    for line in ("Chores that turn into points and games", "Fridge and freezer alarms that call you",
+                 "Safety checklists that count the deadlines"):
+        assert f'<p class="app-lede">{line}</p>' in page
+    for vague in ("Secure, intelligent solutions", "Protect what matters", "advanced security"):
+        assert vague not in page
+    css = Path("static/css/site.css").read_text(encoding="utf-8")
+    phone = css.split("@media (max-width: 720px) {\n  /* A phone may scroll", 1)[1].split("\n}\n", 1)[0]
+    assert ".page .app-card .app-lede { display: block;" in phone
+    # "No made-up stats" sits beside a figure that is true: what it's built for.
+    assert "Global Reach" not in page and "<dt>Built for</dt><dd>12</dd><span>Industries</span>" in page
+
+
+def test_on_a_phone_genesis_and_orbyt_are_on_the_page_and_the_menu_fits(client):
+    page = client.get("/").text
+    places = page.split('<nav class="more-places"', 1)[1].split("</nav>", 1)[0]
+    assert 'href="/genesis"' in places and 'href="/orbyt"' in places and "Work with MTRX Horizyn" in places
+    css = Path("static/css/site.css").read_text(encoding="utf-8")
+    phone = css.split("@media (max-width: 720px) {\n  /* A phone may scroll", 1)[1].split("\n}\n", 1)[0]
+    assert ".page .more-places { display: grid;" in phone
+    menu_rule = css.split(".menu-sheet .menu {", 1)[1].split("}", 1)[0]
+    assert "max-height: calc(100dvh - 80px)" in menu_rule and "overflow-y: auto" in menu_rule
+    menu = page.split('id="menu"', 1)[1].split("</section>", 1)[0]
+    assert '<a href="/orbyt">Orbyt: work with us</a>' in menu
+
+
+def test_the_open_apps_setting_is_read_carefully():
+    from horizon import config
+    assert config._open_apps(None) == frozenset() and config._open_apps("  ") == frozenset()
+    assert config._open_apps("RankUp, cyberlogix  omniarmor") == {"rankup", "cyberlogix", "omniarmor"}
+    assert config._open_apps("all") == {"*"} and config._open_apps("rankup,ALL") == {"*"}
+    assert config._open_apps("rank up!, -bad-, ok") == {"rank", "ok"}

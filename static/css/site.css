@@ -293,7 +293,7 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
   width: clamp(200px, 15vw, 260px); height: 38px; padding: 0 10px 0 14px; border-radius: 999px;
   background: rgba(5, 10, 30, 0.6); border: 1px solid rgba(120, 160, 255, 0.28); }
 .search:focus-within { border-color: var(--cyan); box-shadow: 0 0 16px rgba(34, 211, 238, .25); }
-.search svg, .bell svg, .me svg, .facts svg, .play {
+.search svg, .bell svg, .menu-btn svg, .facts svg, .play {
   fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
 }
 .search svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
@@ -321,22 +321,16 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 .search-results p { margin: 0; padding: 8px 10px; color: var(--muted); font-size: 13px; }
 .bell { position: relative; display: grid; place-items: center; width: 38px; height: 38px; color: var(--text); }
 .bell svg { width: 24px; height: 24px; }
-.bell-count {
-  position: absolute; top: 3px; right: 3px; min-width: 16px; height: 16px; padding: 0 4px;
-  border-radius: 999px; background: linear-gradient(135deg, #f43f8e, #d946ef); color: #fff;
-  font: 700 10px/16px var(--body); text-align: center; box-shadow: 0 0 10px rgba(217, 70, 239, .7);
+/* The menu: three lines and the word, as plain as a menu button gets. */
+.menu-btn {
+  display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 10px; border-radius: 999px;
+  text-decoration: none; border: 1px solid rgba(120, 160, 255, 0.28); background: rgba(5, 10, 30, 0.5);
+  font: 500 13.5px var(--body); white-space: nowrap; color: var(--text);
 }
-.me {
-  display: flex; align-items: center; gap: 10px; padding: 4px 12px 4px 4px; border-radius: 999px;
-  text-decoration: none; border: 1px solid rgba(120, 160, 255, 0.22); background: rgba(5, 10, 30, 0.5);
-  font: 500 13.5px var(--body); white-space: nowrap;
-}
-.me-mark {
-  width: 34px; height: 34px; border-radius: 50%; flex: none;
-  background: #050a1e url("/static/img/logo-mark-sm.webp") center / 76% no-repeat;
-  border: 1px solid rgba(120, 160, 255, 0.4); box-shadow: 0 0 12px rgba(59, 130, 246, .35);
-}
-.me svg { width: 16px; height: 16px; color: var(--muted); }
+.menu-btn:hover { border-color: var(--cyan); }
+.menu-btn svg { width: 22px; height: 22px; stroke-width: 2; }
+/* Orbyt always says what it is for. */
+.orbyt-sub { font-size: .86em; color: var(--muted); font-weight: 400; }
 .page .demo-note {
   flex: none; margin: 0; padding: clamp(3px, 0.6vh, 7px) 16px; text-align: center; font-size: 13px;
   background: linear-gradient(90deg, rgba(34, 211, 238, .12), rgba(139, 92, 246, .12));
@@ -376,9 +370,9 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 }
 .page .hero h1 {
   font-family: var(--head); font-weight: 800; letter-spacing: -0.02em; line-height: 0.98;
-  font-size: clamp(20px, min(4.4vw, 17cqh), 66px); margin: 0 0 clamp(4px, 5cqh, 26px);
+  font-size: clamp(20px, min(3.5vw, 15cqh), 52px); margin: 0 0 clamp(4px, 5cqh, 26px);
 }
-.page .hero h1 .line { display: block; width: max-content; white-space: nowrap; }
+.page .hero h1 .line { display: block; width: max-content; max-width: 100%; white-space: nowrap; }
 .page .gradient-text {
   background: linear-gradient(90deg, #22d3ee, #3b82f6 45%, #8b5cf6 75%, #d946ef);
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -465,8 +459,24 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 .page .btn-outline:hover { box-shadow: 0 0 16px color-mix(in srgb, var(--accent, var(--cyan)) 45%, transparent); }
 .page .is-soon { opacity: .6; cursor: default; }
 
+/* Genesis and Orbyt, as a row of their own: only on phones, where the top
+   links are folded into the menu (see the phone rules below). */
+.page .more-places { display: none; }
+.place {
+  display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; text-decoration: none; min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--pc) 55%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--pc) 16%, rgba(6, 14, 38, .9)), rgba(6, 14, 38, .85));
+}
+.place b { font: 700 15px/1.2 var(--head); color: var(--text); }
+.place b::after { content: " →"; color: var(--pc); }
+.place span { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.place-genesis { --pc: #fbbf24; }
+.place-orbyt { --pc: #c084fc; }
+
 /* ---------- the two bottom panels ---------- */
 .page .bottom { flex: none; display: grid; grid-template-columns: minmax(0, 2.05fr) minmax(0, 1fr); gap: clamp(14px, 1.5vw, 26px); }
+/* No live numbers yet: the company panel has the row to itself. */
+.page .bottom.solo { grid-template-columns: minmax(0, 1fr); }
 .page .panel {
   border-radius: 12px; background: rgba(6, 14, 38, 0.72);
   border: 1px solid rgba(86, 140, 255, 0.35);
@@ -605,7 +615,8 @@ body:has(.calm-switch:checked) .toggle-ui::after { transform: translateX(20px); 
 body:has(.calm-switch:checked) .page *, body:has(.calm-switch:checked) .sky::before,
 body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 .menu-sheet { place-items: start end; padding: 64px 16px 16px; }
-.menu-sheet .menu { width: 220px; padding: 8px; display: grid; }
+/* Always inside the screen: a long menu scrolls within itself. */
+.menu-sheet .menu { width: 260px; padding: 8px; display: grid; align-content: start; max-height: calc(100dvh - 80px); overflow-y: auto; overscroll-behavior: contain; }
 .menu a { padding: 10px 12px; border-radius: 8px; text-decoration: none; font-size: 14px; }
 .menu a:hover { background: rgba(59, 130, 246, .16); }
 
@@ -669,6 +680,9 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 /* On a phone, everything in the pop-ups is big enough for a thumb. */
 @media (max-width: 720px) {
   .sheet-x { top: 8px; right: 10px; width: 40px; height: 40px; }
+  .menu-sheet { padding: 60px 12px 12px; }
+  .menu-sheet .menu { width: min(300px, 100%); max-height: calc(100dvh - 72px); }
+  .menu a { padding: 9px 12px; }
   .company-apps span a { display: inline-flex; align-items: center; min-height: 40px; margin-block: -10px; }
   .company-legal a { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; }
 }
@@ -734,6 +748,7 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   /* Side by side still, with the company blurb and the map left out:
      the four figures and the live numbers are what the panels are for. */
   .page .bottom { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+  .page .bottom.solo { grid-template-columns: minmax(0, 1fr); }
   .page .about { grid-template-columns: minmax(0, 1fr); padding: 10px 12px; }
   .page .about-side, .page .map { display: none; }
   .page .facts > div:first-child { border-left: 0; }
@@ -791,8 +806,11 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .app-card { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 8px; }
   .page .app-head { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 0; }
   .page .app-head > div { grid-column: auto; grid-row: auto; }
-  .page .app-card .tags, .page .app-card .app-lede { display: none; }
-  .page .card-actions { grid-column: auto; grid-row: auto; flex-direction: column; gap: 5px; }
+  .page .app-card .tags { display: none; }
+  /* One short line under each name, so a tile says what the app does. */
+  .page .app-card .app-lede { display: block; max-width: none; margin: 0; font-size: 11.5px; line-height: 1.3; color: #dfe6fb; }
+  .page .more-places { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .page .card-actions { grid-column: auto; grid-row: auto; flex-direction: column; gap: 5px; margin-top: auto; }
   .page .card-actions .btn { width: 100%; justify-content: center; min-height: 40px; padding: 0 4px; font-size: 12px; gap: 6px; white-space: nowrap; }
   /* The tile already says which app it is. */
   .page .card-actions .app-name, .page .card-actions .arrow { display: none; }
@@ -802,8 +820,9 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .search, .bell { width: 40px; height: 40px; }
   /* Folded, the search box is all tap area, edge to edge. */
   .search:not(:focus-within) { border-width: 0; }
-  .me-name, .me svg { display: none; }
-  .me { padding: 2px; }
+  .menu-btn { padding: 0 10px 0 8px; gap: 6px; font-size: 13px; }
+  /* A phone's headline wraps rather than running off the side. */
+  .page .hero h1 .line { width: auto; white-space: normal; }
   .page .demo-note { font-size: 11px; line-height: 1.3; padding: 4px 12px; }
   .page main { gap: 8px; padding: 0 12px 6px; }
   .page .hero h1 { font-size: clamp(22px, 7.4vw, 36px); }
@@ -814,7 +833,6 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .app-card h2 { font-size: 15.5px; margin-bottom: 2px; }
   .page .tags { font-size: 8.5px; letter-spacing: .04em; }
   .page .tags i { margin: 0 2px; }
-  .page .app-lede { display: none; }
   .page .card-actions { grid-row: 1; }
   .page .btn-outline { min-height: 30px; padding: 0 12px; font-size: 12.5px; gap: 8px; }
   .page .facts svg { width: 18px; height: 18px; }
@@ -838,6 +856,9 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 @media (max-width: 380px) {
   .page .topbar { gap: 6px; }
   .tools { gap: 0; }
+  /* The three lines alone; the button is still called Menu. */
+  .menu-word { display: none; }
+  .menu-btn { width: 40px; padding: 0; justify-content: center; border-color: transparent; background: none; }
 }
 /* The smallest phones: the line under the name would be too small to read. */
 @media (max-width: 340px) {

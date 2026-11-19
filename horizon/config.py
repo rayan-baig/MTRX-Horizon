@@ -39,6 +39,7 @@ class Settings:
     trust_proxy: bool
     stats_key: str
     app_urls: dict
+    open_apps: frozenset
     stats_urls: dict
     session_hours: int
     knock_minutes: int
@@ -69,6 +70,7 @@ class Settings:
     genesis_pro_webhook_secret: str
     genesis_pro_price: str
     genesis_pro_yearly_price: str
+    genesis_pro_price_text: str
     genesis_pro_per_hour: int
     genesis_pro_per_day: int
     genesis_pro_monthly_ai_usd: float
@@ -129,6 +131,16 @@ def _price_id(raw: str | None) -> str:
     return value if _PRICE_ID.fullmatch(value) else ""
 
 
+# A monthly price as written on the page, such as $4.99 or 4,99 €: a currency
+# sign or letters, digits, one separator. Anything else falls back to the default.
+_PRICE_TEXT = re.compile(r"[^\W\d_]{0,3}[$€£¥]?\s?\d{1,4}(?:[.,]\d{2})?\s?[$€£¥]?[^\W\d_]{0,3}")
+
+
+def _price_text(raw: str | None, default: str) -> str:
+    value = " ".join((raw or "").split())
+    return value if value and len(value) <= 16 and _PRICE_TEXT.fullmatch(value) else default
+
+
 # A Stripe promotion code as a customer types it at checkout, such as
 # FOUNDER20: letters, digits, - and _ only.
 _PROMO_CODE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,39}")
@@ -187,6 +199,14 @@ def _email(raw: str | None) -> str:
 ADMIN_PATHS = {"rankup": "/#/operator", "cyberlogix": "/console", "omniarmor": "/"}
 
 
+def _open_apps(raw: str | None) -> frozenset:
+    """MTRX_OPEN_APPS: "rankup, cyberlogix", or "all"; anything else is ignored."""
+    keys = {k for k in re.split(r"[\s,]+", (raw or "").strip().lower()) if k}
+    if "all" in keys:
+        return frozenset({"*"})
+    return frozenset(k for k in keys if re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,22}[a-z0-9])?", k))
+
+
 def _admin_urls(env, app_urls: dict) -> dict:
     urls = {}
     for key in APP_KEYS:
@@ -207,6 +227,10 @@ def get() -> Settings:
         trust_proxy=env.get("MTRX_TRUST_PROXY", "") == "1",
         stats_key=env.get("MTRX_STATS_KEY", "").strip(),
         app_urls=app_urls,
+        # Which apps are open to the public (launched): their keys, or "all".
+        # Until an app is named here the site says it is in development and
+        # shows no Open button, even with its address set (catalog.py).
+        open_apps=_open_apps(env.get("MTRX_OPEN_APPS")),
         stats_urls={k: env.get(f"{k.upper()}_STATS_URL", "").strip() for k in APP_KEYS},
         session_hours=_whole_number(env.get("MTRX_SESSION_HOURS"), 12),
         knock_minutes=_whole_number(env.get("MTRX_KNOCK_MINUTES"), 5),
@@ -253,6 +277,9 @@ def get() -> Settings:
         genesis_pro_webhook_secret=env.get("GENESIS_PRO_STRIPE_WEBHOOK_SECRET", "").strip(),
         genesis_pro_price=_price_id(env.get("GENESIS_PRO_STRIPE_PRICE")),
         genesis_pro_yearly_price=_price_id(env.get("GENESIS_PRO_YEARLY_STRIPE_PRICE")),
+        # The monthly price as written on the page while Stripe's own figure
+        # can't be read (Stripe slow or down): so a buyer always sees a price.
+        genesis_pro_price_text=_price_text(env.get("GENESIS_PRO_PRICE_TEXT"), "$4.99"),
         # Asks each Pro member may make (counted by member, not address).
         genesis_pro_per_hour=_whole_number(env.get("GENESIS_PRO_PER_HOUR"), 30),
         genesis_pro_per_day=_whole_number(env.get("GENESIS_PRO_PER_DAY"), 100),

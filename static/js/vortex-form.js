@@ -107,7 +107,7 @@
   }
 
   function sentLine(email) {
-    return `We'll reply to ${email} as soon as we can.`;
+    return `We'll reply to ${email} within 7 days, even if the answer is no.`;
   }
 
   const api = { KINDS, LIMITS, FIELDS, COMPANY, PARTNERSHIPS, TRAP, fieldsOf, body, problems, fromGenesis, fill, handedOver, fromHash, sentLine };
