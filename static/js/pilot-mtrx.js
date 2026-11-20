@@ -77,6 +77,9 @@
     audienceNote: "Visitors to this site may be young people starting their first idea. Keep answers safe, kind and simple. For money, contracts, sign-ups or anything needing an adult, suggest asking a trusted adult.",
     // The MTRX site has no child accounts; RankUp's config says when a view is a child's.
     kidView: () => false,
+    // On the Genesis project screen the robot keeps clear of the stage bar
+    // and the web address (it moves to a free corner, or tucks away).
+    avoid: [".g-track", "#g-address", ".g-head .g-address"],
     screen,
     chips: () => (CHIPS[path] || []).map(([label, prompt]) => ({ label, prompt })),
     taskPrompt: () => TASKS[path] || "Help me get started on this page.",

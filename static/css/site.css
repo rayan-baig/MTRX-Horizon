@@ -904,3 +904,10 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 .sw-bg { background: #050816; } .sw-cyan { background: #22d3ee; } .sw-blue { background: #3b82f6; }
 .sw-violet { background: #8b5cf6; } .sw-pink { background: #d946ef; } .sw-text { background: #eef3ff; }
 .foot-version { color: var(--faint); margin-left: 6px; white-space: nowrap; }
+
+/* Pilot's robot sits in a bottom corner. On a phone, the end of every page
+   keeps clear of it: --pilot-gutter is set (by pilot.css) only while Pilot
+   is on the page, so pages without Pilot are unchanged. */
+@media (max-width: 720px) {
+  body { padding-bottom: var(--pilot-gutter, 0px); }
+}

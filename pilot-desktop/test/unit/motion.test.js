@@ -35,8 +35,27 @@ test("a pose without a picture falls back, and in the end to the resting robot",
   for (const name of M.POSES) assert.equal(M.resolvePose(name, []), "rest", name);
 });
 
-test("the sports poses are known names", () => {
-  for (const name of ["throw", "kick", "tennis"]) assert.ok(M.POSES.includes(name), name);
+test("the sports poses and the new pose sheet's names are known, with sensible fallbacks", () => {
+  for (const name of ["throw", "kick", "tennis", "celebrate", "slide", "point", "power", "dash", "love"]) assert.ok(M.POSES.includes(name), name);
+  assert.equal(M.resolvePose("celebrate", ALL), "standing");
+  assert.equal(M.resolvePose("dash", ALL), "run1");
+  assert.equal(M.resolvePose("power", ALL), "standing");
+  for (const name of ["slide", "point", "love"]) assert.equal(M.resolvePose(name, ALL), "rest", name); // used only when there
+});
+
+test("new pose pictures are used as soon as they're there", () => {
+  const more = ALL.concat(["celebrate", "dash", "power", "love", "point", "slide"]);
+  const has = (plan, pose) => plan.poses.some((p) => p.pose === pose);
+  assert.ok(has(M.plan("soccer", geo({ poses: more })), "celebrate"));
+  assert.ok(has(M.plan("backflip", geo({ poses: more })), "power"));
+  assert.ok(has(M.plan("backflip", geo({ poses: more })), "celebrate"));
+  assert.ok(has(M.plan("run", geo({ poses: more, random: seeded(8) })), "dash"));
+  assert.ok(has(M.plan("wave", geo({ poses: more }), { how: "gentle" }), "love"));
+  assert.ok(has(M.plan("look", geo({ poses: more }), { at: { x: 100, y: 300 } }), "point"));
+  assert.ok(has(M.plan("peek", geo({ poses: more, pos: { x: 1360, y: 892 } })), "slide"));
+  // And without them, the same moves play as before.
+  assert.ok(!has(M.plan("wave", geo(), { how: "gentle" }), "love"));
+  assert.ok(!has(M.plan("look", geo(), { at: { x: 100, y: 300 } }), "standing"));
 });
 
 test("every move still plays with no pose pictures at all", () => {

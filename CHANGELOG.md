@@ -20,6 +20,11 @@ which version is live.
   set to reduce motion, the robot stays still and the moving parts aren't even downloaded.
 - **Pages stay fast.** The moving robot loads only after the page is idle, and each pose picture
   only when a move needs it.
+- **It stays out of the way.** On phones the robot is smaller, and it no longer sits on top of a
+  pop-up: while one is open it steps back and taps go through. It keeps clear of the Genesis project
+  screen's stage bar and web address, moving to a free corner (or tucking half away at the edge until
+  tapped). Pages can keep their last lines clear of it. On a computer the Pilot window now opens
+  beside the robot and uses the screen's height, so the "Bring Your Own API Key" card is never cut off.
 - **Pilot for Mac 1.1.0** is out with the same robot, moving around your whole screen, plus a fix
   for typing in the chat (see pilot-desktop/RELEASE_NOTES.md).
 - Every Pilot core file says 1.1.0. CyberLogix and OmniArmor still have core 1.0 and will get the new

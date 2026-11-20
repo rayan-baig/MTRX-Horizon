@@ -5,6 +5,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
+const fs = require("node:fs");
 
 const core = (f) => path.join(__dirname, "..", "..", "static", "pilot", f);
 const site = (f) => path.join(__dirname, "..", "..", "static", "js", f);
@@ -597,4 +598,64 @@ test("motion: on the web, no climbing, flights, soccer or tennis unless Playful,
     // Props stay in the page's bottom area.
     for (const pr of p.props) for (const f of pr.frames) if (pr.on === "stage") assert.ok(f.y >= -240 - 88, `${name} ${pr.kind} y ${f.y}`);
   }
+});
+
+// ---------------------------------------------------------------- staying out of the way (core 1.1.0)
+
+function fakeEl(box, extra) {
+  const e = { box, hiddenAttr: false, inside: null, ...(extra || {}) };
+  e.getClientRects = () => (box ? [box] : []);
+  e.getBoundingClientRect = () => box || { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
+  e.closest = (sel) => (sel === "[hidden]" && e.hiddenAttr ? e : null);
+  return e;
+}
+const fakeDoc = (map) => ({ querySelectorAll: (sel) => map[sel] || [] });
+const box = (left, top, w, h) => ({ left, top, right: left + w, bottom: top + h, width: w, height: h });
+const win = { getComputedStyle: (el) => el.style || { visibility: "visible", display: "block", opacity: "1" } };
+
+test("placement: a page's open pop-up makes the robot step back, but not Pilot's own window or a closed one", () => {
+  const own = { contains: (el) => el.own === true };
+  const open = fakeEl(box(100, 100, 400, 300));
+  const closed = fakeEl(null);
+  const hiddenOne = fakeEl(box(0, 0, 10, 10), { hiddenAttr: true });
+  const invisible = fakeEl(box(0, 0, 10, 10), { style: { visibility: "hidden", display: "block", opacity: "1" } });
+  const pilotsOwn = fakeEl(box(0, 0, 400, 600), { own: true });
+  assert.equal(Mascot.modalOpen(fakeDoc({ [Mascot.MODALS]: [open] }), own, win), true);
+  assert.equal(Mascot.modalOpen(fakeDoc({ [Mascot.MODALS]: [closed, hiddenOne, invisible] }), own, win), false);
+  assert.equal(Mascot.modalOpen(fakeDoc({ [Mascot.MODALS]: [pilotsOwn] }), own, win), false);
+  for (const sel of ["dialog[open]", '[aria-modal="true"]', '[role="dialog"]']) assert.ok(Mascot.MODALS.includes(sel), sel);
+  const css = fs.readFileSync(core("pilot.css"), "utf8");
+  assert.match(css, /\.pilot-root\.pilot-yield \{[^}]*visibility: hidden;[^}]*pointer-events: none;/);
+});
+
+test("placement: the robot keeps clear of things to avoid and of another helper, else tucks away", () => {
+  const view = { width: 390, height: 800 };
+  const size = { width: 56, height: 54 };
+  // Nothing in the way: its own corner.
+  assert.deepEqual(Mascot.choosePlace({ corner: "br", view, size, gap: 12, blocks: [] }), { corner: "br", peek: false });
+  // Another helper (OmniArmor's Armo) in the bottom right: the robot moves to the bottom left.
+  const armo = box(300, 690, 80, 100);
+  assert.deepEqual(Mascot.choosePlace({ corner: "br", view, size, gap: 12, blocks: [armo] }), { corner: "bl", peek: false });
+  // A full-width bar along the bottom: a top corner.
+  const bar = box(0, 700, 390, 100);
+  assert.deepEqual(Mascot.choosePlace({ corner: "br", view, size, gap: 12, blocks: [bar] }), { corner: "tr", peek: false });
+  // Everything taken: it stays in its corner, tucked half away until tapped.
+  const all = [bar, box(0, 0, 390, 100)];
+  assert.deepEqual(Mascot.choosePlace({ corner: "bl", view, size, gap: 12, blocks: all }), { corner: "bl", peek: true });
+  assert.deepEqual(Mascot.cornerOrder("tl"), ["tl", "tr", "bl", "br"]);
+  // Only visible elements, outside Pilot, count.
+  const doc = fakeDoc({ ".armo": [fakeEl(box(1, 2, 30, 40)), fakeEl(null)], ".bad[": undefined });
+  doc.querySelectorAll = ((orig) => (sel) => { if (sel === ".bad[") throw new Error("bad selector"); return orig(sel); })(doc.querySelectorAll);
+  assert.deepEqual(Mascot.boxesOf(doc, [".armo", ".bad["], null, win), [{ left: 1, top: 2, right: 31, bottom: 42 }]);
+});
+
+test("placement: smaller on phones, a gutter pages can reserve, and Genesis's bars kept clear", () => {
+  const css = fs.readFileSync(core("pilot.css"), "utf8");
+  assert.match(css, /@media \(max-width: 720px\) \{\s*\.pilot-root \{ --pilot-size: 56px;/);
+  assert.match(css, /:root\.pilot-on \{ --pilot-gutter:/);
+  assert.match(css, /\.pilot-gutter \{ padding-bottom: var\(--pilot-gutter/);
+  const loader = fs.readFileSync(core("pilot.js"), "utf8");
+  assert.ok(loader.includes("config.avoid") && loader.includes("config.yieldTo"));
+  const mtrx = fs.readFileSync(site("pilot-mtrx.js"), "utf8");
+  assert.ok(mtrx.includes('avoid: [".g-track", "#g-address"'));
 });

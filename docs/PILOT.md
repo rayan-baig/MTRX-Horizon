@@ -59,7 +59,8 @@ little overlap, and a dark neck behind it so a tilt never shows a gap) and `pilo
 drawing. `tools/pilot_art.py` makes these layers (and the pose canvases below) from the owner's art.
 
 **Poses.** Each moment of a move names the pose picture it wants: `standing`, `sitting`, `wave`,
-`walk1`, `walk2`, `run1`, `run2`, `fly`, `climb1`, `climb2`, `flip`, `throw`, `kick`, `tennis`. When a
+`walk1`, `walk2`, `run1`, `run2`, `fly`, `climb1`, `climb2`, `flip`, `throw`, `kick`, `tennis`,
+`celebrate`, `slide`, `point`, `power`, `dash`, `love`. When a
 move starts, the robot hops from the design picture into `standing` in about 150 ms with a little
 squash, so the swap reads as standing up, and back again when it settles. A pose without a picture
 falls back, and in the end to the resting design robot moved by transforms, so every move works
@@ -74,6 +75,10 @@ without any pose pictures at all:
 | `throw` | `wave` (the football leaves the raised hand), else `standing` |
 | `kick` | `run2` with a quick lean forward, else `run1` |
 | `tennis` | `standing`, holding a drawn racket |
+| `celebrate` | `standing` (the cheer after a goal or a backflip) |
+| `dash` | `run1` (the first stride of a run), else `walk1` |
+| `power` | `standing` (the crouch before a backflip) |
+| `slide`, `point`, `love` | not used until their picture exists (sliding out for a peek, pointing at a far-away mouse, a 💙 when the chat opens) |
 | any other | the resting design robot |
 
 **Adding a pose picture needs no code change:** put `<pose>.webp` (or `.png`) with exactly one of
@@ -84,7 +89,7 @@ folder and run `python3 tools/pilot_art.py --design pilot-robot.png --poses that
 each picture so the halo is the same width in every pose, centres it on the halo, puts the robot's
 lowest point on one baseline, and writes both copies (300 × 340 for the Mac, 240 × 272 for the web).
 Pictures are never mirrored (the "P" would come out backwards). Today these exist: standing, sitting,
-wave, walk1, run1, run2, fly, climb1, flip. A sports prop is held at the hand positions in `HANDS` in
+wave, walk1, run1, run2, fly, climb1, flip; the others arrive with the owner's bigger pose sheet. A sports prop is held at the hand positions in `HANDS` in
 `pilot-motion.js`; a new throw, kick or tennis picture whose hand is elsewhere may want that adjusted.
 
 **When.** About every 30 to 120 seconds (at random; Low waits longer, Playful less) the robot may
@@ -101,6 +106,20 @@ Flights, climbing, running, soccer and tennis only when the visitor picks **Play
 robot" in Pilot's settings (Calm, Low, Normal or Playful, kept on that device). Under
 `prefers-reduced-motion` the moving robot isn't fetched at all. On the Mac there is more room: see
 `pilot-desktop/README.md`.
+
+**Out of the way (web).** On phones the robot is 56 px. While a pop-up of the page is open
+(`<dialog open>`, `[aria-modal="true"]`, `[role="dialog"]`, `[role="alertdialog"]`; Pilot's own window
+doesn't count) it steps back: hidden, and taps go through. An app lists in its config what the robot
+must keep clear of: `avoid` (things it mustn't cover) and `yieldTo` (another helper character, like
+OmniArmor's Armo). When one of those is showing where the robot sits, it moves to the first free
+corner (the other side, then the other edge); if none is free it tucks half away at the edge until
+tapped. It doesn't wander while it's yielding. The visitor's own chosen corner is kept. While Pilot is
+on a page, `<html>` has the class `pilot-on` and the CSS variable `--pilot-gutter` (the room the robot
+needs at the bottom); a page can keep its last lines clear with `padding-bottom: var(--pilot-gutter)`
+or the `.pilot-gutter` class. On the MTRX site the robot keeps clear of the Genesis project screen's
+stage bar and web address. On a computer the chat window opens beside the robot, as tall as the
+screen allows, so everything in it (the "Bring Your Own API Key" card too) is in view; short screens
+get slightly tighter spacing.
 
 **Speed.** `pilot-motion.js`, `pilot-actor.js`, `pilot-actor.css` and the three layers (about 18 KB of
 pictures) are fetched once the page is idle, after load; a pose picture is fetched only when a move
@@ -310,6 +329,8 @@ Per app (on the MTRX site):
    | `audienceNote` | who may be using it, for Pilot's rules |
    | `privacyUrl` | the app's privacy page, linked from help |
    | `themeClass` | an optional class on Pilot's root, to restyle its colours from the app's CSS |
+   | `avoid` | CSS selectors of things the robot must not cover; it moves to a free corner or tucks away |
+   | `yieldTo` | CSS selectors of another helper character on the page; the robot gives it room the same way |
    | `facts` | any app data the pack needs (on the MTRX site: the server's live settings) |
 
    The pack (`window.PilotPack`) gives `knowledge` (plain-language guide to the app's screens,

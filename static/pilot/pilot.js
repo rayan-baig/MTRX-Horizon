@@ -12,6 +12,13 @@
 // data-actor-css, data-rest-*; the pose pictures in data-poses load when a
 // move first needs them).
 //
+// It keeps the robot out of the way: it steps back (faded, click-through)
+// while a pop-up of the page is open, and keeps clear of whatever the app's
+// config lists in avoid (things it mustn't cover) and yieldTo (another
+// helper character), moving to a free corner or tucking half away at the
+// edge until tapped. Pages can reserve room with var(--pilot-gutter) or the
+// .pilot-gutter class.
+//
 // It also keeps Pilot with the user:
 // - from page to page: the chat and whether it's open are in sessionStorage
 //   (pilot-store.js), and the window opens again on the next page;
@@ -42,6 +49,9 @@
   let channel = null;
   let othersBusy = false;
   let life = null;
+  let shownCorner = "br"; // where the robot sits now (the chosen corner, unless it's in the way)
+  let fitQueued = false;
+  let peekOff = 0; // tapped out of its tucked-away spot until then
   const listeners = new Set();
   const tab = Math.random().toString(36).slice(2, 10);
 
@@ -91,8 +101,54 @@
   }
 
   function placeAt(corner) {
+    shownCorner = corner;
     for (const c of ["br", "bl", "tr", "tl"]) rootEl.classList.toggle(`pilot-at-${c}`, c === corner);
   }
+
+  // ---------------------------------------------------------------- staying out of the way
+
+  const M = () => window.PilotMascot;
+  const list = (v) => (Array.isArray(v) ? v : typeof v === "string" && v ? [v] : []).filter((x) => typeof x === "string");
+
+  // Where the robot should be now, given pop-ups and things to keep clear of.
+  function fit() {
+    fitQueued = false;
+    if (!rootEl || !config) return;
+    const open = Boolean(panel && panel.isOpen);
+    const modal = M().modalOpen(document, rootEl, window);
+    rootEl.classList.toggle("pilot-yield", modal && !open);
+    if (open || modal || rootEl.classList.contains("pilot-dragging")) return;
+    const blocks = M().boxesOf(document, [...list(config.avoid), ...list(config.yieldTo)], rootEl, window);
+    const size = launcher.getBoundingClientRect();
+    const gap = parseFloat(getComputedStyle(rootEl).getPropertyValue("--pilot-gap")) || 16;
+    const place = M().choosePlace({ corner: store.ui().corner, view: { width: window.innerWidth, height: window.innerHeight },
+      size: { width: size.width, height: size.height }, gap, blocks });
+    if (place.corner !== shownCorner) placeAt(place.corner);
+    rootEl.classList.toggle("pilot-peek", place.peek && Date.now() > peekOff);
+  }
+
+  function queueFit() {
+    if (fitQueued) return;
+    fitQueued = true;
+    requestAnimationFrame(fit);
+  }
+
+  function watchPage() {
+    window.addEventListener("resize", queueFit, { passive: true });
+    window.addEventListener("scroll", queueFit, { passive: true, capture: true });
+    if (typeof MutationObserver === "function") {
+      new MutationObserver((records) => {
+        if (records.some((r) => !rootEl.contains(r.target))) queueFit();
+      }).observe(document.body, { childList: true, subtree: true, attributes: true,
+        attributeFilter: ["open", "aria-modal", "hidden", "class", "role"] });
+    }
+    queueFit();
+  }
+
+  // Busy elsewhere: no wandering (a pop-up, tucked away, or keeping clear of something).
+  const held = () => Boolean(panel && panel.isOpen) || ["pilot-yield", "pilot-peek"].some((c) => rootEl.classList.contains(c))
+    || shownCorner !== store.ui().corner || (list(config.avoid).length + list(config.yieldTo).length > 0
+      && M().boxesOf(document, [...list(config.avoid), ...list(config.yieldTo)], rootEl, window).length > 0);
 
   // Drag the robot to another corner: it follows the pointer from corner to
   // corner and stays where it's let go (kept on this device).
@@ -121,12 +177,15 @@
       if (moved) {
         const corner = ["br", "bl", "tr", "tl"].find((c) => rootEl.classList.contains(`pilot-at-${c}`)) || "br";
         store.setUi({ corner });
+        queueFit();
       }
     };
     launcher.addEventListener("pointerup", end);
     launcher.addEventListener("pointercancel", end);
     launcher.addEventListener("click", (e) => {
       if (moved) { e.preventDefault(); moved = false; return; }
+      // Tucked away: a tap brings it out (for a while) and opens it.
+      if (rootEl.classList.contains("pilot-peek")) { peekOff = Date.now() + 20000; rootEl.classList.remove("pilot-peek"); }
       toggle();
     });
   }
@@ -148,6 +207,8 @@
     document.body.appendChild(rootEl);
     draggable();
     status();
+    document.documentElement.classList.add("pilot-on"); // pages may reserve var(--pilot-gutter)
+    watchPage();
     wake();
   }
 
@@ -163,7 +224,7 @@
     const go = () => Promise.all([loadScript(assets.motion), loadScript(assets.actor), loadStyle(assets.actorCss)]).then(() => {
       life = window.PilotActor.live({ launcher, store, poses, dot,
         art: { body: assets.restBody, head: assets.restHead, eyes: assets.restEyes },
-        corner: () => store.ui().corner, isOpen: () => Boolean(panel && panel.isOpen) });
+        corner: () => shownCorner, isOpen: held });
       if (life) life.hello();
     }).catch(() => { /* the robot just sits still */ });
     const soon = window.requestIdleCallback || ((fn) => setTimeout(fn, 1));
@@ -204,6 +265,7 @@
 
   function close() {
     if (panel) panel.close();
+    queueFit();
     launcher.setAttribute("aria-expanded", "false");
     store.setUi({ open: false });
     status();

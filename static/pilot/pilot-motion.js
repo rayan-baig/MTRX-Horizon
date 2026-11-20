@@ -4,7 +4,8 @@
 // pilot-actor.js plays a plan on the page.
 //
 // Poses. Each moment of a move names the pose picture it wants: standing,
-// sitting, wave, walk1, walk2, run1, run2, fly, climb1, climb2 or flip. An app
+// sitting, wave, walk1, walk2, run1, run2, fly, climb1, climb2, flip, throw,
+// kick, tennis, celebrate, slide, point, power, dash or love. An app
 // tells the engine which pictures it has (on the Mac, every <pose>.webp or
 // .png in assets/poses/; on the web, static/pilot/poses/). A pose without a
 // picture falls back along FALLBACK, and in the end to "rest": the owner's
@@ -28,7 +29,7 @@
   const VERSION = "1.1.0";
   const REST = "rest";
   const POSES = ["standing", "sitting", "wave", "walk1", "walk2", "run1", "run2", "fly", "climb1", "climb2", "flip",
-    "throw", "kick", "tennis"];
+    "throw", "kick", "tennis", "celebrate", "slide", "point", "power", "dash", "love"];
   // What a pose without a picture shows instead (first one there wins), and
   // in the end the resting design robot. walk2 is the standing picture
   // between walk1 steps; climb2 is climb1 nudged higher; run2 is run1.
@@ -39,6 +40,10 @@
     // from the waving hand, the kick is a leaning run2, and tennis is the
     // standing robot with a drawn racket in its hand.
     throw: ["wave", "standing"], kick: ["run2", "run1"], tennis: ["standing"],
+    // More poses on the way: until their pictures arrive, a cheer is the
+    // standing robot, a dash is run1, and a power-up crouch is standing.
+    // slide, point and love are used only when their pictures exist.
+    celebrate: ["standing"], dash: ["run1", "walk1"], power: ["standing"], slide: [], point: [], love: [],
   };
   const EASE = {
     linear: "linear",
@@ -207,7 +212,7 @@
     const lean = dir * (run ? 7 : 4);
     for (let i = 0; i < n; i += 1) {
       const a = i % 2 === 0;
-      k.show(run ? (a ? "run1" : "run2") : (a ? "walk1" : "walk2"));
+      k.show(run ? (i === 0 ? "dash" : a ? "run1" : "run2") : (a ? "walk1" : "walk2"));
       k.to(ms * 0.5, { x: k.now.x + each / 2, y: g.floor - hop, r: lean, sx: 0.98, sy: 1.04 }, "out");
       k.to(ms * 0.5, { x: k.now.x + each / 2, y: g.floor, sx: 1.04, sy: 0.95 }, "in");
       if (run || i % 2 === 1 || i === n - 1) k.fx("dust", -dir * g.u * 0.12, 0, { dir });
@@ -326,7 +331,9 @@
     const pic = k.has("flip");
     const hc = g.u * (k.pose === REST ? 0.45 : 0.72);
     const up = g.u * 0.95;
-    k.to(140, { sy: 0.86, sx: 1.08 }, "in").to(200, { y: base.y - up * 0.6, sy: 1.08, sx: 0.95 }, "out");
+    const stood = k.pose;
+    k.show("power").to(140, { sy: 0.86, sx: 1.08 }, "in");
+    k.show(stood).to(200, { y: base.y - up * 0.6, sy: 1.08, sx: 0.95 }, "out");
     const turns = 12;
     const spin = 640;
     const still = k.pose;
@@ -346,6 +353,7 @@
     }
     k.set({ r: 0 }).to(170, { x: base.x, y: base.y, sy: 0.86, sx: 1.1 }, "in").fx("dust", 0, 0).fx("sparkle", 0, -g.u * 1.2);
     k.to(180, { sy: 1.03, sx: 0.98 }, "out").to(100, { sy: 1, sx: 1 }, "soft");
+    if (k.pose !== REST && k.has("celebrate")) k.show("celebrate", 100).wait(700).show("standing", 100);
     sitDown(k);
     return k.done("backflip");
   }
@@ -385,7 +393,8 @@
     if ((nearLeft || nearRight) && g.sides !== false) {
       const side = nearLeft ? -1 : 1;
       const out = (side < 0 ? g.left : g.right) + side * g.u * 1.2;
-      k.to(500, { x: out, r: side * 8 }, "in").wait(700);
+      if (k.has("slide")) standUp(k, "slide");
+      k.to(500, { x: out, r: side * 8 }, "in").show(REST).set({ sx: 1, sy: 1 }).wait(700);
       k.to(520, { x: out - side * g.u * 0.75, r: -side * 12 }, "out").head(300, -side * 10, 0).eyes(300, -side * 0.03, 0);
       k.wait(900).head(300, side * 4, 0).wait(500);
       k.to(520, { x: start.x, r: 0 }, "out").head(260, 0, 0).eyes(260, 0, 0);
@@ -408,6 +417,12 @@
     const y = g.pos.y;
     const top = -g.u * (k.has("wave") && how !== "still" ? 1.65 : 1.1);
     if (how === "still") return k.fx("bubble", 0, top, { text: "👋" }).wait(1800).done("wave");
+    if (how === "gentle" && k.has("love")) {
+      standUp(k, "love");
+      k.fx("bubble", 0, -g.u * 1.65, { text: "💙" }).to(400, { r: 3 }, "soft").to(400, { r: -2 }, "soft").to(300, { r: 0 }, "soft").wait(500);
+      sitDown(k);
+      return k.done("wave");
+    }
     if (how === "gentle") {
       k.fx("bubble", 0, top, { text: "👋" }).head(360, 10, 0).wait(900).head(360, -6, 0).wait(500).head(300, 0, 0).wait(500);
       return k.done("wave");
@@ -435,6 +450,13 @@
     const r = clamp(dx / (g.u * 3), -1, 1) * 9;
     const ex = clamp(dx / (g.u * 4), -1, 1) * 0.035;
     const ey = clamp(dy / (g.u * 4), -1, 1) * 0.025;
+    if (k.has("point") && Math.abs(dx) > g.u * 4) {
+      // Far away: it stands and points (the picture faces the way it was drawn).
+      standUp(k, "point");
+      k.to(300, { r: Math.sign(dx) * 3 }, "soft").wait(1100).to(200, { r: 0 }, "soft");
+      sitDown(k);
+      return k.done("look");
+    }
     k.head(420, r, 0, "out").eyes(380, ex, ey, "out").wait(1500).head(500, 0, 0).eyes(450, 0, 0).wait(520);
     return k.done("look");
   }
@@ -571,10 +593,10 @@
     k.fxAt(inNet + 120, "sparkle", goal.x - dir * g.u * 0.3, g.floor - g.u * 1.3);
     k.fxAt(inNet + 300, "sparkle", goal.x + dir * g.u * 0.1, g.floor - g.u * 1.6);
     k.to(160, { r: 0, sy: 1 }, "out").show("standing");
-    // A happy hop.
-    k.wait(Math.max(0, inNet - k.t)).to(110, { sy: 0.9, sx: 1.06 }, "in").to(200, { y: g.floor - g.u * 0.3, sy: 1.06, sx: 0.96 }, "out")
+    // A happy hop (the cheering picture, when there is one).
+    k.wait(Math.max(0, inNet - k.t)).show("celebrate", 100).to(110, { sy: 0.9, sx: 1.06 }, "in").to(200, { y: g.floor - g.u * 0.3, sy: 1.06, sx: 0.96 }, "out")
       .to(200, { y: g.floor, sy: 0.92, sx: 1.05 }, "in").to(120, { sy: 1, sx: 1 }, "out");
-    k.wait(Math.max(0, inNet + 1500 - k.t));
+    k.wait(Math.max(0, inNet + 1500 - k.t)).show("standing", 100);
     // Everything slides away.
     const away = k.t;
     for (const id of ["goal", "net"]) {
