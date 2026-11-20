@@ -703,7 +703,25 @@
     return open.find((i) => i.stage === here) || open[0] || null;
   }
 
+  // The line under Ask Genesis about the free answers, true to the server's
+  // limits (horizon/genesis_ai.py): before anything is known, the two
+  // limits; once the server has said, how many are left today, and while a
+  // limit is reached, how long until more. `info` is what the server sent
+  // (free_left, free_day, free_hour, hour_used, wait), or null.
+  function freeLine(info, perDay, perHour) {
+    const day = Number(info && info.free_day) || perDay;
+    const hour = Number(info && info.free_hour) || perHour;
+    const limits = `Free: ${day} answer${day === 1 ? "" : "s"} a day, up to ${hour} an hour.`;
+    if (!info || !Number.isFinite(Number(info.free_left))) return limits;
+    const left = Math.max(0, Number(info.free_left));
+    if (left === 0) return `You've used all ${day} free answers for today${info.wait ? `; more in ${info.wait}` : ""}.`;
+    const today = `${left} of ${day} left today`;
+    if (info.wait && Number(info.hour_used) >= hour) return `You've used ${hour} this hour; more in ${info.wait}. ${today}.`;
+    return `${today} (up to ${hour} an hour).`;
+  }
+
   const api = {
+    freeLine,
     KEY, LIMITS, STAGES, CHECKLIST, line, block, addressProblem, suggestAddress, nameWarning,
     check, create, progress, clean, cleanList, exportText, importText, open,
     steps, hiddenSteps, addStep, hideStep, showStep,

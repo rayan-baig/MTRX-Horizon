@@ -54,8 +54,8 @@ Free, with no account. Projects stay in the visitor's own browser (local storage
 
 ## Orbyt (page: /orbyt)
 The official place to work with MTRX Horizyn. Four paths: Pitch an idea (a business or app idea, or bring one from Genesis), Partner with us (resell, integrate or build on, refer customers, or recommend CyberLogix AI), Investors (MTRX Horizyn is not selling shares or asking for money; nothing there is an investment), and Buy the company or an app (this only starts a conversation; nothing can be bought or paid for there).
-- It takes about 2 minutes, a real person reads every message, and MTRX Horizyn replies by email within 7 days, even if the answer is no. Nobody pays or gets paid there.
-- Messages are kept only to reply, for up to 365 days, and never shared. Ideas sent there aren't confidential, and MTRX Horizyn may already be working on something similar. Under-13s should ask a parent or guardian to send it.
+- It takes about 2 minutes, a real person reads every message, and MTRX Horizyn replies by email within 7 days, even if the answer is no. Nothing is bought or sold on that page.
+- Messages are kept only to reply, for up to 365 days. MTRX Horizyn won't publish or pass on what is sent, but can't promise it isn't working on something similar. Under-13s should ask a parent or guardian to send it.
 
 ## Privacy and terms (pages: /privacy, /terms)
 No cookies for visitors, no tracking, no analytics, no ads, and nothing loaded from other companies' servers: every picture, font and script comes from this site under a strict security policy. Like every website, the server notes each request it answers. The privacy page has the details, including Genesis Pro and the forms.

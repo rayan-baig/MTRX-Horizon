@@ -34,7 +34,7 @@
   <a class="g-home" href="/">Home</a>
 </header>
 
-<main class="genesis" id="genesis" data-ai="{{ 'on' if ai else 'off' }}" data-base="{{ base }}" data-ask="{{ asset('js/genesis-ask.js') }}">
+<main class="genesis" id="genesis" data-ai="{{ 'on' if ai else 'off' }}" data-base="{{ base }}" data-ask="{{ asset('js/genesis-ask.js') }}" data-free-day="{{ free_day }}" data-free-hour="{{ free_hour }}">
   <noscript><p class="panel g-noscript">Genesis runs in your browser, so it needs JavaScript turned on.</p></noscript>
 
   <div id="g-list-view">
@@ -45,7 +45,7 @@
         <h1 class="g-title">Genesis</h1>
         <p class="g-line">Turn your idea into a real plan, one small step at a time.</p>
         <p class="g-text">Write it in three lines, then tick off easy steps from Spark to Launch. Free,
-          and your ideas stay in this browser: nothing is sent to us.</p>
+          and your ideas stay in this browser: nothing is sent unless you press Ask.</p>
         <div class="cta-row">
           <a class="btn btn-genesis" href="#new">Start my idea <span aria-hidden="true">→</span></a>
           <a class="btn btn-ghost" href="#example">Try an example</a>
@@ -91,6 +91,9 @@
     <p class="g-storage-note" id="g-storage-note" hidden>Your browser is blocking saved data for this site,
       so your projects last only until you close this tab. Use <b>Download</b> to keep a copy.</p>
 
+    {#- A returning visitor's projects move to the top of the page
+        (static/js/genesis.js, drawList); a first visit sees the hero first. #}
+    <div class="g-mine" id="g-mine">
     <div class="g-list-head" id="g-list-head">
       <h2>Your projects <span class="g-hint" id="g-count"></span></h2>
       <div class="g-tools">
@@ -103,6 +106,7 @@
       </div>
     </div>
     <ul class="g-cards" id="g-cards"></ul>
+    </div>
     <section class="g-empty panel" id="g-empty">
       <span class="g-spark g-spark-big" aria-hidden="true"></span>
       <h2>Every big thing starts as a spark.</h2>
@@ -119,8 +123,10 @@
     {%- if pro %}
     {#- Genesis Pro (horizon/genesis_pro.py). Only on the page while it is
         switched on and set up. Nothing a member makes is ever shown to
-        anyone else. static/js/genesis-pro.js fills in the rest. #}
-    <section class="panel g-pro" id="pro" aria-labelledby="g-pro-title" data-pilot-private>
+        anyone else. static/js/genesis-pro.js fills in the rest.
+        Hidden until it could matter: after a first project or a first ask
+        (static/js/genesis.js, drawPro), or when the address ends in #pro. #}
+    <section class="panel g-pro" id="pro" aria-labelledby="g-pro-title" data-pilot-private hidden>
       <div class="g-pro-head">
         <p class="eyebrow g-pro-eyebrow">For your biggest ideas</p>
         <h2 class="g-pro-title" id="g-pro-title">Genesis <b>Pro</b></h2>
@@ -137,7 +143,7 @@
             {#- Rows about Ask Genesis only while it is on (Pro itself is
                 only offered then: genesis_pro.ready). -#}
             {%- if pro.ai %}
-            <tr><th scope="row">Ask Genesis answers a day</th><td>{{ pro.free_per_day }}</td><td>Up to {{ pro.per_day }}, all yours</td></tr>
+            <tr><th scope="row">Ask Genesis answers a day</th><td>{{ pro.free_per_day }}, up to {{ pro.free_per_hour }} an hour</td><td>Up to {{ pro.per_day }}, all yours</td></tr>
             <tr><th scope="row">Longer answers, plus a four-week plan, website words and price ideas</th><td>No</td><td>Yes</td></tr>
             {%- endif %}
             <tr><th scope="row">Private cloud backup, if this browser is cleared</th><td>No</td><td>Yes</td></tr>

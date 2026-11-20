@@ -463,3 +463,20 @@ test("hiding is never allowed to empty the checklist, and odd saved steps are dr
   const many = Array.from({ length: S.LIMITS.custom + 5 }, (_, n) => ({ key: `c-k${n}`, stage: "build", label: `Step ${n}` }));
   assert.equal(S.clean({ ...idea, id: "p3", custom: many }).custom.length, S.LIMITS.custom);
 });
+
+test("the free limit line is honest: the limits first, then what's left today", () => {
+  // Before the server has said anything: the two limits, plainly.
+  assert.equal(S.freeLine(null, 5, 3), "Free: 5 answers a day, up to 3 an hour.");
+  // Once known: how many are left today, and the hourly limit beside it.
+  const known = { free_left: 4, free_day: 5, free_hour: 3, hour_used: 1 };
+  assert.equal(S.freeLine(known, 5, 3), "4 of 5 left today (up to 3 an hour).");
+  // The hourly limit reached: how many this hour, and when more come.
+  const hour = { free_left: 2, free_day: 5, free_hour: 3, hour_used: 3, wait: "41 minutes" };
+  assert.equal(S.freeLine(hour, 5, 3), "You've used 3 this hour; more in 41 minutes. 2 of 5 left today.");
+  // The day's answers used up.
+  const day = { free_left: 0, free_day: 5, free_hour: 3, hour_used: 2, wait: "9 hours" };
+  assert.equal(S.freeLine(day, 5, 3), "You've used all 5 free answers for today; more in 9 hours.");
+  // What the server says wins over what the page was given.
+  assert.equal(S.freeLine({ free_left: 1, free_day: 2, free_hour: 1, hour_used: 0 }, 5, 3), "1 of 2 left today (up to 1 an hour).");
+  assert.equal(S.freeLine({ nonsense: true }, 5, 3), "Free: 5 answers a day, up to 3 an hour.");
+});

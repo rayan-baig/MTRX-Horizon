@@ -267,7 +267,10 @@ def test_the_offer_shows_stripes_prices_and_says_a_grown_up_pays(client, pro):
     assert "Get Pro · $4.99 a month" in page
     assert "$49.90 a year · 2 months free" in page
     # Free and Pro side by side: the free plan's answers against Pro's.
-    assert "<td>5</td><td>Up to 100, all yours</td>" in page
+    assert "<td>5, up to 3 an hour</td><td>Up to 100, all yours</td>" in page
+    # The block waits, hidden, until a first project or a first ask
+    # (static/js/genesis.js, drawPro): a first visit isn't met with a price.
+    assert '<section class="panel g-pro" id="pro" aria-labelledby="g-pro-title" data-pilot-private hidden>' in page
     assert "genesis-pro.js" in page
     response = client.get("/genesis")
     assert response.headers["content-security-policy"] == main.CSP
@@ -479,7 +482,10 @@ def test_pro_asks_get_longer_answers_and_more_helpers(client, pro, provider):  #
     assert ask(client, "plan").status_code == 400
     assert ask(client, "question", "q" * 301).status_code == 400
     free = ask(client)
-    assert free.json() == {"answer": "Try it with three classmates first.", "helper": "first"}
+    # A free answer also says how many free answers are left today; never Pro's.
+    assert {k: v for k, v in free.json().items() if not k.startswith(("free_", "hour_"))} == {
+        "answer": "Try it with three classmates first.", "helper": "first"}
+    assert "free_left" in free.json() and "left_today" not in free.json()
     assert provider["calls"][-1]["body"]["max_tokens"] == genesis_ai.MAX_TOKENS
 
 

@@ -110,8 +110,10 @@ SYSTEM_PRO = SYSTEM.replace(
     "steps, examples and small numbers where they help.")
 
 DISABLED = "AI help isn't switched on yet. Everything else in Genesis works as usual."
-BUSY_VISITOR = ("You've asked Genesis a lot for now. Free help is shared out fairly, so "
-                "try again in a little while.")
+# What a visitor hears when their own free asks run out: how many they've
+# used, which limit it is, and when the next one comes back. Never vague.
+BUSY_HOUR = "You've used {used} this hour; more in {wait}."
+BUSY_TODAY = "You've used all {used} free asks for today; more in {wait}."
 BUSY_DAY = ("Genesis has helped so many people today that its free AI help is resting. "
             "It's back tomorrow.")
 FAILED = "Genesis couldn't answer just now. Please try again in a minute."
@@ -202,27 +204,72 @@ def worst_case_cost(pro: bool = False) -> float:
     return (INPUT_GUESS * settings.genesis_ai_input_price + out * settings.genesis_ai_output_price) / 1e6
 
 
-def claim(who: str) -> tuple[int | None, str | None]:
+def _wait(seconds: float) -> str:
+    """How long until the next ask, in plain words: "12 minutes", "3 hours"."""
+    minutes = max(1, -(-int(seconds) // 60))
+    if minutes < 90:
+        return f"{minutes} minute{'s' if minutes != 1 else ''}"
+    hours = round(minutes / 60)
+    return f"{hours} hour{'s' if hours != 1 else ''}"
+
+
+def _counts(conn, who: str, now: float) -> dict:
+    """This visitor's free asks in the last hour and the last day, and when
+    the oldest of each was."""
+    hour, first_hour = conn.execute("SELECT COUNT(*), MIN(at) FROM genesis_asks WHERE who = ? AND at > ?",
+                                    (who, now - 3600)).fetchone()
+    day, first_day = conn.execute("SELECT COUNT(*), MIN(at) FROM genesis_asks WHERE who = ? AND at > ?",
+                                  (who, now - 86400)).fetchone()
+    return {"hour": hour, "day": day, "first_hour": first_hour, "first_day": first_day}
+
+
+def _allowance(c: dict, now: float) -> dict:
+    """What the page may show about a visitor's free asks: how many are left
+    today, the two limits, and, while one is used up, how long until more."""
+    settings = config.get()
+    per_hour, per_day = settings.genesis_ai_per_hour, settings.genesis_ai_per_day
+    out = {"free_left": max(0, per_day - c["day"]), "free_day": per_day, "free_hour": per_hour,
+           "hour_used": c["hour"]}
+    if c["day"] >= per_day:
+        out["wait"] = _wait(c["first_day"] + 86400 - now if c["first_day"] else 60)
+    elif c["hour"] >= per_hour:
+        out["wait"] = _wait(c["first_hour"] + 3600 - now if c["first_hour"] else 60)
+    return out
+
+
+def allowance(who: str) -> dict:
+    """A visitor's free asks, for the page to show before they ask. Reads
+    only; counts nothing."""
+    now = time.time()
+    with db.connect() as conn:
+        return _allowance(_counts(conn, who, now), now)
+
+
+def claim(who: str) -> tuple[int | None, str | None, dict]:
     """Count this ask and set its worst-case cost aside, or say which limit
-    it hit. Returns (spend row id, None) or (None, the message)."""
+    it hit. Returns (spend row id, None, allowance) or (None, the message,
+    allowance); the allowance is what the page shows (`_allowance`)."""
     settings = config.get()
     now = time.time()
     with _claiming, db.connect() as conn:
         conn.execute("DELETE FROM genesis_asks WHERE at < ?", (now - KEEP_ASKS_SECONDS,))
-        (hour,) = conn.execute("SELECT COUNT(*) FROM genesis_asks WHERE who = ? AND at > ?",
-                               (who, now - 3600)).fetchone()
-        (day,) = conn.execute("SELECT COUNT(*) FROM genesis_asks WHERE who = ? AND at > ?",
-                              (who, now - 86400)).fetchone()
-        if hour >= settings.genesis_ai_per_hour or day >= settings.genesis_ai_per_day:
-            return None, BUSY_VISITOR
+        c = _counts(conn, who, now)
+        if c["day"] >= settings.genesis_ai_per_day:
+            left = _allowance(c, now)
+            return None, BUSY_TODAY.format(used=settings.genesis_ai_per_day, wait=left["wait"]), left
+        if c["hour"] >= settings.genesis_ai_per_hour:
+            left = _allowance(c, now)
+            return None, BUSY_HOUR.format(used=settings.genesis_ai_per_hour, wait=left["wait"]), left
         (spent,) = conn.execute("SELECT COALESCE(SUM(usd), 0) FROM genesis_spend WHERE at >= ?",
                                 (_day_start(now),)).fetchone()
         worst = worst_case_cost()
         if spent + worst > settings.genesis_ai_daily_cap_usd:
-            return None, BUSY_DAY
+            return None, BUSY_DAY, {}
         conn.execute("INSERT INTO genesis_asks (who, at) VALUES (?, ?)", (who, now))
         cursor = conn.execute("INSERT INTO genesis_spend (at, usd) VALUES (?, ?)", (now, worst))
-        return cursor.lastrowid, None
+        after = {**c, "hour": c["hour"] + 1, "day": c["day"] + 1,
+                 "first_hour": c["first_hour"] or now, "first_day": c["first_day"] or now}
+        return cursor.lastrowid, None, _allowance(after, now)
 
 
 def settle(spend_id: int, usd: float):
@@ -276,17 +323,20 @@ def answer(who: str, body: dict, pro_key: str | None = None) -> tuple[int, dict]
         helper, message = read_request(body, pro=pro)
     except Refused as why:
         return 400, {"error": str(why)}
+    left: dict = {}
     if pro:
         spend_id, busy = genesis_pro.claim_ask(member["id"], worst_case_cost(pro=True))
         settle_spend = genesis_pro.settle_ask
     else:
-        spend_id, busy = claim(who)
+        spend_id, busy, left = claim(who)
         settle_spend = settle
-    extra: dict = {"pro": True} if pro else ({"pro": False} if pro_key else {})
+    # A free ask says how many free asks are left today ("2 of 5 left
+    # today"), and, once a limit is reached, how long until more.
+    extra: dict = {"pro": True} if pro else {**({"pro": False} if pro_key else {}), **left}
     if busy or spend_id is None:
         # The page says what Genesis Pro would change only when the free
         # help is used up (and only while Pro is on there).
-        if not pro and busy in (BUSY_VISITOR, BUSY_DAY):
+        if not pro and busy:
             extra["limit"] = "free"
         return 429, {"error": busy or FAILED, **extra}
     settings = config.get()

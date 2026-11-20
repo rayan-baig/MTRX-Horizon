@@ -42,16 +42,20 @@ APPS = {
     },
 }
 
-# Where each project really stands. Update this by hand as things move.
+# Where each project really stands. Update the next steps by hand as things
+# move. An app's status is not written here: it comes from the app catalog
+# (main._projects), "In development" until the app opens to the public and
+# "Open" from the day it does, so it can't say "Built" to someone who can't
+# use it yet.
 PROJECTS = [
-    {"name": "MTRX Horizyn", "kind": "Website and console",
-     "status": "In progress", "next": "Choose hosting and a domain"},
-    {"name": "CyberLogix AI", "kind": "Equipment monitoring",
-     "status": "Built", "next": "First real sensor reading at a test site"},
-    {"name": "OmniArmor.ai", "kind": "Compliance",
-     "status": "Built", "next": "Billing for the compliance service"},
-    {"name": "RankUp", "kind": "Family chores game",
-     "status": "Built", "next": "A week of use with a real family"},
+    {"name": "MTRX Horizyn", "kind": "This website, Genesis and Orbyt",
+     "status": "Live", "next": "Open the three apps to the public"},
+    {"key": "cyberlogix", "name": "CyberLogix AI", "kind": "Equipment monitoring",
+     "next": "First real sensor reading at a test site"},
+    {"key": "omniarmor", "name": "OmniArmor.ai", "kind": "Compliance",
+     "next": "Billing for the compliance service"},
+    {"key": "rankup", "name": "RankUp", "kind": "Family chores game",
+     "next": "A week of use with a real family"},
 ]
 
 

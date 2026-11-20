@@ -57,14 +57,13 @@
 </div>
 <p class="v-error" data-error></p>
 {%- if kind == "pitch" %}
-<p class="v-open-ideas">Ideas sent here aren't confidential, and MTRX Horizyn may already be working on
-  something similar.</p>
+<p class="v-open-ideas">We won't publish or pass on what you send, but we can't promise we aren't working on something similar.</p>
 {%- endif %}
 <p class="v-reply">We reply within 7 days, even if the answer is no.</p>
 <div class="v-send">
   <button class="btn btn-vortex" type="submit">Send <span aria-hidden="true">→</span></button>
   <p class="v-private">We keep what you send here only to reply to you, for up to {{ keep_days }} days, and
-    never share it. <a href="/privacy">Privacy</a></p>
+    never pass it on. <a href="/privacy">Privacy</a></p>
 </div>
 {%- endmacro -%}
 <div class="sky" aria-hidden="true"></div>
@@ -105,24 +104,45 @@
         <li>Takes about 2 minutes</li>
         <li>A real person reads every message</li>
         <li>A reply within 7 days</li>
-        <li>Nobody pays or gets paid here</li>
+        <li>Nothing is bought or sold on this page</li>
       </ul>
     </div>
   </section>
 
-  <nav class="v-paths" aria-label="Choose a path">
+  <nav class="v-paths{% if early %} with-early{% endif %}" aria-label="Choose a path">
     <a class="v-path path-pitch" href="#pitch" data-path="pitch">
       <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.2 6.6 6.8.2-5.4 4.2 1.9 6.6L12 16.2 6.5 20.1l1.9-6.6L3 9.3l6.8-.2z"/></svg></span>
       <span class="v-path-text"><small class="v-who">I have an idea</small><b>Pitch an idea</b>
         <span>Tell us about a business or app idea, or bring one from Genesis.</span></span>
       <em class="v-path-go">Pitch <span aria-hidden="true">→</span></em>
     </a>
+    {#- Early access sits beside Pitch while the list is open: it is a
+        separate page (/early-access), not one of Orbyt's forms. -#}
+    {%- if early %}
+    <a class="v-path path-early" href="/early-access">
+      <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="3.5"/></svg></span>
+      <span class="v-path-text"><small class="v-who">I want to try the apps</small><b>Early access</b>
+        <span>Be first to try RankUp, CyberLogix AI or OmniArmor.ai. We email you the day one opens.</span></span>
+      <em class="v-path-go">Join <span aria-hidden="true">→</span></em>
+    </a>
+    {%- endif %}
     <a class="v-path path-partner" href="#partner" data-path="partner">
       <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="12" r="5"/><circle cx="15.5" cy="12" r="5"/></svg></span>
       <span class="v-path-text"><small class="v-who">I run a business</small><b>Partner with us</b>
         <span>Resell, connect with, or recommend one of our apps.</span></span>
       <em class="v-path-go">Partner <span aria-hidden="true">→</span></em>
     </a>
+  </nav>
+
+  <ol class="v-how" id="v-choose" aria-label="How Orbyt works">
+    <li><b>1</b><span><strong>Pick a path</strong> The one that sounds most like you.</span></li>
+    <li><b>2</b><span><strong>Write a short note</strong> Your name, email and a few lines.</span></li>
+    <li><b>3</b><span><strong>We reply by email</strong> Within 7 days, even if it's a no. We won't publish or pass on what you send, but we can't promise we aren't working on something similar.</span></li>
+  </ol>
+
+  {#- Investors and buying come after the main paths: most visitors are here
+      to pitch an idea or try the apps. -#}
+  <nav class="v-paths v-paths-more" aria-label="Other ways to talk to us">
     <p class="v-paths-other">Other ways to talk to us</p>
     <a class="v-path v-path-small path-invest" href="#invest" data-path="invest">
       <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></svg></span>
@@ -137,12 +157,6 @@
       <em class="v-path-go">Ask about buying <span aria-hidden="true">→</span></em>
     </a>
   </nav>
-
-  <ol class="v-how" id="v-choose" aria-label="How Orbyt works">
-    <li><b>1</b><span><strong>Pick a path</strong> The one that sounds most like you.</span></li>
-    <li><b>2</b><span><strong>Write a short note</strong> Your name, email and a few lines.</span></li>
-    <li><b>3</b><span><strong>We reply by email</strong> Within 7 days, even if it's a no. Only to you; nothing you send is made public.</span></li>
-  </ol>
 
   <section class="panel v-panel path-partner" id="v-partner" hidden>
     <p class="eyebrow v-kicker">Partner with us</p>
@@ -254,8 +268,8 @@
     <span class="v-swirl v-swirl-small" aria-hidden="true"><i class="v-ring r1"></i><i class="v-ring r2"></i><i class="v-core"></i></span>
     <h2 class="v-sent-title">Sent.</h2>
     <p class="v-sent-line" id="v-sent-line" role="status"></p>
-    <p class="v-sent-small">We reply within 7 days, even if it's a no. Check your spam folder if you don't
-      hear from us. We keep your message only to reply, for up to {{ keep_days }} days.</p>
+    <p class="v-sent-small">Check your spam folder if you don't hear from us. We keep your message only to
+      reply, for up to {{ keep_days }} days.</p>
     <div class="v-next" id="v-next">
       <p class="v-next-head">While you wait</p>
       <a class="v-next-link path-pitch" data-next="pitch" href="/genesis" hidden>

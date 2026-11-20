@@ -43,6 +43,19 @@
 {#- The live panel shows only once an app has reported real numbers. -#}
 {%- set live = n.total_users is not none -%}
 {%- from "_early_form.html" import early_form, early_promise -%}
+{#- What's new: shown on the page (on a phone) and in the bell's pop-up,
+    from this one list. -#}
+{%- set news = [
+  ("green-dot", "RankUp", "Block Craft now tells a story, with battle scenes and a dragon fought with chores."),
+  ("blue", "CyberLogix AI", "Run several businesses from one sign-in and switch between them."),
+  ("violet", "MTRX Horizyn", "Genesis now shows how many free AI answers you have left today."),
+] -%}
+{%- macro news_list() -%}
+<ul class="news">
+  {% for dot, who, what in news %}<li><b class="dot {{ dot }}"></b><span><b>{{ who }}</b> {{ what }}</span></li>
+  {% endfor %}
+</ul>
+{%- endmacro -%}
 {%- macro count(value) -%}{{ "{:,}".format(value) if value is number else "—" }}{%- endmacro -%}
 <input type="checkbox" id="calm" class="calm-switch" aria-hidden="true" tabindex="-1">
 <div class="sky" aria-hidden="true"></div>
@@ -155,14 +168,14 @@
             <p class="tagline">One vision. Infinite possibilities.</p>
           </div>
         </div>
-        <p class="about-text">The parent company of RankUp, CyberLogix AI and OmniArmor.ai:
-          software that watches, warns and motivates, across every industry.</p>
+        <p class="about-text">A small independent software company, and the parent company of
+          RankUp, CyberLogix AI and OmniArmor.ai: software that watches, warns and motivates.</p>
         <a class="btn btn-outline" href="#company">About us <span aria-hidden="true">→</span></a>
       </div>
       <dl class="facts">
         <div>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
-          <dt>Built for</dt><dd>12</dd><span>Industries</span>
+          <dt>CyberLogix: built for</dt><dd>12</dd><span>Industries</span>
         </div>
         <div>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 6 5"/></svg>
@@ -199,6 +212,16 @@
       </div>
     </div>{% endif %}
   </section>
+
+  {#- One real section on the page itself (a phone scrolls; a computer's
+      one-screen page keeps it in the bell's pop-up): what's new, who makes
+      all this, and where to write. -#}
+  <section class="panel home-news" id="news" aria-labelledby="home-news-title">
+    <h2 class="eyebrow" id="home-news-title">What's new</h2>
+    {{ news_list() }}
+    <p class="home-who">MTRX Horizyn is a small independent software company.</p>
+    <p class="home-contact">Questions? Write to <a href="mailto:{{ reach }}">{{ reach }}</a>.</p>
+  </section>
 </main>
 
 <footer class="footer">
@@ -209,7 +232,7 @@
   {% if not demo %}<nav class="foot-links" aria-label="About this site">
     <a href="#company">About</a><a href="/genesis">Genesis</a><a href="/orbyt">Orbyt: Work with MTRX Horizyn</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a>
     {%- if early %}<a href="/early-access">Early access</a>{% endif %}{% if creators %}<a href="/creators">Creators</a>{% endif %}<a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
-    {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
+    {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% else %}<a href="mailto:{{ reach }}">Contact</a>{% endif %}
   </nav>{% endif %}
 </footer>
 </div>
@@ -276,7 +299,7 @@
     <a class="sheet-x" href="#" aria-label="Close">×</a>
     <p class="eyebrow">About</p>
     <h2>About MTRX Horizyn</h2>
-    <p>MTRX Horizyn is a software company. It is the parent company of {{ how_many }} apps ({{ apps_line }}), and
+    <p>MTRX Horizyn is a small independent software company. It is the parent company of {{ how_many }} apps ({{ apps_line }}), and
       each one takes a worry off someone's plate, from a family's chore list to a
       business's freezer at 3am.</p>
     <ul class="company-apps">
@@ -310,7 +333,9 @@
       <li><b class="dot pink"></b><span>Your data is yours</span><em>Kept private, kept safe.</em></li>
     </ul>
     {% if contact %}<p class="eyebrow small">Business enquiries</p>
-    <p class="company-contact">Write to <a href="mailto:{{ contact }}">{{ contact }}</a>.</p>{% endif %}
+    <p class="company-contact">Write to <a href="mailto:{{ contact }}">{{ contact }}</a>.</p>
+    {%- else %}<p class="eyebrow small">Get in touch</p>
+    <p class="company-contact">Write to <a href="mailto:{{ reach }}">{{ reach }}</a>.</p>{% endif %}
     {% if not demo %}<p class="company-legal"><a href="/privacy">Privacy</a> <i>•</i> <a href="/terms">Terms</a></p>{% endif %}
   </div>
 </section>
@@ -334,11 +359,7 @@
     <a class="sheet-x" href="#" aria-label="Close">×</a>
     <p class="eyebrow">What's new</p>
     <h2>Latest updates</h2>
-    <ul class="news">
-      <li><b class="dot green-dot"></b><span><b>RankUp</b> Block Craft now tells a story, with battle scenes and a dragon fought with chores.</span></li>
-      <li><b class="dot blue"></b><span><b>CyberLogix AI</b> Run several businesses from one sign-in and switch between them.</span></li>
-      <li><b class="dot violet"></b><span><b>MTRX Horizyn</b> A new home page, all on one screen.</span></li>
-    </ul>
+    {{ news_list() }}
   </div>
 </section>
 

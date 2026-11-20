@@ -28,7 +28,7 @@
       s.src = $("genesis").dataset.ask;
       s.onload = () => { Ask = window.GenesisAsk || null; if (Ask) resolve(Ask); else reject(new Error("missing")); };
       s.onerror = () => reject(new Error("load"));
-      document.head.append(s);
+      put(document.head, s);
     });
   }
   const aiUsable = () => aiOn || ownKey();
@@ -49,7 +49,19 @@
       else if (key === "text") node.textContent = value;
       else node.setAttribute(key, value);
     }
-    for (const child of children) if (child != null) node.append(child);
+    return put(node, ...children);
+  }
+
+  // Every child added to the page goes through these two, so an empty spot
+  // (a step with no hint, a button that isn't offered) is left out: never
+  // drawn as the word "null". tests/js/genesis_page.test.js checks that
+  // nothing in this file adds children any other way.
+  function put(node, ...children) {
+    node.append(...children.filter((child) => child != null));
+    return node;
+  }
+  function fill(node, ...children) {
+    node.replaceChildren(...children.filter((child) => child != null));
     return node;
   }
 
@@ -95,16 +107,40 @@
     $("g-list-head").hidden = projects.length === 0;
     $("g-how").hidden = projects.length > 0;
     $("g-path").hidden = projects.length === 0;
+    // A returning visitor's projects come first; a first visit starts at the top.
+    const view = $("g-list-view");
+    const mine = $("g-mine");
+    const anchor = projects.length ? view.firstElementChild : $("g-storage-note").nextElementSibling;
+    if (anchor !== mine) view.insertBefore(mine, anchor);
     drawDaily();
+    drawPro();
     const cards = $("g-cards");
     cards.hidden = projects.length === 0;
-    cards.replaceChildren(...sorted.map(card));
+    fill(cards, ...sorted.map(card));
     const path = $("g-path");
-    path.replaceChildren(...S.STAGES.map((s) => el("li", { class: `stage-${s.key}` },
+    fill(path, ...S.STAGES.map((s) => el("li", { class: `stage-${s.key}` },
       el("b", { text: String(projects.filter((p) => p.stage === s.key && !S.progress(p).launched).length) }),
       el("span", { text: s.name }))),
     el("li", { class: "stage-launched" },
       el("b", { text: String(projects.filter((p) => S.progress(p).launched).length) }), el("span", { text: "Launched" })));
+  }
+
+  // Genesis Pro shows only once it could matter: after a first project or a
+  // first ask, in a browser that has a Pro key, or when the address asks
+  // for it (#pro, as checkout's "back" link does).
+  const ASKED_KEY = "genesis-asked";
+  let askedNow = false;
+  const askedOnce = () => { try { return Boolean(local && local.getItem(ASKED_KEY)); } catch (_) { return false; } };
+  function noteAsked() {
+    try { if (local) local.setItem(ASKED_KEY, "1"); } catch (_) { /* shown for this visit anyway */ }
+    askedNow = true;
+    drawPro();
+  }
+  function drawPro() {
+    const section = document.getElementById("pro");
+    if (!section) return;
+    section.hidden = !(projects.length > 0 || askedNow || askedOnce() || isPro()
+      || Boolean(S.readProKey(local)) || window.location.hash === "#pro");
   }
 
   function card(p) {
@@ -155,11 +191,11 @@
 
     const streakLine = $("g-streak");
     streakLine.hidden = st.streak === 0;
-    streakLine.replaceChildren(el("b", { text: String(st.streak) }),
+    fill(streakLine, el("b", { text: String(st.streak) }),
       el("span", { text: st.streak === 1 ? " day streak" : " days in a row" }),
       ...(st.freezes ? [el("small", { class: "g-freeze", text: "1 freeze ready" })] : []));
 
-    $("g-week").replaceChildren(...S.lastDays(days, today, 7).map((d) => {
+    fill($("g-week"), ...S.lastDays(days, today, 7).map((d) => {
       const [y, m, dd] = d.key.split("-").map(Number);
       const letter = new Date(y, m - 1, dd).toLocaleDateString([], { weekday: "narrow" });
       return el("li", { class: `g-day ${d.state}`, title: `${longDay(d.key)}: ${DOT_WORDS[d.state]}` },
@@ -180,7 +216,7 @@
 
     const past = Object.keys(days).filter((k) => k !== today).sort().reverse().slice(0, 30);
     $("g-daily-more").hidden = past.length === 0;
-    $("g-daily-past").replaceChildren(...past.map((k) => el("li", {},
+    fill($("g-daily-past"), ...past.map((k) => el("li", {},
       el("small", { text: `${longDay(k)} · ${S.promptFor(k).text}` }), el("span", { text: days[k] }))));
   }
 
@@ -363,13 +399,13 @@
     if (here > 0) {
       const back = el("button", { class: "btn btn-ghost btn-small", type: "button", text: `← Back to ${S.STAGES[here - 1].name}` });
       back.addEventListener("click", () => { update(p, (q) => { q.stage = S.STAGES[here - 1].key; }); drawProject(p); });
-      moves.append(back);
+      put(moves, back);
     }
     if (here < S.STAGES.length - 1) {
       const next = S.STAGES[here + 1];
       const fwd = el("button", { class: "btn btn-genesis btn-small", type: "button", text: `Move to ${next.name} →` });
       fwd.addEventListener("click", () => { update(p, (q) => { q.stage = next.key; }); toast(`On to ${next.name}.`); drawProject(p); });
-      moves.append(fwd);
+      put(moves, fwd);
     }
     const left = pr.total - pr.done;
     let note;
@@ -479,7 +515,7 @@
     const danger = el("section", { class: "panel g-danger" },
       el("p", { text: "Deleting can't be undone, unless you downloaded a copy." }), del);
 
-    $("g-detail").replaceChildren(head, el("div", { class: "g-columns" },
+    fill($("g-detail"), head, el("div", { class: "g-columns" },
       el("div", { class: "g-main" }, checklist),
       el("div", { class: "g-side" }, stagePanel, ask, notes, danger)));
   }
@@ -518,7 +554,7 @@
     const here = S.STAGES.findIndex((s) => s.key === p.stage);
     const box = el("div", { class: `g-next${pr.launched ? " launched" : ""}` });
     if (pr.launched) {
-      box.append(el("span", { class: "g-next-label", text: "Launched" }),
+      put(box, el("span", { class: "g-next-label", text: "Launched" }),
         el("b", { class: "g-next-step", text: "Every step is done. Well done!" }),
         el("small", { text: "Make an idea card to show people what you made." }));
       return box;
@@ -529,7 +565,7 @@
       const next = S.STAGES[here + 1];
       const go = el("button", { class: "btn btn-genesis btn-small", type: "button", text: `Move to ${next.name} →` });
       go.addEventListener("click", () => { update(p, (q) => { q.stage = next.key; }); toast(`On to ${next.name}.`); drawProject(p); });
-      box.append(el("span", { class: "g-next-label", text: "Next step" }),
+      put(box, el("span", { class: "g-next-label", text: "Next step" }),
         el("b", { class: "g-next-step", text: `Every ${S.STAGES[here].name} step is done.` }),
         el("small", { text: next.line }), go);
       return box;
@@ -553,7 +589,7 @@
         if (input) input.focus({ preventScroll: true });
       });
     }
-    box.append(el("span", { class: "g-next-label", text: "Your next step" }),
+    put(box, el("span", { class: "g-next-label", text: "Your next step" }),
       el("b", { class: "g-next-step", text: step.label }),
       step.hint ? el("small", { text: step.hint }) : null,
       el("div", { class: "g-next-actions" }, done, ask));
@@ -742,7 +778,7 @@
     if (!blob) { $("g-share-msg").textContent = "Your browser couldn't make the picture."; return; }
     const url = URL.createObjectURL(blob);
     const a = el("a", { href: url, download: S.cardFileName(sharing) });
-    document.body.append(a);
+    put(document.body, a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -800,7 +836,7 @@
       const blob = new Blob([S.planText(p)], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = el("a", { href: url, download: S.planFileName(p) });
-      document.body.append(a);
+      put(document.body, a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -854,26 +890,60 @@
       if (!q) { input.focus(); return; }
       send(p, "question", q, q, out, panel);
     });
+    // The free answers left today, said plainly (free help only).
+    const left = pro || own ? null : el("p", { class: "g-ask-left", role: "status", text: freeText() });
+    // Ask Genesis or Pilot? One plain line, where both can be seen.
+    const which = !pro && !own && document.getElementById("pilot-core")
+      ? el("p", { class: "g-ask-which", text: "Ask Genesis is free here, with a daily limit. Pilot, the robot in the corner, uses your own AI key, with no limit." })
+      : null;
     const panel = el("section", { class: "panel g-ask" }, head,
-      el("div", { class: "g-helpers" }, ...buttons), form, note, out);
+      el("div", { class: "g-helpers" }, ...buttons), form, left, which, note, out);
     drawAnswer(p, out);
+    if (left && !freeAllowance) loadAllowance();
     return panel;
+  }
+
+  // ---- the free limit, honestly: "4 of 5 left today (up to 3 an hour)".
+  // The two limits come with the page; how many are left comes from the
+  // server, asked once per visit when Ask Genesis is first shown, then
+  // from each answer.
+  const freeDay = Number($("genesis").dataset.freeDay) || 0;
+  const freeHour = Number($("genesis").dataset.freeHour) || 0;
+  let freeAllowance = null;
+  let allowanceAsked = false;
+  const freeText = () => S.freeLine(freeAllowance, freeDay, freeHour);
+  function drawAllowance() {
+    document.querySelectorAll(".g-ask-left").forEach((line) => { line.textContent = freeText(); });
+  }
+  function keepAllowance(data) {
+    if (!data || !Number.isFinite(Number(data.free_left))) return;
+    freeAllowance = { free_left: data.free_left, free_day: data.free_day, free_hour: data.free_hour,
+      hour_used: data.hour_used, wait: data.wait || "" };
+    drawAllowance();
+  }
+  async function loadAllowance() {
+    if (allowanceAsked || !aiOn) return;
+    allowanceAsked = true;
+    try {
+      const res = await fetch("/api/genesis/ask", { credentials: "omit" });
+      if (res.ok) keepAllowance(await res.json());
+    } catch (_) { /* the limits alone are still shown */ }
   }
 
   function drawAnswer(p, out) {
     const last = answers[p.id];
-    out.replaceChildren();
+    fill(out);
     if (!last) return;
     if (last.pending) {
-      out.append(el("p", { class: "g-thinking", text: `Genesis is thinking about “${last.label}”…` }));
+      put(out, el("p", { class: "g-thinking", text: `Genesis is thinking about “${last.label}”…` }));
       return;
     }
     if (last.error) {
-      out.append(el("p", { class: "g-msg bad", text: last.error }));
+      put(out, el("p", { class: "g-msg bad", text: last.error }));
       // The free help is used up for now. Say plainly what Pro would change,
       // once, with no timer and no pressure: the free plan keeps working.
       if (last.limit && proOffered && !isPro()) {
-        out.append(el("p", { class: "g-upgrade" },
+        put(out, el("p", { class: "g-upgrade" },
           el("span", { text: "Everything else in Genesis keeps working. If you use Ask Genesis a lot, Genesis Pro has its own answers each day, never shared, " }),
           el("a", { href: "#pro", text: "and a grown-up can get it here" }), el("span", { text: "." })));
       }
@@ -891,7 +961,7 @@
       toast("Saved to notes.");
       drawProject(p);
     });
-    out.append(
+    put(out,
       el("p", { class: "g-answer-label", text: last.label }),
       el("p", { class: "g-answer-text", text: last.text }),
       last.refused ? null : save);
@@ -925,6 +995,8 @@
       let data = {};
       try { data = await res.json(); } catch (_) { /* not JSON */ }
       if (Pro) Pro.answered(data);
+      keepAllowance(data);
+      noteAsked();
       result = res.ok && data.answer
         ? { label, text: data.answer, refused: Boolean(data.refused) }
         : { label, error: data.error || "Genesis couldn't answer just now. Please try again in a minute.", limit: data.limit === "free" };
@@ -971,7 +1043,7 @@
     const blob = new Blob([S.exportText(projects)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = el("a", { href: url, download: `genesis-projects-${new Date().toISOString().slice(0, 10)}.json` });
-    document.body.append(a);
+    put(document.body, a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -1030,6 +1102,7 @@
       prefill = null;
     }
     else drawProject(project);
+    drawPro();
     const pro = hash === "#pro" && document.getElementById("pro");
     if (pro) pro.scrollIntoView();
     else window.scrollTo(0, 0);

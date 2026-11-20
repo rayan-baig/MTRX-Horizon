@@ -1,6 +1,7 @@
 """Tests for the public site and the console's numbers."""
 
 import json
+import re
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -217,9 +218,28 @@ def test_projects_on_the_home_page_are_the_real_list(client):
     sheet = page.split('id="projects"', 1)[1].split("</section>", 1)[0]
     rows = re.findall(r"<li><span><b>(.*?)</b><small>(.*?)</small></span>\s*"
                       r'<em class="status">(.*?)</em><span class="next">Next: (.*?)</span></li>', sheet)
-    assert rows == [(p["name"], p["kind"], p["status"], p["next"]) for p in stats.PROJECTS]
+    # An app's status comes from the catalog: "In development" until it opens.
+    assert rows == [(p["name"], p["kind"], p.get("status", "In development"), p["next"]) for p in stats.PROJECTS]
     # The count in the panel is the length of that same list.
     assert f"<dt>Projects</dt><dd>{len(stats.PROJECTS)}</dd>" in page
+
+
+def test_the_projects_list_never_says_built_and_flips_at_launch(client, monkeypatch):
+    """Before launch the apps are "In development", not "Built", and the
+    website's row reads sensibly on the live site. The day an app opens,
+    its row says "Open", from the same catalog as its Open button."""
+    import re
+    page = client.get("/").text
+    sheet = page.split('id="projects"', 1)[1].split("</section>", 1)[0]
+    status = dict(re.findall(r"<b>(.*?)</b>.*?<em class=\"status\">(.*?)</em>", sheet, re.S))
+    assert status == {"MTRX Horizyn": "Live", "CyberLogix AI": "In development",
+                      "OmniArmor.ai": "In development", "RankUp": "In development"}
+    assert "Built" not in sheet and "hosting" not in sheet and "domain" not in sheet
+    monkeypatch.setenv("CYBERLOGIX_URL", "https://cyberlogix.example")
+    monkeypatch.setenv("MTRX_OPEN_APPS", "cyberlogix")
+    sheet = client.get("/").text.split('id="projects"', 1)[1].split("</section>", 1)[0]
+    status = dict(re.findall(r"<b>(.*?)</b>.*?<em class=\"status\">(.*?)</em>", sheet, re.S))
+    assert status["CyberLogix AI"] == "Open" and status["RankUp"] == "In development"
 
 
 def test_each_app_has_open_and_learn_more(client, monkeypatch):
@@ -546,7 +566,7 @@ def test_about_lists_the_three_apps_with_their_links(client, monkeypatch):
     monkeypatch.setenv("OMNIARMOR_URL", "https://omniarmor.example.com")
     monkeypatch.setenv("MTRX_OPEN_APPS", "all")
     about = _sheet(client.get("/").text, "company")
-    assert "MTRX Horizyn is a software company" in about and "parent company of three apps" in about
+    assert "MTRX Horizyn is a small independent software company" in about and "parent company of three apps" in about
     for key in ("rankup", "cyberlogix", "omniarmor"):
         assert f'href="#learn-{key}"' in about
     # Open only for the app that has a real address.
@@ -567,8 +587,14 @@ def test_about_is_about_the_company_not_a_person(client):
 
 
 def test_business_enquiries_only_when_an_address_is_set(client, monkeypatch):
+    """Without the setting the page still says where to write: the help
+    address, never "Business enquiries"."""
+    from horizon import config
     page = client.get("/").text
-    assert "mailto:" not in page and "Business enquiries" not in page
+    assert "Business enquiries" not in page
+    assert set(re.findall(r'href="mailto:([^"]+)"', page)) == {config.HELP_EMAIL}
+    news = page.split('id="news"', 1)[1].split("</section>", 1)[0]
+    assert f'Questions? Write to <a href="mailto:{config.HELP_EMAIL}">{config.HELP_EMAIL}</a>.' in news
     monkeypatch.setenv("MTRX_CONTACT_EMAIL", "  hello@example.com ")
     page = client.get("/").text
     assert 'href="mailto:hello@example.com"' in page
@@ -580,15 +606,18 @@ def test_business_enquiries_only_when_an_address_is_set(client, monkeypatch):
 @pytest.mark.parametrize("typed", ["not-an-address", "a@b", "x@example.com?bcc=y@evil.example",
                                    "<x@example.com>", "x y@example.com", '"x"@example.com'])
 def test_a_contact_setting_that_is_not_a_plain_address_shows_nothing(client, monkeypatch, typed):
+    from horizon import config
     monkeypatch.setenv("MTRX_CONTACT_EMAIL", typed)
     page = client.get("/").text
-    assert "mailto:" not in page and "Business enquiries" not in page
+    assert "Business enquiries" not in page
+    # Only the help address: what was typed is never put in a link.
+    assert set(re.findall(r'href="mailto:([^"]+)"', page)) == {config.HELP_EMAIL}
 
 
 def test_no_email_address_is_written_into_the_site():
     """The contact address comes only from the setting: none is typed into a
-    page, a script or the code."""
-    import re
+    page, a script or the code, but for the one help address the home page
+    falls back to (config.HELP_EMAIL), written once."""
     from pathlib import Path
     root = Path(__file__).resolve().parent.parent
     email = re.compile(r"[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
@@ -596,7 +625,10 @@ def test_no_email_address_is_written_into_the_site():
         for path in (root / folder).rglob("*"):
             if path.suffix in (".html", ".js", ".css", ".py", ".webmanifest"):
                 found = email.findall(path.read_text(encoding="utf-8"))
-                assert found == [], (path, found)
+                if path == root / "horizon" / "config.py":
+                    assert found == ["help@mtrxhorizyn.com"], (path, found)
+                else:
+                    assert found == [], (path, found)
 
 
 def test_no_page_has_a_form_that_sends_anything(client, monkeypatch):
@@ -986,8 +1018,31 @@ def test_the_home_page_says_plainly_what_the_company_makes(client):
     css = Path("static/css/site.css").read_text(encoding="utf-8")
     phone = css.split("@media (max-width: 720px) {\n  /* A phone may scroll", 1)[1].split("\n}\n", 1)[0]
     assert ".page .app-card .app-lede { display: block;" in phone
-    # "No made-up stats" sits beside a figure that is true: what it's built for.
-    assert "Global Reach" not in page and "<dt>Built for</dt><dd>12</dd><span>Industries</span>" in page
+    # "No made-up stats" sits beside a figure that is true, and says whose it
+    # is: CyberLogix AI is built for 12 industries, not the whole company.
+    assert "Global Reach" not in page and "<dt>CyberLogix: built for</dt><dd>12</dd><span>Industries</span>" in page
+    assert "<dt>Built for</dt>" not in page
+
+
+def test_on_a_phone_the_apps_stack_and_whats_new_is_on_the_page(client):
+    """Three tiles side by side were too narrow on a phone: they stack, one
+    card per app. One real section is on the page itself, not in a pop-up:
+    what's new (the same list as the bell's), who makes it, and where to
+    write. Plain words about the company only: no names, no ages."""
+    page = client.get("/").text
+    frame = page.split('<div class="page">', 1)[1].split('<section class="sheet', 1)[0]
+    news = frame.split('<section class="panel home-news" id="news"', 1)[1].split("</section>", 1)[0]
+    bell = page.split('id="updates"', 1)[1].split("</section>", 1)[0]
+    items = re.findall(r"<li>.*?</li>", news, re.S)
+    assert len(items) == 3 and items == re.findall(r"<li>.*?</li>", bell, re.S)
+    assert "<p class=\"home-who\">MTRX Horizyn is a small independent software company.</p>" in news
+    assert "all on one screen" not in page
+    css = Path("static/css/site.css").read_text(encoding="utf-8")
+    phone = css.split("@media (max-width: 720px) {\n  /* A phone may scroll", 1)[1].split("\n}\n", 1)[0]
+    assert ".page .apps { grid-template-columns: minmax(0, 1fr);" in phone
+    assert "repeat(3" not in phone
+    assert ".page .home-news { display: none; }" in css
+    assert ".page .home-news { display: grid;" in css
 
 
 def test_on_a_phone_genesis_and_orbyt_are_on_the_page_and_the_menu_fits(client):

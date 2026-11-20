@@ -217,7 +217,7 @@
       if (k === kind) card.setAttribute("aria-current", "true");
       else card.removeAttribute("aria-current");
     }
-    document.querySelector(".v-paths").classList.toggle("chosen", Boolean(kind));
+    document.querySelectorAll(".v-paths").forEach((nav) => nav.classList.toggle("chosen", Boolean(kind)));
     $("v-choose").hidden = Boolean(kind);
     if (kind) $(`v-${kind}`).scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
   }
@@ -239,7 +239,7 @@
     });
   });
   // Pressing the path already open (after sending, say) opens its form again.
-  document.querySelectorAll(".v-path").forEach((card) => {
+  document.querySelectorAll(".v-path[data-path]").forEach((card) => {
     card.addEventListener("click", () => {
       if (window.location.hash === `#${card.dataset.path}` && sentKind) route(true);
     });

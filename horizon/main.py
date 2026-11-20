@@ -433,8 +433,10 @@ def home(request: Request):
         "apps_line": apps["line"],
         "apps_open": apps["counts"]["open"],
         "contact": settings.contact_email,
+        # The contact line on the page: the setting, or the help address.
+        "reach": settings.contact_email or config.HELP_EMAIL,
         "numbers": stats.public_numbers(),
-        "projects": _projects(apps["extra"]),
+        "projects": _projects(apps["extra"], apps["urls"]),
         "base": base_url(request),
         # The early access list and the creator program: None, and nothing
         # about them on the page, while they are off.
@@ -443,12 +445,16 @@ def home(request: Request):
     })
 
 
-def _projects(extra: list) -> list:
-    """The hand-kept project list, then each newer released app."""
+def _projects(extra: list, urls: dict) -> list:
+    """The hand-kept project list, then each newer released app. A founding
+    app's status comes from the catalog, as its Open button does: "In
+    development" until it has a public address, "Open" from then on."""
     known = {p["name"] for p in stats.PROJECTS}
-    return stats.PROJECTS + [{"name": a["name"], "kind": a["line"],
-                              "status": "Open" if a["open"] else "Opening soon", "next": ""}
-                             for a in extra if a["name"] not in known]
+    rows = [{**p, "status": p.get("status") or ("Open" if urls.get(p["key"]) else "In development")}
+            for p in stats.PROJECTS]
+    return rows + [{"name": a["name"], "kind": a["line"],
+                    "status": "Open" if a["open"] else "In development", "next": ""}
+                   for a in extra if a["name"] not in known]
 
 
 # The date the privacy page and the terms last changed in substance (Pilot,
@@ -508,6 +514,9 @@ def genesis(request: Request):
         "contact": config.get().contact_email,
         "base": base_url(request),
         "ai": genesis_ai.enabled(),
+        # The free Ask Genesis limits, so the page can say them plainly.
+        "free_day": config.get().genesis_ai_per_day,
+        "free_hour": config.get().genesis_ai_per_hour,
         # Genesis Pro: None, and nothing about it on the page, while it is off.
         "pro": genesis_pro.offer(),
     })
@@ -546,6 +555,8 @@ def vortex_page(request: Request):
         "partnerships": vortex.PARTNERSHIPS,
         "limits": vortex.LIMITS,
         "keep_days": vortex.KEEP_DAYS,
+        # The early access list, beside Pitch, only while it is open.
+        "early": early_access.ready(),
     })
 
 
@@ -676,6 +687,15 @@ async def genesis_ask(request: Request):
     status, answer = await run_in_threadpool(genesis_ai.answer, client_ip(request), body,
                                              _pro_key(request))
     return JSONResponse(answer, status_code=status)
+
+
+@app.get("/api/genesis/ask")
+def genesis_ask_left(request: Request):
+    """How many free Ask Genesis answers this visitor has left today, so the
+    page can say so before they ask ("4 of 5 left today"). Reads only."""
+    if not genesis_ai.enabled():
+        return JSONResponse({"enabled": False})
+    return JSONResponse({"enabled": True, **genesis_ai.allowance(client_ip(request))})
 
 
 # ---------------------------------------------------------------- Genesis Pro
@@ -1121,6 +1141,7 @@ def overview(request: Request, days: int = 30):
          "last_seen": d["last_seen"], "this": d["id"] == dev["id"]}
         for d in lock.list_devices()
     ]
+    home_apps = catalog.for_home()
     return {
         # The daily totals are read from what was just saved, by the
         # Numbers section (/api/console/numbers), so they are not sent twice.
@@ -1131,7 +1152,7 @@ def overview(request: Request, days: int = 30):
         "alerts": _alert_setup(),
         "activity": activity,
         "devices": devices,
-        "projects": _projects(catalog.for_home()["extra"]),
+        "projects": _projects(home_apps["extra"], home_apps["urls"]),
         "admin_urls": config.get().admin_urls,
         "costs": costs.summary(),
     }

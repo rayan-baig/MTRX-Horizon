@@ -4,6 +4,41 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.14.0 (20 November 2026)
+
+Fixes from a strict review of the main site. Prices and the free limits are unchanged.
+
+- **Genesis no longer prints "null".** Some steps have no tip, and under "Your next step" the
+  page wrote the word "null" where the tip would go. Empty spots are now left out everywhere on
+  the Genesis page, and a test makes sure nothing on it can add one again.
+- **The free AI limit is said honestly.** The limit is still 5 answers a day and 3 an hour. Ask
+  Genesis now shows "4 of 5 left today (up to 3 an hour)" before you ask and after each answer.
+  When the hourly limit is reached it says "You've used 3 this hour; more in 40 minutes" (with
+  the real number of minutes), and when the day's are used, how long until more. The Free and Pro
+  table says "5, up to 3 an hour".
+- **Genesis puts things in a better order.** "nothing is sent to us" now reads "nothing is sent
+  unless you press Ask". If you already have projects, "Your projects" comes first. Genesis Pro
+  only appears after your first project or your first question. One line under Ask Genesis
+  explains the difference: Ask Genesis is free here with a daily limit; Pilot uses your own AI
+  key with no limit.
+- **The Projects list says "In development", not "Built".** Each app's status comes from the app
+  list, so it changes to "Open" by itself the day the app launches. The MTRX Horizyn row now says
+  it is live, with "Next: Open the three apps to the public".
+- **"Built for 12 Industries" now says whose figure it is:** "CyberLogix: built for 12".
+- **The home page on a phone.** The three app cards are stacked, one per row, so they are easy to
+  read. "What's new" is now on the page itself, with one plain line about who is behind the site
+  ("A small independent software company") and where to write: the address in
+  `MTRX_CONTACT_EMAIL`, or help@mtrxhorizyn.com while that isn't set.
+- **Orbyt.** "Nobody pays or gets paid here" is now "Nothing is bought or sold on this page".
+  Every place that talks about what you send says the same thing: "We won't publish or pass on
+  what you send, but we can't promise we aren't working on something similar." Pitch an idea and
+  Early access (while the list is open) come first; Investors and Buying are lower down. The
+  "Work with MTRX Horizyn" label stays on one line on phones, and the Sent screen says "within 7
+  days" once instead of twice.
+- **Pilot's robot keeps clear.** On a computer, the home page's footer ("Version ...") was always
+  under the robot; it now keeps its right end clear. On a phone, the app cards' lines keep clear
+  of the robot's corner. Pilot core is unchanged (1.1.0).
+
 ## 1.13.0 (20 November 2026)
 
 **Pilot's robot comes to life.** docs/PILOT.md has the details (Pilot core 1.1.0).

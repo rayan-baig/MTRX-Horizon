@@ -325,8 +325,11 @@ Free means the company pays, so it is fenced in:
 
 Before each ask, the most it could cost is set aside against the day's cap; when the answer
 arrives, that is replaced by its real cost from the token counts. Each answer is at most 1,200
-tokens and each request a few hundred words. A visitor over their limit, or everyone once the
-cap is reached, gets a friendly message, and the provider is not called. Timeouts (30 seconds,
+tokens and each request a few hundred words. A visitor over their limit is told which limit
+and when more come ("You've used 3 this hour; more in 40 minutes"), everyone gets a friendly
+message once the cap is reached, and the provider is not called. Each free answer says how many
+are left today, and `GET /api/genesis/ask` (a plain read that counts nothing) lets the page show
+"4 of 5 left today" before the first ask. Timeouts (30 seconds,
 5 to connect) and provider errors also get a friendly message, and so does an ask made while 8
 others are already waiting on a slow provider, so the rest of the site never waits behind them. Set a monthly spend limit in the Anthropic
 Console as well, as a second fence.

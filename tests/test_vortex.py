@@ -686,9 +686,9 @@ def test_orbyt_says_who_it_is_for_and_how_it_works_at_once(client):
     page = client.get("/orbyt").text
     hero = page.split('<section class="v-hero panel">', 1)[1].split("</section>", 1)[0]
     assert "Want to work with MTRX Horizyn? Start here." in hero
-    for promise in ("Takes about 2 minutes", "A real person reads every message", "Nobody pays or gets paid here"):
+    for promise in ("Takes about 2 minutes", "A real person reads every message", "Nothing is bought or sold on this page"):
         assert f"<li>{promise}</li>" in hero
-    paths = page.split('<nav class="v-paths"', 1)[1].split("</nav>", 1)[0]
+    paths = "".join(re.findall(r'<nav class="v-paths[^"]*"(.*?)</nav>', page, re.S))
     # The most common visitor first, each with who it's for in their words.
     assert [m for m in re.findall(r'data-path="(\w+)"', paths)] == ["pitch", "partner", "invest", "buy"]
     for who in ("I have an idea", "I run a business", "I&#39;m an investor", "I&#39;d like to buy"):
@@ -750,11 +750,40 @@ def test_orbyt_says_the_apps_are_opening_soon_until_one_has_an_address(client, m
 
 def test_pitch_and_partner_first_then_other_ways_to_talk(client):
     page = client.get("/orbyt").text
-    paths = page.split('<nav class="v-paths"', 1)[1].split("</nav>", 1)[0]
-    other = paths.index("Other ways to talk to us")
-    assert paths.index('data-path="pitch"') < paths.index('data-path="partner"') < other
-    assert other < paths.index('data-path="invest"') and other < paths.index('data-path="buy"')
-    assert paths.count("v-path-small") == 2
+    first = page.split('<nav class="v-paths"', 1)[1].split("</nav>", 1)[0]
+    assert first.index('data-path="pitch"') < first.index('data-path="partner"')
+    assert "invest" not in first and "buy" not in first and "early-access" not in first
+    # Investors and buying come lower: after how Orbyt works.
+    how = page.index('<ol class="v-how" id="v-choose"')
+    more = page.split('<nav class="v-paths v-paths-more"', 1)[1].split("</nav>", 1)[0]
+    assert page.index('<nav class="v-paths v-paths-more"') > how
+    other = more.index("Other ways to talk to us")
+    assert other < more.index('data-path="invest"') < more.index('data-path="buy"')
+    assert more.count("v-path-small") == 2
+    # Every nav of paths dims together once one is chosen.
+    script = (ROOT / "static/js/vortex.js").read_text()
+    assert 'document.querySelectorAll(".v-paths").forEach' in script
+
+
+def test_orbyt_leads_with_pitch_and_early_access_while_it_is_open(client, monkeypatch):
+    monkeypatch.setenv("EARLY_ACCESS_ENABLED", "1")
+    monkeypatch.setenv("MTRX_SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("EARLY_ACCESS_EMAIL_FROM", "news@example.com")
+    monkeypatch.setenv("MTRX_PUBLIC_URL", "https://testserver")
+    page = client.get("/orbyt").text
+    first = page.split('<nav class="v-paths with-early"', 1)[1].split("</nav>", 1)[0]
+    cards = re.findall(r'<a class="v-path (path-\w+)" href="([^"]+)"', first)
+    assert cards == [("path-pitch", "#pitch"), ("path-early", "/early-access"), ("path-partner", "#partner")]
+    assert client.get("/early-access").status_code == 200
+    # Early access is a link to its own page, never an Orbyt form.
+    assert 'data-kind="early' not in page
+
+
+def test_orbyt_label_stays_on_one_line_on_a_phone():
+    css = (ROOT / "static/css/vortex.css").read_text()
+    phone = css.split("@media (max-width: 720px) {", 1)[1].split("\n}\n", 1)[0]
+    rule = phone.split(".v-hero-copy .v-eyebrow {", 1)[1].split("}", 1)[0]
+    assert "white-space: nowrap" in rule and "letter-spacing: 0.12em" in rule
 
 
 def test_every_form_has_the_under_13_note_and_the_7_day_reply(client):
@@ -763,15 +792,31 @@ def test_every_form_has_the_under_13_note_and_the_7_day_reply(client):
         panel = page.split(f'id="v-{kind}"', 1)[1].split("</section>", 1)[0]
         assert "If you're under 13, ask a parent or guardian to send this for you." in panel, kind
         assert "We reply within 7 days, even if the answer is no." in panel, kind
-        # Only the pitch form says ideas aren't confidential, just above Send.
-        open_ideas = "Ideas sent here aren't confidential, and MTRX Horizyn may already be working on"
-        before_send = panel.split('<div class="v-send">', 1)[0]
-        assert (open_ideas in " ".join(before_send.split())) == (kind == "pitch"), kind
-    sent = page.split('<section class="panel v-sent"', 1)[1].split("</section>", 1)[0]
-    assert "We reply within 7 days, even if it's a no." in " ".join(sent.split()).replace("&#39;", "'")
+        # Only the pitch form has the line about ideas, just above Send.
+        before_send = " ".join(panel.split('<div class="v-send">', 1)[0].split()).replace("&#39;", "'")
+        assert (CONFIDENTIAL in before_send) == (kind == "pitch"), kind
+    # The Sent screen says "within 7 days" once: in the line with their address.
+    sent = " ".join(page.split('<section class="panel v-sent"', 1)[1].split("</section>", 1)[0].split())
+    assert "7 days" not in sent
     assert "within 7 days, even if the answer is no." in (ROOT / "static/js/vortex-form.js").read_text()
-    # Still: nobody pays or gets paid here.
-    assert "Nobody pays or gets paid here" in page
+    # Nothing is bought or sold here, and it says so in those words.
+    assert "Nothing is bought or sold on this page" in page and "Nobody pays or gets paid" not in page
+
+
+CONFIDENTIAL = "We won't publish or pass on what you send, but we can't promise we aren't working on something similar."
+
+
+def test_orbyt_says_the_same_thing_about_what_you_send_everywhere(client):
+    """One sentence about ideas, wherever it comes up: not "aren't
+    confidential" in one place and "nothing is made public" in another."""
+    page = " ".join(client.get("/orbyt").text.split()).replace("&#39;", "'")
+    how = page.split('<ol class="v-how" id="v-choose"', 1)[1].split("</ol>", 1)[0]
+    assert CONFIDENTIAL in how
+    for gone in ("aren't confidential", "made public", "never share it"):
+        assert gone not in page, gone
+    pack = (ROOT / "static/js/pilot-mtrx-pack.js").read_text()
+    assert "aren't confidential" not in pack and "won't publish or pass on what is sent" in pack
+    assert "Nobody pays or gets paid" not in pack
 
 
 def test_orbyt_always_says_it_is_for_working_with_mtrx_horizyn(client):

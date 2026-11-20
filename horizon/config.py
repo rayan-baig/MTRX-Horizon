@@ -21,6 +21,12 @@ APP_KEYS = ("rankup", "cyberlogix", "omniarmor")
 # that can be tapped without going anywhere.
 KNOCK_TARGETS = ("logo", "rankup", "cyberlogix", "omniarmor", "mark")
 
+# The address the home page shows for questions while MTRX_CONTACT_EMAIL is
+# not set. Only shown on the page: nothing is ever sent to it from here
+# (emails to the owner still go only to MTRX_CONTACT_EMAIL or the alert
+# address). The one email address written into the site.
+HELP_EMAIL = "help@mtrxhorizyn.com"
+
 
 def version() -> str:
     """The number in VERSION: which version of the site this is."""

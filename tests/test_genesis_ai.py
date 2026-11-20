@@ -105,7 +105,8 @@ def test_a_visitor_gets_an_answer_and_only_the_idea_is_sent(client, provider):
     assert 'data-ai="on"' in client.get("/genesis").text
     response = ask(client, notes="private notes", ticks={"name": True}, extra_field="x")
     assert response.status_code == 200, response.text
-    assert response.json() == {"answer": "Try it with three classmates first.", "helper": "first"}
+    assert response.json() == {"answer": "Try it with three classmates first.", "helper": "first",
+                               "free_left": 49, "free_day": 50, "free_hour": 50, "hour_used": 1}
     assert "set-cookie" not in response.headers
     assert response.headers["cache-control"] == "no-store"
     (call,) = provider["calls"]
@@ -168,10 +169,14 @@ def test_each_visitor_has_an_hourly_and_daily_limit(client, provider, monkeypatc
     monkeypatch.setenv("GENESIS_AI_PER_DAY", "3")
     one = {**ORIGIN, "X-Forwarded-For": "203.0.113.5"}
     two = {**ORIGIN, "X-Forwarded-For": "198.51.100.9"}
-    assert ask(client, headers=one).status_code == 200
-    assert ask(client, headers=one).status_code == 200
+    first = ask(client, headers=one)
+    assert first.status_code == 200 and first.json()["free_left"] == 2
+    assert ask(client, headers=one).json()["free_left"] == 1
     busy = ask(client, headers=one)
-    assert busy.status_code == 429 and "a lot" in busy.json()["error"]
+    # Said plainly: how many this hour, and when more come.
+    assert busy.status_code == 429
+    assert busy.json()["error"] == "You've used 2 this hour; more in 60 minutes."
+    assert busy.json()["free_left"] == 1 and busy.json()["wait"] == "60 minutes"
     # Marked as the free help being used up, so the page can say what Pro changes.
     assert busy.json()["limit"] == "free"
     # Someone else is not held back by it.
@@ -181,8 +186,39 @@ def test_each_visitor_has_an_hourly_and_daily_limit(client, provider, monkeypatc
     from horizon import db
     with db.connect() as conn:
         conn.execute("UPDATE genesis_asks SET at = at - 3700")
-    assert ask(client, headers=one).status_code == 200
-    assert ask(client, headers=one).status_code == 429
+    last = ask(client, headers=one)
+    assert last.status_code == 200 and last.json()["free_left"] == 0
+    done = ask(client, headers=one)
+    assert done.status_code == 429 and done.json()["limit"] == "free"
+    assert done.json()["error"].startswith("You've used all 3 free asks for today; more in ")
+    assert done.json()["error"].endswith(" hours.")
+
+
+def test_the_page_can_ask_how_many_free_answers_are_left(client, provider, monkeypatch):
+    """A plain read, before any ask: it counts nothing and sends nothing."""
+    monkeypatch.setenv("MTRX_TRUST_PROXY", "1")
+    monkeypatch.setenv("GENESIS_AI_PER_HOUR", "3")
+    monkeypatch.setenv("GENESIS_AI_PER_DAY", "5")
+    one = {"X-Forwarded-For": "203.0.113.7"}
+    left = client.get("/api/genesis/ask", headers=one).json()
+    assert left == {"enabled": True, "free_left": 5, "free_day": 5, "free_hour": 3, "hour_used": 0}
+    assert client.get("/api/genesis/ask", headers=one).json()["free_left"] == 5  # reading counts nothing
+    for _ in range(3):
+        assert ask(client, headers={**ORIGIN, **one}).status_code == 200
+    left = client.get("/api/genesis/ask", headers=one).json()
+    assert left["free_left"] == 2 and left["hour_used"] == 3 and left["wait"] == "60 minutes"
+    assert provider["calls"] and len(provider["calls"]) == 3
+    monkeypatch.delenv("GENESIS_AI_KEY")
+    assert client.get("/api/genesis/ask").json() == {"enabled": False}
+
+
+def test_the_wait_is_said_in_plain_words():
+    from horizon import genesis_ai
+    assert genesis_ai._wait(1) == "1 minute"
+    assert genesis_ai._wait(61) == "2 minutes"
+    assert genesis_ai._wait(3599) == "60 minutes"
+    assert genesis_ai._wait(5 * 3600) == "5 hours"
+    assert genesis_ai._wait(-5) == "1 minute"
 
 
 def test_the_daily_spend_cap_stops_asks_for_everyone(client, provider, monkeypatch):

@@ -292,6 +292,7 @@ def offer() -> dict | None:
     return {"month": month, "year": year, "yearly": bool(s.genesis_pro_yearly_price),
             "months_free": months_free, "per_day": s.genesis_pro_per_day,
             "free_per_day": s.genesis_ai_per_day,
+            "free_per_hour": s.genesis_ai_per_hour,
             # While Stripe's figure can't be read: the price as the owner wrote it.
             "month_text": s.genesis_pro_price_text,
             # Ask Genesis is on (always, while Pro is ready): its rows show only then.

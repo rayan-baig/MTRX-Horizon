@@ -54,7 +54,10 @@ def test_genesis_sends_nothing_but_ask_genesis(client):
     page = (ROOT / "static/js/genesis.js").read_text()
     for call in ("fetch(", "XMLHttpRequest", "sendBeacon", "WebSocket", "EventSource"):
         assert call not in store, call
-    assert page.count("fetch(") == 1 and 'fetch("/api/genesis/ask"' in page
+    # Two calls, both to Ask Genesis: the ask itself, and a plain read of how
+    # many free answers are left today, which sends nothing at all.
+    assert page.count("fetch(") == 2 and page.count('fetch("/api/genesis/ask"') == 2
+    assert 'fetch("/api/genesis/ask", { credentials: "omit" })' in page
     for call in ("XMLHttpRequest", "sendBeacon", "WebSocket", "EventSource"):
         assert call not in page, call
     for script in (store, page):
@@ -97,6 +100,30 @@ def test_genesis_storage_rules_in_node():
                             capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "# fail 0" in result.stdout
+
+
+def test_genesis_page_script_rules_in_node():
+    """No step without a hint prints "null"; projects first for a returning
+    visitor; Pro only once it could matter (tests/js/genesis_page.test.js)."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node is not installed here (CI has it)")
+    result = subprocess.run([node, "--test", "--test-reporter=tap",
+                             str(ROOT / "tests/js/genesis_page.test.js")],
+                            capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "# fail 0" in result.stdout
+
+
+def test_genesis_says_plainly_what_is_sent_and_waits_with_pro(client, monkeypatch):
+    page = client.get("/genesis").text
+    hero = " ".join(page.split('<section class="g-hero panel">', 1)[1].split("</section>", 1)[0].split())
+    assert "nothing is sent unless you press Ask." in hero and "nothing is sent to us" not in page
+    # A returning visitor's projects can move to the top as one block.
+    mine = page.split('<div class="g-mine" id="g-mine">', 1)[1]
+    assert mine.index('id="g-list-head"') < mine.index('id="g-cards"') < mine.index("</div>\n    <section class=\"g-empty")
+    # The free limits are on the page, for the line under Ask Genesis.
+    assert 'data-free-day="5" data-free-hour="3"' in page
 
 
 def test_privacy_page_says_where_genesis_keeps_projects(client):
@@ -170,7 +197,7 @@ def test_an_idea_card_is_drawn_in_the_browser_from_the_card_fields_only(client):
     # No link carries an idea: nothing a visitor wrote is put in an address.
     for leak in ("btoa(", "encodeURIComponent(", "location.search", "#see/", "?idea="):
         assert leak not in script, leak
-    assert script.count("fetch(") == 1
+    assert script.count("fetch(") == 2  # the ask, and how many free answers are left
 
 
 def test_free_and_pro_side_by_side_only_while_pro_is_on(client):

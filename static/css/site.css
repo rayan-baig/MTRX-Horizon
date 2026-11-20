@@ -556,6 +556,15 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 
 .page .footer { flex: none; padding: clamp(6px, 1.4vh, 16px) clamp(16px, 2vw, 34px); border-top: 0; gap: 6px 26px; }
 .page .foot-line { margin: 0 auto; }
+/* Pilot's robot sits in the bottom-right corner, and the one-screen home
+   page never scrolls, so the footer's last words ("Version ...") were
+   always under it. On a computer the footer keeps its right end clear
+   (--pilot-gutter is set only while Pilot is on the page). Phones keep the
+   end of the page clear instead (body, at the end of this file). */
+@media (min-width: 721px) {
+  .footer { padding-right: max(clamp(16px, 4vw, 64px), var(--pilot-gutter, 0px)); }
+  .page .footer { padding-right: max(clamp(16px, 2vw, 34px), var(--pilot-gutter, 0px)); }
+}
 
 /* Pointing at a part of the page lights it up, since there is nowhere to scroll to. */
 .page .apps:target .app-card, .page .activity:target, .page .about:target { animation: spotlight 1.6s ease-out; }
@@ -801,17 +810,19 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .app-card.green .app-art { --art: url("/static/img/rankup-art-sm.webp"); }
   .page .app-card.blue .app-art { --art: url("/static/img/cyberlogix-art-sm.webp"); }
   .page .app-card.violet .app-art { --art: url("/static/img/omniarmor-art-sm.webp"); }
-  /* Three small tiles across: icon, name and Manage. */
-  .page .apps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-  .page .app-card { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 8px; }
-  .page .app-head { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 0; }
-  .page .app-head > div { grid-column: auto; grid-row: auto; }
+  /* The three apps stacked, one card each: the icon, the name and its line
+     side by side, and both buttons across the card underneath. Three tiles
+     side by side were too narrow to read on a phone. */
+  .page .apps { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .page .app-card { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 12px; padding: 12px; }
+  .page .app-head { display: contents; }
+  .page .app-head > div { grid-column: 2; grid-row: 1; }
   .page .app-card .tags { display: none; }
-  /* One short line under each name, so a tile says what the app does. */
-  .page .app-card .app-lede { display: block; max-width: none; margin: 0; font-size: 11.5px; line-height: 1.3; color: #dfe6fb; }
+  /* One short line under each name, so a card says what the app does. */
+  .page .app-card .app-lede { display: block; grid-column: 2; grid-row: 2; max-width: none; margin: 0; font-size: 13px; line-height: 1.35; color: #dfe6fb; }
   .page .more-places { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-  .page .card-actions { grid-column: auto; grid-row: auto; flex-direction: column; gap: 5px; margin-top: auto; }
-  .page .card-actions .btn { width: 100%; justify-content: center; min-height: 40px; padding: 0 4px; font-size: 12px; gap: 6px; white-space: nowrap; }
+  .page .card-actions { grid-column: 1 / -1; grid-row: 3; flex-direction: row; gap: 8px; margin-top: 10px; }
+  .page .card-actions .btn { flex: 1 1 0; justify-content: center; min-height: 44px; padding: 0 8px; font-size: 13px; gap: 6px; white-space: nowrap; }
   /* The tile already says which app it is. */
   .page .card-actions .app-name, .page .card-actions .arrow { display: none; }
   .page .topbar { gap: 10px; padding-inline: 12px; }
@@ -828,12 +839,10 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .hero h1 { font-size: clamp(22px, 7.4vw, 36px); }
   .page .lede { font-size: 13.5px; text-shadow: 0 1px 8px var(--bg); }
   .page .cta-row { gap: 10px; }
-  .page .app-card { padding: 8px 10px; column-gap: 10px; }
-  .page .app-icon { grid-row: 1; width: 38px; height: 38px; border-radius: 10px; }
+  .page .app-icon { grid-column: 1; grid-row: 1 / span 2; width: 44px; height: 44px; border-radius: 12px; }
   .page .app-card h2 { font-size: 15.5px; margin-bottom: 2px; }
   .page .tags { font-size: 8.5px; letter-spacing: .04em; }
   .page .tags i { margin: 0 2px; }
-  .page .card-actions { grid-row: 1; }
   .page .btn-outline { min-height: 30px; padding: 0 12px; font-size: 12.5px; gap: 8px; }
   .page .facts svg { width: 18px; height: 18px; }
   .page .facts dt { font-size: 10px; line-height: 1.2; }
@@ -851,6 +860,18 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .search:focus-within { position: absolute; z-index: 20; left: 12px; right: 12px; top: 50%; margin-top: -19px; width: auto; background: #060c22; }
   .search input { font-size: 16px; }
 }
+/* What's new, who makes it all and where to write: on the page itself on a
+   phone, which scrolls. A computer's page is held to one screen, so there
+   the bell's pop-up has it. */
+.page .home-news { display: none; }
+@media (max-width: 720px) {
+  .page .home-news { display: grid; gap: 12px; padding: 16px; }
+  .page .home-news h2 { margin: 0; }
+  .page .home-news .news li { font-size: 13.5px; }
+  .home-who, .home-contact { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .home-who { color: var(--text); }
+  .home-contact a { color: var(--cyan); overflow-wrap: anywhere; display: inline-flex; align-items: center; min-height: 40px; }
+}
 /* Small phones: the bar closes up so the name and its line stay whole
    beside the three 40px buttons. */
 @media (max-width: 380px) {
@@ -865,7 +886,7 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .tagline { display: none; }
   .wordmark { letter-spacing: 0.14em; }
   /* Each app's name and both buttons inside its tile. */
-  .page .app-card { padding-inline: 6px; }
+  .page .app-card { padding-inline: 10px; }
   .page .app-card h2 { font-size: 13px; }
   .page .card-actions .btn { font-size: 11px; gap: 4px; padding: 0 4px; white-space: nowrap; }
   .page .btn-solid small { font-size: 8.5px; letter-spacing: 0.04em; }
@@ -910,4 +931,7 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
    is on the page, so pages without Pilot are unchanged. */
 @media (max-width: 720px) {
   body { padding-bottom: var(--pilot-gutter, 0px); }
+  /* The apps stack on a phone, and the third card's line ran under the
+     robot on the first screen: each card's line keeps clear of its corner. */
+  :root.pilot-on .page .app-card .app-lede { padding-right: 48px; }
 }

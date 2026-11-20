@@ -19,6 +19,7 @@
 .path-pitch { --pc: var(--v-magenta); }
 .path-invest { --pc: var(--v-green); }
 .path-buy { --pc: var(--v-violet); }
+.path-early { --pc: var(--v-amber); }
 /* The colours an app in the catalog can take (catalog.ACCENTS). */
 .accent-green { --ac: #2ee59d; }
 .accent-blue { --ac: #3b8bff; }
@@ -120,6 +121,8 @@
 /* Pitch and Partner first, side by side; then a quieter row, "Other ways to
    talk to us", for investors and buyers. One row each on phones (below). */
 .v-paths { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+/* Pitch, Early access and Partner side by side while early access is open. */
+.v-paths.with-early { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .v-path {
   position: relative; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr);
   align-items: center; gap: 6px 16px;
@@ -385,13 +388,16 @@
 /* ---------- narrower screens ---------- */
 @media (max-width: 1060px) {
   .v-paths { gap: 12px; }
+  .v-paths.with-early { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v-paths.with-early .path-partner { grid-column: 1 / -1; }
   .v-path:not(.v-path-small) { padding: 14px 16px; gap: 4px 14px; }
   .v-path-text b { font-size: 17px; }
   .v-path-text span { font-size: 13.5px; }
 }
 /* Phones: one clear row per path, easy to read and tap. */
 @media (max-width: 600px) {
-  .v-paths { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .v-paths, .v-paths.with-early { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .v-paths.with-early .path-partner { grid-column: auto; }
   .v-path:not(.v-path-small) { grid-template-columns: auto minmax(0, 1fr) auto; padding: 14px; gap: 14px; }
   .v-path-small { padding: 10px 14px; }
   /* Just the arrow, as on the big paths: the words get the room. */
@@ -413,7 +419,9 @@
   .v-hero { grid-template-columns: minmax(0, 1fr); padding: 24px 18px; }
   .v-hero-art { position: absolute; right: 14px; top: 18px; margin: 0; }
   .v-hero-art .v-swirl { width: 76px; }
-  .v-hero-copy .v-eyebrow { padding-right: 84px; }
+  /* "Work with MTRX Horizyn" on one line beside the swirl: it wrapped,
+     leaving "Horizyn" alone underneath. */
+  .v-hero-copy .v-eyebrow { padding-right: 84px; font-size: 11px; letter-spacing: 0.12em; white-space: nowrap; }
   .v-title { padding-right: 84px; }
   /* Lighter on a phone's battery: no blurs, and one ring turning. */
   .v-ring { filter: none !important; }
@@ -424,4 +432,10 @@
   .v-grid { grid-template-columns: minmax(0, 1fr); }
   .v-panel { padding: 20px 16px; }
   .v-send .btn { width: 100%; justify-content: center; }
+}
+/* The smallest phones: a smaller swirl, so the label still fits on one line. */
+@media (max-width: 360px) {
+  .v-hero-art .v-swirl { width: 60px; }
+  .v-hero-copy .v-eyebrow, .v-title { padding-right: 68px; }
+  .v-hero-copy .v-eyebrow { letter-spacing: 0.08em; }
 }
