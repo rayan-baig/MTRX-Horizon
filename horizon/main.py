@@ -35,10 +35,24 @@ SESSION_COOKIE = "mh_s"
 # Where Stripe sends Genesis Pro's events (genesis_pro.py).
 STRIPE_WEBHOOK = "/api/genesis/pro/stripe"
 
+# Pilot, the assistant on every public page (static/pilot/, docs/PILOT.md),
+# calls the AI provider the visitor chose straight from their browser, with
+# their own key: these are exactly the addresses it may reach, and nothing
+# else. The first three are the main providers; the rest are OpenAI-compatible
+# providers, and a model running on the visitor's own computer.
+PILOT_PROVIDER_HOSTS = ("api.anthropic.com", "api.openai.com", "generativelanguage.googleapis.com")
+PILOT_COMPATIBLE_HOSTS = ("openrouter.ai", "api.groq.com", "api.mistral.ai", "api.deepseek.com", "api.together.xyz",
+                          "api.fireworks.ai", "api.x.ai")
+PILOT_LOCAL_HOSTS = ("localhost", "127.0.0.1")
+PILOT_CONNECT = " ".join([f"https://{h}" for h in PILOT_PROVIDER_HOSTS + PILOT_COMPATIBLE_HOSTS]
+                         + [f"http://{h}:*" for h in PILOT_LOCAL_HOSTS])
+
+# blob: in media-src is only for a video Pilot made with the visitor's own
+# video key, shown from memory in their own browser.
 CSP = (
-    "default-src 'self'; img-src 'self' data:; "
+    "default-src 'self'; img-src 'self' data:; media-src 'self' blob:; "
     "style-src 'self'; font-src 'self'; "
-    "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; "
+    f"script-src 'self'; connect-src 'self' {PILOT_CONNECT}; frame-ancestors 'none'; "
     "base-uri 'none'; form-action 'self'"
 )
 
@@ -125,6 +139,26 @@ def asset(path: str) -> str:
 
 
 templates.env.globals["asset"] = asset
+
+
+def pilot_facts() -> dict:
+    """What Pilot's knowledge pack may say about this site right now: read
+    from the same settings the pages use, so it can't say one thing while
+    the site does another. Nothing here is secret or about a visitor."""
+    settings = config.get()
+    return {
+        "ai": genesis_ai.enabled(),
+        "free_day": settings.genesis_ai_per_day,
+        "free_hour": settings.genesis_ai_per_hour,
+        "pro": genesis_pro.ready(),
+        "pro_price": settings.genesis_pro_price_text,
+        "early": early_access.ready(),
+        "creators": creators.enabled(),
+        "hosts": " ".join(PILOT_COMPATIBLE_HOSTS + PILOT_LOCAL_HOSTS),
+    }
+
+
+templates.env.globals["pilot_facts"] = pilot_facts
 
 
 # Shown at the foot of the home page and the console, and by /healthz, so
@@ -267,7 +301,10 @@ def _lock_down(response: Response) -> None:
     response.headers["Content-Security-Policy"] = CSP
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    # The microphone only for this site's own pages: Pilot's optional voice
+    # input uses the browser's own speech recognition, and only when the
+    # visitor presses its button.
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
     if not config.get().dev:
         response.headers["Strict-Transport-Security"] = "max-age=31536000"
 
@@ -385,13 +422,13 @@ def _projects(extra: list) -> list:
                              for a in extra if a["name"] not in known]
 
 
-# The date the privacy page and the terms last changed in substance (the
-# daily spark and idea cards, in 1.10.0, changed every version of the page).
-LEGAL_UPDATED = "19 November 2026"
+# The date the privacy page and the terms last changed in substance (Pilot,
+# in 1.12.0, changed every version of the page).
+LEGAL_UPDATED = "20 November 2026"
 # The same, while Genesis Pro is on: its parts of both pages are shown only then.
-PRO_LEGAL_UPDATED = "19 November 2026"
+PRO_LEGAL_UPDATED = "20 November 2026"
 # The same, while the early access list or the creator program is on.
-GROWTH_LEGAL_UPDATED = "19 November 2026"
+GROWTH_LEGAL_UPDATED = "20 November 2026"
 
 
 def _legal(request: Request, page: str) -> HTMLResponse:

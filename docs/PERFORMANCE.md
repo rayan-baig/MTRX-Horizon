@@ -31,6 +31,25 @@ What each column means:
 found", and the home page has no early access form (with them off it measured 2.14 s, 198 KB,
 15 requests, shift 0).
 
+## Pilot (20 November 2026, version 1.12.0)
+
+Pilot, the assistant (docs/PILOT.md), adds one small deferred script to each public page. It
+fetches the robot and its config only after the page has finished loading, and the chat window's
+code only when someone opens it, so the time to draw the page is unchanged. The extra kilobytes
+and requests below all arrive after the page has drawn. Before is 1.11.1, after is 1.12.0.
+
+| Page | LCP before | LCP after | KB before | KB after | Requests before | Requests after | Shift before | Shift after |
+|---|---|---|---|---|---|---|---|---|
+| `/` | 2.06 s | 2.09 s | 198 KB | 245 KB | 15 | 21 | 0.00 | 0.00 |
+| `/genesis` | 1.75 s | 1.73 s | 147 KB | 194 KB | 9 | 15 | 0.00 | 0.00 |
+| `/orbyt` | 1.70 s | 1.67 s | 143 KB | 189 KB | 14 | 20 | 0.00 | 0.00 |
+| `/partners` | 1.61 s | 1.65 s | 118 KB | 163 KB | 9 | 15 | 0.00 | 0.00 |
+
+Two things were changed on the way to this: the robot's glow is a gradient behind the picture, not
+a filter on it (a filter's blur made the browser count the robot as the biggest thing on the page),
+and Ask Genesis's own-key words (`genesis-ask.js`) load only when someone uses them, so the Genesis
+page asks for no more files before drawing than it did.
+
 ## Results (17 November 2026)
 
 Before is version 1.8.3, after is 1.8.4.

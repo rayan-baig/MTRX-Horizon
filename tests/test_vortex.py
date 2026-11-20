@@ -560,7 +560,7 @@ def test_privacy_page_says_what_chroma_vortex_keeps(client):
     assert "It is never shared" in page and "We don't keep your network address with it" in page
     assert "kept for 24 hours" in page
     assert "no forms" not in page
-    assert main.LEGAL_UPDATED == "19 November 2026"
+    assert main.LEGAL_UPDATED == "20 November 2026"
 
 
 def test_terms_say_a_message_is_no_agreement_or_investment_offer(client):

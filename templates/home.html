@@ -397,5 +397,6 @@
 <script src="{{ asset('js/home.js') }}" defer></script>
 {% if early %}<script src="{{ asset('js/early-access.js') }}" defer></script>{% endif %}
 {% if not demo %}<script src="{{ asset('js/knock.js') }}" defer></script>{% endif %}
+{% if not demo %}{% include "_pilot.html" %}{% endif %}
 </body>
 </html>

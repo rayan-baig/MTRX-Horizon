@@ -453,7 +453,9 @@ def test_pages_need_no_other_website_to_draw(client):
     page = client.get("/")
     assert "fonts.googleapis.com" not in page.text and "gstatic" not in page.text
     csp = page.headers["content-security-policy"]
-    assert "font-src 'self'" in csp and "googleapis" not in csp and "gstatic" not in csp
+    # (Pilot's Gemini address, generativelanguage.googleapis.com, is for the
+    # visitor's own AI calls only: connect-src, never fonts.)
+    assert "font-src 'self';" in csp and "fonts.googleapis" not in csp and "gstatic" not in csp
     css = open("static/css/site.css", encoding="utf-8").read()
     for name in ("inter-latin", "montserrat-latin"):
         assert f'/static/fonts/{name}.woff2' in css and f'href="/static/fonts/{name}.woff2"' in page.text

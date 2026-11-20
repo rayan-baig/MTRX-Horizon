@@ -7,6 +7,8 @@ The website for MTRX Horizyn, the parent company of **RankUp**, **CyberLogix AI*
   stands for. Every number on it is true.
 - **Genesis** (`/genesis`) is where anyone can turn an idea into a project and take it
   from Spark to Launch. See [Genesis](#genesis).
+- **Pilot** is the AI assistant on every public page: a small robot in the corner that runs on
+  the visitor's own AI key, from their browser. See [docs/PILOT.md](docs/PILOT.md).
 - **The control console** (`/console`) shows how the apps and this server are doing. It has
   no link anywhere and looks like a missing page to everyone else.
 

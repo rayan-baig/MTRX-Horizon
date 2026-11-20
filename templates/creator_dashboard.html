@@ -50,3 +50,5 @@
 </section>
 {% endblock %}
 {% block scripts %}<script src="{{ asset('js/creator-dashboard.js') }}" defer></script>{% endblock %}
+{#- No Pilot on a page that carries a private code or a creator's own figures. -#}
+{% block pilot %}{% endblock %}

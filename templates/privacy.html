@@ -31,6 +31,8 @@
     settings tell your browser to refuse anything else.</li>
   <li>Genesis projects stay in your browser, except the text you choose to send with "Ask Genesis",
     which goes to our AI provider to write the answer; we keep only counts.</li>
+  <li>Pilot, the assistant in the corner, works only with your own AI key if you add one. The key and
+    what you send go from your browser straight to the AI company you chose, never to us.</li>
   {%- if pro %}
   <li>Genesis Pro, if a grown-up buys it, is paid through Stripe. Card details never reach us, and we
     keep no email address: only what we need to know that Pro is paid for, and a member's own backup.</li>
@@ -98,6 +100,9 @@
   nothing is sent until you press <b>Send</b>.</p>
 
 <h2>Ask Genesis</h2>
+<p>If you've added your own AI key in Pilot, Ask Genesis uses it instead: the same few fields go
+  from your browser straight to your AI company, nothing goes to our server, and there's no daily
+  limit. Otherwise:</p>
 <p>Ask Genesis is optional AI help with your idea. Only when you press one of its buttons, your
   project's name, one-line pitch, who it's for and stage, and any question you typed, go through our
   server to our AI provider, Anthropic, which writes the answer. Your notes and checklist are never
@@ -108,6 +113,26 @@
   the question came from (for an IPv6 address, the block it belongs to) and the time are kept for
   24 hours, then deleted. We also keep how much each answer cost, as a number with no words in it.
   Nothing else about you is kept, and no cookie is set.</p>
+
+<h2>Pilot</h2>
+<p>Pilot is an optional assistant on this site's pages. It does nothing until you add your own AI
+  key from an AI company you choose (such as Anthropic, OpenAI, Google, or another service that works
+  the same way, including one on your own computer). AI keys are for grown-ups: the AI companies
+  require you to be 18 or over.</p>
+<p>Your key is kept only in your browser: for this tab, or on this device if you tick "Remember".
+  <b>Remove my keys</b> deletes it. When you send Pilot a message, your browser sends it, with the
+  conversation so far and a short guide to this site, straight to that AI company, which answers under
+  its own terms and privacy policy and bills your key. Nothing goes through our server and we never
+  see your key, your messages or the answers. "Analyze &amp; explain" and "Summarise" also send an
+  outline of the words on the screen; Pilot never reads what you type into boxes or hidden parts of
+  the page{% if pro %}, or your Genesis Pro key{% endif %}, and it blanks out email addresses and phone numbers. On the Genesis
+  page, Pilot can read your projects to answer you, and changes them only after you press
+  <b>Allow</b>. With an image or video key, pictures and videos are made by that company and kept
+  only on the page until you download them.</p>
+<p>The chat is kept in your browser for this tab, so it follows you from page to page. Memory
+  ("remember that I like short answers") is off unless you turn it on, and then stays only in this
+  browser. Voice uses your browser's own speech recognition, if it has one: nothing goes to us, but
+  some browsers send the sound to their maker to turn it into words.</p>
 
 {% if pro -%}
 <h2>Genesis Pro</h2>

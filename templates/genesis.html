@@ -34,7 +34,7 @@
   <a class="g-home" href="/">Home</a>
 </header>
 
-<main class="genesis" id="genesis" data-ai="{{ 'on' if ai else 'off' }}" data-base="{{ base }}">
+<main class="genesis" id="genesis" data-ai="{{ 'on' if ai else 'off' }}" data-base="{{ base }}" data-ask="{{ asset('js/genesis-ask.js') }}">
   <noscript><p class="panel g-noscript">Genesis runs in your browser, so it needs JavaScript turned on.</p></noscript>
 
   <div id="g-list-view">
@@ -120,7 +120,7 @@
     {#- Genesis Pro (horizon/genesis_pro.py). Only on the page while it is
         switched on and set up. Nothing a member makes is ever shown to
         anyone else. static/js/genesis-pro.js fills in the rest. #}
-    <section class="panel g-pro" id="pro" aria-labelledby="g-pro-title">
+    <section class="panel g-pro" id="pro" aria-labelledby="g-pro-title" data-pilot-private>
       <div class="g-pro-head">
         <p class="eyebrow g-pro-eyebrow">For your biggest ideas</p>
         <h2 class="g-pro-title" id="g-pro-title">Genesis <b>Pro</b></h2>
@@ -282,5 +282,8 @@
 <script src="{{ asset('js/genesis-pro.js') }}" defer></script>
 {%- endif %}
 <script src="{{ asset('js/genesis.js') }}" defer></script>
+{#- Pilot after Genesis, so Genesis draws first; Ask Genesis picks up a Pilot
+    key the moment Pilot starts ("pilot-ready"). #}
+{% include "_pilot.html" %}
 </body>
 </html>
