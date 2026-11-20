@@ -70,7 +70,10 @@ def provider(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_BASE_URL", f"http://127.0.0.1:{server.server_port}")
     monkeypatch.setenv("GENESIS_AI_KEY", "test-key")
     monkeypatch.setenv("GENESIS_AI_MODEL", "test-model-from-a-setting")
-    for name in ("GENESIS_AI_PER_HOUR", "GENESIS_AI_PER_DAY", "GENESIS_AI_DAILY_CAP_USD",
+    # Room for every helper in one test; the limit tests set their own.
+    monkeypatch.setenv("GENESIS_AI_PER_HOUR", "50")
+    monkeypatch.setenv("GENESIS_AI_PER_DAY", "50")
+    for name in ("GENESIS_AI_DAILY_CAP_USD",
                  "GENESIS_AI_INPUT_PRICE", "GENESIS_AI_OUTPUT_PRICE", "GENESIS_AI_EFFORT",
                  "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
         monkeypatch.delenv(name, raising=False)
@@ -278,3 +281,11 @@ def test_no_model_name_is_written_into_the_code():
              root / "README.md", root / "CHANGELOG.md", root / ".env.example", *root.glob("docs/*.md")]
     hits = [str(p.relative_to(root)) for p in files if p.exists() and pattern.search(p.read_text())]
     assert hits == [], hits
+
+
+def test_the_free_plan_allows_five_answers_a_day_by_default(monkeypatch):
+    from horizon import config
+    monkeypatch.delenv("GENESIS_AI_PER_HOUR", raising=False)
+    monkeypatch.delenv("GENESIS_AI_PER_DAY", raising=False)
+    s = config.get()
+    assert (s.genesis_ai_per_hour, s.genesis_ai_per_day) == (3, 5)

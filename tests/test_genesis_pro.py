@@ -267,7 +267,7 @@ def test_the_offer_shows_stripes_prices_and_says_a_grown_up_pays(client, pro):
     assert "Get Pro · $4.99 a month" in page
     assert "$49.90 a year · 2 months free" in page
     # Free and Pro side by side: the free plan's answers against Pro's.
-    assert "<td>30</td><td>Up to 100, all yours</td>" in page
+    assert "<td>5</td><td>Up to 100, all yours</td>" in page
     assert "genesis-pro.js" in page
     response = client.get("/genesis")
     assert response.headers["content-security-policy"] == main.CSP

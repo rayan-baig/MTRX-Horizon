@@ -2,7 +2,7 @@
 
 The free plan does not change. Pro adds:
 - far more Ask Genesis help: GENESIS_PRO_PER_DAY answers a day (100) where
-  the free plan has 30, longer and more detailed answers, three more helpers
+  the free plan has 5, longer and more detailed answers, three more helpers
   and room for a longer question. Pro asks have their own allowance, so they
   never wait on, or use up, the free plan's shared daily budget;
 - a private cloud backup of the member's projects (the last few copies), so

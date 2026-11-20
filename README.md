@@ -316,7 +316,7 @@ Free means the company pays, so it is fenced in:
 
 | Setting | Default | What it does |
 |---|---|---|
-| `GENESIS_AI_PER_HOUR` / `GENESIS_AI_PER_DAY` | 10 / 30 | asks per visitor, counted by address (no cookie); the address and time are kept 24 hours |
+| `GENESIS_AI_PER_HOUR` / `GENESIS_AI_PER_DAY` | 3 / 5 | asks per visitor, counted by address (no cookie); the address and time are kept 24 hours |
 | `GENESIS_AI_DAILY_CAP_USD` | 2 | the most all asks together may cost in a UTC day |
 | `GENESIS_AI_INPUT_PRICE` / `GENESIS_AI_OUTPUT_PRICE` | 10 / 50 | the model's US dollars per million tokens, for the estimate; set them to the real prices |
 | `GENESIS_AI_EFFORT` | `low` | how hard the model thinks; empty sends nothing, for a model that doesn't take it |

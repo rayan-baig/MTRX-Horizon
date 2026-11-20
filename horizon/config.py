@@ -261,8 +261,8 @@ def get() -> Settings:
         # are per million tokens and only used for that estimate; they
         # default high, so the estimate errs on the safe side.
         genesis_ai_daily_cap_usd=_money(env.get("GENESIS_AI_DAILY_CAP_USD"), 2.0),
-        genesis_ai_per_hour=_whole_number(env.get("GENESIS_AI_PER_HOUR"), 10),
-        genesis_ai_per_day=_whole_number(env.get("GENESIS_AI_PER_DAY"), 30),
+        genesis_ai_per_hour=_whole_number(env.get("GENESIS_AI_PER_HOUR"), 3),
+        genesis_ai_per_day=_whole_number(env.get("GENESIS_AI_PER_DAY"), 5),
         genesis_ai_input_price=_money(env.get("GENESIS_AI_INPUT_PRICE"), 10.0),
         genesis_ai_output_price=_money(env.get("GENESIS_AI_OUTPUT_PRICE"), 50.0),
         # Orbyt (vortex.py): messages each address may send.

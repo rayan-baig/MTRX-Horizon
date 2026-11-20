@@ -4,6 +4,13 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.11.1 (20 November 2026)
+
+- **The free plan has a smaller AI allowance.** Ask Genesis now gives free visitors 5 answers
+  a day (3 an hour), down from 30 (10 an hour), so Genesis Pro's 100 a day means something.
+  Everything else in free Genesis is unchanged. The limits are still the settings
+  `GENESIS_AI_PER_DAY` and `GENESIS_AI_PER_HOUR`.
+
 ## 1.11.0 (19 November 2026)
 
 Fixes from an honest review of the home page, Genesis and Orbyt: the site now says plainly what

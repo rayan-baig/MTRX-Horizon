@@ -20,7 +20,7 @@ of `horizon/genesis_ai.py` (Pro asks), `static/js/genesis-pro.js` and
 
 | | Free | Pro |
 |---|---|---|
-| Ask Genesis answers | 30 a day per visitor, from a budget all free visitors share | up to **100 a day** (30 an hour), the member's own, never "too busy" |
+| Ask Genesis answers | 5 a day per visitor, from a budget all free visitors share | up to **100 a day** (30 an hour), the member's own, never "too busy" |
 | Answer length | under 180 words (at most 1,200 tokens) | under 350 words, more detailed (at most **1,000** tokens of text) |
 | Helpers | 6 | 9: also a four-week plan, words for a one-page website, price ideas |
 | Own question | 300 characters | 600 characters |
