@@ -35,8 +35,10 @@
   }
 
   // ------------------------------------------------------------ props
-  // The sports props, drawn as small SVGs in the robot's glowing blue and
-  // violet (attributes only, no style attributes, so a strict CSP is fine).
+  // The sports props, drawn as small SVGs (attributes only, no style
+  // attributes, so a strict CSP is fine): the goal, nets, racket and court in
+  // the robot's glowing blue and violet; the balls like the ones drawn into
+  // the owner's throw, kick and tennis pictures, so the hand-over is seamless.
   const NS = "http://www.w3.org/2000/svg";
   let made = 0;
   function svg(doc, tag, attrs, kids) {
@@ -51,18 +53,21 @@
   }
   const PROPS = {
     football(doc, n) {
+      // Brown leather with white laces, like the one in the throw picture.
       return svg(doc, "svg", { viewBox: "0 0 32 20" }, [
-        svg(doc, "defs", {}, [gradient(doc, `pf${n}`, [[0, "#7c8cff"], [0.55, "#4f46e5"], [1, "#312e81"]])]),
-        svg(doc, "ellipse", { cx: 16, cy: 10, rx: 15, ry: 8.6, fill: `url(#pf${n})`, stroke: "#a5b4fc", "stroke-width": 1.2 }),
-        svg(doc, "path", { d: "M4 10h3M25 10h3", stroke: "#e0e7ff", "stroke-width": 1.4, "stroke-linecap": "round" }),
-        svg(doc, "path", { d: "M11 10h10M13 7.6v4.8M16 7.6v4.8M19 7.6v4.8", stroke: "#f8fafc", "stroke-width": 1.3, "stroke-linecap": "round" }),
+        svg(doc, "defs", {}, [gradient(doc, `pf${n}`, [[0, "#b45f2a"], [0.55, "#7c3a16"], [1, "#4a210c"]])]),
+        svg(doc, "ellipse", { cx: 16, cy: 10, rx: 15, ry: 8.6, fill: `url(#pf${n})`, stroke: "#3b1a08", "stroke-width": 1 }),
+        svg(doc, "path", { d: "M4.5 7.5c1 1.8 1 3.2 0 5M27.5 7.5c-1 1.8-1 3.2 0 5", fill: "none", stroke: "#f8fafc", "stroke-width": 1.2, "stroke-linecap": "round" }),
+        svg(doc, "path", { d: "M11 10h10M13 7.8v4.4M16 7.8v4.4M19 7.8v4.4", stroke: "#f8fafc", "stroke-width": 1.3, "stroke-linecap": "round" }),
       ]);
     },
     soccer(doc) {
+      // A classic black-and-white ball, like the one in the kick picture.
       return svg(doc, "svg", { viewBox: "0 0 24 24" }, [
-        svg(doc, "circle", { cx: 12, cy: 12, r: 10.6, fill: "#eef2ff", stroke: "#818cf8", "stroke-width": 1.4 }),
-        svg(doc, "path", { d: "M12 7.4l3.6 2.6-1.4 4.2H9.8L8.4 10Z", fill: "#4f46e5" }),
-        svg(doc, "path", { d: "M12 1.6v5.8M15.6 10l5.4-1.8M14.2 14.2l3.4 4.6M9.8 14.2l-3.4 4.6M8.4 10 3 8.2", stroke: "#6366f1", "stroke-width": 1.2 }),
+        svg(doc, "circle", { cx: 12, cy: 12, r: 10.6, fill: "#f8fafc", stroke: "#1e293b", "stroke-width": 1.2 }),
+        svg(doc, "path", { d: "M12 7.4l3.6 2.6-1.4 4.2H9.8L8.4 10Z", fill: "#111827" }),
+        svg(doc, "path", { d: "M12 1.6v5.8M15.6 10l5.4-1.8M14.2 14.2l3.4 4.6M9.8 14.2l-3.4 4.6M8.4 10 3 8.2", stroke: "#334155", "stroke-width": 1.2 }),
+        svg(doc, "path", { d: "M20.5 6.5l1.4 3.8-2 1.4M3.5 6.5 2.1 10.3l2 1.4M8 21.6l4 .9 4-.9", fill: "#111827", stroke: "#111827", "stroke-width": 1 }),
       ]);
     },
     goal(doc, n) {
@@ -82,7 +87,7 @@
     },
     tennisball(doc) {
       return svg(doc, "svg", { viewBox: "0 0 12 12" }, [
-        svg(doc, "circle", { cx: 6, cy: 6, r: 5.2, fill: "#a5f3fc", stroke: "#22d3ee", "stroke-width": 0.8 }),
+        svg(doc, "circle", { cx: 6, cy: 6, r: 5.2, fill: "#d9f046", stroke: "#a3c614", "stroke-width": 0.8 }),
         svg(doc, "path", { d: "M2 3.2c2.4 1.6 2.4 4 0 5.6M10 3.2c-2.4 1.6-2.4 4 0 5.6", fill: "none", stroke: "#f8fafc", "stroke-width": 0.8 }),
       ]);
     },
@@ -483,8 +488,10 @@
       const c = ctx();
       if (actor.busy) return;
       const g = geometry();
-      if (!g.atFloor && !["trick", "backflip", "spin", "bounce", "wave", "look"].includes(name)) return;
-      const plan = M().plan(name, g, extra);
+      if (!g.atFloor && !["trick", "backflip", "spin", "bounce", "wave", "look", "celebrate", "point", "love", "power", "wait"].includes(name)) return;
+      // Something to say: no key yet.
+      const more = name === "point" && o.store && o.store.ready && !o.store.ready() ? { say: "🔑", ...(extra || {}) } : extra;
+      const plan = M().plan(name, g, more);
       if (!plan) return;
       if (name !== "wave" && M().stillReason(c)) return;
       await actor.play(plan);

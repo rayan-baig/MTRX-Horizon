@@ -45,7 +45,13 @@ Mac: `pilot-motion.js` (no DOM) decides what and when and turns a move into a pl
 puff), fly (a soft arc with a blue glow trail), climb (up a side edge in small steps, a look around,
 and back down), tricks (a backflip, a spin on the spot, three bounces, and a peek from behind a screen
 edge), wave (the wave pose with a sway and a 👋 bubble), look (the head and eyes turn toward the
-mouse), and three rarer sports tricks: **football** (a spiral throw across the screen, a bounce, gone),
+mouse), **celebrate** (a jump with both arms up and sparkles: after a goal, after an action the user
+allowed is done, or now and then), **knee slide** (out a little way and a slide back into place, and
+after a goal), **point** (points up, toward the menu bar on the Mac, when it has something to say: no
+key yet), **power** (charges a glowing energy ball that bursts into sparkles), a **superhero landing**
+after a flight, **love** (hearts, rare: when the user says thanks in the chat, or comes back after half
+an hour or more), **waiting** (arms crossed with a little foot tap and a "…", once, when the chat has
+been open with nothing happening for a while; playful, not grumpy), and three rarer sports tricks: **football** (a spiral throw across the screen, a bounce, gone),
 **soccer** (a goal slides in at one side, the robot dribbles, kicks, the net ripples, "GOAL!", the goal
 slides away; about 4 seconds) and **tennis** (a net and a court line by a side edge, a few rallies off
 the screen edge, a smash, then everything fades). The props (balls, goal and net, racket, tennis net)
@@ -60,7 +66,7 @@ drawing. `tools/pilot_art.py` makes these layers (and the pose canvases below) f
 
 **Poses.** Each moment of a move names the pose picture it wants: `standing`, `sitting`, `wave`,
 `walk1`, `walk2`, `run1`, `run2`, `fly`, `climb1`, `climb2`, `flip`, `throw`, `kick`, `tennis`,
-`celebrate`, `slide`, `point`, `power`, `dash`, `love`. When a
+`celebrate`, `slide`, `point`, `power`, `dash`, `love`, `land`, `arms-crossed`. When a
 move starts, the robot hops from the design picture into `standing` in about 150 ms with a little
 squash, so the swap reads as standing up, and back again when it settles. A pose without a picture
 falls back, and in the end to the resting design robot moved by transforms, so every move works
@@ -69,7 +75,7 @@ without any pose pictures at all:
 | Pose | Without its picture |
 |---|---|
 | `walk2` | `standing` (walking alternates walk1 and standing, with a bob and a lean), else `walk1` |
-| `run2` | `run1`, else `walk1` |
+| `run2` | `walk1` (running alternates run1 and walk1), else `run1` |
 | `run1` | `walk1` |
 | `climb2` | `climb1`, nudged a step higher |
 | `throw` | `wave` (the football leaves the raised hand), else `standing` |
@@ -78,7 +84,8 @@ without any pose pictures at all:
 | `celebrate` | `standing` (the cheer after a goal or a backflip) |
 | `dash` | `run1` (the first stride of a run), else `walk1` |
 | `power` | `standing` (the crouch before a backflip) |
-| `slide`, `point`, `love` | not used until their picture exists (sliding out for a peek, pointing at a far-away mouse, a 💙 when the chat opens) |
+| `land` | `standing` (the touchdown after a flight) |
+| `slide`, `point`, `love`, `arms-crossed` | the resting robot with a bubble (💡, 💙, …) until their picture exists |
 | any other | the resting design robot |
 
 **Adding a pose picture needs no code change:** put `<pose>.webp` (or `.png`) with exactly one of
@@ -88,8 +95,16 @@ easiest way to keep every pose the same size and on the same baseline is to put 
 folder and run `python3 tools/pilot_art.py --design pilot-robot.png --poses that-folder`: it scales
 each picture so the halo is the same width in every pose, centres it on the halo, puts the robot's
 lowest point on one baseline, and writes both copies (300 × 340 for the Mac, 240 × 272 for the web).
-Pictures are never mirrored (the "P" would come out backwards). Today these exist: standing, sitting,
-wave, walk1, run1, run2, fly, climb1, flip; the others arrive with the owner's bigger pose sheet. A sports prop is held at the hand positions in `HANDS` in
+Pictures are never mirrored (the "P" would come out backwards). Today the owner's 18-pose set is in
+place: standing, sitting, wave, walk1, run1, fly, climb1, flip, throw, kick, tennis, celebrate, slide,
+point, power, love, land and arms-crossed (walk2, run2, climb2 and dash fall back as above). The set is
+drawn at one scale, so `tools/pilot_art.py` scales it once, from the standing robot's halo (with small
+nudges in `SET_FIX` for a head drawn a little bigger or smaller), and a new set replaces the old one.
+Three pictures hold their own prop: `throw` a football, `kick` a soccer ball and `tennis` a racket and
+ball. The moves hand over to the code-drawn props at the right moment (the football appears in the hand
+as the throw picture gives way to the follow-through; the code's soccer ball hides while the kick
+picture shows its own, then flies; the tennis picture shows only at each swing, its ball where ours
+arrives), and the code-drawn balls look like the drawn ones. A sports prop is held at the hand positions in `HANDS` in
 `pilot-motion.js`; a new throw, kick or tennis picture whose hand is elsewhere may want that adjusted.
 
 **When.** About every 30 to 120 seconds (at random; Low waits longer, Playful less) the robot may
@@ -100,9 +115,11 @@ more common on Playful. It keeps still in **calm mode**, under **reduce motion**
 away and (gently) when the chat opens.
 
 **On the web** it is toned down: it stays near its corner (strolls along the bottom of the page and
-back, tricks, a peek up from the bottom edge, waves, an occasional football throw), always ends back
+back, tricks, a peek up from the bottom edge, waves, a cheer, hearts, a point when there's no key yet,
+an occasional football throw), always ends back
 at its corner, never moves while the window is open, and does nothing while the tab is hidden.
-Flights, climbing, running, soccer and tennis only when the visitor picks **Playful** under "The
+Flights, climbing, running, soccer, tennis, the knee slide and the energy ball only when the visitor
+picks **Playful** under "The
 robot" in Pilot's settings (Calm, Low, Normal or Playful, kept on that device). Under
 `prefers-reduced-motion` the moving robot isn't fetched at all. On the Mac there is more room: see
 `pilot-desktop/README.md`.

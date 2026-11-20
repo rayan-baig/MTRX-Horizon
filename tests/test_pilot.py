@@ -255,7 +255,7 @@ def test_the_moving_robot_loads_late_and_never_under_reduce_motion():
         data = pose.read_bytes()
         assert data[:4] == b"RIFF" and data[8:12] == b"WEBP" and len(data) < 25_000, pose.name
         total += len(data)
-    assert total < 220_000, total
+    assert total < 420_000, total  # 18 pictures, each fetched only when a move first needs it
     # Fetched when needed: the page names the poses but loads none of them.
     page_poses = main_poses()
     assert "standing=" in page_poses and "wave=" in page_poses
@@ -278,17 +278,20 @@ def test_a_new_pose_picture_is_picked_up(tmp_path):
     (tmp_path / "walk2.webp").write_bytes(b"x")
     assert main.pilot_pose_files(tmp_path) == {"kick": "kick.webp", "walk2": "walk2.webp"}
     shipped = main.pilot_pose_files()
-    assert set(shipped) == {"standing", "sitting", "wave", "walk1", "run1", "run2", "fly", "climb1", "flip"}
+    assert set(shipped) == {"standing", "sitting", "wave", "walk1", "run1", "fly", "climb1", "flip", "throw", "kick", "tennis",
+                            "celebrate", "slide", "point", "power", "love", "land", "arms-crossed"}
+    (tmp_path / "arms-crossed.webp").write_bytes(b"x")
+    assert main.pilot_pose_files(tmp_path)["arms-crossed"] == "arms-crossed.webp"
     # The pose names match the shared engine's.
     motion = (ROOT / "static/pilot/pilot-motion.js").read_text()
     names = re.search(r"const POSES = \[([^\]]+)\]", motion).group(1)
-    assert tuple(re.findall(r'"([a-z0-9]+)"', names)) == main.PILOT_POSES
+    assert tuple(re.findall(r'"([a-z0-9-]+)"', names)) == main.PILOT_POSES
 
 
 def test_the_page_names_the_moving_robots_files(client):
     page = client.get("/").text
     poses = re.search(r'data-poses="([^"]*)"', page).group(1).split()
-    assert len(poses) == 9
+    assert len(poses) == 18
     for pair in poses:
         name, url = pair.split("=", 1)
-        assert re.fullmatch(rf"/static/pilot/poses/{name}\.webp\?v=[0-9a-f]{{10}}", url), pair
+        assert re.fullmatch(rf"/static/pilot/poses/{re.escape(name)}\.webp\?v=[0-9a-f]{{10}}", url), pair

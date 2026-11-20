@@ -16,11 +16,12 @@ never run it). It writes:
                       with a few pixels of overlap;
     *-rest-eyes.webp  just the two glowing eyes, so they can blink and look.
 
-  The pose pictures (standing, wave, walk1, run1, run2, fly, climb1, flip,
-  sitting, and any of walk2 or climb2 if they arrive), each scaled so the
-  robot's halo is the same width in every pose, centred on the halo, with the
-  bottom of the robot on one baseline, on one shared canvas. Moving between
-  poses then never changes the robot's size or makes it jump.
+  The pose pictures (any of the names in POSES), scaled together so the
+  robot's halo and head are the same size in every pose (the set is drawn at
+  one scale; the standing robot's halo sets it), each centred on its halo,
+  with the bottom of the robot on one baseline, on one shared canvas. Moving
+  between poses then never changes the robot's size or makes it jump. A new
+  set replaces the old pictures.
 
 Desktop copies go to pilot-desktop/assets/ (poses in assets/poses/) and web
 copies, a little smaller, to static/pilot/ (poses in static/pilot/poses/).
@@ -34,18 +35,23 @@ import numpy as np
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-POSES = ("standing", "sitting", "wave", "walk1", "walk2", "run1", "run2", "fly", "climb1", "climb2", "flip")
+POSES = ("standing", "sitting", "wave", "walk1", "walk2", "run1", "run2", "fly", "climb1", "climb2", "flip", "throw", "kick",
+         "tennis", "celebrate", "slide", "point", "power", "dash", "love", "land", "arms-crossed")
 
 # Where the halo is in each pose picture (rows to search), so arms and glowing
 # knees are not mistaken for it. A pose not listed is searched in its top 30%.
-HALO_ROWS = {"standing": (0, 0.25), "wave": (0, 0.25), "walk1": (0, 0.25), "walk2": (0, 0.25), "run1": (0, 0.29),
-             "run2": (0, 0.29), "fly": (0, 0.24), "climb1": (0, 0.34), "climb2": (0, 0.34), "flip": (0.44, 0.74),
-             "sitting": (0.2, 0.46)}
+HALO_ROWS = {"standing": (0, 0.2), "wave": (0, 0.2), "walk1": (0, 0.2), "walk2": (0, 0.2), "run1": (0, 0.22),
+             "run2": (0, 0.22), "fly": (0, 0.2), "climb1": (0, 0.25), "climb2": (0, 0.25), "flip": (0.4, 0.78),
+             "sitting": (0.1, 0.42), "throw": (0, 0.26), "kick": (0, 0.24), "tennis": (0, 0.26), "celebrate": (0.02, 0.24),
+             "slide": (0.18, 0.46), "point": (0.04, 0.27), "power": (0.06, 0.25), "love": (0.14, 0.4), "land": (0.24, 0.47),
+             "arms-crossed": (0, 0.22)}
 
-# The wave picture's halo is tipped towards the camera and its raised hand
-# sits beside it, so it measures a little wide; this brings its head to the
-# same size as the standing robot's (checked by eye in a frame strip).
-HALO_FIX = {"wave": 0.955}
+# The owner's pose sheets are drawn at one scale, so a whole set is scaled
+# once, from the standing robot's halo (raised arms, hearts, a ball or an
+# energy ball next to the head would throw off a picture-by-picture
+# measure). SET_FIX nudges single pictures whose head is drawn a little
+# bigger or smaller than the standing robot's (checked by eye in a strip).
+SET_FIX = {"kick": 1.06, "love": 1.05, "arms-crossed": 1.06, "celebrate": 0.95, "point": 0.96, "land": 0.95}
 
 # The shared pose canvas, in pixels: the halo is HALO wide, its centre is on
 # the canvas's middle column, and the robot's lowest point is on BASELINE.
@@ -85,11 +91,11 @@ def halo(rgba: np.ndarray, rows: tuple) -> tuple:
     return best, centre
 
 
-def normalise_pose(path: Path, name: str) -> Image.Image:
+def normalise_pose(path: Path, name: str, set_scale: float) -> Image.Image:
     img = Image.open(path).convert("RGBA")
     rgba = np.array(img)
-    width, (cx, _cy) = halo(rgba, HALO_ROWS.get(name, (0, 0.3)))
-    scale = HALO / (width * HALO_FIX.get(name, 1.0))
+    _width, (cx, _cy) = halo(rgba, HALO_ROWS.get(name, (0, 0.3)))
+    scale = set_scale * SET_FIX.get(name, 1.0)
     alpha = rgba[:, :, 3] > 24
     bottom = np.nonzero(alpha.any(1))[0][-1]
     big = img.resize((max(1, round(img.width * scale)), max(1, round(img.height * scale))), Image.LANCZOS)
@@ -170,11 +176,17 @@ def main() -> None:
         save_webp(img.resize((192, round(192 * img.height / img.width)), Image.LANCZOS), web / f"pilot-rest-{part}.webp", 86)
 
     if args.poses:
+        # A new set replaces the old one.
+        for folder in (desk / "poses", web / "poses"):
+            for old in folder.glob("*.webp"):
+                old.unlink()
+        ref = np.array(Image.open(args.poses / "standing.png").convert("RGBA"))
+        set_scale = HALO / halo(ref, HALO_ROWS["standing"])[0]
         for name in POSES:
             src = args.poses / f"{name}.png"
             if not src.exists():
                 continue
-            canvas = normalise_pose(src, name)
+            canvas = normalise_pose(src, name, set_scale)
             save_webp(canvas, desk / "poses" / f"{name}.webp", 86)
             save_webp(canvas.resize((240, 272), Image.LANCZOS), web / "poses" / f"{name}.webp", 84)
             print("pose", name)

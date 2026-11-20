@@ -565,6 +565,8 @@ test("motion: a pose without a picture falls back, in the end to the resting rob
   assert.equal(Motion.resolvePose("tennis", ["standing"]), "standing");
   assert.equal(Motion.resolvePose("fly", []), "rest");
   assert.deepEqual(Motion.posesFromFiles(["wave.png", "wave.webp", "kick.png", "readme.txt", "dance.webp"]), { wave: "wave.webp", kick: "kick.png" });
+  assert.deepEqual(Motion.posesFromFiles(["arms-crossed.webp", "land.png"]), { "arms-crossed": "arms-crossed.webp", land: "land.png" });
+  for (const name of ["throw", "tennis", "kick", "celebrate", "slide", "point", "power", "land", "love", "arms-crossed"]) assert.ok(Motion.POSES.includes(name), name);
 });
 
 test("motion: the web robot keeps still under reduce motion, whatever is chosen", () => {
@@ -588,8 +590,11 @@ test("motion: on the web, no climbing, flights, soccer or tennis unless Playful,
   const seen = (energy) => { const r = seeded(21); const s = new Set(); for (let i = 0; i < 3000; i += 1) s.add(Motion.pick({ profile: "web", energy }, r)); return s; };
   const normal = seen("normal");
   assert.ok(!normal.has("climb") && !normal.has("fly") && !normal.has("run"), [...normal].join());
+  // The calmer new moves by default; the rest only on Playful.
+  assert.ok(normal.has("celebrate") && normal.has("love") && normal.has("point"), [...normal].join());
+  assert.ok(!normal.has("slide") && !normal.has("power"), [...normal].join());
   const playful = seen("playful");
-  assert.ok(playful.has("climb") && playful.has("fly") && playful.has("sport"));
+  assert.ok(playful.has("climb") && playful.has("fly") && playful.has("sport") && playful.has("slide") && playful.has("power"));
   for (let i = 1; i <= 20; i += 1) assert.equal(Motion.plan("sport", webGeo({ energy: "normal", random: seeded(i) })).name, "football");
   for (const name of ["stroll", "peek", "wave", "backflip", "spin", "bounce", "football", "soccer", "tennis", "fly", "climb"]) {
     const p = Motion.plan(name, webGeo({ energy: "playful", random: seeded(3) }));

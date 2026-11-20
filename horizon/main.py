@@ -165,7 +165,7 @@ templates.env.globals["pilot_facts"] = pilot_facts
 # static/pilot/poses/ whose name is one of these is used by the moving robot,
 # so a new pose is added just by putting its picture there.
 PILOT_POSES = ("standing", "sitting", "wave", "walk1", "walk2", "run1", "run2", "fly", "climb1", "climb2", "flip",
-               "throw", "kick", "tennis", "celebrate", "slide", "point", "power", "dash", "love")
+               "throw", "kick", "tennis", "celebrate", "slide", "point", "power", "dash", "love", "land", "arms-crossed")
 
 
 def pilot_pose_files(folder: Path | None = None) -> dict:

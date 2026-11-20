@@ -60,7 +60,7 @@
   function perform(cmd) {
     queue = queue.then(async () => {
       if (!actor || dragging || hidden || !cmd || typeof cmd.move !== "string") return;
-      const plan = M.plan(cmd.move, geometry(cmd), { how: cmd.how, at: cmd.at });
+      const plan = M.plan(cmd.move, geometry(cmd), { how: cmd.how, at: cmd.at, say: typeof cmd.say === "string" ? cmd.say.slice(0, 40) : undefined });
       if (!plan) return;
       report(true);
       await actor.play(plan);

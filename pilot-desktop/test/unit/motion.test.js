@@ -14,7 +14,10 @@ const poses = require("../../src/main/poses");
 const overlay = require("../../src/main/overlay");
 const lifeCore = require("../../src/main/life");
 
-const ALL = ["standing", "sitting", "wave", "walk1", "run1", "run2", "fly", "climb1", "flip"];
+// The owner's pose set (18 pictures).
+const ALL = ["standing", "sitting", "wave", "walk1", "run1", "fly", "climb1", "flip", "throw", "kick", "tennis", "celebrate",
+  "slide", "point", "power", "love", "land", "arms-crossed"];
+const FEW = ["standing", "wave", "walk1", "run1", "climb1"];
 const seeded = (seed) => { let s = seed || 7; return () => ((s = (s * 16807) % 2147483647) / 2147483647); };
 const geo = (extra) => ({ pos: { x: 700, y: 892 }, home: { x: 1300, y: 892 }, floor: 892, left: 68, right: 1372, top: 187, u: 110,
   poses: ALL, random: seeded(3), profile: "desktop", ...(extra || {}) });
@@ -25,9 +28,11 @@ test("a pose without a picture falls back, and in the end to the resting robot",
   assert.equal(M.resolvePose("wave", ALL), "wave");
   assert.equal(M.resolvePose("walk2", ALL), "standing"); // between walk1 steps
   assert.equal(M.resolvePose("climb2", ALL), "climb1");
-  assert.equal(M.resolvePose("throw", ALL), "wave");
-  assert.equal(M.resolvePose("kick", ALL), "run2");
-  assert.equal(M.resolvePose("tennis", ALL), "standing");
+  assert.equal(M.resolvePose("run2", ALL), "walk1"); // running alternates run1 and walk1
+  assert.equal(M.resolvePose("throw", FEW), "wave");
+  assert.equal(M.resolvePose("kick", FEW), "run1");
+  assert.equal(M.resolvePose("tennis", FEW), "standing");
+  for (const name of ALL) assert.equal(M.resolvePose(name, ALL), name);
   assert.equal(M.resolvePose("walk2", ["walk1"]), "walk1");
   assert.equal(M.resolvePose("run2", []), "rest");
   assert.equal(M.resolvePose("wave", []), "rest");
@@ -35,16 +40,18 @@ test("a pose without a picture falls back, and in the end to the resting robot",
   for (const name of M.POSES) assert.equal(M.resolvePose(name, []), "rest", name);
 });
 
-test("the sports poses and the new pose sheet's names are known, with sensible fallbacks", () => {
-  for (const name of ["throw", "kick", "tennis", "celebrate", "slide", "point", "power", "dash", "love"]) assert.ok(M.POSES.includes(name), name);
-  assert.equal(M.resolvePose("celebrate", ALL), "standing");
-  assert.equal(M.resolvePose("dash", ALL), "run1");
-  assert.equal(M.resolvePose("power", ALL), "standing");
-  for (const name of ["slide", "point", "love"]) assert.equal(M.resolvePose(name, ALL), "rest", name); // used only when there
+test("every name in the owner's pose sheet is a pose, with sensible fallbacks", () => {
+  for (const name of ALL.concat(["dash", "walk2", "run2", "climb2"])) assert.ok(M.POSES.includes(name), name);
+  assert.equal(M.resolvePose("celebrate", FEW), "standing");
+  assert.equal(M.resolvePose("dash", FEW), "run1");
+  assert.equal(M.resolvePose("power", FEW), "standing");
+  assert.equal(M.resolvePose("land", FEW), "standing");
+  for (const name of ["slide", "point", "love", "arms-crossed"]) assert.equal(M.resolvePose(name, FEW), "rest", name); // used only when there
+  assert.deepEqual(M.posesFromFiles(["arms-crossed.webp", "land.png"]), { "arms-crossed": "arms-crossed.webp", land: "land.png" });
 });
 
 test("new pose pictures are used as soon as they're there", () => {
-  const more = ALL.concat(["celebrate", "dash", "power", "love", "point", "slide"]);
+  const more = ALL.concat(["dash"]);
   const has = (plan, pose) => plan.poses.some((p) => p.pose === pose);
   assert.ok(has(M.plan("soccer", geo({ poses: more })), "celebrate"));
   assert.ok(has(M.plan("backflip", geo({ poses: more })), "power"));
@@ -54,12 +61,50 @@ test("new pose pictures are used as soon as they're there", () => {
   assert.ok(has(M.plan("look", geo({ poses: more }), { at: { x: 100, y: 300 } }), "point"));
   assert.ok(has(M.plan("peek", geo({ poses: more, pos: { x: 1360, y: 892 } })), "slide"));
   // And without them, the same moves play as before.
-  assert.ok(!has(M.plan("wave", geo(), { how: "gentle" }), "love"));
-  assert.ok(!has(M.plan("look", geo(), { at: { x: 100, y: 300 } }), "standing"));
+  assert.ok(has(M.plan("fly", geo({ poses: more, random: seeded(4) })), "land"));
+  assert.ok(has(M.plan("wait", geo({ poses: more })), "arms-crossed"));
+  for (const name of ["celebrate", "point", "power", "love"]) assert.ok(has(M.plan(name, geo({ poses: more })), name), name);
+  assert.ok(has(M.plan("slide", geo({ poses: more })), "slide"));
+  assert.ok(!has(M.plan("wave", geo({ poses: FEW }), { how: "gentle" }), "love"));
+  assert.ok(!has(M.plan("look", geo({ poses: FEW }), { at: { x: 100, y: 300 } }), "standing"));
+});
+
+test("props drawn into pictures hand over to the drawn-in-code ones", () => {
+  // Football: the throw picture holds the ball; at the release it gives way
+  // to the follow-through and the code's football appears at its hand.
+  const fb = M.plan("football", geo());
+  const ball = fb.props.find((p) => p.kind === "football");
+  const firstSeen = ball.frames.find((f) => f.o > 0);
+  const toWave = fb.poses.find((p) => p.pose === "wave");
+  assert.ok(fb.poses.some((p) => p.pose === "throw"));
+  assert.ok(toWave && Math.abs(firstSeen.t - toWave.t) < 1, "the ball appears exactly when the throw picture goes");
+  // Soccer: the kick picture shows its ball, ours is hidden for that moment.
+  const sc = M.plan("soccer", geo());
+  const kickAt = sc.poses.find((p) => p.pose === "kick").t;
+  const sball = sc.props.find((p) => p.kind === "soccer");
+  const during = sball.frames.filter((f) => f.t <= kickAt + 50).pop(); // its state just after the kick starts
+  assert.equal(during.o, 0, "our ball hides while the picture's ball shows");
+  assert.ok(sball.frames.some((f) => f.t > kickAt + 100 && f.o === 1));
+  // Tennis: the picture has its own racket (no drawn one), and plays toward its racket side.
+  const tn = M.plan("tennis", geo());
+  assert.ok(!tn.props.some((p) => p.kind === "racket"));
+  assert.ok(tn.end.x >= geo().pos.x);
+  assert.ok(M.plan("tennis", geo({ poses: FEW })).props.some((p) => p.kind === "racket"));
+});
+
+test("cheers: celebrate when an allowed action is done, hearts for thanks or a long-awaited return", () => {
+  assert.equal(M.cheer("done", {}), "celebrate");
+  assert.equal(M.cheer("thanks", {}), "love");
+  assert.equal(M.cheer("missed", {}), "love");
+  for (const ctx of [{ reducedMotion: true }, { calm: true }, { typing: true }, { fullscreen: true }, { hidden: true }]) {
+    assert.equal(M.cheer("done", ctx), null, JSON.stringify(ctx));
+  }
+  assert.equal(M.cheer("nonsense", {}), null);
 });
 
 test("every move still plays with no pose pictures at all", () => {
-  for (const name of ["walk", "run", "fly", "climb", "backflip", "spin", "bounce", "peek", "wave", "look", "football", "soccer", "tennis"]) {
+  for (const name of ["walk", "run", "fly", "climb", "backflip", "spin", "bounce", "peek", "wave", "look", "football", "soccer", "tennis",
+    "celebrate", "slide", "point", "power", "love", "wait", "land"]) {
     const plan = M.plan(name, geo({ poses: [] }));
     assert.ok(plan && plan.duration > 0, name);
     assert.deepEqual([...new Set(plan.poses.map((p) => p.pose))], ["rest"], name);
@@ -239,7 +284,8 @@ test("full screen in front, typing and coming back are guessed sensibly", () => 
 
 test("plans stay on the page and end where they say", () => {
   const g = geo();
-  for (const name of ["walk", "run", "fly", "climb", "backflip", "spin", "bounce", "peek", "wave", "football", "soccer", "tennis"]) {
+  for (const name of ["walk", "run", "fly", "climb", "backflip", "spin", "bounce", "peek", "wave", "football", "soccer", "tennis",
+    "celebrate", "slide", "point", "power", "love", "wait", "land"]) {
     const plan = M.plan(name, geo({ random: seeded(name.length) }));
     const last = plan.frames[plan.frames.length - 1];
     assert.deepEqual({ x: last.x, y: last.y }, plan.end, name);

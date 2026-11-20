@@ -10,13 +10,16 @@ which version is live.
 
 - **It moves around by itself, gently.** Once the page has loaded, the robot in the corner breathes
   and blinks, and every minute or two it strolls along the bottom of the page and back, does a
-  backflip, a spin or a few bounces, peeks up from the bottom edge, or waves. Now and then it throws
-  a football. It always comes back to its corner, and it keeps still while Pilot's window is open.
+  backflip, a spin or a few bounces, peeks up from the bottom edge, cheers, or waves. Now and then it
+  throws a football, sends a few hearts, or points up when you haven't added a key yet. It always comes back to its corner, and it keeps still while Pilot's window is open.
 - **It looks like the owner's own robot.** At rest it is the original design picture, now in three
   layers so its head can tilt and look around and its eyes can blink. While it moves it uses the
-  owner's new pose pictures (standing, waving, walking, running, flying, climbing, a backflip).
+  owner's 18 pose pictures (standing, waving, walking, running, flying, climbing, a backflip, a
+  football throw, a kick, tennis, a cheer, a knee slide, pointing, an energy ball, a superhero landing,
+  hearts, and a playful "waiting" pose).
 - **You choose how lively it is.** Under "The robot" in Pilot's settings: Calm (stays put), Low,
-  Normal or Playful. Playful adds flights, climbing, running, soccer and tennis. If your device is
+  Normal or Playful. Playful adds flights, climbing, running, soccer, tennis, a knee slide and a
+  glowing energy ball. If your device is
   set to reduce motion, the robot stays still and the moving parts aren't even downloaded.
 - **Pages stay fast.** The moving robot loads only after the page is idle, and each pose picture
   only when a move needs it.

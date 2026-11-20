@@ -234,7 +234,7 @@ function answerCard(id, answer) {
 }
 
 const host = {
-  update: (state) => push(state),
+  update: (state) => { chatActivity(); push(state); },
   confirm: (label, step) => addCard({ type: "confirm", label, step: step || null }),
   plan: (labels) => addCard({ type: "plan", labels }),
   progress: () => push(),
@@ -599,6 +599,7 @@ function showChat(view) {
     pushRobot();
     // The robot waves (gently) when the chat opens, then stays calm.
     if (!was && life) life.react("chat");
+    if (!was) { waitedThisOpen = false; chatActivity(); }
   };
   if (chatWin.webContents.isLoading()) chatWin.webContents.once("did-finish-load", show);
   else show();
@@ -641,8 +642,10 @@ function sendMove(cmd) {
   robotWin.webContents.send("pilot:robot-do", { ...cmd, at: { x: c.x - a.x, y: c.y - a.y } });
 }
 
-const TRICKS = [["Backflip", "backflip"], ["Football", "football"], ["Soccer", "soccer"], ["Tennis", "tennis"], ["Wave", "wave"]];
-const ANY_TRICK = ["backflip", "spin", "bounce", "peek", "football", "soccer", "tennis"];
+const TRICKS = [["Backflip", "backflip"], ["Football", "football"], ["Soccer", "soccer"], ["Tennis", "tennis"], ["Wave", "wave"],
+  ["Celebrate", "celebrate"], ["Knee Slide", "slide"], ["Point", "point"], ["Power Up", "power"], ["Superhero Landing", "land"],
+  ["Love", "love"], ["Waiting", "wait"]];
+const ANY_TRICK = ["backflip", "spin", "bounce", "peek", "football", "soccer", "tennis", "celebrate", "slide", "power", "land", "love"];
 
 // "Play a trick", from the menus: the user asked, so it plays even in calm
 // mode. The chat is closed first, so a prop never lands on it.
@@ -677,6 +680,20 @@ function lifeContext() {
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// A cheer for something the user did ("done", "thanks", "missed"): a
+// celebration or hearts, unless the robot must keep still.
+function cheer(kind) {
+  const move = motion.cheer(kind, { ...lifeContext(), calm: motion.isCalm({ calm: settings.get("calm"), reducedMotion }) || undefined });
+  if (move) sendMove({ move });
+  return move;
+}
+
+// The chat open with nothing happening for a while: a playful "waiting"
+// (arms crossed, a little foot tap), once per opening.
+let chatQuietSince = 0;
+let waitedThisOpen = false;
+function chatActivity() { chatQuietSince = Date.now(); }
+
 // The slower checks, run only just before a move: typing elsewhere (keys
 // in use but the pointer still), or a full-screen window in front.
 async function lifeCheck() {
@@ -704,7 +721,15 @@ let lastCursor = null;
 function watchUser() {
   const idle = powerMonitor.getSystemIdleTime();
   const cursor = screen.getCursorScreenPoint();
-  if (overlay.backFromIdle(lastIdle, idle)) setTimeout(() => life && life.react("return"), 1200);
+  // Back after being away: a wave, or (after half an hour or more) hearts.
+  if (overlay.backFromIdle(lastIdle, idle)) {
+    const long = lastIdle >= 1800;
+    setTimeout(() => { if (!(long && cheer("missed")) && life) life.react("return"); }, 1200);
+  }
+  if (chatOpen() && !waitedThisOpen && !reducedMotion && !engine.busy && chatQuietSince && Date.now() - chatQuietSince > 150000) {
+    waitedThisOpen = true;
+    sendMove({ move: "wait" });
+  }
   if (overlay.typingGuess(idle, lastCursor, cursor)) typingUntil = Date.now() + 15000;
   lastIdle = idle;
   lastCursor = cursor;
@@ -857,6 +882,9 @@ function registerIpc() {
     const o = opts && typeof opts === "object" ? opts : {};
     const words = str(text, 8000).trim();
     if (!words) return {};
+    chatActivity();
+    // Thanks in the chat: hearts (rarely seen, so it stays special).
+    if (/\b(thanks|thank you|thank u|thx|ty|cheers)\b/i.test(words)) setTimeout(() => cheer("thanks"), 600);
     let images = [];
     if (screenAccess.wantsShot(screenMode(), o.look)) {
       if (!ready()) { engine.send(words); return {}; }
@@ -881,6 +909,9 @@ function registerIpc() {
     if (!c) return;
     const ok = c.type === "plan" ? ["all", "step", "cancel"].includes(answer) : typeof answer === "boolean";
     answerCard(str(id, 20), ok ? answer : (c.type === "plan" ? "cancel" : false));
+    chatActivity();
+    // Something the user allowed got done: a little celebration.
+    if (ok && (answer === true || answer === "all")) setTimeout(() => cheer("done"), 1200);
   });
   handle("chat-help-screen", (_e, on) => setScreenMode(on ? "help" : "ask"));
   registerAttachIpc();
@@ -1119,6 +1150,8 @@ app.whenReady().then(async () => {
   createChat();
   life.start();
   setInterval(watchUser, 10000);
+  // No AI key yet: the robot points up (toward the menu bar) once, a little after start.
+  if (!TEST) setTimeout(() => { if (!ready() && !chatOpen() && !reducedMotion) sendMove({ move: "point", say: "🔑" }); }, 8000);
   setInterval(watchCursor, 300);
   if (powerMonitor) {
     for (const ev of ["unlock-screen", "resume"]) powerMonitor.on(ev, () => setTimeout(() => life && life.react("return"), 1500));
@@ -1137,7 +1170,7 @@ app.whenReady().then(async () => {
       setLooking: (v) => { looking = v; push(); },
       seed: (list) => { for (const m of list) engine.attachRaw(m); push(); },
       move: (cmd) => sendMove(cmd), playTrick, life: () => life, gate: () => gate, robotAt: () => robotAt,
-      context: lifeContext, setCalm, setEnergy, home, addPending, pending: () => pending.slice(), setScreenMode, takePending,
+      context: lifeContext, setCalm, setEnergy, home, cheer, addPending, pending: () => pending.slice(), setScreenMode, takePending,
     };
   }
 });
