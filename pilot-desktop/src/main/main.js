@@ -1,7 +1,9 @@
 // Pilot for Mac: the main process.
 //
-// Two windows: the robot (small, transparent, always on top, on every Space
-// and over full-screen apps) and the chat window that opens next to it.
+// Two windows: the robot's overlay (transparent and click-through, over the
+// work area of one display, always on top, on every Space and over
+// full-screen apps; only the robot itself catches the mouse) and the chat
+// window that opens next to the robot.
 // Pilot lives in the menu bar (no Dock icon). The AI calls, the keys and the
 // actions all stay here, in the main process; the windows only show things
 // and pass the user's clicks back through a small preload API.
@@ -9,9 +11,10 @@
 
 const path = require("node:path");
 const fs = require("node:fs");
+const { execFile } = require("node:child_process");
 const {
   app, BrowserWindow, Tray, Menu, ipcMain, screen, shell, clipboard, dialog, nativeImage,
-  safeStorage, desktopCapturer, systemPreferences, protocol, session, net,
+  safeStorage, desktopCapturer, systemPreferences, protocol, session, net, powerMonitor,
 } = require("electron");
 
 const providers = require("../core/providers");
@@ -21,10 +24,17 @@ const desktopTools = require("../core/desktop-tools");
 const { KeyStore, Settings } = require("./store");
 const csp = require("./csp");
 const screenTools = require("./screen");
+const overlay = require("./overlay");
+const lifeCore = require("./life");
+const frontmost = require("./frontmost");
+const poseFiles = require("./poses");
+const motion = require("../core/pilot-motion");
+const screenAccess = require("./screen-access");
+const uploads = require("./uploads");
 
 const APP_DIR = path.join(__dirname, "..", "..");
 const TEST = process.env.PILOT_TEST === "1";
-const ROBOT_SIZE = { width: 140, height: 150 };
+const U = overlay.U; // the resting robot's width, in points
 const CHAT_SIZE = { width: 452, height: 744 };
 const MAC = process.platform === "darwin";
 
@@ -47,8 +57,23 @@ let looking = false;
 let hidden = false;
 let quitting = false;
 let screenHelp = false;
-let helpScreenOn = false; // "Help with what's on screen": this session only
+let screenOpened = false; // the user opened Screen Recording settings in this run
+let screenWatch = null;
+// Pictures and videos waiting to go with the next message:
+// {id, kind: "image" | "frames" | "video", name, size, thumb, progress, ...}
+const pending = [];
+const uploadsOpen = new Map(); // upload id → {url, key, meta, item}
+let pendingSeq = 0;
+const screenMode = () => screenAccess.cleanMode(settings.get("screenMode"));
 let lastState = null;
+// The robot's overlay and where the robot is on it.
+let overlayDisplay = null; // the display the overlay covers
+let gate = null; // click-through
+let robotAt = null; // {x, y, rect: {left, top, right, bottom}} in overlay points
+let moving = false;
+let reducedMotion = false;
+let life = null;
+let typingUntil = 0;
 const cards = new Map(); // id → {type, label, labels, step, resolve}
 const mediaItems = new Map(); // id → {kind, state, progress, mime, data, prompt, message}
 let cardSeq = 0;
@@ -114,8 +139,13 @@ function settingsView() {
     notes: settings.get("notes"),
     theme: settings.get("theme"),
     openAtLogin: settings.get("openAtLogin"),
+    calm: motion.isCalm({ calm: settings.get("calm"), reducedMotion }),
+    reducedMotion,
+    energy: settings.get("energy"),
     keychain: keys.available(),
     screenStatus: shots.status(),
+    screen: screenAccess.view(shots.status(), screenMode(), screenOpened),
+    screenMode: screenMode(),
     screenExplained: settings.get("screenExplained"),
     welcomed: settings.get("welcomed"),
     ready: ready(),
@@ -155,12 +185,28 @@ function push(state) {
   const view = {
     messages: viewMessages(s.messages),
     busy: s.busy, streaming: s.streaming, status: s.status,
-    looking, ready: ready(), helpScreen: helpScreenOn, screenHelp,
+    looking, ready: ready(), helpScreen: screenMode() === "help", screenMode: screenMode(), screenHelp,
+    attachments: pending.map((a) => ({ id: a.id, kind: a.kind, name: a.name, size: a.size, thumb: a.thumb, progress: a.progress,
+      note: a.note || "", count: a.images ? a.images.length : 0, error: a.error || "" })),
     cards: [...cards.entries()].map(([id, c]) => ({ id, type: c.type, label: c.label, labels: c.labels, step: c.step, progress: c.progress })),
     providerName: providers.providerName(activeSettings()),
   };
   if (chatWin && !chatWin.isDestroyed()) chatWin.webContents.send("pilot:state", view);
-  if (robotWin && !robotWin.isDestroyed()) robotWin.webContents.send("pilot:robot", { status: robotStatus(s), theme: settings.get("theme") });
+  pushRobot(s);
+}
+
+// What the robot window needs: its look, where home is, and how lively to be.
+function pushRobot(state) {
+  if (!robotWin || robotWin.isDestroyed() || !overlayDisplay) return;
+  const a = overlayDisplay.workArea;
+  const h = home();
+  robotWin.webContents.send("pilot:robot", {
+    status: robotStatus(state || lastState), theme: settings.get("theme"),
+    area: { width: a.width, height: a.height }, home: { x: h.x - a.x, y: h.y - a.y },
+    poses: poseFiles.list(path.join(APP_DIR, "assets", "poses")),
+    calm: motion.isCalm({ calm: settings.get("calm"), reducedMotion }), reducedMotion,
+    energy: settings.get("energy"), chatOpen: chatOpen(), test: TEST,
+  });
 }
 
 function pushSettings() {
@@ -211,8 +257,8 @@ async function takeShot() {
   looking = true;
   push();
   try {
-    const near = robotWin && !robotWin.isDestroyed() ? robotWin.getBounds() : null;
-    const shot = await shots.capture(near ? { x: near.x + 40, y: near.y + 40 } : null, hideOwnWindows);
+    const r = robotScreenRect();
+    const shot = await shots.capture(r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null, hideOwnWindows);
     if (shot.needPermission) { screenHelp = true; push(); }
     return shot;
   } finally {
@@ -274,6 +320,140 @@ async function makeVideo(prompt) {
   return "Started the video. The chat shows its progress, and the video when it's ready.";
 }
 
+// ---------------------------------------------------------------- screen access
+
+function setScreenMode(mode) {
+  settings.set("screenMode", screenAccess.cleanMode(mode));
+  pushSettings();
+  return { ok: true, mode: screenMode() };
+}
+
+// ---------------------------------------------------------------- dropped pictures and videos
+
+function attachInfo() {
+  const p = settings.profile();
+  const provider = p ? p.provider : "";
+  return { provider, providerName: providers.providerName(activeSettings()), ready: ready(), upload: provider === "gemini" && ready() };
+}
+
+const b64ok = (v, most) => typeof v === "string" && v.length > 0 && v.length <= most && /^[A-Za-z0-9+/=]+$/.test(v);
+const thumbOk = (v) => (typeof v === "string" && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(v) && v.length < 400000 ? v : "");
+
+function addPending(item) {
+  const id = `a${(pendingSeq += 1)}`;
+  pending.push({ ...item, id });
+  if (pending.length > 12) pending.shift();
+  push();
+  return id;
+}
+
+// Everything waiting, for the message being sent (and cleared).
+function takePending() {
+  const out = { images: [], videos: [], notes: [], words: [] };
+  const gemini = (settings.profile() || {}).provider === "gemini";
+  for (const a of pending.splice(0)) {
+    if (a.error) continue;
+    if (a.kind === "image") out.images.push({ mime: a.mime, data: a.data, thumb: a.thumb });
+    else if (a.kind === "frames") {
+      out.images.push(...a.images.map((f) => ({ mime: f.mime, data: f.data, thumb: "" })));
+      if (out.images[out.images.length - a.images.length]) out.images[out.images.length - a.images.length].thumb = a.thumb;
+      out.notes.push(a.note);
+      out.words.push(`The user attached a video, “${a.name}”, ${Math.round(a.duration)} seconds long. These are ${a.images.length} evenly spaced frames from it, in order.`);
+    } else if (a.kind === "video" && a.uri && gemini) {
+      out.videos.push({ mime: a.mime, uri: a.uri, name: a.name });
+      out.words.push(`The user attached a video, “${a.name}”.`);
+    }
+  }
+  push();
+  return out;
+}
+
+function registerAttachIpc() {
+  handle("attach-info", () => attachInfo());
+  // A picture (already shrunk in the window) or frames from a video.
+  handle("attach-add", (_e, item) => {
+    const it = item && typeof item === "object" ? item : {};
+    const name = str(it.name, 200) || "File";
+    const size = Number.isFinite(it.size) ? it.size : 0;
+    if (it.kind === "image") {
+      if (!b64ok(it.data, 12e6) || it.mime !== "image/jpeg") return { error: "That picture couldn't be read." };
+      return { id: addPending({ kind: "image", mime: "image/jpeg", data: it.data, thumb: thumbOk(it.thumb), name, size }) };
+    }
+    if (it.kind === "frames" && Array.isArray(it.images) && it.images.length) {
+      const images = it.images.slice(0, 24).filter((f) => f && f.mime === "image/jpeg" && b64ok(f.data, 2e6)).map((f) => ({ mime: f.mime, data: f.data }));
+      if (!images.length) return { error: "No frames could be read from that video." };
+      return { id: addPending({ kind: "frames", images, thumb: thumbOk(it.thumb), name, size, duration: Number(it.duration) || 0,
+        note: str(it.note, 200) }) };
+    }
+    return { error: "Pilot takes pictures and videos." };
+  });
+  handle("attach-remove", (_e, id) => {
+    const i = pending.findIndex((a) => a.id === str(id, 20));
+    if (i >= 0) {
+      const [a] = pending.splice(i, 1);
+      for (const [uid, u] of uploadsOpen) if (u.item === a) uploadsOpen.delete(uid);
+    }
+    push();
+    return { ok: true };
+  });
+  // HEIC: macOS opens it, and it goes back as a JPEG for the window to shrink.
+  handle("attach-heic", async (_e, bytes) => {
+    if (!(bytes instanceof Uint8Array) && !(bytes instanceof ArrayBuffer)) return { error: "That picture couldn't be read." };
+    const tmp = path.join(app.getPath("temp"), `pilot-${process.pid}-${Date.now()}.heic`);
+    try {
+      fs.writeFileSync(tmp, Buffer.from(bytes));
+      const img = nativeImage.createFromPath(tmp);
+      if (img.isEmpty()) return { error: "This HEIC picture couldn't be opened." };
+      const { width } = img.getSize();
+      const out = width > 4096 ? img.resize({ width: 4096 }) : img;
+      return { mime: "image/jpeg", data: out.toJPEG(90).toString("base64") };
+    } finally { fs.rmSync(tmp, { force: true }); }
+  });
+  // A video for Gemini's file upload: started here, sent a piece at a time.
+  handle("upload-start", async (_e, meta) => {
+    const m = meta && typeof meta === "object" ? meta : {};
+    const s = activeSettings();
+    if (s.provider !== "gemini" || !s.key) return { error: "Video upload works with a Google Gemini key." };
+    const info = { name: str(m.name, 200) || "Video", size: Number(m.size) || 0, mime: /^video\/[a-z0-9.+-]+$/i.test(m.mime) ? m.mime : "video/mp4" };
+    const url = await uploads.start(guardedFetch, s.key, info);
+    const item = { kind: "video", name: info.name, size: info.size, mime: info.mime, thumb: thumbOk(m.thumb), progress: 0 };
+    const id = addPending(item);
+    uploadsOpen.set(id, { url, key: s.key, meta: info, item: pending.find((a) => a.id === id) });
+    return { id };
+  });
+  handle("upload-piece", async (_e, id, offset, bytes, last) => {
+    const u = uploadsOpen.get(str(id, 20));
+    if (!u) return { error: "That upload was cancelled." };
+    if (!(bytes instanceof Uint8Array)) return { error: "That piece couldn't be read." };
+    try {
+      const file = await uploads.piece(guardedFetch, u.key, u.url, Number(offset) || 0, bytes, Boolean(last));
+      u.item.progress = Math.min(0.99, ((Number(offset) || 0) + bytes.length) / Math.max(1, u.meta.size));
+      push();
+      if (last) {
+        const done = await uploads.ready(guardedFetch, u.key, file);
+        u.item.uri = done.uri;
+        u.item.mime = done.mimeType || u.meta.mime;
+        u.item.progress = 1;
+        uploadsOpen.delete(str(id, 20));
+        push();
+      }
+      return { ok: true };
+    } catch (e) {
+      u.item.error = e.message || "The upload stopped.";
+      u.item.progress = 1;
+      uploadsOpen.delete(str(id, 20));
+      push();
+      return { error: u.item.error };
+    }
+  });
+  handle("attach-progress", (_e, id, done) => {
+    const a = pending.find((x) => x.id === str(id, 20));
+    if (a) { a.progress = Math.max(0, Math.min(1, Number(done) || 0)); push(); }
+  });
+  // Dropped on the robot: open the chat to show what's waiting.
+  handle("attach-show", () => { setHidden(false); showChat(); });
+}
+
 // ---------------------------------------------------------------- windows
 
 const webPreferences = () => ({
@@ -302,41 +482,80 @@ function onScreen(pos, size) {
   };
 }
 
+// The robot's home: the point between its feet, in screen points. Wherever
+// it's dropped becomes home.
+function home() {
+  let h = settings.get("home");
+  if (!h || !Number.isFinite(h.x) || !Number.isFinite(h.y)) {
+    h = overlay.homeFromLegacy(settings.get("robot"), U) || overlay.defaultHome(screen.getPrimaryDisplay().workArea, U);
+  }
+  const d = screen.getDisplayNearestPoint({ x: Math.round(h.x), y: Math.round(h.y) });
+  return overlay.clampHome(h, d.workArea, U);
+}
+
+// The robot's box on screen (for the chat's place and screenshots).
+function robotScreenRect() {
+  if (!overlayDisplay) return null;
+  const a = overlayDisplay.workArea;
+  if (robotAt && robotAt.rect) {
+    const r = robotAt.rect;
+    return { x: Math.round(a.x + r.left), y: Math.round(a.y + r.top), width: Math.round(r.right - r.left), height: Math.round(r.bottom - r.top) };
+  }
+  const h = home();
+  return { x: Math.round(h.x - U * 0.447), y: Math.round(h.y - U * 0.966), width: U, height: Math.round(U * 0.966) };
+}
+
+// The overlay covers the work area of the display the robot's home is on:
+// never the menu bar or the Dock, so the robot can't sit over them.
+function placeOverlay() {
+  if (!robotWin || robotWin.isDestroyed()) return;
+  const h = home();
+  overlayDisplay = screen.getDisplayNearestPoint({ x: h.x, y: h.y });
+  robotWin.setBounds({ ...overlayDisplay.workArea });
+  pushRobot();
+}
+
 function createRobot() {
-  const a = screen.getPrimaryDisplay().workArea;
-  const saved = settings.get("robot");
-  const pos = onScreen(saved && Number.isFinite(saved.x) ? saved : { x: a.x + a.width - ROBOT_SIZE.width - 24, y: a.y + a.height - ROBOT_SIZE.height - 24 }, ROBOT_SIZE);
+  const h = home();
+  overlayDisplay = screen.getDisplayNearestPoint({ x: h.x, y: h.y });
   robotWin = new BrowserWindow({
-    ...ROBOT_SIZE, ...pos,
+    ...overlayDisplay.workArea,
     type: MAC ? "panel" : undefined,
-    transparent: true, frame: false, resizable: false, movable: true, hasShadow: false,
+    transparent: true, frame: false, resizable: false, movable: false, hasShadow: false,
     alwaysOnTop: true, skipTaskbar: true, fullscreenable: false, minimizable: false, maximizable: false,
+    focusable: false, // it never takes focus from the app the user is in
     acceptFirstMouse: true, show: false, title: "Pilot", backgroundColor: "#00000000",
     webPreferences: webPreferences(),
   });
   floatEverywhere(robotWin);
+  gate = new overlay.MouseGate(robotWin);
   robotWin.loadURL("pilot://app/src/renderer/robot.html");
+  robotWin.webContents.on("did-finish-load", () => pushRobot());
   robotWin.once("ready-to-show", () => { if (!hidden) robotWin.showInactive(); push(); });
-  robotWin.on("closed", () => { robotWin = null; });
+  robotWin.on("closed", () => { robotWin = null; gate = null; });
 }
 
 function chatBounds() {
-  const r = robotWin && !robotWin.isDestroyed() ? robotWin.getBounds() : null;
+  const r = robotScreenRect();
   const display = r ? screen.getDisplayMatching(r) : screen.getPrimaryDisplay();
   const a = display.workArea;
   const height = Math.min(CHAT_SIZE.height, a.height - 16);
   const size = { width: CHAT_SIZE.width, height };
   if (!r) return { ...size, ...onScreen({ x: a.x + a.width - size.width - 20, y: a.y + 20 }, size) };
-  const right = r.x + r.width + size.width <= a.x + a.width;
-  const x = right ? r.x + r.width - 8 : r.x - size.width + 8;
+  // Beside the robot, never over it: the side with room, bottoms level.
+  const right = r.x + r.width + 12 + size.width <= a.x + a.width;
+  const x = right ? r.x + r.width + 12 : r.x - size.width - 12;
   const y = r.y + r.height - size.height + 20;
   return { ...size, ...onScreen({ x, y }, size) };
 }
 
+// The chat is an ordinary frameless window, not a non-activating panel: a
+// menu-bar app's panel never becomes the key window, so typing went to the
+// app in front (Pilot 1.0). It still floats over every app, on every Space
+// and over full-screen apps (floatEverywhere).
 function createChat() {
   chatWin = new BrowserWindow({
     ...chatBounds(),
-    type: MAC ? "panel" : undefined,
     transparent: true, frame: false, resizable: false, hasShadow: false,
     alwaysOnTop: true, skipTaskbar: true, fullscreenable: false, minimizable: false, maximizable: false,
     acceptFirstMouse: true, show: false, title: "Pilot", backgroundColor: "#00000000",
@@ -351,20 +570,48 @@ function createChat() {
   chatWin.on("closed", () => { chatWin = null; });
 }
 
+// The app that was in front before the chat opened, so focus goes back to
+// it when the chat closes (the robot never keeps focus).
+let previousApp = null;
+
+function showChatNow(view) {
+  if (MAC) app.focus({ steal: true }); // the user clicked: Pilot comes forward
+  chatWin.show();
+  chatWin.focus();
+  chatWin.webContents.focus();
+  chatWin.webContents.send("pilot:focus", view || "chat");
+}
+
+function chatOpen() { return Boolean(chatWin && !chatWin.isDestroyed() && chatWin.isVisible()); }
+
 function showChat(view) {
   if (!chatWin || chatWin.isDestroyed()) createChat();
+  const was = chatOpen();
   chatWin.setBounds(chatBounds());
-  const show = () => {
-    chatWin.show();
-    chatWin.focus();
+  const show = async () => {
+    if (MAC && !was) {
+      // Note the app in front first (a fraction of a second at most).
+      const info = await Promise.race([frontmost.read(execFile, process.platform), wait(400).then(() => null)]);
+      previousApp = info && info.pid !== process.pid ? info.pid : null;
+    }
+    showChatNow(view);
     if (view) chatWin.webContents.send("pilot:view", view);
+    pushRobot();
+    // The robot waves (gently) when the chat opens, then stays calm.
+    if (!was && life) life.react("chat");
   };
   if (chatWin.webContents.isLoading()) chatWin.webContents.once("did-finish-load", show);
   else show();
 }
 
 function hideChat() {
+  const had = chatOpen() && chatWin.isFocused();
   if (chatWin && !chatWin.isDestroyed()) chatWin.hide();
+  pushRobot();
+  if (life) life.restart();
+  // Give focus back to the app that was in front.
+  if (MAC && had && previousApp) frontmost.activate(execFile, previousApp);
+  previousApp = null;
 }
 
 function toggleChat() {
@@ -377,7 +624,90 @@ function setHidden(h) {
   if (h) { hideChat(); if (robotWin) robotWin.hide(); }
   else if (robotWin) robotWin.showInactive();
   else createRobot();
+  if (robotWin && !robotWin.isDestroyed()) robotWin.webContents.send("pilot:robot-show", !h);
+  pushRobot();
   updateTray();
+  if (life) life.restart();
+}
+
+// ---------------------------------------------------------------- the robot's moves
+
+// Ask the robot window to play a move ({move, how}). A glance gets where the
+// mouse is; anything that wanders gets the chat's box, to keep clear of it.
+function sendMove(cmd) {
+  if (!robotWin || robotWin.isDestroyed() || hidden || !overlayDisplay) return;
+  const a = overlayDisplay.workArea;
+  const c = screen.getCursorScreenPoint();
+  robotWin.webContents.send("pilot:robot-do", { ...cmd, at: { x: c.x - a.x, y: c.y - a.y } });
+}
+
+const TRICKS = [["Backflip", "backflip"], ["Football", "football"], ["Soccer", "soccer"], ["Tennis", "tennis"], ["Wave", "wave"]];
+const ANY_TRICK = ["backflip", "spin", "bounce", "peek", "football", "soccer", "tennis"];
+
+// "Play a trick", from the menus: the user asked, so it plays even in calm
+// mode. The chat is closed first, so a prop never lands on it.
+function playTrick(name) {
+  const move = name || ANY_TRICK[Math.floor(Math.random() * ANY_TRICK.length)];
+  const wasOpen = chatOpen();
+  if (hidden) setHidden(false);
+  if (wasOpen) hideChat();
+  setTimeout(() => sendMove({ move }), wasOpen ? 250 : 0);
+}
+
+function trickItems() {
+  return [
+    { label: "Play a Trick", click: () => playTrick() },
+    { label: "Trick", submenu: TRICKS.map(([label, move]) => ({ label, click: () => playTrick(move) })) },
+  ];
+}
+
+// How lively the robot is right now, for life.js.
+function lifeContext() {
+  const a = overlayDisplay ? overlayDisplay.workArea : null;
+  const h = home();
+  const at = robotAt;
+  const away = Boolean(a && at && Math.hypot(a.x + at.x - h.x, a.y + at.y - h.y) > 20);
+  return {
+    calm: settings.get("calm"), reducedMotion, energy: settings.get("energy"), chatOpen: chatOpen(),
+    hidden, dragging: Boolean(gate && gate.dragging), busy: moving, away,
+    atFloor: !a || !at ? true : at.y >= a.height - 8 - U * 0.1,
+    typing: Date.now() < typingUntil,
+  };
+}
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// The slower checks, run only just before a move: typing elsewhere (keys
+// in use but the pointer still), or a full-screen window in front.
+async function lifeCheck() {
+  const before = screen.getCursorScreenPoint();
+  await wait(1200);
+  const typing = overlay.typingGuess(powerMonitor.getSystemIdleTime(), before, screen.getCursorScreenPoint());
+  const info = await frontmost.read(execFile, process.platform);
+  const fullscreen = overlay.fullscreenFront(info, overlayDisplay, process.pid);
+  return { typing: typing || Date.now() < typingUntil, fullscreen };
+}
+
+// A few times a second: is the cursor over the robot? (So a file dragged
+// from Finder can be dropped on it; drags send the window no mouse moves.)
+function watchCursor() {
+  if (!gate || !overlayDisplay || hidden || !robotAt || !robotAt.rect) return;
+  const c = screen.getCursorScreenPoint();
+  const a = overlayDisplay.workArea;
+  gate.set({ near: motion.hit(robotAt.rect, { x: c.x - a.x, y: c.y - a.y }, 6) });
+}
+
+// Every 10 seconds (in the main process only; the robot window sleeps):
+// back after being away? typing?
+let lastIdle = 0;
+let lastCursor = null;
+function watchUser() {
+  const idle = powerMonitor.getSystemIdleTime();
+  const cursor = screen.getCursorScreenPoint();
+  if (overlay.backFromIdle(lastIdle, idle)) setTimeout(() => life && life.react("return"), 1200);
+  if (overlay.typingGuess(idle, lastCursor, cursor)) typingUntil = Date.now() + 15000;
+  lastIdle = idle;
+  lastCursor = cursor;
 }
 
 // ---------------------------------------------------------------- menu bar
@@ -399,12 +729,34 @@ function setLogin(on) {
   pushSettings();
 }
 
+// Calm mode: no wandering, only resting. Under "reduce motion" it's on
+// unless the user turns it off here.
+function setCalm(on) {
+  settings.set("calm", Boolean(on));
+  updateTray();
+  pushSettings();
+  if (life) life.restart();
+}
+
+function setEnergy(level) {
+  if (!motion.ENERGY.includes(level)) return;
+  settings.set("energy", level);
+  updateTray();
+  pushSettings();
+  if (life) life.restart();
+}
+
 function updateTray() {
   if (!tray) return;
   tray.setContextMenu(Menu.buildFromTemplate([
     hidden ? { label: "Show Pilot", click: () => setHidden(false) } : { label: "Hide Pilot", click: () => setHidden(true) },
     { label: "Open Chat", click: () => { setHidden(false); showChat(); } },
     { label: "Settings…", click: () => { setHidden(false); showChat("settings"); } },
+    { type: "separator" },
+    ...trickItems(),
+    { label: "Calm Mode", type: "checkbox", checked: motion.isCalm({ calm: settings.get("calm"), reducedMotion }), click: (item) => setCalm(item.checked) },
+    { label: "Energy", submenu: [["low", "Low"], ["normal", "Normal"], ["playful", "Playful"]].map(([v, label]) => ({
+      label, type: "radio", checked: settings.get("energy") === v, click: () => setEnergy(v) })) },
     { type: "separator" },
     { label: "Start at Login", type: "checkbox", checked: Boolean(settings.get("openAtLogin")), click: (item) => setLogin(item.checked) },
     { label: "About Pilot", click: () => app.showAboutPanel() },
@@ -448,43 +800,78 @@ function draftSettings(d) {
 }
 
 function registerIpc() {
-  let drag = null;
-  handle("robot-drag-start", () => {
-    if (!robotWin) return;
-    const c = screen.getCursorScreenPoint();
-    const [x, y] = robotWin.getPosition();
-    drag = { cx: c.x, cy: c.y, x, y };
+  // The robot window says when the pointer is over the robot, so the overlay
+  // takes the mouse only then (and while dragging).
+  handle("robot-hover", (_e, over) => { if (gate) gate.set({ over: Boolean(over) }); });
+  handle("robot-drag-start", () => { if (gate) gate.set({ dragging: true }); moving = false; });
+  // Dropped: that spot becomes home. Dropped on another display, the overlay
+  // moves there. Returns where the robot is now, in overlay points.
+  handle("robot-drop", (_e, at) => {
+    const p = at && typeof at === "object" ? at : {};
+    const num = (v) => (Number.isFinite(v) ? v : 0);
+    if (gate) gate.set({ dragging: false });
+    if (!overlayDisplay) return null;
+    const cursor = screen.getCursorScreenPoint();
+    const there = screen.getDisplayNearestPoint(cursor);
+    let h;
+    if (there.id !== overlayDisplay.id) h = { x: cursor.x - num(p.ox), y: cursor.y - num(p.oy) };
+    else h = { x: overlayDisplay.workArea.x + num(p.x), y: overlayDisplay.workArea.y + num(p.y) };
+    h = overlay.clampHome(h, there.workArea, U);
+    settings.set("home", h);
+    if (there.id !== overlayDisplay.id) placeOverlay();
+    const a = overlayDisplay.workArea;
+    robotAt = { x: h.x - a.x, y: h.y - a.y, rect: null };
+    pushRobot();
+    if (chatOpen()) chatWin.setBounds(chatBounds());
+    return { x: h.x - a.x, y: h.y - a.y };
   });
-  handle("robot-drag-move", () => {
-    if (!drag || !robotWin) return;
-    const c = screen.getCursorScreenPoint();
-    robotWin.setPosition(Math.round(drag.x + c.x - drag.cx), Math.round(drag.y + c.y - drag.cy));
+  // Where the robot is (after a move, a drop or a start) and whether it's moving.
+  handle("robot-at", (_e, at) => {
+    const p = at && typeof at === "object" ? at : {};
+    const r = p.rect && typeof p.rect === "object" ? p.rect : null;
+    const n = (v) => (Number.isFinite(v) ? v : 0);
+    robotAt = { x: n(p.x), y: n(p.y), rect: r ? { left: n(r.left), top: n(r.top), right: n(r.right), bottom: n(r.bottom) } : null };
+    moving = Boolean(p.moving);
   });
-  handle("robot-drag-end", () => {
-    if (!robotWin) return;
-    drag = null;
-    const b = robotWin.getBounds();
-    const pos = onScreen(b, ROBOT_SIZE);
-    robotWin.setPosition(pos.x, pos.y);
-    settings.set("robot", pos);
-    if (chatWin && !chatWin.isDestroyed() && chatWin.isVisible()) chatWin.setBounds(chatBounds());
+  handle("robot-env", (_e, env) => {
+    const reduced = Boolean(env && env.reducedMotion);
+    if (reduced !== reducedMotion) { reducedMotion = reduced; updateTray(); pushSettings(); if (life) life.restart(); }
   });
   handle("robot-click", () => toggleChat());
+  // Right-click on the robot.
+  handle("robot-menu", () => {
+    Menu.buildFromTemplate([
+      { label: "Open Chat", click: () => showChat() },
+      { type: "separator" },
+      ...trickItems(),
+      { type: "separator" },
+      { label: "Calm Mode", type: "checkbox", checked: motion.isCalm({ calm: settings.get("calm"), reducedMotion }), click: (item) => setCalm(item.checked) },
+      { label: "Hide Pilot", click: () => setHidden(true) },
+    ]).popup({ window: robotWin });
+  });
 
   handle("chat-hide", () => hideChat());
+  // A click in the chat while another app is in front: make it the key window.
+  handle("chat-focus", () => { if (chatOpen() && !chatWin.isFocused()) showChatNow(); });
   handle("chat-send", async (_e, text, opts) => {
     const o = opts && typeof opts === "object" ? opts : {};
     const words = str(text, 8000).trim();
     if (!words) return {};
     let images = [];
-    if (o.look || helpScreenOn) {
+    if (screenAccess.wantsShot(screenMode(), o.look)) {
       if (!ready()) { engine.send(words); return {}; }
       const shot = await takeShot();
       if (shot.needPermission) return { needPermission: true };
       if (shot.error) { engine.note(shot.error, "error"); return {}; }
       images = [shot];
     }
-    engine.send(words, { images, label: str(o.label, 200) || undefined });
+    // Dropped pictures and videos go with this message.
+    if (engine.busy) return {};
+    if (pending.some((a) => a.progress !== undefined && a.progress < 1)) return { waiting: true };
+    const sent = takePending();
+    for (const n of sent.notes) engine.note(n);
+    const said = sent.words.length ? `${words}\n\n(${sent.words.join(" ")})` : words;
+    engine.send(said, { images: [...images, ...sent.images], videos: sent.videos, label: str(o.label, 200) || (sent.words.length ? words : undefined) });
     return {};
   });
   handle("chat-stop", () => engine.stop());
@@ -495,7 +882,8 @@ function registerIpc() {
     const ok = c.type === "plan" ? ["all", "step", "cancel"].includes(answer) : typeof answer === "boolean";
     answerCard(str(id, 20), ok ? answer : (c.type === "plan" ? "cancel" : false));
   });
-  handle("chat-help-screen", (_e, on) => { helpScreenOn = Boolean(on); push(); });
+  handle("chat-help-screen", (_e, on) => setScreenMode(on ? "help" : "ask"));
+  registerAttachIpc();
   handle("open-link", async (_e, url) => {
     const safe = desktopTools.safeWebUrl(url);
     if (safe) await shell.openExternal(safe);
@@ -605,14 +993,25 @@ function registerIpc() {
     return { ok: true };
   });
   handle("login-set", (_e, on) => { setLogin(Boolean(on)); return { ok: true }; });
-  handle("screen-status", () => ({ status: shots.status(), explained: settings.get("screenExplained") }));
+  handle("calm-set", (_e, on) => { setCalm(Boolean(on)); return { ok: true }; });
+  handle("energy-set", (_e, level) => { setEnergy(str(level, 20)); return { ok: true }; });
+  handle("screen-status", () => ({ status: shots.status(), explained: settings.get("screenExplained"), ...screenAccess.view(shots.status(), screenMode(), screenOpened) }));
+  handle("screen-mode-set", (_e, mode) => setScreenMode(str(mode, 10)));
+  // "Check again": macOS's answer now.
+  handle("screen-check", () => { pushSettings(); return screenAccess.view(shots.status(), screenMode(), screenOpened); });
   handle("screen-open-settings", async () => {
     settings.set("screenExplained", true);
     screenHelp = false;
+    screenOpened = true;
     await shots.openSettings();
-    push();
+    // Notice when it's allowed, without a restart (where macOS allows that).
+    if (screenWatch) screenWatch.stop();
+    screenWatch = screenAccess.watch({ status: () => shots.status(), onChange: () => pushSettings() });
+    pushSettings();
     return { ok: true };
   });
+  // macOS sometimes applies Screen Recording only after the app restarts.
+  handle("app-relaunch", () => { app.relaunch(); app.exit(0); });
   handle("screen-help-close", () => { screenHelp = false; settings.set("screenExplained", true); push(); return { ok: true }; });
   handle("welcome-done", () => { settings.set("welcomed", true); pushSettings(); return { ok: true }; });
   handle("app-about", () => app.showAboutPanel());
@@ -651,12 +1050,19 @@ function appMenu() {
     { label: "Pilot", submenu: [{ label: "About Pilot", click: () => app.showAboutPanel() }, { type: "separator" },
       { label: "Hide Chat", accelerator: "Command+W", click: () => hideChat() },
       { label: "Quit Pilot", accelerator: "Command+Q", click: () => app.quit() }] },
-    { role: "editMenu" },
+    // The standard Edit shortcuts (type, paste, copy, select all, undo) only
+    // work in a menu-bar app if they're in its menu.
+    { label: "Edit", submenu: [{ role: "undo" }, { role: "redo" }, { type: "separator" }, { role: "cut" }, { role: "copy" },
+      { role: "paste" }, { role: "pasteAndMatchStyle" }, { role: "delete" }, { role: "selectAll" }] },
   ]));
 }
 
 app.on("second-instance", () => { setHidden(false); showChat(); });
 app.on("before-quit", () => { quitting = true; });
+// When another app comes forward, the robot stays where it is.
+app.on("did-resign-active", () => {
+  if (!hidden && robotWin && !robotWin.isDestroyed() && !robotWin.isVisible()) robotWin.showInactive();
+});
 app.on("window-all-closed", () => { /* stays in the menu bar until Quit */ });
 
 app.whenReady().then(async () => {
@@ -698,16 +1104,26 @@ app.whenReady().then(async () => {
       openExternal: (url) => shell.openExternal(url),
       notes: { add: (n) => { settings.addNote(n); pushSettings(); } },
       memory: { on: () => settings.get("memoryOn"), add: (t) => { settings.addMemory(t); pushSettings(); } },
-      screen: { capture: takeShot },
+      screen: screenMode() === "off" ? null : { capture: takeShot },
       media: { has: (kind) => Boolean(mediaSettings(kind)), image: makeImage, video: makeVideo },
       providerName: () => providers.providerName(activeSettings()),
     }),
   });
 
+  try { reducedMotion = Boolean(systemPreferences.getAnimationSettings().prefersReducedMotion); } catch (_) { reducedMotion = false; }
+  life = lifeCore.create({ motion, send: sendMove, context: lifeContext, check: lifeCheck });
+
   registerIpc();
   createTray();
   createRobot();
   createChat();
+  life.start();
+  setInterval(watchUser, 10000);
+  setInterval(watchCursor, 300);
+  if (powerMonitor) {
+    for (const ev of ["unlock-screen", "resume"]) powerMonitor.on(ev, () => setTimeout(() => life && life.react("return"), 1500));
+  }
+  for (const ev of ["display-added", "display-removed", "display-metrics-changed"]) screen.on(ev, () => placeOverlay());
   // The first time, Pilot opens its chat with a short welcome.
   if (!settings.get("welcomed") && (!TEST || process.env.PILOT_TEST_WELCOME === "1")) {
     robotWin.once("ready-to-show", () => setTimeout(() => showChat(), 400));
@@ -720,6 +1136,8 @@ app.whenReady().then(async () => {
       addCard: (c) => addCard(c),
       setLooking: (v) => { looking = v; push(); },
       seed: (list) => { for (const m of list) engine.attachRaw(m); push(); },
+      move: (cmd) => sendMove(cmd), playTrick, life: () => life, gate: () => gate, robotAt: () => robotAt,
+      context: lifeContext, setCalm, setEnergy, home, addPending, pending: () => pending.slice(), setScreenMode, takePending,
     };
   }
 });

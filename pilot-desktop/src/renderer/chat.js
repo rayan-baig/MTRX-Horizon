@@ -15,7 +15,11 @@
     send: $("send"), eye: $("eye"), eyeMenu: $("eye-menu"), looking: $("looking"), attach: $("attach"),
     attachX: $("attach-x"), helpState: $("help-state"), palette: $("palette"), paletteMenu: $("palette-menu"),
     chatView: $("view-chat"), settingsView: $("view-settings"), helpView: $("view-help"),
+    tray: $("tray"), dropzone: $("dropzone"), clip: $("clip"), file: $("file"),
   };
+  const A = window.PilotAttach;
+  let working = []; // files still being prepared in this window
+  let trayError = "";
 
   let state = { messages: [], busy: false, streaming: "", cards: [], looking: false, ready: false, helpScreen: false, screenHelp: false };
   let settings = null;
@@ -119,6 +123,10 @@
       node.appendChild(mediaBlock(m.media));
       return node;
     }
+    if (m.kind === "noimages") {
+      return el("div", { class: "msg msg-note error" }, m.text,
+        el("div", { class: "card-buttons" }, el("button", { class: "btn small", type: "button", text: "Switch key or model", onclick: () => show("settings") })));
+    }
     return el("div", { class: `msg msg-note${m.kind === "error" ? " error" : ""}` }, m.text);
   }
 
@@ -162,11 +170,50 @@
         el("li", { class: done ? "done" : "" }, el("strong", { text: "Add your AI key. " }),
           done ? "Done!" : "Your own OpenAI, Claude, Gemini or compatible key.",
           done ? null : el("button", { class: "btn primary small", type: "button", text: "Add my key", onclick: () => show("settings") })),
-        el("li", {}, el("strong", { text: "Screen help, if you like. " }),
-          "Press the eye to let Pilot see your screen. Your Mac asks once."),
+        el("li", { class: settings && settings.screen && settings.screen.allowed ? "done" : "" }, el("strong", { text: "Screen access, if you like. " }),
+          settings && settings.screen && settings.screen.allowed ? "Allowed. Pilot looks only when you ask."
+            : "Let Pilot see your screen when you ask. In System Settings, turn on Pilot under Screen Recording.",
+          settings && settings.screen && settings.screen.allowed ? null
+            : el("button", { class: "btn small", type: "button", text: "Turn on screen access", onclick: () => { P.screen.setMode("ask"); P.screen.openSettings(); } }),
+          settings && settings.screen && settings.screen.offerRelaunch
+            ? el("button", { class: "btn small", type: "button", text: "Relaunch Pilot", onclick: () => P.app.relaunch() }) : null),
         el("li", {}, el("strong", { text: "That's it! " }), "Say hi, or pick an idea.",
           el("button", { class: done ? "btn primary small" : "btn small", type: "button", text: "Start chatting", "data-start": "1",
             onclick: () => P.settings.welcomeDone() }))));
+  }
+
+  // What goes with the next message: a thumbnail, the name and size, a
+  // progress bar while it's prepared or uploaded, and a remove button.
+  function trayItem(a, local) {
+    const pct = a.progress === undefined || a.progress === null ? null : Math.round(a.progress * 100);
+    const what = a.error ? a.error
+      : local ? (a.kind === "video" ? `Taking frames… ${pct || 0}%` : "Shrinking to fit…")
+        : a.kind === "video" ? (pct !== null && pct < 100 ? `Uploading… ${pct}%` : "Video, ready to send")
+          : a.kind === "frames" ? `${a.count} frames from the video` : "Picture, ready to send";
+    return el("div", { class: `tray-item${a.error ? " bad" : ""}` },
+      a.thumb ? el("img", { src: a.thumb, alt: "" }) : el("span", { class: "ph" }),
+      el("span", { class: "words" }, el("b", { text: a.name }), el("small", { text: `${A.sizeWords(a.size || 0)} · ${what}` }),
+        (local || (pct !== null && pct < 100)) && !a.error ? el("progress", { class: "bar", max: "100", value: String(pct || 0) }) : null),
+      local ? null : el("button", { class: "x", type: "button", "aria-label": `Remove ${a.name}`, text: "×", onclick: () => P.attach.remove(a.id) }));
+  }
+
+  function renderTray() {
+    const items = [...(state.attachments || []).map((a) => trayItem(a, false)), ...working.map((a) => trayItem(a, true))];
+    if (trayError) items.push(el("div", { class: "tray-item bad" }, el("span", { class: "words" }, el("small", { text: trayError })),
+      el("button", { class: "x", type: "button", "aria-label": "Dismiss", text: "×", onclick: () => { trayError = ""; renderChat(); } })));
+    clear(ui.tray);
+    for (const n of items) ui.tray.appendChild(n);
+    ui.tray.hidden = items.length === 0;
+  }
+
+  async function takeFiles(files) {
+    if (!files || !files.length) return;
+    show("chat");
+    trayError = "";
+    await A.takeFiles(files, P.attach, {
+      update: (list) => { working = list; renderChat(); },
+      error: (words) => { trayError = words; renderChat(); },
+    });
   }
 
   function renderChat() {
@@ -187,6 +234,8 @@
     for (const c of state.cards || []) ui.messages.appendChild(cardNode(c));
     if (state.screenHelp) ui.messages.appendChild(screenHelpNode());
     ui.looking.hidden = !state.looking;
+    renderTray();
+    ui.eye.hidden = Boolean(settings && settings.screenMode === "off");
     ui.send.classList.toggle("stop", Boolean(state.busy));
     ui.send.setAttribute("aria-label", state.busy ? "Stop" : "Send");
     ui.send.title = state.busy ? "Stop" : "Send";
@@ -209,6 +258,7 @@
     sizeInput();
     const res = await P.chat.send(words, o);
     if (res && res.needPermission) { ui.input.value = words; return; }
+    if (res && res.waiting) { ui.input.value = words; trayError = "Wait a moment: a video is still uploading."; renderChat(); return; }
     if (o.look) { lookNext = false; renderChat(); }
   }
 
@@ -276,6 +326,25 @@
     if (state.helpScreen) P.chat.helpScreen(false);
     lookNext = false;
     renderChat();
+  });
+
+  // Pictures and videos: the paperclip, paste, and drag and drop.
+  ui.clip.addEventListener("click", () => ui.file.click());
+  ui.file.addEventListener("change", () => { const f = [...ui.file.files]; ui.file.value = ""; takeFiles(f); });
+  ui.input.addEventListener("paste", (ev) => {
+    const files = ev.clipboardData ? [...ev.clipboardData.files] : [];
+    if (files.length) { ev.preventDefault(); takeFiles(files); }
+  });
+  let dragDepth = 0;
+  const hasFiles = (ev) => ev.dataTransfer && [...ev.dataTransfer.types].includes("Files");
+  document.addEventListener("dragenter", (ev) => { if (!hasFiles(ev)) return; ev.preventDefault(); dragDepth += 1; ui.dropzone.hidden = false; });
+  document.addEventListener("dragover", (ev) => { if (hasFiles(ev)) { ev.preventDefault(); ev.dataTransfer.dropEffect = "copy"; } });
+  document.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) ui.dropzone.hidden = true; });
+  document.addEventListener("drop", (ev) => {
+    ev.preventDefault();
+    dragDepth = 0;
+    ui.dropzone.hidden = true;
+    if (ev.dataTransfer && ev.dataTransfer.files.length) takeFiles([...ev.dataTransfer.files]);
   });
 
   $("min").addEventListener("click", () => P.chat.hide());
@@ -428,10 +497,7 @@
     }
 
     // Screen
-    const granted = settings.screenStatus === "granted";
-    page.appendChild(el("div", { class: "page-card" }, el("h3", {}, "Seeing your screen ", el("span", { class: `badge${granted ? "" : " warn"}`, text: granted ? "Allowed" : settings.screenStatus === "denied" ? "Turned off" : "Asked the first time you press the eye" })),
-      el("p", { text: "Pilot only looks when you ask (the eye button, or by allowing its “look at the screen” card), and sends the picture only to your own AI provider. It never looks in the background." }),
-      settings.screenStatus === "denied" ? el("div", { class: "card-buttons" }, el("button", { class: "btn", type: "button", text: "Open Screen Recording settings", onclick: () => P.screen.openSettings() })) : null));
+    page.appendChild(screenCard());
 
     // Memory
     const memCard = el("div", { class: "page-card" }, el("h3", { text: "Memory" }),
@@ -462,12 +528,40 @@
     page.appendChild(el("div", { class: "page-card" }, el("h3", { text: "Pilot on this Mac" }),
       el("label", { class: "toggle" }, "Start Pilot when I log in", el("input", { type: "checkbox", checked: settings.openAtLogin,
         onchange: (ev) => P.settings.setLogin(ev.target.checked) })),
+      el("label", { class: "toggle" }, "Calm mode: the robot stays put", el("input", { type: "checkbox", checked: settings.calm,
+        onchange: (ev) => P.settings.setCalm(ev.target.checked) })),
+      el("label", { class: "field" }, el("span", { text: "Energy: how often the robot moves around" }),
+        el("select", { onchange: (ev) => P.settings.setEnergy(ev.target.value) },
+          [["low", "Low"], ["normal", "Normal"], ["playful", "Playful: more flights, climbs and sports"]]
+            .map(([v, t]) => el("option", { value: v, text: t, selected: settings.energy === v })))),
+      el("p", { class: "small", text: settings.reducedMotion
+        ? "Your Mac is set to reduce motion, so calm mode is on unless you turn it off."
+        : "The robot keeps still while you type, while a video or game is full screen, and while this chat is open." }),
       el("p", { class: "small", text: `Pilot for Mac ${settings.version}. Hide Pilot or quit it any time from the robot head in the menu bar.` }),
       el("div", { class: "card-buttons" },
         el("button", { class: "btn", type: "button", text: "Clear this chat", onclick: () => { P.chat.clear(); show("chat"); } }),
         el("button", { class: "btn", type: "button", text: "About Pilot", onclick: () => P.app.about() }),
         el("button", { class: "btn danger", type: "button", text: "Quit Pilot", onclick: () => P.app.quit() }))));
     page.scrollTop = keep;
+  }
+
+  // Screen access: macOS's permission, live, and how Pilot may use it.
+  function screenCard() {
+    const sc = settings.screen || { allowed: false, words: "Not allowed", mode: "ask", offerRelaunch: false };
+    const radio = (mode, title, words) => el("label", { class: "mode" },
+      el("input", { type: "radio", name: "screen-mode", value: mode, checked: sc.mode === mode, onchange: () => P.screen.setMode(mode) }),
+      el("span", {}, el("b", { text: title }), el("small", { text: words })));
+    return el("div", { class: "page-card screen-access" },
+      el("h3", {}, "Screen access ", el("span", { class: `badge${sc.allowed ? "" : " warn"}`, text: sc.allowed ? "Allowed" : "Not allowed" })),
+      el("p", { class: "small", text: "Your Mac decides whether Pilot may see the screen (System Settings, Privacy & Security, Screen Recording). Pilot never watches in the background, and the “Pilot is looking” banner shows every time it looks." }),
+      el("div", { class: "card-buttons" },
+        el("button", { class: "btn", type: "button", text: "Open Mac settings", onclick: () => P.screen.openSettings() }),
+        el("button", { class: "btn", type: "button", text: "Check again", onclick: () => P.screen.check() }),
+        sc.offerRelaunch ? el("button", { class: "btn primary", type: "button", text: "Relaunch Pilot", onclick: () => P.app.relaunch() }) : null),
+      sc.offerRelaunch ? el("p", { class: "small", text: "Turned Pilot on already? Your Mac may need Pilot to restart before it counts." }) : null,
+      radio("off", "Off", "Pilot never looks, and the eye button is hidden."),
+      radio("ask", "Only when I ask", "The eye button, or Allow on Pilot's “look at the screen” card."),
+      radio("help", "Help with what's on screen", "A fresh screenshot goes with each message you send. Nothing in between."));
   }
 
   function renderHelp() {
@@ -515,6 +609,13 @@
     renderChat();
   });
   P.chat.onView((v) => { if (["chat", "settings", "help"].includes(v)) show(v); });
+  // When the chat opens, the message box has the keyboard.
+  P.chat.onFocus((v) => {
+    if (v === "chat" || !v) { if (view !== "chat") show("chat"); }
+    if (view === "chat") setTimeout(() => ui.input.focus(), 0);
+  });
+  // A click anywhere in the chat makes it the key window if it isn't.
+  document.addEventListener("mousedown", () => { if (!document.hasFocus()) P.chat.focus(); }, true);
   P.settings.get().then((s) => { if (s && !s.error) { settings = s; document.documentElement.dataset.theme = s.theme || "blue"; renderChat(); } });
   renderChat();
 })();

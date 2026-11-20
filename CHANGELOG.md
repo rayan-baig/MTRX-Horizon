@@ -4,6 +4,27 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.13.0 (20 November 2026)
+
+**Pilot's robot comes to life.** docs/PILOT.md has the details (Pilot core 1.1.0).
+
+- **It moves around by itself, gently.** Once the page has loaded, the robot in the corner breathes
+  and blinks, and every minute or two it strolls along the bottom of the page and back, does a
+  backflip, a spin or a few bounces, peeks up from the bottom edge, or waves. Now and then it throws
+  a football. It always comes back to its corner, and it keeps still while Pilot's window is open.
+- **It looks like the owner's own robot.** At rest it is the original design picture, now in three
+  layers so its head can tilt and look around and its eyes can blink. While it moves it uses the
+  owner's new pose pictures (standing, waving, walking, running, flying, climbing, a backflip).
+- **You choose how lively it is.** Under "The robot" in Pilot's settings: Calm (stays put), Low,
+  Normal or Playful. Playful adds flights, climbing, running, soccer and tennis. If your device is
+  set to reduce motion, the robot stays still and the moving parts aren't even downloaded.
+- **Pages stay fast.** The moving robot loads only after the page is idle, and each pose picture
+  only when a move needs it.
+- **Pilot for Mac 1.1.0** is out with the same robot, moving around your whole screen, plus a fix
+  for typing in the chat (see pilot-desktop/RELEASE_NOTES.md).
+- Every Pilot core file says 1.1.0. CyberLogix and OmniArmor still have core 1.0 and will get the new
+  core copied in later.
+
 ## 1.12.1 (20 November 2026)
 
 - **Pilot core 1.0.1.** Once a key was added, Pilot's window showed the word "nullnull" under the

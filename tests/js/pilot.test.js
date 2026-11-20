@@ -548,3 +548,53 @@ test("the window never writes the word null: every replaceChildren goes through 
   assert.equal(calls.length, 1, "only put() may call replaceChildren directly");
   assert.match(src, /function put\(node, \.\.\.kids\) \{\n\s+node\.replaceChildren\(\.\.\.kids\.filter\(/);
 });
+
+// ---------------------------------------------------------------- the moving robot (core 1.1.0)
+
+const Motion = require(core("pilot-motion.js"));
+const webGeo = (extra) => ({ pos: { x: 0, y: 0 }, home: { x: 0, y: 0 }, floor: 0, left: -1100, right: 40, top: -560, u: 88,
+  profile: "web", sky: 240, poses: ["standing", "wave", "walk1", "run1", "run2", "fly", "climb1", "flip"], ...(extra || {}) });
+const seeded = (seed) => { let s = seed; return () => ((s = (s * 16807) % 2147483647) / 2147483647); };
+
+test("motion: a pose without a picture falls back, in the end to the resting robot", () => {
+  assert.equal(Motion.resolvePose("walk2", ["standing", "walk1"]), "standing");
+  assert.equal(Motion.resolvePose("climb2", ["climb1"]), "climb1");
+  assert.equal(Motion.resolvePose("throw", ["wave"]), "wave");
+  assert.equal(Motion.resolvePose("kick", ["run2"]), "run2");
+  assert.equal(Motion.resolvePose("tennis", ["standing"]), "standing");
+  assert.equal(Motion.resolvePose("fly", []), "rest");
+  assert.deepEqual(Motion.posesFromFiles(["wave.png", "wave.webp", "kick.png", "readme.txt", "dance.webp"]), { wave: "wave.webp", kick: "kick.png" });
+});
+
+test("motion: the web robot keeps still under reduce motion, whatever is chosen", () => {
+  const r = seeded(9);
+  for (const energy of ["low", "normal", "playful"]) {
+    for (const calm of [null, false]) {
+      for (let i = 0; i < 100; i += 1) assert.equal(Motion.pick({ profile: "web", reducedMotion: true, energy, calm }, r), null);
+    }
+  }
+  assert.equal(Motion.stillReason({ profile: "web", reducedMotion: true, calm: false }), "reduced-motion");
+  assert.equal(Motion.pick({ profile: "web", chatOpen: true }, r), null);
+  // The actor isn't even started: live() returns null under reduce motion.
+  const saved = globalThis.matchMedia;
+  globalThis.matchMedia = () => ({ matches: true });
+  const Actor = require(core("pilot-actor.js"));
+  assert.equal(Actor.live({ launcher: null }), null);
+  globalThis.matchMedia = saved;
+});
+
+test("motion: on the web, no climbing, flights, soccer or tennis unless Playful, and every move ends at home", () => {
+  const seen = (energy) => { const r = seeded(21); const s = new Set(); for (let i = 0; i < 3000; i += 1) s.add(Motion.pick({ profile: "web", energy }, r)); return s; };
+  const normal = seen("normal");
+  assert.ok(!normal.has("climb") && !normal.has("fly") && !normal.has("run"), [...normal].join());
+  const playful = seen("playful");
+  assert.ok(playful.has("climb") && playful.has("fly") && playful.has("sport"));
+  for (let i = 1; i <= 20; i += 1) assert.equal(Motion.plan("sport", webGeo({ energy: "normal", random: seeded(i) })).name, "football");
+  for (const name of ["stroll", "peek", "wave", "backflip", "spin", "bounce", "football", "soccer", "tennis", "fly", "climb"]) {
+    const p = Motion.plan(name, webGeo({ energy: "playful", random: seeded(3) }));
+    assert.ok(p, name);
+    assert.ok(Math.abs(p.end.x) < 2 && Math.abs(p.end.y) < 2, `${name} ends at ${JSON.stringify(p.end)}`);
+    // Props stay in the page's bottom area.
+    for (const pr of p.props) for (const f of pr.frames) if (pr.on === "stage") assert.ok(f.y >= -240 - 88, `${name} ${pr.kind} y ${f.y}`);
+  }
+});

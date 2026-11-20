@@ -1,7 +1,8 @@
 // Pilot's two stores on the Mac, both in the app's own folder
 // (~/Library/Application Support/Pilot):
 //
-//   settings.json  everything that isn't secret: the robot's spot, the key
+//   settings.json  everything that isn't secret: the robot's home, calm
+//                  mode and energy, the key
 //                  list (names, providers, models; never the keys), notes,
 //                  memory, colours, start-at-login.
 //   keys.bin       the AI keys, encrypted with Electron's safeStorage, whose
@@ -103,7 +104,10 @@ class KeyStore {
 
 const DEFAULTS = () => ({
   version: 1,
-  robot: null,
+  robot: null, // Pilot 1.0: the old robot window's spot (read once, for home)
+  home: null, // the point between the robot's feet, in screen points
+  calm: null, // calm mode: null follows "reduce motion"; true or false is the user's choice
+  energy: "normal", // low, normal or playful
   profiles: [],
   activeProfile: "",
   media: { image: null, video: null },
@@ -114,6 +118,7 @@ const DEFAULTS = () => ({
   openAtLogin: true,
   loginChosen: false,
   screenExplained: false,
+  screenMode: "ask", // screen access: "off", "ask" (only when asked) or "help" (a screenshot with each message)
   welcomed: false,
 });
 

@@ -59,6 +59,7 @@ function checkBaseUrl(raw) {
 
 const toolText = (r) => (typeof r.content === "string" ? r.content : JSON.stringify(r.content));
 const pictures = (list) => (Array.isArray(list) ? list.filter((i) => i && typeof i.data === "string" && /^image\/(png|jpeg|webp|gif)$/.test(i.mime)) : []);
+const videos = (list) => (Array.isArray(list) ? list.filter((v) => v && typeof v.uri === "string" && /^https:\/\/generativelanguage\.googleapis\.com\//.test(v.uri) && /^video\//.test(v.mime)) : []);
 const picOf = (r) => (r && r.image ? pictures([r.image])[0] : null);
 
 // ---------------------------------------------------------------- the core's adapters, with pictures
@@ -120,6 +121,8 @@ function openaiLike(id) {
 const gemini = Object.create(core.adapters.gemini);
 gemini.toWire = function toWire(messages) {
   const inline = (i) => ({ inlineData: { mimeType: i.mime, data: i.data } });
+  // A video uploaded with Gemini's file upload (uploads.js), by its address.
+  const file = (v) => ({ fileData: { mimeType: v.mime, fileUri: v.uri } });
   // The core keeps tool names by call id across the whole history, so let it
   // build the history, then add the pictures to the matching turns.
   const plain = messages.map((m) => (m.role === "user" ? { role: "user", text: m.text } : m));
@@ -130,7 +133,7 @@ gemini.toWire = function toWire(messages) {
     const turn = contents[at];
     at += 1;
     if (!turn) break;
-    if (m.role === "user") turn.parts = [...pictures(m.images).map(inline), ...turn.parts];
+    if (m.role === "user") turn.parts = [...videos(m.videos).map(file), ...pictures(m.images).map(inline), ...turn.parts];
     else if (m.role === "tool") for (const r of m.results) { const pic = picOf(r); if (pic) turn.parts.push(inline(pic)); }
   }
   return contents;

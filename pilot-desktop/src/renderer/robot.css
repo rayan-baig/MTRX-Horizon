@@ -1,43 +1,34 @@
-/* The robot window: the owner's robot picture, floating gently, with a soft
-   blue glow that pulses while Pilot is thinking and a small status dot. */
-:root { color-scheme: dark; --glow: 64, 132, 255; --glow2: 139, 92, 246; }
+/* The robot's overlay: a transparent window over the display's work area.
+   Only the robot catches the mouse (the main process turns click-through
+   off while the pointer is over it). The robot's own look and moves are in
+   ../core/pilot-actor.css; here: its size, the status dot and the glow. */
+:root { color-scheme: dark; --glow: 64, 132, 255; --glow2: 139, 92, 246; --pa-u: 110px; }
 html[data-theme="violet"] { --glow: 139, 92, 246; --glow2: 217, 70, 239; }
 html[data-theme="aurora"] { --glow: 34, 211, 238; --glow2: 59, 130, 246; }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; user-select: none; -webkit-user-select: none; }
-.robot { position: absolute; inset: 0; border: 0; padding: 0; margin: 0; background: transparent; cursor: grab; outline: none; }
-.robot:active { cursor: grabbing; }
-.robot:focus-visible .art { filter: drop-shadow(0 0 6px rgba(var(--glow), 0.9)) drop-shadow(0 0 2px #fff); }
-.art {
-  position: absolute; left: 15px; top: 12px; width: 110px; height: auto; pointer-events: none;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 20, 0.55)) drop-shadow(0 0 8px rgba(var(--glow), 0.35));
-  animation: float 3.6s ease-in-out infinite;
+.stage { position: absolute; inset: 0; outline: none; pointer-events: none; }
+.stage .pa-rest, .stage .pa-pose.pa-on { pointer-events: auto; cursor: grab; }
+.dragging .pa-rest, .dragging .pa-pose.pa-on { cursor: grabbing; }
+.pa-rest-body, .pa-rest-head { filter: drop-shadow(0 4px 8px rgba(0, 0, 20, 0.45)); }
+.pa-pose { filter: drop-shadow(0 4px 8px rgba(0, 0, 20, 0.45)) drop-shadow(0 0 6px rgba(var(--glow), 0.3)); }
+/* A soft glow under the resting robot, brighter while Pilot is thinking. */
+.pa-rest::before {
+  content: ""; position: absolute; left: 12%; right: 4%; bottom: -6px; height: 20px; border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(var(--glow), 0.5) 0%, rgba(var(--glow2), 0.22) 45%, transparent 72%);
 }
-.glow {
-  position: absolute; left: 22px; right: 22px; bottom: 6px; height: 22px; border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(var(--glow), 0.55) 0%, rgba(var(--glow2), 0.25) 45%, transparent 72%);
-  animation: shadow 3.6s ease-in-out infinite;
-}
+html[data-status="thinking"] .pa-rest::before, html[data-status="looking"] .pa-rest::before { animation: glowpulse 1.6s ease-in-out infinite; }
 .dot {
-  position: absolute; right: 22px; bottom: 22px; width: 13px; height: 13px; border-radius: 50%;
+  position: absolute; right: 6%; bottom: 14%; width: 13px; height: 13px; border-radius: 50%; z-index: 2;
   background: #34d399; border: 2px solid rgba(10, 14, 40, 0.95); box-shadow: 0 0 8px rgba(52, 211, 153, 0.9);
 }
-.robot[data-status="nokey"] .dot { background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, 0.9); }
-.robot[data-status="thinking"] .dot,
-.robot[data-status="looking"] .dot { background: rgb(var(--glow)); box-shadow: 0 0 10px rgba(var(--glow), 1); animation: dotpulse 1s ease-in-out infinite; }
-.robot[data-status="thinking"] .art,
-.robot[data-status="looking"] .art { animation: float 3.6s ease-in-out infinite, think 1.6s ease-in-out infinite; }
-.robot[data-status="thinking"] .glow,
-.robot[data-status="looking"] .glow { animation: shadow 3.6s ease-in-out infinite, glowpulse 1.6s ease-in-out infinite; }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes shadow { 0%, 100% { transform: scaleX(1); opacity: 0.9; } 50% { transform: scaleX(0.86); opacity: 0.6; } }
-@keyframes think {
-  0%, 100% { filter: drop-shadow(0 6px 10px rgba(0, 0, 20, 0.55)) drop-shadow(0 0 6px rgba(var(--glow), 0.4)); }
-  50% { filter: drop-shadow(0 6px 10px rgba(0, 0, 20, 0.55)) drop-shadow(0 0 16px rgba(var(--glow), 0.95)) drop-shadow(0 0 4px rgba(var(--glow2), 0.8)); }
+html[data-status="nokey"] .dot { background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, 0.9); }
+html[data-status="thinking"] .dot, html[data-status="looking"] .dot {
+  background: rgb(var(--glow)); box-shadow: 0 0 10px rgba(var(--glow), 1); animation: dotpulse 1s ease-in-out infinite;
 }
-@keyframes glowpulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+@keyframes glowpulse { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
 @keyframes dotpulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: 0.65; } }
 @media (prefers-reduced-motion: reduce) {
-  .art, .glow, .dot { animation: none !important; }
+  .dot, .pa-rest::before { animation: none !important; }
 }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="en" data-theme="blue">
+<html lang="en" data-theme="blue" data-status="nokey">
 <head>
 <meta charset="utf-8">
 <title>Pilot</title>
+<link rel="stylesheet" href="../core/pilot-actor.css">
 <link rel="stylesheet" href="robot.css">
+<script src="../core/pilot-motion.js" defer></script>
+<script src="../core/pilot-actor.js" defer></script>
+<script src="attach.js" defer></script>
 <script src="robot.js" defer></script>
 </head>
 <body>
-<button id="robot" class="robot" type="button" aria-label="Pilot. Click to open the chat. Drag to move." data-status="nokey">
-  <span class="glow" aria-hidden="true"></span>
-  <img class="art" src="../../assets/robot-256.png" srcset="../../assets/robot-256.png 2x, ../../assets/robot-512.png 3x" alt="" width="110" height="106" draggable="false">
-  <span class="dot" aria-hidden="true"></span>
-</button>
+<div id="stage" class="stage" role="button" tabindex="-1" aria-label="Pilot. Click to open the chat. Drag to move."></div>
 <p id="status-words" class="sr-only" aria-live="polite"></p>
 </body>
 </html>

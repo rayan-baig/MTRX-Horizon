@@ -25,7 +25,9 @@
 const VERSION = "1.0.0-desktop";
 const MAX_ROUNDS = 8;
 const MAX_PLAN = 8;
-const KEEP_PICTURES = 2; // screenshots from the last two turns that had one
+const KEEP_PICTURES = 2; // pictures from the last two turns that had any
+const MOST_PICTURES = 24; // pictures in one message (dropped images, or frames from a video)
+const MOST_VIDEOS = 4; // uploaded videos in one message (providers with a file upload)
 const PLAN_TOOL = "pilot_plan";
 const FORBIDDEN = /pay|purchase|checkout|charge|refund|delete|remove|erase|destroy|trash|subscri|send|email|sms|message_|type_|keystroke|keyboard|click|password|bank|transfer/i;
 
@@ -290,13 +292,13 @@ function create(options) {
       const hasPics = (m.role === "user" && m.images && m.images.length) || (m.role === "tool" && m.results.some((r) => r.image));
       if (!hasPics) { out.unshift(m); continue; }
       if (keep > 0) { keep -= 1; out.unshift(m); continue; }
-      if (m.role === "user") out.unshift({ ...m, images: [], text: `${m.text}\n\n(A screenshot was shared here earlier; it's no longer attached.)` });
+      if (m.role === "user") out.unshift({ ...m, images: [], text: `${m.text}\n\n(Pictures were shared here earlier; they're no longer attached.)` });
       else out.unshift({ ...m, results: m.results.map((r) => ({ ...r, image: null })) });
     }
     return out;
   }
 
-  // extra: {images: [{mime, data, thumb}], label}
+  // extra: {images: [{mime, data, thumb}], videos: [{mime, uri, name}], label}
   async function send(text, extra) {
     const words = typeof text === "string" ? text.trim() : "";
     if (!words || busy) return false;
@@ -307,7 +309,8 @@ function create(options) {
       return false;
     }
     const user = { role: "user", text: words.slice(0, 8000) };
-    if (extra && Array.isArray(extra.images) && extra.images.length) user.images = extra.images.slice(0, 2);
+    if (extra && Array.isArray(extra.images) && extra.images.length) user.images = extra.images.slice(0, MOST_PICTURES);
+    if (extra && Array.isArray(extra.videos) && extra.videos.length) user.videos = extra.videos.slice(0, MOST_VIDEOS);
     if (extra && typeof extra.label === "string") user.label = extra.label;
     messages.push(user);
     busy = true; stopped = false; streaming = ""; status = "thinking";
@@ -333,7 +336,7 @@ function create(options) {
             list = []; noTools = true; round -= 1;
             continue;
           }
-          note((e && e.kind && e.message) || "Something went wrong. Try again in a minute.", "error");
+          note((e && e.kind && e.message) || "Something went wrong. Try again in a minute.", e && e.kind === "noimages" ? "noimages" : "error");
           break;
         }
         let shown = reply.text;

@@ -13,10 +13,11 @@ const path = require("node:path");
 const PROVIDER_HOSTS = ["https://api.anthropic.com", "https://api.openai.com", "https://generativelanguage.googleapis.com"];
 
 // Only these files can be served to a window.
-const SERVED = [/^src\/renderer\/[a-z0-9-]+\.(html|css|js|svg)$/, /^src\/core\/pilot-render\.js$/, /^assets\/[a-z0-9@-]+\.png$/];
+const SERVED = [/^src\/renderer\/[a-z0-9-]+\.(html|css|js|svg)$/, /^src\/core\/pilot-(render|motion|actor)\.js$/,
+  /^src\/core\/pilot-actor\.css$/, /^assets\/[a-z0-9@-]+\.(png|webp)$/, /^assets\/poses\/[a-z0-9]+\.(png|webp)$/];
 
 const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8",
-  ".svg": "image/svg+xml", ".png": "image/png" };
+  ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp" };
 
 function buildCsp(extraOrigins) {
   const extra = (extraOrigins || []).filter((o) => /^https?:\/\/[a-z0-9.\-[\]:]+$/i.test(o) && !PROVIDER_HOSTS.includes(o));

@@ -22,9 +22,10 @@ from tests.test_lock import client, make_client  # noqa: F401
 
 ROOT = Path(__file__).resolve().parent.parent
 CORE = ("pilot.js", "pilot-store.js", "pilot-mascot.js", "pilot-engine.js", "pilot-providers.js", "pilot-media.js",
-        "pilot-render.js", "pilot-panel.js", "pilot.css", "pilot-panel.css")
+        "pilot-render.js", "pilot-panel.js", "pilot.css", "pilot-panel.css", "pilot-motion.js", "pilot-actor.js", "pilot-actor.css")
 LAZY = ("pilot-panel.js", "pilot-engine.js", "pilot-providers.js", "pilot-media.js", "pilot-render.js", "pilot-panel.css",
-        "pilot-mtrx-pack.js")
+        "pilot-mtrx-pack.js", "pilot-motion.js", "pilot-actor.js", "pilot-actor.css", "pilot-rest-body.webp", "pilot-rest-head.webp",
+        "pilot-rest-eyes.webp")
 PUBLIC = ("/", "/genesis", "/orbyt", "/partners", "/bundle", "/privacy", "/terms", "/brand", "/early-access", "/creators")
 
 
@@ -235,3 +236,59 @@ def test_pilot_core_in_node():
                             capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "# fail 0" in result.stdout
+
+
+def test_the_moving_robot_loads_late_and_never_under_reduce_motion():
+    """The moving robot (core 1.1.0) is fetched only once the page is idle,
+    and not at all when the visitor asks for less motion; its pictures are
+    small, and pose pictures load only when a move needs them."""
+    loader = (ROOT / "static/pilot/pilot.js").read_text()
+    assert 'window.matchMedia("(prefers-reduced-motion: reduce)").matches' in loader
+    assert "requestIdleCallback" in loader
+    actor = (ROOT / "static/pilot/pilot-actor.js").read_text()
+    assert 'win.matchMedia("(prefers-reduced-motion: reduce)").matches) return null;' in actor
+    for part in ("body", "head", "eyes"):
+        data = (ROOT / f"static/pilot/pilot-rest-{part}.webp").read_bytes()
+        assert data[:4] == b"RIFF" and data[8:12] == b"WEBP" and len(data) < 12_000, part
+    total = 0
+    for pose in (ROOT / "static/pilot/poses").iterdir():
+        data = pose.read_bytes()
+        assert data[:4] == b"RIFF" and data[8:12] == b"WEBP" and len(data) < 25_000, pose.name
+        total += len(data)
+    assert total < 220_000, total
+    # Fetched when needed: the page names the poses but loads none of them.
+    page_poses = main_poses()
+    assert "standing=" in page_poses and "wave=" in page_poses
+
+
+def main_poses() -> str:
+    from horizon import main
+    return main.pilot_poses()
+
+
+def test_a_new_pose_picture_is_picked_up(tmp_path):
+    """Adding a pose is just putting its picture in static/pilot/poses/."""
+    from horizon import main
+    assert main.pilot_pose_files(tmp_path) == {}
+    (tmp_path / "kick.png").write_bytes(b"x")
+    (tmp_path / "notes.txt").write_bytes(b"x")
+    (tmp_path / "dance.webp").write_bytes(b"x")
+    assert main.pilot_pose_files(tmp_path) == {"kick": "kick.png"}
+    (tmp_path / "kick.webp").write_bytes(b"x")
+    (tmp_path / "walk2.webp").write_bytes(b"x")
+    assert main.pilot_pose_files(tmp_path) == {"kick": "kick.webp", "walk2": "walk2.webp"}
+    shipped = main.pilot_pose_files()
+    assert set(shipped) == {"standing", "sitting", "wave", "walk1", "run1", "run2", "fly", "climb1", "flip"}
+    # The pose names match the shared engine's.
+    motion = (ROOT / "static/pilot/pilot-motion.js").read_text()
+    names = re.search(r"const POSES = \[([^\]]+)\]", motion).group(1)
+    assert tuple(re.findall(r'"([a-z0-9]+)"', names)) == main.PILOT_POSES
+
+
+def test_the_page_names_the_moving_robots_files(client):
+    page = client.get("/").text
+    poses = re.search(r'data-poses="([^"]*)"', page).group(1).split()
+    assert len(poses) == 9
+    for pair in poses:
+        name, url = pair.split("=", 1)
+        assert re.fullmatch(rf"/static/pilot/poses/{name}\.webp\?v=[0-9a-f]{{10}}", url), pair

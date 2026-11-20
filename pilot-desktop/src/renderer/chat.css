@@ -279,3 +279,30 @@ button { cursor: pointer; }
 .btn.small { display: block; margin-top: 7px; padding: 5px 14px; font-size: 12.5px; }
 .welcome { padding: 12px 14px; }
 .steps { margin-bottom: 0 !important; gap: 9px; }
+
+/* Pictures and videos waiting to be sent, the drop zone and the paperclip. */
+.file { display: none; }
+.clip { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; background: transparent; color: var(--ink2); cursor: pointer; display: grid; place-items: center; }
+.clip svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.clip:hover { color: var(--ink); background: rgba(118, 146, 255, 0.15); }
+.tray { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 14px 0; }
+.tray-item { position: relative; display: flex; align-items: center; gap: 8px; max-width: 100%; padding: 6px 30px 6px 6px; border-radius: 12px;
+  background: rgba(13, 18, 48, 0.85); border: 1px solid rgba(118, 146, 255, 0.4); font-size: 12px; }
+.tray-item img, .tray-item .ph { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; flex: none; background: rgba(59, 130, 246, 0.25); }
+.tray-item .words { display: flex; flex-direction: column; min-width: 0; }
+.tray-item .words b { font-weight: 600; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tray-item .words small { color: var(--ink3); }
+.tray-item.bad { border-color: rgba(248, 113, 113, 0.7); }
+.tray-item .x { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.08); color: var(--ink); cursor: pointer; }
+progress.bar { -webkit-appearance: none; appearance: none; height: 5px; width: 150px; border: 0; border-radius: 3px; margin-top: 4px; background: rgba(118, 146, 255, 0.2); overflow: hidden; }
+progress.bar::-webkit-progress-bar { background: rgba(118, 146, 255, 0.2); border-radius: 3px; }
+progress.bar::-webkit-progress-value { background: linear-gradient(90deg, #38bdf8, #8b5cf6); border-radius: 3px; }
+.dropzone { position: absolute; inset: 70px 12px 12px; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  border: 2px dashed rgba(124, 196, 255, 0.85); border-radius: 22px; background: rgba(10, 14, 40, 0.88); text-align: center; padding: 24px; pointer-events: none; }
+.dropzone svg { width: 46px; height: 46px; fill: none; stroke: #7cc4ff; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.dropzone strong { font-size: 17px; }
+.dropzone span { font-size: 12.5px; color: var(--ink2); max-width: 280px; }
+.status-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+.mode { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; font-size: 13px; }
+.mode small { display: block; color: var(--ink3); font-size: 11.5px; }
+.mode input { margin-top: 3px; accent-color: rgb(var(--a)); }

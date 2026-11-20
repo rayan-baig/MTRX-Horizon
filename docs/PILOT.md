@@ -2,17 +2,19 @@
 
 Pilot is the AI assistant in every MTRX Horizyn app. It runs on **the user's own AI key**, from
 their browser: MTRX Horizyn never sees the key, never sees the conversation, and pays nothing for
-the AI. This file describes the shared core (**Pilot core 1.0.1**) and how it is used on the
+the AI. This file describes the shared core (**Pilot core 1.1.0**) and how it is used on the
 MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
 
 ## What the user sees
 
 - **The robot.** The owner's round robot (a halo ring, headphones, cyan smiling eyes and a "P" on
-  its chest) sits in a corner of every public page. It floats gently, glows blue while it thinks,
-  and a dot on it says how it is: green ready, amber no key yet, pulsing thinking. It can be
-  dragged to any corner and stays there (remembered on that device). The movement stops under
-  "reduce motion". It is a picture (`pilot-robot-128.webp`, 9 KB, and `pilot-robot-256.webp` for
-  sharp screens, 23 KB, both transparent), fetched by the loader after the page has drawn.
+  its chest) sits in a corner of every public page. It glows blue while it thinks, and a dot on it
+  says how it is: green ready, amber no key yet, pulsing thinking. It can be dragged to any corner
+  and stays there (remembered on that device). It is a picture (`pilot-robot-128.webp`, 9 KB, and
+  `pilot-robot-256.webp` for sharp screens, 23 KB, both transparent), fetched by the loader after
+  the page has drawn. Once the page is idle it comes to life (see **The moving robot** below):
+  it breathes and blinks, and now and then strolls along the bottom of the page, does a trick,
+  peeks or waves. Under "reduce motion" none of that is even fetched, and it stays still.
 - **The window.** Tapping the robot opens the Pilot window: the P-with-orbit logo, **Pilot**,
   "Your AI copilot. Powered by you.", a greeting ("Hello! I'm Pilot. How can I help you
   today?"), five pills (Ask anything…, Get things done…, Help with code…, Analyze & explain…,
@@ -31,6 +33,80 @@ MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
   (sessionStorage). Tabs of the same site stay in step through a BroadcastChannel: a reply in one
   tab shows in the others, a new tab picks up the chat, and only one tab sends a request at a
   time (a Web Lock where the browser has them).
+
+## The moving robot (core 1.1.0)
+
+The robot moves around by itself, gently: most of the time it rests (a slow breath and a blink now
+and then); every so often it does something. The engine is the same on the web and in Pilot for
+Mac: `pilot-motion.js` (no DOM) decides what and when and turns a move into a plan;
+`pilot-actor.js` plays the plan on the page; `pilot-actor.css` is its look.
+
+**Moves.** Walk and run (a hop-walk along the bottom edge, with squash and stretch and a small dust
+puff), fly (a soft arc with a blue glow trail), climb (up a side edge in small steps, a look around,
+and back down), tricks (a backflip, a spin on the spot, three bounces, and a peek from behind a screen
+edge), wave (the wave pose with a sway and a 👋 bubble), look (the head and eyes turn toward the
+mouse), and three rarer sports tricks: **football** (a spiral throw across the screen, a bounce, gone),
+**soccer** (a goal slides in at one side, the robot dribbles, kicks, the net ripples, "GOAL!", the goal
+slides away; about 4 seconds) and **tennis** (a net and a court line by a side edge, a few rallies off
+the screen edge, a smash, then everything fades). The props (balls, goal and net, racket, tennis net)
+are small SVGs drawn in code in the robot's blue and violet, live only during their trick, never take
+clicks, and are removed when it ends or is stopped. Every move eases in and out; nothing is frantic.
+
+**The resting robot is the owner's design picture**, in three layers that stack exactly into it:
+`pilot-rest-body.webp`, `pilot-rest-head.webp` (halo, headphones, visor; cut along the neck with a
+little overlap, and a dark neck behind it so a tilt never shows a gap) and `pilot-rest-eyes.webp`
+(just the glowing eyes). So the head can bob, tilt, nod and look, and the eyes can blink, with no new
+drawing. `tools/pilot_art.py` makes these layers (and the pose canvases below) from the owner's art.
+
+**Poses.** Each moment of a move names the pose picture it wants: `standing`, `sitting`, `wave`,
+`walk1`, `walk2`, `run1`, `run2`, `fly`, `climb1`, `climb2`, `flip`, `throw`, `kick`, `tennis`. When a
+move starts, the robot hops from the design picture into `standing` in about 150 ms with a little
+squash, so the swap reads as standing up, and back again when it settles. A pose without a picture
+falls back, and in the end to the resting design robot moved by transforms, so every move works
+without any pose pictures at all:
+
+| Pose | Without its picture |
+|---|---|
+| `walk2` | `standing` (walking alternates walk1 and standing, with a bob and a lean), else `walk1` |
+| `run2` | `run1`, else `walk1` |
+| `run1` | `walk1` |
+| `climb2` | `climb1`, nudged a step higher |
+| `throw` | `wave` (the football leaves the raised hand), else `standing` |
+| `kick` | `run2` with a quick lean forward, else `run1` |
+| `tennis` | `standing`, holding a drawn racket |
+| any other | the resting design robot |
+
+**Adding a pose picture needs no code change:** put `<pose>.webp` (or `.png`) with exactly one of
+the names above in `static/pilot/poses/` (web) or `pilot-desktop/assets/poses/` (Mac). The server
+lists the web folder into the loader's `data-poses`; the Mac app reads its folder at start. The
+easiest way to keep every pose the same size and on the same baseline is to put the owner's PNGs in a
+folder and run `python3 tools/pilot_art.py --design pilot-robot.png --poses that-folder`: it scales
+each picture so the halo is the same width in every pose, centres it on the halo, puts the robot's
+lowest point on one baseline, and writes both copies (300 × 340 for the Mac, 240 × 272 for the web).
+Pictures are never mirrored (the "P" would come out backwards). Today these exist: standing, sitting,
+wave, walk1, run1, run2, fly, climb1, flip. A sports prop is held at the hand positions in `HANDS` in
+`pilot-motion.js`; a new throw, kick or tennis picture whose hand is elsewhere may want that adjusted.
+
+**When.** About every 30 to 120 seconds (at random; Low waits longer, Playful less) the robot may
+walk or run somewhere, fly, climb an edge, do a trick, wave or look around; sports tricks are rarer,
+more common on Playful. It keeps still in **calm mode**, under **reduce motion** (calm by default),
+**while the chat is open**, **while the user is typing**, while **something is full screen in front**
+(a video, a game), and while it's hidden or dragged. It waves when the user comes back after being
+away and (gently) when the chat opens.
+
+**On the web** it is toned down: it stays near its corner (strolls along the bottom of the page and
+back, tricks, a peek up from the bottom edge, waves, an occasional football throw), always ends back
+at its corner, never moves while the window is open, and does nothing while the tab is hidden.
+Flights, climbing, running, soccer and tennis only when the visitor picks **Playful** under "The
+robot" in Pilot's settings (Calm, Low, Normal or Playful, kept on that device). Under
+`prefers-reduced-motion` the moving robot isn't fetched at all. On the Mac there is more room: see
+`pilot-desktop/README.md`.
+
+**Speed.** `pilot-motion.js`, `pilot-actor.js`, `pilot-actor.css` and the three layers (about 18 KB of
+pictures) are fetched once the page is idle, after load; a pose picture is fetched only when a move
+first needs it (each under 21 KB). Everything moves with the Web Animations API on transforms and
+opacity, on the compositor: no script runs per frame, and nothing animates while the robot rests
+apart from a blink (170 ms every few seconds) and a slow breath every half a minute or so, from timers.
 
 ## Keys and providers
 
@@ -151,7 +227,7 @@ Genesis Pro members keep Pro's own answers either way.
 
 ## The files
 
-The core is the same in every app. Each file starts with `Pilot core 1.0.1 · <file name>`, so
+The core is the same in every app. Each file starts with `Pilot core 1.1.0 · <file name>`, so
 copies in different repos can be compared.
 
 | File | What it is | DOM |
@@ -163,6 +239,11 @@ copies in different repos can be compared.
 | `static/pilot/pilot-render.js` | the safe markdown renderer (`parse` needs no DOM) | builds nodes |
 | `static/pilot/pilot-mascot.js` | the robot picture (as an `<img>` with both sizes) and the P mark (SVG) | builds nodes |
 | `static/pilot/pilot-robot-128.webp`, `pilot-robot-256.webp` | the owner's robot, transparent | — |
+| `static/pilot/pilot-motion.js` | the moving robot: poses and fallbacks, moves as plans, when to move | none |
+| `static/pilot/pilot-actor.js` | plays the plans: the layered robot, pose pictures, effects, props; the web robot's wandering | builds nodes |
+| `static/pilot/pilot-actor.css` | the moving robot's look, effects and props | web |
+| `static/pilot/pilot-rest-body.webp`, `-head.webp`, `-eyes.webp` | the design robot in three layers | — |
+| `static/pilot/poses/<pose>.webp` | the pose pictures (any of the names above) | — |
 | `static/pilot/pilot.js` | the web loader: robot in the corner, dragging, lazy loading, tabs | web |
 | `static/pilot/pilot-panel.js` | the web window: chat, cards, settings, help, voice, screen outline | web |
 | `static/pilot/pilot.css` | the robot's look and animations | web |
@@ -183,8 +264,8 @@ Per app (on the MTRX site):
 
 ## Adding Pilot to another app
 
-1. **Copy the ten core files and the two robot pictures** above into the app's static folder (keep them unchanged, and copy a
-   newer core into every app together).
+1. **Copy the thirteen core files, the two robot pictures, the three layers and the `poses/` folder** above into
+   the app's static folder (keep them unchanged, and copy a newer core into every app together).
 2. **Allow the providers** in the app's Content-Security-Policy `connect-src`:
    `https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com`,
    the compatible hosts the app wants (each `https://host`), and `http://localhost:* http://127.0.0.1:*`
@@ -201,7 +282,11 @@ Per app (on the MTRX site):
      data-robot="pilot/pilot-robot-128.webp" data-robot2x="pilot/pilot-robot-256.webp"
      data-render="pilot/pilot-render.js" data-providers="pilot/pilot-providers.js"
      data-engine="pilot/pilot-engine.js" data-media="pilot/pilot-media.js"
-     data-panel="pilot/pilot-panel.js"></script>
+     data-panel="pilot/pilot-panel.js"
+     data-motion="pilot/pilot-motion.js" data-actor="pilot/pilot-actor.js" data-actor-css="pilot/pilot-actor.css"
+     data-rest-body="pilot/pilot-rest-body.webp" data-rest-head="pilot/pilot-rest-head.webp"
+     data-rest-eyes="pilot/pilot-rest-eyes.webp"
+     data-poses="standing=pilot/poses/standing.webp wave=pilot/poses/wave.webp …"></script>
    ```
 
    Any other `data-*` on that tag is there for the app's config to read (the MTRX site passes its
@@ -243,6 +328,12 @@ Per app (on the MTRX site):
 7. **Tests**: copy `tests/js/pilot.test.js` (the core's own tests) and add the app's checks: the
    security policy hosts, Pilot absent from kid views, the pack present.
 
+### Apps still on an older core
+
+CyberLogix and OmniArmor carry Pilot core 1.0.x. They keep working as they are; to get the moving
+robot they need the 1.1.0 core files, the layers and the `poses/` folder copied in (and the new
+`data-*` on their tag), in their own repos, later. This repo doesn't change them.
+
 ### Server-side AI in an app
 
 Pilot itself never needs a server. Where an app's own AI feature runs on the server (CyberLogix's
@@ -257,4 +348,8 @@ That is part of that app's phase, not the core.
 no model names, version headers, Ask Genesis parity, the free limits) and the core's Node tests,
 `node --test tests/js/pilot.test.js` (every provider mocked: streaming, tools, model lists, errors,
 key storage and removal, several keys, image and video keys, memory, confirm before action, plans,
-no tools on kid views, safe rendering, the robot picture and the P mark, the knowledge pack).
+no tools on kid views, safe rendering, the robot picture and the P mark, the knowledge pack, and the
+moving robot: pose fallbacks, reduce motion, when it moves, Playful-only moves on the web, every web
+move ending at home). `tests/test_pilot.py` also checks a new pose picture is picked up, the moving
+robot is fetched late and never under reduce motion, and its pictures stay small. The Mac app's own
+tests are in `pilot-desktop/test/`.

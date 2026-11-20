@@ -1,6 +1,6 @@
-/* Pilot core 1.0.1 · pilot.css
+/* Pilot core 1.1.0 · pilot.css
    The robot in the corner (the owner's picture): its place, size, status
-   dot, a gentle float and a glow while thinking. Loaded by pilot.js without holding up the page. The chat
+   dot, a gentle float and a glow while thinking, and the moving robot. Loaded by pilot.js without holding up the page. The chat
    window's own look is in pilot-panel.css, fetched only when it opens.
    An app can change the colours by setting these on .pilot-root in its own
    stylesheet. */
@@ -84,6 +84,11 @@
 @keyframes pilot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @keyframes pilot-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @keyframes pilot-think { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.18); } }
+
+/* The moving robot's own look is in pilot-actor.css, fetched with it. */
+.pilot-root { --pa-u: var(--pilot-size); }
+.pilot-alive .pilot-robot { visibility: hidden; animation: none; }
+.pilot-launcher .pa-stage { position: absolute; left: 44.7%; top: 100%; width: 0; height: 0; }
 
 @media (max-width: 720px) {
   .pilot-root { --pilot-size: 72px; --pilot-gap: 12px; }

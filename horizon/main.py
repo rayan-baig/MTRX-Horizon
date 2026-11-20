@@ -9,6 +9,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
+from pathlib import Path
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape as xml_escape
 
@@ -159,6 +160,34 @@ def pilot_facts() -> dict:
 
 
 templates.env.globals["pilot_facts"] = pilot_facts
+
+# Pilot's pose pictures (docs/PILOT.md): every <pose>.webp or .png in
+# static/pilot/poses/ whose name is one of these is used by the moving robot,
+# so a new pose is added just by putting its picture there.
+PILOT_POSES = ("standing", "sitting", "wave", "walk1", "walk2", "run1", "run2", "fly", "climb1", "climb2", "flip",
+               "throw", "kick", "tennis")
+
+
+def pilot_pose_files(folder: Path | None = None) -> dict:
+    """{pose: file name} for the pose pictures there are (WebP wins over PNG)."""
+    found: dict = {}
+    try:
+        files = sorted(p.name for p in (folder or STATIC / "pilot" / "poses").iterdir())
+    except OSError:
+        return found
+    for name in files:
+        stem, _, ext = name.partition(".")
+        if stem in PILOT_POSES and ext in ("webp", "png") and (stem not in found or ext == "webp"):
+            found[stem] = name
+    return found
+
+
+def pilot_poses() -> str:
+    """The pose pictures, as "name=address name=address" for the loader's data-poses."""
+    return " ".join(f"{k}={asset('pilot/poses/' + v)}" for k, v in pilot_pose_files().items())
+
+
+templates.env.globals["pilot_poses"] = pilot_poses
 
 
 # Shown at the foot of the home page and the console, and by /healthz, so

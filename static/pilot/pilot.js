@@ -1,10 +1,16 @@
-// Pilot core 1.0.1 · pilot.js
+// Pilot core 1.1.0 · pilot.js
 // The one Pilot file a page loads. Once the page has finished loading, it
 // fetches the store (pilot-store.js), the robot (pilot-mascot.js and the
 // owner's picture, pilot-robot-128/256.webp) and the app's config, which
 // calls Pilot.mount. Everything else (the chat window, the engine, the
 // providers, the renderer and the app's knowledge pack) is fetched only the
 // first time the user opens Pilot, so pages stay fast.
+//
+// When the page is idle, and only if the visitor hasn't asked for less
+// motion, it fetches the moving robot (pilot-motion.js, pilot-actor.js,
+// pilot-actor.css and the robot's layers: data-motion, data-actor,
+// data-actor-css, data-rest-*; the pose pictures in data-poses load when a
+// move first needs them).
 //
 // It also keeps Pilot with the user:
 // - from page to page: the chat and whether it's open are in sessionStorage
@@ -22,7 +28,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.0.1";
+  const VERSION = "1.1.0";
   const me = document.currentScript || document.getElementById("pilot-core");
   const assets = me ? { ...me.dataset } : {};
   const loaded = {};
@@ -35,6 +41,7 @@
   let opening = null;
   let channel = null;
   let othersBusy = false;
+  let life = null;
   const listeners = new Set();
   const tab = Math.random().toString(36).slice(2, 10);
 
@@ -96,6 +103,7 @@
       if (e.button !== 0) return;
       start = { x: e.clientX, y: e.clientY };
       moved = false;
+      if (life) life.settle();
       try { launcher.setPointerCapture(e.pointerId); } catch (_) { /* fine */ }
     });
     launcher.addEventListener("pointermove", (e) => {
@@ -140,6 +148,26 @@
     document.body.appendChild(rootEl);
     draggable();
     status();
+    wake();
+  }
+
+  // The moving robot: fetched once the page is idle, never under "reduce motion".
+  function wake() {
+    const still = !window.matchMedia || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (still || !assets.motion || !assets.actor || !assets.restBody) return;
+    const poses = {};
+    for (const pair of String(assets.poses || "").split(" ")) {
+      const i = pair.indexOf("=");
+      if (i > 0) poses[pair.slice(0, i)] = pair.slice(i + 1);
+    }
+    const go = () => Promise.all([loadScript(assets.motion), loadScript(assets.actor), loadStyle(assets.actorCss)]).then(() => {
+      life = window.PilotActor.live({ launcher, store, poses, dot,
+        art: { body: assets.restBody, head: assets.restHead, eyes: assets.restEyes },
+        corner: () => store.ui().corner, isOpen: () => Boolean(panel && panel.isOpen) });
+      if (life) life.hello();
+    }).catch(() => { /* the robot just sits still */ });
+    const soon = window.requestIdleCallback || ((fn) => setTimeout(fn, 1));
+    setTimeout(() => soon(go, { timeout: 4000 }), 1500);
   }
 
   // ---------------------------------------------------------------- opening
@@ -158,6 +186,7 @@
   }
 
   async function open() {
+    if (life) life.settle();
     rootEl.classList.add("pilot-loading");
     try {
       await loadPanel();
@@ -277,6 +306,8 @@
     close: () => (config ? close() : null),
     get store() { return store; },
     get config() { return config; },
+    // The moving robot, once it's awake (null under "reduce motion").
+    get robot() { return life; },
     // A key, a provider and a model are set: the app's own AI features may
     // use them (Ask Genesis does).
     ready: () => Boolean(store && store.ready()),

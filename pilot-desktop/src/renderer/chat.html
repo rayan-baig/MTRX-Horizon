@@ -5,6 +5,7 @@
 <title>Pilot</title>
 <link rel="stylesheet" href="chat.css">
 <script src="../core/pilot-render.js" defer></script>
+<script src="attach.js" defer></script>
 <script src="chat.js" defer></script>
 </head>
 <body>
@@ -92,7 +93,15 @@
         <button type="button" role="menuitemcheckbox" data-eye="help" aria-checked="false">Help with what's on screen<small id="help-state">Off: turn on to send a fresh screenshot with each message</small></button>
       </div>
 
+      <div id="tray" class="tray" aria-label="Pictures and videos for your next message" hidden></div>
+      <div id="dropzone" class="dropzone" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+        <strong>Drop pictures or videos</strong>
+        <span>Any size. Pilot shrinks them to fit, and sends them only to your own AI provider.</span>
+      </div>
       <form id="composer" class="composer" autocomplete="off">
+        <input id="file" class="file" type="file" multiple accept="image/*,video/*,.heic,.heif,.mov,.mkv" tabindex="-1" aria-hidden="true">
+        <button id="clip" class="clip" type="button" aria-label="Add pictures or videos" title="Add pictures or videos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.5 12 20a5.5 5.5 0 0 1-7.8-7.8l8.9-8.9a3.7 3.7 0 0 1 5.2 5.2l-8.9 8.9a1.8 1.8 0 0 1-2.6-2.6l8.2-8.2"/></svg></button>
         <textarea id="input" rows="1" maxlength="8000" placeholder="Type a message..." aria-label="Message Pilot"></textarea>
         <button id="eye" class="eye" type="button" aria-label="Look at my screen" title="Look at my screen" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button>
         <button id="send" class="send" type="submit" aria-label="Send" title="Send"><svg class="plane" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 2.5 2.5 10.2l7.6 3.1 3.1 7.6Z"/><path d="m21.5 2.5-11.4 10.8"/></svg><svg class="stopsq" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg></button>

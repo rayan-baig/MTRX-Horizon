@@ -3,7 +3,10 @@
     the robot, its store and this site's config, and the chat window and
     everything it needs come only the first time someone opens it. It talks
     to the AI provider the visitor chose, from their browser, with their own
-    key: never through this server. -#}
+    key: never through this server. Once the page is idle (and only if the
+    visitor hasn't asked for less motion), it also fetches the moving robot:
+    pilot-motion.js, pilot-actor.js, pilot-actor.css and the robot's layers; pose pictures
+    come only when a move needs them. -#}
 {%- set pf = pilot_facts() %}
 <script src="{{ asset('pilot/pilot.js') }}" defer id="pilot-core"
   data-store="{{ asset('pilot/pilot-store.js') }}" data-mascot="{{ asset('pilot/pilot-mascot.js') }}"
@@ -13,6 +16,10 @@
   data-render="{{ asset('pilot/pilot-render.js') }}" data-providers="{{ asset('pilot/pilot-providers.js') }}"
   data-engine="{{ asset('pilot/pilot-engine.js') }}" data-media="{{ asset('pilot/pilot-media.js') }}"
   data-panel="{{ asset('pilot/pilot-panel.js') }}"
+  data-motion="{{ asset('pilot/pilot-motion.js') }}" data-actor="{{ asset('pilot/pilot-actor.js') }}"
+  data-actor-css="{{ asset('pilot/pilot-actor.css') }}"
+  data-rest-body="{{ asset('pilot/pilot-rest-body.webp') }}" data-rest-head="{{ asset('pilot/pilot-rest-head.webp') }}"
+  data-rest-eyes="{{ asset('pilot/pilot-rest-eyes.webp') }}" data-poses="{{ pilot_poses() }}"
   data-hosts="{{ pf.hosts }}" data-ai="{{ 'on' if pf.ai else 'off' }}" data-free-day="{{ pf.free_day }}"
   data-free-hour="{{ pf.free_hour }}" data-pro="{{ 'on' if pf.pro else 'off' }}" data-pro-price="{{ pf.pro_price }}"
   data-early="{{ 'on' if pf.early else 'off' }}" data-makers="{{ 'on' if pf.creators else 'off' }}"></script>
