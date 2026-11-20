@@ -4,6 +4,11 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.12.1 (20 November 2026)
+
+- **Pilot core 1.0.1.** Once a key was added, Pilot's window showed the word "nullnull" under the
+  five buttons. Empty spots are now left out before anything is drawn. Every core file says 1.0.1.
+
 ## 1.12.0 (20 November 2026)
 
 **Pilot, an AI assistant that runs on your own AI key.** docs/PILOT.md has the details.

@@ -1,4 +1,4 @@
-// Pilot core 1.0.0 · pilot-panel.js
+// Pilot core 1.0.1 · pilot-panel.js
 // The web chat window that opens from the robot: the Pilot header, the
 // greeting and its five pill buttons, the messages, the "Type a message…"
 // box, and the gear, palette and ? buttons at the bottom. Settings (keys,
@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "1.0.0";
+  const VERSION = "1.0.1";
   const SCREEN_LIMIT = 3500;
   const R = window.PilotRender;
   const P = window.PilotProviders;
@@ -29,6 +29,11 @@
     }
     for (const child of children) if (child !== null && child !== undefined && child !== false) node.append(child);
     return node;
+  }
+
+  // replaceChildren() turns null into the text "null", so empty slots are dropped first.
+  function put(node, ...kids) {
+    node.replaceChildren(...kids.filter((k) => k !== null && k !== undefined && k !== false));
   }
 
   // Line icons, drawn with SVG paths (no pictures, no icon font).
@@ -242,7 +247,7 @@
       const s = screen();
       let task = "";
       try { task = typeof config.taskPrompt === "function" ? config.taskPrompt(s) : ""; } catch (_) { task = ""; }
-      welcome.replaceChildren(
+      put(welcome,
         el("div", { class: "pilot-hello" }, icon("spark"),
           el("p", {}, el("span", { text: "Hello! I'm Pilot." }), el("br"), el("span", { text: "How can I help you today?" }))),
         el("div", { class: "pilot-pills" },
@@ -370,10 +375,10 @@
             "aria-label": otherBusy && !state.busy ? "Pilot is answering in another tab" : "Pilot is thinking" },
           el("i"), el("i"), el("i"))));
       }
-      log.replaceChildren(...nodes.filter(Boolean));
+      put(log, ...nodes.filter(Boolean));
       // A plan's live progress goes once the turn is over: its summary is in the chat.
       if (!state.busy) { const live = cardBox.querySelector(".pilot-live-plan"); if (live) live.remove(); }
-      sendBtn.replaceChildren(icon(state.busy ? "stop" : "send"));
+      put(sendBtn, icon(state.busy ? "stop" : "send"));
       sendBtn.setAttribute("aria-label", state.busy ? "Stop" : "Send");
       sendBtn.classList.toggle("pilot-stop", state.busy);
       sendBtn.type = state.busy ? "button" : "submit";
@@ -394,7 +399,7 @@
       try { list = (typeof config.chips === "function" ? config.chips(s) : config.chips) || []; } catch (_) { list = []; }
       const all = list.slice(0, 3).map((c) => ({ label: c.label, run: () => ask(c.prompt || c.label) }));
       all.push({ label: "Summarise this", run: () => shareScreen("Summarise what's on this screen in a few short points.", "Summarise this screen") });
-      chips.replaceChildren(...all.map((c) => el("button", { type: "button", class: "pilot-chip", text: c.label, on: { click: c.run } })),
+      put(chips, ...all.map((c) => el("button", { type: "button", class: "pilot-chip", text: c.label, on: { click: c.run } })),
         el("button", { type: "button", class: "pilot-link pilot-clear", text: "Clear chat", on: { click: clearChat } }));
     }
 
@@ -660,7 +665,7 @@
         try {
           const opts = { fetch: window.fetch.bind(window), compatibleHosts: hosts };
           models = kind === "chat" ? await P.listModels(c, opts) : await M.listModels(kind, c, opts);
-          modelSelect.replaceChildren(el("option", { value: "", text: "Choose a model…" }),
+          put(modelSelect, el("option", { value: "", text: "Choose a model…" }),
             ...models.map((m) => el("option", { value: m.id, text: m.label && m.label !== m.id ? `${m.label} (${m.id})` : m.id })));
           modelSelect.hidden = models.length === 0;
           if (models.some((m) => m.id === c.model)) modelSelect.value = c.model;
@@ -776,7 +781,7 @@
       forgetAll.hidden = !a.keys.length && !a.image && !a.video;
       forgetAll.addEventListener("click", () => { store.forget(); editing = null; changed(); drawSettings(); });
 
-      settingsView.replaceChildren(
+      put(settingsView,
         backButton(),
         el("div", { class: "pilot-keycard pilot-keycard-head" }, icon("key"),
           el("span", { class: "pilot-keycard-words" }, el("b", { text: "Bring Your Own API Key" }),
@@ -799,7 +804,7 @@
     }
 
     function drawHelp() {
-      helpView.replaceChildren(
+      put(helpView,
         backButton(),
         el("h3", { class: "pilot-h3", text: "How Pilot works" }),
         el("ul", { class: "pilot-facts" },

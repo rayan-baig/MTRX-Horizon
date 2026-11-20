@@ -541,3 +541,10 @@ test("Ask Genesis with your own key sends only the four project fields", () => {
   assert.ok(Ask.message({ name: "a", pitch: "x", audience: "y" }, "plan").error, "Pro's helpers stay Pro's");
   assert.equal(Ask.tidy("x".repeat(Ask.MAX_ANSWER_CHARS + 10)).length, Ask.MAX_ANSWER_CHARS + 1);
 });
+
+test("the window never writes the word null: every replaceChildren goes through put()", () => {
+  const src = require("node:fs").readFileSync(require("node:path").join(__dirname, "../../static/pilot/pilot-panel.js"), "utf8");
+  const calls = src.match(/\.replaceChildren\(/g) || [];
+  assert.equal(calls.length, 1, "only put() may call replaceChildren directly");
+  assert.match(src, /function put\(node, \.\.\.kids\) \{\n\s+node\.replaceChildren\(\.\.\.kids\.filter\(/);
+});
