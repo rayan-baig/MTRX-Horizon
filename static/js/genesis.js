@@ -3,6 +3,10 @@
 // typed is placed with textContent, never as HTML. When Genesis Pro is on,
 // static/js/genesis-pro.js (window.GenesisPro) handles the key and the
 // backup; this file only asks it whether this browser has Pro.
+// When the visitor has set their own AI key in Pilot (static/pilot/), Ask
+// Genesis uses it from the browser instead (static/js/genesis-ask.js), and
+// window.GenesisBridge lets Pilot's Genesis tools read and change projects
+// through the same functions the page's own buttons use.
 (() => {
   const S = window.GenesisStore;
   const $ = (id) => document.getElementById(id);
@@ -12,6 +16,22 @@
   let addressEdited = false;
   let notesTimer = null;
   const aiOn = $("genesis").dataset.ai === "on";
+  // The visitor's own AI key, set in Pilot: Ask Genesis then runs in this
+  // browser with it, with no free daily limit. Genesis Pro is unchanged.
+  // Its words (static/js/genesis-ask.js) are fetched the first time they're needed.
+  let Ask = window.GenesisAsk || null;
+  const ownKey = () => Boolean(window.Pilot && window.Pilot.ready() && !isPro());
+  function loadAsk() {
+    if (Ask) return Promise.resolve(Ask);
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = $("genesis").dataset.ask;
+      s.onload = () => { Ask = window.GenesisAsk || null; if (Ask) resolve(Ask); else reject(new Error("missing")); };
+      s.onerror = () => reject(new Error("load"));
+      document.head.append(s);
+    });
+  }
+  const aiUsable = () => aiOn || ownKey();
   const answers = {}; // the last Ask Genesis answer per project, for this visit only
   let asking = false;
   const Pro = window.GenesisPro || null; // only while Genesis Pro is switched on
@@ -523,7 +543,7 @@
     // Ask Genesis sits below the whole checklist on a phone; this goes
     // straight to it. Only while AI help is on.
     let ask = null;
-    if (aiOn) {
+    if (aiUsable()) {
       ask = el("button", { class: "btn btn-ghost btn-small g-next-ask", type: "button", text: "Ask Genesis" });
       ask.addEventListener("click", () => {
         const panel = document.querySelector(".g-ask");
@@ -806,12 +826,17 @@
 
   function askPanel(p) {
     const pro = isPro();
+    const own = ownKey();
     const head = el("div", { class: "g-row" }, el("h2", { class: "g-h2" }, "Ask Genesis"),
-      aiOn ? el("span", { class: `g-ai-badge${pro ? " pro" : ""}`, text: pro ? "AI · Pro" : "AI · free" }) : null);
-    const note = el("p", { class: "g-ask-note", text: "Don't type personal details. Your question is sent to our AI provider to answer it; we don't keep it. AI answers can be wrong, so check what matters." });
-    if (!aiOn) {
+      aiUsable() ? el("span", { class: `g-ai-badge${pro ? " pro" : own ? " own" : ""}`, text: pro ? "AI · Pro" : own ? "AI · your key" : "AI · free" }) : null);
+    const note = el("p", { class: "g-ask-note", text: own
+      ? `Don't type personal details. Your question goes straight from this browser to ${window.Pilot.providerLabel() || "your AI provider"} with your own key (set in Pilot), and your provider bills you. Nothing goes to us. AI answers can be wrong, so check what matters.`
+      : "Don't type personal details. Your question is sent to our AI provider to answer it; we don't keep it. AI answers can be wrong, so check what matters." });
+    if (!aiUsable()) {
       return el("section", { class: "panel g-ask off" }, head,
-        el("p", { class: "g-note", text: "AI help isn't switched on yet. Everything else in Genesis works as usual." }));
+        el("p", { class: "g-note", text: window.Pilot && window.Pilot.store
+          ? "AI help isn't switched on here yet. Everything else in Genesis works as usual, and you can use your own AI key: open Pilot, the robot in the corner, and add it."
+          : "AI help isn't switched on yet. Everything else in Genesis works as usual." }));
     }
     const out = el("div", { class: "g-answer", "aria-live": "polite" });
     const buttons = (pro ? HELPERS.concat(PRO_HELPERS) : HELPERS).map(([key, label]) => {
@@ -880,6 +905,13 @@
     panel.querySelectorAll("button, input").forEach((b) => { b.disabled = true; });
     drawAnswer(p, out);
     let result;
+    if (ownKey()) {
+      result = await askWithOwnKey(p, helper, label, question);
+      asking = false;
+      answers[p.id] = result;
+      if (current && current.id === p.id && !$("g-detail").hidden) drawProject(current);
+      return;
+    }
     const headers = { "Content-Type": "application/json" };
     if (Pro && Pro.key()) headers["X-Genesis-Pro-Key"] = Pro.key();
     try {
@@ -903,6 +935,24 @@
     answers[p.id] = result;
     // Redraw only if the visitor is still on this project.
     if (current && current.id === p.id && !$("g-detail").hidden) drawProject(current);
+  }
+
+  // Ask Genesis with the visitor's own key, from this browser: the same
+  // four fields and the same words as the server would send, no free limit.
+  async function askWithOwnKey(p, helper, label, question) {
+    try { await loadAsk(); } catch (_) { return { label, error: "No connection. Check you're online and try again." }; }
+    const built = Ask.message({ name: p.name, pitch: p.pitch, audience: p.audience, stage: p.stage }, helper, question);
+    if (built.error) return { label, error: built.error };
+    try {
+      const reply = await window.Pilot.complete({ system: Ask.SYSTEM, message: built.text, maxTokens: Ask.MAX_TOKENS });
+      if (reply.stop === "refused" && !reply.text) {
+        return { label, text: "Genesis can't help with that one. Try asking about your idea: who it's for, what to build first, or what to call it.", refused: true };
+      }
+      const text = Ask.tidy(reply.text, reply.stop);
+      return text ? { label, text } : { label, error: "Your AI provider sent an empty answer. Please try again." };
+    } catch (e) {
+      return { label, error: (e && e.kind && e.message) || "Couldn't reach your AI provider. Check you're online and try again." };
+    }
   }
 
   // Save any notes still waiting when the visitor leaves.
@@ -997,6 +1047,98 @@
     // Pro turned on or off: redraw the project open now, for its Pro parts.
     Pro.onChange(() => { if (current && !$("g-detail").hidden) drawProject(current); });
   }
+  // ---------------------------------------------------------------- Pilot
+  // What Pilot's Genesis tools may do (static/js/pilot-mtrx-pack.js). Each one
+  // goes through the same rules and saving as the page's own buttons, and
+  // Pilot asks the visitor before anything here changes. Nothing is deleted.
+
+  function findProject(ref) {
+    const list = store.usable ? store.load() : projects;
+    projects = list;
+    const want = typeof ref === "string" ? ref.trim().toLowerCase() : "";
+    if (want) {
+      return list.find((q) => q.id === ref) || list.find((q) => q.name.toLowerCase() === want)
+        || list.find((q) => q.name.toLowerCase().includes(want)) || null;
+    }
+    if (current && !$("g-detail").hidden) return list.find((q) => q.id === current.id) || null;
+    return list.slice().sort((a, b) => b.updated - a.updated)[0] || null;
+  }
+
+  function summary(q) {
+    const pr = S.progress(q);
+    const step = S.nextStep(q);
+    return { name: q.name, pitch: q.pitch, for: q.audience, stage: pr.launched ? "Launched" : stageOf(q.stage).name,
+      done: `${pr.done} of ${pr.total} steps (${pr.percent}%)`, next: step ? step.label : "Every step is done" };
+  }
+
+  function redrawAfterPilot(q) {
+    if (current && q && current.id === q.id && !$("g-detail").hidden) drawProject(q);
+    else if (!$("g-list-view").hidden) drawList();
+  }
+
+  window.GenesisBridge = {
+    screen() {
+      const hash = window.location.hash;
+      if (hash === "#new" || hash === "#example") return { view: "the form to start a new project" };
+      if (current && !$("g-detail").hidden) return { view: "one project", project: current.name };
+      return { view: "the list of projects", count: projects.length };
+    },
+    list() { return (store.usable ? store.load() : projects).slice().sort((a, b) => b.updated - a.updated).map(summary); },
+    find(ref) { const q = findProject(ref); return q ? { id: q.id, name: q.name } : null; },
+    next(ref) {
+      const q = findProject(ref);
+      if (!q) return { error: projects.length ? "I couldn't find that project." : "There are no projects yet." };
+      return summary(q);
+    },
+    addStep(ref, stage, label) {
+      const q = findProject(ref);
+      if (!q) return { error: "I couldn't find that project." };
+      const copy = { ...q, custom: (q.custom || []).slice() };
+      const result = S.addStep(copy, stage, label);
+      if (result.error) return { error: result.error };
+      update(q, (r) => { r.custom = copy.custom; });
+      (folds[q.id] = folds[q.id] || {})[stage] = true;
+      redrawAfterPilot(q);
+      return { ok: true, project: q.name, stage: stageOf(stage).name, step: result.step.label };
+    },
+    startProject(fields) {
+      projects = store.usable ? store.load() : projects;
+      if (projects.length >= S.LIMITS.projects) return { error: `Genesis holds ${S.LIMITS.projects} projects. Delete one first.` };
+      const made = S.create({ name: fields.name, pitch: fields.pitch, audience: fields.audience, address: S.suggestAddress(fields.name) });
+      if (made.errors) return { error: Object.entries(made.errors).map(([f, why]) => `${f}: ${why}`).join(" ") };
+      projects.push(made.project);
+      persist();
+      window.location.hash = `#p/${made.project.id}`;
+      return { ok: true, id: made.project.id, name: made.project.name };
+    },
+    spark() {
+      const today = S.dayKey(new Date());
+      const days = daily.load();
+      return { prompt: S.promptFor(today).text, answer: days[today] || "", streak: S.streak(days, today).streak, limit: S.DAILY_LIMIT };
+    },
+    fillSpark(text) {
+      const answer = S.line(text).slice(0, S.DAILY_LIMIT);
+      if (!answer) return { error: "The answer was empty." };
+      const today = S.dayKey(new Date());
+      const days = daily.load();
+      days[today] = answer;
+      if (!daily.save(days) && daily.usable) return { error: "The browser wouldn't save that." };
+      editingDaily = false;
+      if (!$("g-list-view").hidden) drawDaily();
+      return { ok: true, answer, streak: S.streak(days, today).streak };
+    },
+  };
+  // Pilot starts after this page has drawn. Once it has, and whenever a key
+  // is added or removed in it, Ask Genesis changes with it.
+  function withPilot() {
+    if (!window.Pilot || typeof window.Pilot.onChange !== "function") return;
+    const redraw = () => { if (current && !$("g-detail").hidden && !asking) drawProject(current); };
+    window.Pilot.onChange(redraw);
+    redraw();
+  }
+  if (window.Pilot && window.Pilot.store) withPilot();
+  else window.addEventListener("pilot-ready", withPilot, { once: true });
+
   drawStorageNote();
   route();
 })();

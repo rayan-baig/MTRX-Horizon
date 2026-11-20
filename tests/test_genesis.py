@@ -214,9 +214,12 @@ def test_a_saved_spark_is_said_in_the_card_and_toasts_never_cover_the_list(clien
 
 
 def test_the_next_step_box_leads_to_ask_genesis_only_while_ai_is_on():
+    """While Ask Genesis can answer: the free help is on, or the visitor has
+    their own AI key set in Pilot."""
     script = (ROOT / "static/js/genesis.js").read_text()
+    assert "const aiUsable = () => aiOn || ownKey();" in script
     box = script.split("function nextBox(", 1)[1].split("// ---------------------------------------------------------------- idea cards", 1)[0]
-    assert 'if (aiOn) {' in box and '"Ask Genesis"' in box and 'document.querySelector(".g-ask")' in box
+    assert 'if (aiUsable()) {' in box and '"Ask Genesis"' in box and 'document.querySelector(".g-ask")' in box
 
 
 def test_later_stages_start_folded_and_steps_can_be_hidden_or_added():

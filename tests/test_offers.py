@@ -1,7 +1,7 @@
 """The partner page (/partners) and the Kitchen Safety Bundle (/bundle).
 
 Both are plain public pages: they keep the site's security rules, set no
-cookie and run no script. What they say about money is only what
+cookie and run no script of their own (only Pilot's, as on every public page). What they say about money is only what
 CyberLogix AI's code does, and every button goes somewhere real. Apply opens
 the Orbyt Partner form with CyberLogix AI and the new partnership
 kind picked.
@@ -43,7 +43,9 @@ def test_the_page_opens_for_strangers_with_the_site_rules(client, path):
     assert "x-robots-tag" not in response.headers
     page = response.text
     assert 'style="' not in page and "<style" not in page
-    assert "<script" not in page
+    # The only scripts are Pilot's (tests/test_pilot.py): the page itself runs none.
+    for tag in re.findall(r"<script[^>]*>", page):
+        assert re.search(r'src="/static/pilot/pilot\.js\?v=[0-9a-f]{10}"', tag), tag
     assert not re.search(r"\son[a-z]+=", page)
     assert 'src="http' not in page and '<link rel="stylesheet" href="http' not in page
     assert re.search(r"/static/css/offers\.css\?v=[0-9a-f]{10}", page)

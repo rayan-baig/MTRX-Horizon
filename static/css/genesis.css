@@ -420,6 +420,7 @@
   font: 600 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.04em; overflow-wrap: anywhere;
 }
 .g-ai-badge.pro { background: linear-gradient(90deg, var(--spark), var(--launched)); }
+.g-ai-badge.own { background: linear-gradient(90deg, #3b82f6, #8b5cf6); color: #fff; }
 .g-helper.pro { border-color: rgba(251, 191, 36, 0.6); background: rgba(251, 191, 36, 0.1); }
 .g-plan { margin: 14px 0 0 8px; }
 

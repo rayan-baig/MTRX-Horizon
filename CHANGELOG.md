@@ -4,6 +4,47 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.12.0 (20 November 2026)
+
+**Pilot, an AI assistant that runs on your own AI key.** docs/PILOT.md has the details.
+
+- **A small robot sits in the corner of every public page** (home, Genesis, Orbyt, Partners, the
+  bundle, privacy, terms, brand, and early access and creators while they're on). Tap it and the
+  Pilot window opens. Drag it to any corner and it stays there. A dot on it says whether it's
+  ready (green), needs a key (amber) or is thinking (pulsing).
+- **Bring your own key.** Pilot works with Anthropic, OpenAI, Google Gemini, or any
+  OpenAI-compatible service the site allows (including a model on your own computer). You can keep
+  several keys and switch between them, and add separate keys for making pictures and videos.
+  Pilot lists the models your key can use, or you type one. Keys stay in your browser, for the tab
+  or on the device if you tick "Remember", and go only to that AI company. **Remove my keys**
+  deletes them. Your AI company bills your key; MTRX Horizyn pays nothing and sees nothing.
+- **It knows the site.** Ask how anything works, what each app does, what's ready today, or why
+  Genesis or an app is better: it answers from a guide written from the real site and an honest
+  list of real strengths, and says when it isn't sure. "Analyze & explain" and "Summarise this" send
+  an outline of what's on the screen (never what's typed in boxes, hidden parts, or your Pro key),
+  and show you exactly what was sent.
+- **It can do things on Genesis.** "Show my projects" and "What's my next step" answer straight
+  away. Adding a step, starting a project from an idea and filling in today's spark wait for you to
+  press **Allow**. Several changes at once ("turn my spark into a project and add 3 steps") are
+  shown first as a numbered plan: Approve all, Step through, or Cancel, and Stop works at any time.
+  Pilot never pays, deletes or messages anyone.
+- **Ask Genesis uses your key when you've set one**, from your browser, with no daily limit. The
+  free help for everyone else is unchanged (5 a day, 3 an hour), and so is Genesis Pro.
+- **It stays with you**: the chat and an open window follow you to the next page, and tabs of the
+  site stay in step, with only one tab answering at a time.
+- Optional voice input (where the browser has its own speech recognition) and optional memory
+  ("remember that I like short answers", kept only in your browser, off unless you turn it on).
+- **Pages stay fast**: a page loads one small Pilot script, which fetches the robot once the page
+  has finished loading; the window and everything it needs load the first time you open it.
+  Measured on a slow phone, the pages draw as fast as before.
+- **Security**: the site's strict security policy stays. It now lets the browser reach exactly the
+  AI companies' addresses Pilot needs (and your own computer, for a local model), play a video Pilot
+  made from memory, and use the microphone on this site's own pages when you press the button.
+  Nothing else changed. AI answers are shown as plain text: an answer can't inject anything into
+  the page.
+- The privacy page and the terms say what Pilot sends, to whom, and that AI keys are for grown-ups
+  (the AI companies require 18+).
+
 ## 1.11.1 (20 November 2026)
 
 - **The free plan has a smaller AI allowance.** Ask Genesis now gives free visitors 5 answers
