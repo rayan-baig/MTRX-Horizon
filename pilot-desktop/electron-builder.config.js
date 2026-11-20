@@ -45,6 +45,7 @@ module.exports = {
   },
   dmg: {
     title: "Pilot",
+    format: "ULFO", // lzfse: a smaller download, for macOS 10.11 and newer
     icon: "build/icon.icns",
     background: "build/background.png",
     window: { width: 540, height: 380 },
