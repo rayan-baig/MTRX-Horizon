@@ -1,0 +1,23 @@
+{
+  "name": "pilot-desktop",
+  "productName": "Pilot",
+  "version": "1.0.0",
+  "description": "Pilot for Mac: the MTRX Horizyn AI assistant, on your own AI key.",
+  "main": "src/main/main.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "author": "MTRX Horizyn",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test \"test/unit/*.test.js\"",
+    "smoke": "node test/smoke/run-smoke.mjs",
+    "shots": "node test/smoke/run-smoke.mjs --shots",
+    "dist": "electron-builder --config electron-builder.config.js --mac --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.3.2",
+    "electron-builder": "26.18.0",
+    "jsdom": "31.0.1",
+    "playwright-core": "1.65.0"
+  }
+}
