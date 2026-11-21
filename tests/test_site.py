@@ -189,10 +189,11 @@ def test_on_a_phone_the_home_page_never_hides_what_it_is_or_where_to_go():
 
 def test_home_page_numbers_are_real_or_say_they_are_coming(client):
     page = client.get("/").text
-    # No "Active Users: Soon" placeholder: until an app reports, that tile is
-    # something real (Genesis, free), and no tile shows a made-up figure.
+    # No "Active Users: Soon" placeholder and no filler figures: until an app
+    # reports, the tiles are things to do (Genesis, Orbyt, the project list).
     assert "Counted from launch" not in page and '<dd class="soon">' not in page
-    assert '<dt>Genesis</dt><dd class="fact-free"><a class="fact-link" href="/genesis">Free</a></dd><span>Plan your idea</span>' in page
+    assert '<span class="fact-k">Genesis</span><b class="fact-v">Free</b><span class="fact-s">Turn your idea into a plan</span></a>' in page
+    assert "Active Users" not in page
     # No live panel, and no Analytics link to it, until an app has reported:
     # an empty map with dashes looked alive and said nothing.
     assert 'id="activity"' not in page and 'href="#activity"' not in page
@@ -227,9 +228,10 @@ def test_projects_on_the_home_page_are_the_real_list(client):
     assert rows == [(p["name"], p["kind"], p.get("status", "In development"), p["next"]) for p in stats.PROJECTS]
     # The count in the panel is the length of that same list, and it says
     # plainly that one of them (this website) is the live one.
-    assert f'<dt>Projects</dt><dd><a class="fact-link" href="#projects">{len(stats.PROJECTS)}</a></dd>' in page
+    assert (f'<a class="fact fact-projects" href="#projects">' in page
+            and f'<span class="fact-k">Projects</span><b class="fact-v">{len(stats.PROJECTS)}</b>' in page)
     live = sum(1 for p in stats.PROJECTS if p.get("status") == "Live")
-    assert f"<span>{live} live, {len(stats.PROJECTS) - live} in development</span>" in page
+    assert f'<span class="fact-s">{live} live, {len(stats.PROJECTS) - live} in development</span>' in page
     assert "<span>Underway</span>" not in page
 
 
@@ -354,8 +356,10 @@ def test_active_users_on_the_home_page_are_the_active_ones(client, monkeypatch):
             "INSERT INTO app_snapshots (app, at, online, users, active_users)"
             " VALUES (?, ?, ?, ?, ?)", ("rankup", time.time(), 1, 1234, 56))
     page = client.get("/").text
-    fact = page.split("<dt>Active Users</dt>", 1)[1].split("</div>", 1)[0]
+    fact = page.split('<span class="fact-k">Active Users</span>', 1)[1].split("</a>", 1)[0]
     assert "56" in fact and "1,234" not in fact
+    # The whole tile is a link, to the live numbers.
+    assert '<a class="fact fact-users" href="#activity">' in page and 'id="activity"' in page
 
 
 def test_uptime_checks_that_ask_with_head_see_the_site_up(client):
@@ -946,7 +950,6 @@ def test_until_launch_every_part_of_the_home_page_says_the_apps_are_in_developme
     "Released to the public". Now one place, the catalog, decides, and every
     part of the page agrees."""
     page = client.get("/").text
-    assert "<dt>Our apps</dt><dd>3</dd><span>In development</span>" in page
     assert "Available" not in page and "Total Apps" not in page
     assert "parent company of three apps, all in development" in page
     assert "parent company of three apps (3 in development)" in page
@@ -960,17 +963,16 @@ def test_the_day_the_apps_open_the_home_page_says_so(client, monkeypatch):
     # Addresses alone don't launch anything: still in development, no Open
     # button and no link to the apps anywhere on the page.
     page = client.get("/").text
-    assert "<dt>Our apps</dt><dd>3</dd><span>In development</span>" in page
+    assert "parent company of three apps, all in development" in page
     assert "rankup.example.com" not in page and 'aria-label="Open RankUp"' not in page
     # Named in MTRX_OPEN_APPS: open, everywhere at once.
     monkeypatch.setenv("MTRX_OPEN_APPS", "all")
     page = client.get("/").text
-    assert "<dt>Our apps</dt><dd>3</dd><span>Open now</span>" in page
     assert "parent company of three apps, all open now" in page
     assert "In development" not in page and 'aria-label="Open RankUp"' in page
     monkeypatch.setenv("MTRX_OPEN_APPS", "rankup, cyberlogix")
     page = client.get("/").text
-    assert "<span>2 open, 1 in development</span>" in page
+    assert "parent company of three apps, 2 open, 1 in development" in page
     assert 'aria-label="Open OmniArmor.ai"' not in page and "omniarmor.example.com" not in page
 
 
@@ -1027,10 +1029,10 @@ def test_the_home_page_says_plainly_what_the_company_makes(client):
     css = Path("static/css/site.css").read_text(encoding="utf-8")
     phone = css.split("@media (max-width: 720px) {\n  /* A phone may scroll", 1)[1].split("\n}\n", 1)[0]
     assert ".page .app-card .app-lede { display: block;" in phone
-    # "No made-up stats" sits beside a figure that is true, and says whose it
-    # is: CyberLogix AI is built for 12 industries, not the whole company.
-    assert "Global Reach" not in page and "<dt>CyberLogix: built for</dt><dd>12</dd><span>Industries</span>" in page
-    assert "<dt>Built for</dt>" not in page
+    # No vague figures: "Global Reach" is long gone, and 1.16.0 dropped the
+    # strip's "CyberLogix: built for 12" too (the CyberLogix card says it).
+    assert "Global Reach" not in page and "<dt>Built for</dt>" not in page
+    assert "Built for 12 industries, from restaurants to data centers." in page
 
 
 def test_on_a_phone_the_apps_stack_and_whats_new_is_on_the_page(client):
@@ -1055,12 +1057,22 @@ def test_on_a_phone_the_apps_stack_and_whats_new_is_on_the_page(client):
 
 
 def test_on_a_phone_genesis_and_orbyt_are_on_the_page_and_the_menu_fits(client):
+    """1.16.0: Genesis and Orbyt once each on a phone (the Genesis card and a
+    Genesis figure sat one after the other), as big whole-tile links in the
+    strip under the apps."""
     page = client.get("/").text
-    places = page.split('<nav class="more-places"', 1)[1].split("</nav>", 1)[0]
-    assert 'href="/genesis"' in places and 'href="/orbyt"' in places and "Work with MTRX Horizyn" in places
+    assert 'class="more-places"' not in page and 'class="place ' not in page
+    tiles = page.split('<ul class="facts" aria-label="Where to go next">', 1)[1].split("</ul>", 1)[0]
+    assert tiles.count('href="/genesis"') == 1 and tiles.count('href="/orbyt"') == 1
+    # Every tile is one link, the whole tile: nothing in the strip is just a figure.
+    assert tiles.count("<li>") == tiles.count('<a class="fact ')
+    main = page.split('<main id="top">', 1)[1].split("</main>", 1)[0]
+    assert main.count('href="/genesis"') == 1
     css = Path("static/css/site.css").read_text(encoding="utf-8")
     phone = css.split("@media (max-width: 720px) {\n  /* A phone may scroll", 1)[1].split("\n}\n", 1)[0]
-    assert ".page .more-places { display: grid;" in phone
+    assert ".page .facts { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr));" in phone
+    assert "min-height: 76px" in phone
+    assert ".more-places" not in css
     menu_rule = css.split(".menu-sheet .menu {", 1)[1].split("}", 1)[0]
     assert "max-height: calc(100dvh - 80px)" in menu_rule and "overflow-y: auto" in menu_rule
     menu = page.split('id="menu"', 1)[1].split("</section>", 1)[0]

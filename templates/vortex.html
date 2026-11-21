@@ -104,11 +104,10 @@
       <p class="v-line">Want to work with MTRX Horizyn? Start here.</p>
       <p class="v-text">Pick what fits you below, write us a short note, and we'll reply by email. We
         make RankUp, CyberLogix AI and OmniArmor.ai{% if apps | rejectattr("icon") | list %}, and more{% endif %}.</p>
+      {#- Two promises, not four: the reply time is said once, just above Send. -#}
       <ul class="v-promises">
         <li>Takes about 2 minutes</li>
-        <li>A real person reads every message</li>
-        <li>Every message gets a reply</li>
-        <li>Nothing is bought or sold on this page</li>
+        <li>A real person replies</li>
       </ul>
     </div>
   </section>
@@ -144,22 +143,21 @@
     <li><b>3</b><span><strong>We reply by email</strong> A yes, a no, or a question back, from a real person.</span></li>
   </ol>
 
-  {#- Investors and buying come after the main paths: most visitors are here
-      to pitch an idea or try the apps. -#}
+  {#- Investors and buying come after the main paths (most visitors are here
+      to pitch an idea or try the apps), folded into one row: "Business
+      enquiries", with a button for each. -#}
   <nav class="v-paths v-paths-more" aria-label="Other ways to talk to us">
     <p class="v-paths-other">Other ways to talk to us</p>
-    <a class="v-path v-path-small path-invest" href="#invest" data-path="invest">
-      <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></svg></span>
-      <span class="v-path-text"><small class="v-who">I'm an investor</small><b>Investors</b>
-        <span>Curious about MTRX Horizyn? Say hello and we'll get back to you.</span></span>
-      <em class="v-path-go">Get in touch <span aria-hidden="true">→</span></em>
-    </a>
-    <a class="v-path v-path-small path-buy" href="#buy" data-path="buy">
-      <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M12 15v2"/></svg></span>
-      <span class="v-path-text"><small class="v-who">I'd like to buy</small><b>Buy the company or an app</b>
-        <span>Interested in taking on MTRX Horizyn or one of its apps? Start a conversation.</span></span>
-      <em class="v-path-go">Ask about buying <span aria-hidden="true">→</span></em>
-    </a>
+    <div class="v-path v-path-small v-business path-business">
+      <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg></span>
+      <span class="v-path-text"><b>Business enquiries</b>
+        <span>Investing in MTRX Horizyn, or buying the company or one of its apps? Start a conversation.
+          Nothing is bought or sold on this page.</span></span>
+      <span class="v-business-pick">
+        <a class="v-pick path-invest" href="#invest" data-path="invest">I'm an investor <span aria-hidden="true">→</span></a>
+        <a class="v-pick path-buy" href="#buy" data-path="buy">I'd like to buy <span aria-hidden="true">→</span></a>
+      </span>
+    </div>
   </nav>
 
   <section class="panel v-panel path-partner" id="v-partner" hidden>
@@ -215,9 +213,9 @@
       <div class="v-grid">
         {{ field("pitch", "name", "Your name", limits.name, "name") }}
         {{ field("pitch", "email", "Email", limits.email, "email", kind_of="email") }}
-        {{ field("pitch", "idea", "Idea name", limits.idea, wide=true, placeholder="Nova") }}
-        {{ field("pitch", "pitch", "One-line pitch", limits.pitch, wide=true, placeholder="Homework reminders that actually work") }}
-        {{ field("pitch", "audience", "Who it's for", limits.audience, wide=true, placeholder="Students who forget what's due") }}
+        {{ field("pitch", "idea", "Idea name", limits.idea, wide=true, placeholder="e.g. Nova") }}
+        {{ field("pitch", "pitch", "One-line pitch", limits.pitch, wide=true, placeholder="e.g. Homework reminders that actually work") }}
+        {{ field("pitch", "audience", "Who it's for", limits.audience, wide=true, placeholder="e.g. Students who forget what's due") }}
         {{ message("Message", "Anything else: what you've done so far, and what you'd like from us.", required=false) }}
       </div>
       {{ send_row("pitch") }}

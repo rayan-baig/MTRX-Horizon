@@ -128,3 +128,36 @@ test("a returning visitor gets a smaller welcome", () => {
   const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
   assert.match(css, /\.g-hero-small \.g-eyebrow, \.g-hero-small \.g-text \{ display: none; \}/);
 });
+
+// ---------------------------------------------------------------- 1.16.0 review fixes
+
+test("1.16.0: a spark that became a project says Open <project> and opens it", () => {
+  const draw = functionSource("drawDaily");
+  assert.ok(draw.includes("const made = sparkProject(today);"));
+  assert.ok(draw.includes('$("g-daily-project").textContent = made ? `Open ${made.name} →` : "Turn it into a project →";'));
+  assert.ok(source.includes('if (made) { window.location.hash = `#p/${made.id}`; return; }'));
+  // Starting the project from the spark records it.
+  assert.ok(source.includes("sparkDay: today };"));
+  assert.ok(source.includes("if (formSpark) { const day = formSpark; extras.edit((x) => { x.links[day] = made.project.id; }); formSpark = null; }"));
+});
+
+test("1.16.0: the last Ask answer is kept per project across reloads, and scrolled into view when it comes", () => {
+  assert.ok(source.includes("for (const [id, a] of Object.entries(extras.load().answers)) answers[id] ="));
+  const answered = functionSource("answered");
+  assert.ok(answered.includes("if (result && result.text) keepAnswer(p.id, result);"));
+  assert.ok(answered.includes('shown.scrollIntoView({ block: "nearest"'));
+  assert.equal((source.match(/answered\(p, result\);/g) || []).length, 2); // the server's answer and the visitor's own key
+  // Deleting forgets it too.
+  assert.ok(source.includes("extras.forget(p.id);") && source.includes("extras.forget();"));
+});
+
+test("1.16.0: the last stage tile says Live (never cut short), and Delete all is under More", () => {
+  assert.ok(source.includes('el("span", { text: "Live", title: "Launched: every step done" })'));
+  assert.ok(!source.includes('el("span", { text: "Launched" })'));
+  const page = fs.readFileSync(path.join(__dirname, "..", "..", "templates", "genesis.html"), "utf8");
+  const more = page.split('<details class="g-more" id="g-more">', 2)[1].split("</details>", 1)[0];
+  assert.ok(more.includes("<summary class=\"g-tool\">More</summary>") && more.includes('id="g-delete-all"'));
+  assert.ok(source.includes("if (!confirm(`Delete all ${projects.length} project"));
+  const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
+  assert.ok(!/\.g-path span \{[^}]*text-overflow: ellipsis/.test(css));
+});

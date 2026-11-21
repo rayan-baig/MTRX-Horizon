@@ -328,14 +328,15 @@ def test_the_home_page_picks_up_a_released_app(client, monkeypatch):
     owner(client)
     assert add(client).status_code == 200
     home = client.get("/").text
-    assert "Nova Notes" not in home and "<dt>Our apps</dt><dd>3</dd><span>In development</span>" in home
+    # 1.16.0: no "Our apps" figure (the hero says it); every tile goes somewhere.
+    assert "Nova Notes" not in home and "parent company of three apps, all in development" in home
     assert act(client, "nova-notes", "release").status_code == 200
     home = client.get("/").text
     about = home.split('id="company"', 1)[1].split("</section>", 1)[0]
     assert "<b>Nova Notes</b>" in about and 'href="https://nova.example.com"' in about
     assert "parent company of four apps" in about
     # Nova Notes has an address, so it is open; the founding three aren't yet.
-    assert "<dt>Our apps</dt><dd>4</dd><span>1 open, 3 in development</span>" in home
+    assert "fact-apps" not in home
     assert "parent company of four apps, 1 open, 3 in development" in home
     projects = home.split('id="projects"', 1)[1].split("</section>", 1)[0]
     assert "<b>Nova Notes</b>" in projects and '<em class="status">Open</em>' in projects

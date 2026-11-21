@@ -151,13 +151,6 @@
     {% endfor %}
   </section>
 
-  {#- On a phone the top links are folded into the menu, so Genesis and
-      Orbyt get a row of their own here. -#}
-  {% if not demo %}<nav class="more-places" aria-label="More from MTRX Horizyn">
-    <a class="place place-genesis" href="/genesis"><b>Genesis</b><span>Turn your idea into a plan, free</span></a>
-    <a class="place place-orbyt" href="/orbyt"><b>Orbyt</b><span>Work with MTRX Horizyn</span></a>
-  </nav>{% endif %}
-
   <section class="bottom{% if not live %} solo{% endif %}">
     <div class="panel about" id="about">
       <div class="about-side">
@@ -172,34 +165,38 @@
           RankUp, CyberLogix AI and OmniArmor.ai: software that watches, warns and motivates.</p>
         <a class="btn btn-outline" href="#company">About us <span aria-hidden="true">→</span></a>
       </div>
-      <dl class="facts">
-        <div>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
-          <dt>CyberLogix: built for</dt><dd>12</dd><span>Industries</span>
-        </div>
-        <div>
-          {% if n.users_online is none and not demo %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.2 6.6 6.8 2.4-6.8 2.4L12 20.5l-2.2-6.6L3 11.5l6.8-2.4Z"/></svg>
-          {% else %}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 6 5"/></svg>{% endif %}
-          {#- Real numbers only: active users once an app reports them. Until
-              then, something real instead of a placeholder: Genesis, free today. -#}
-          {% if n.users_online is not none %}<dt>Active Users</dt><dd>{{ count(n.users_online) }}</dd><span>Across all apps</span>
-          {% elif not demo %}<dt>Genesis</dt><dd class="fact-free"><a class="fact-link" href="/genesis">Free</a></dd><span>Plan your idea</span>
-          {% else %}<dt>Active Users</dt><dd class="soon">Soon</dd><span>Counted from launch</span>{% endif %}
-        </div>
-        <div>
+      {#- Every tile is a link, the whole tile, to something a visitor can do
+          (no filler figures): Genesis and Orbyt first, then the real
+          project list, and the apps' own active users once they report. On
+          a phone, where the top links are folded into the menu, this is
+          where Genesis and Orbyt are, once each. -#}
+      {%- set plist = projects or [] %}
+      {%- set live_now = plist | selectattr("status", "in", ["Live", "Open"]) | list | length %}
+      <ul class="facts" aria-label="Where to go next">
+        {%- if not demo %}
+        <li><a class="fact fact-genesis" href="/genesis">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.2 6.6 6.8 2.4-6.8 2.4L12 20.5l-2.2-6.6L3 11.5l6.8-2.4Z"/></svg>
+          <span class="fact-k">Genesis</span><b class="fact-v">Free</b><span class="fact-s">Turn your idea into a plan</span></a></li>
+        <li><a class="fact fact-orbyt" href="/orbyt">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M3.5 15.5c-1.6-3 3-8.2 9.3-10.5 4.6-1.6 7.2-.9 7.7 1"/><path d="M20.5 8.5c1.6 3-3 8.2-9.3 10.5-4.6 1.6-7.2.9-7.7-1"/></svg>
+          <span class="fact-k">Orbyt</span><b class="fact-v">Pitch</b><span class="fact-s">Your idea, or work with us</span></a></li>
+        {%- endif %}
+        {#- Honest about what the count holds: this website is one of the
+            projects, and it is the live one. #}
+        <li><a class="fact fact-projects" href="#projects">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c1-4 3-6 6-7m-3 3 3 3m-2.5-6.5C11 7 15 3 21 3c0 6-4 10-8.5 11.5z"/><circle cx="15" cy="9" r="1.5"/></svg>
-          {#- Honest about what the count holds: this website is one of the
-              projects, and it is the live one. -#}
-          {%- set plist = projects or [] %}
-          {%- set live_now = plist | selectattr("status", "in", ["Live", "Open"]) | list | length %}
-          <dt>Projects</dt><dd><a class="fact-link" href="#projects">{{ plist | length }}</a></dd>
-          <span>{% if live_now == plist | length %}All live{% else %}{{ live_now }} live, {{ plist | length - live_now }} in development{% endif %}</span>
-        </div>
-        <div>
+          <span class="fact-k">Projects</span><b class="fact-v">{{ plist | length }}</b><span class="fact-s">{% if live_now == plist | length %}All live{% else %}{{ live_now }} live, {{ plist | length - live_now }} in development{% endif %}</span></a></li>
+        {%- if n.users_online is not none %}
+        {#- Real numbers only: active users once an app reports them. #}
+        <li><a class="fact fact-users" href="#activity">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 6 5"/></svg>
+          <span class="fact-k">Active Users</span><b class="fact-v">{{ count(n.users_online) }}</b><span class="fact-s">Across all apps</span></a></li>
+        {%- elif demo %}
+        <li><a class="fact fact-apps" href="#apps">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 4.5 9-4.5"/></svg>
-          <dt>Our apps</dt><dd>{{ total }}</dd><span>{{ apps_now }}</span>
-        </div>
-      </dl>
+          <span class="fact-k">Our apps</span><b class="fact-v">{{ total }}</b><span class="fact-s">{{ apps_now }}</span></a></li>
+        {%- endif %}
+      </ul>
     </div>
 
     {#- Only once there is real activity to show: an empty map with dashes

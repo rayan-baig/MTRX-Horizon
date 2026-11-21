@@ -674,6 +674,92 @@
     return { get usable() { return usable; }, load, save, clear };
   }
 
+  // ---------------------------------------------------------------- what Genesis remembers besides projects
+  // Two small things kept in this browser only, like everything else here:
+  //   links: which project today's (or an earlier day's) spark became,
+  //     {day: project id}, so the spark can say "Open <project>";
+  //   answers: the last Ask Genesis answer per project, {id: {label, text,
+  //     at}}, so it is still there after a reload.
+  // Nothing here is ever sent anywhere.
+
+  const EXTRAS_KEY = "mtrx-genesis-extras";
+  const ANSWER_LIMIT = 6000;
+  const ANSWER_LABEL_LIMIT = 300;
+  const ID_RE = /^[A-Za-z0-9-]{1,64}$/;
+
+  function cleanExtras(raw) {
+    const out = { links: {}, answers: {} };
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+    const links = raw.links && typeof raw.links === "object" && !Array.isArray(raw.links) ? raw.links : {};
+    for (const day of Object.keys(links).filter((k) => Number.isFinite(dayNumber(k))).sort().reverse().slice(0, DAILY_KEEP)) {
+      if (typeof links[day] === "string" && ID_RE.test(links[day])) out.links[day] = links[day];
+    }
+    const answers = raw.answers && typeof raw.answers === "object" && !Array.isArray(raw.answers) ? raw.answers : {};
+    const kept = Object.keys(answers).filter((id) => ID_RE.test(id) && answers[id] && typeof answers[id] === "object")
+      .sort((a, b) => (Number(answers[b].at) || 0) - (Number(answers[a].at) || 0)).slice(0, LIMITS.projects);
+    for (const id of kept) {
+      const a = answers[id];
+      const label = line(a.label).slice(0, ANSWER_LABEL_LIMIT);
+      const text = block(a.text).slice(0, ANSWER_LIMIT);
+      if (!label || !text) continue;
+      out.answers[id] = { label, text, at: Number.isFinite(a.at) && a.at > 0 ? Math.floor(a.at) : 0,
+        ...(a.refused === true ? { refused: true } : {}), ...(a.saved === true ? { saved: true } : {}) };
+    }
+    return out;
+  }
+
+  function openExtras(storage) {
+    let usable = false;
+    try {
+      if (storage) {
+        storage.setItem(EXTRAS_KEY + ":test", "1");
+        storage.removeItem(EXTRAS_KEY + ":test");
+        usable = true;
+      }
+    } catch (_) { usable = false; }
+    let memory = cleanExtras(null);
+
+    function load() {
+      if (!usable) return cleanExtras(memory);
+      try {
+        const raw = storage.getItem(EXTRAS_KEY);
+        return raw ? cleanExtras(JSON.parse(raw)) : cleanExtras(null);
+      } catch (_) {
+        return cleanExtras(memory);
+      }
+    }
+
+    function save(extras) {
+      memory = cleanExtras(extras);
+      if (!usable) return false;
+      try {
+        storage.setItem(EXTRAS_KEY, JSON.stringify({ format: FORMAT, ...memory }));
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    // Change it in one step: change(extras) edits a fresh copy.
+    function edit(change) {
+      const x = load();
+      change(x);
+      return save(x);
+    }
+
+    // Forget a project's answer and any spark that pointed at it (or, with
+    // no id, everything).
+    function forget(id) {
+      if (!id) { memory = cleanExtras(null); if (usable) { try { storage.removeItem(EXTRAS_KEY); } catch (_) { return false; } } return true; }
+      return edit((x) => {
+        delete x.answers[id];
+        for (const day of Object.keys(x.links)) if (x.links[day] === id) delete x.links[day];
+      });
+    }
+
+    return { get usable() { return usable; }, load, save, edit, forget };
+  }
+
   // ---------------------------------------------------------------- sharing a card
   // A project as a few lines of words to paste anywhere. Only what the card
   // shows: never the notes, the ticks or anything about the visitor.
@@ -758,6 +844,7 @@
     EXAMPLES, example, nextStep,
     DAILY_KEY, DAILY_LIMIT, FREEZE_EARN, PROMPTS, dayKey, dayNumber, promptFor, cleanDays, streak, lastDays, openDaily,
     shareText, cardFileName,
+    EXTRAS_KEY, ANSWER_LIMIT, cleanExtras, openExtras,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.GenesisStore = api;

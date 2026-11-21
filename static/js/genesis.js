@@ -32,7 +32,9 @@
     });
   }
   const aiUsable = () => aiOn || ownKey();
-  const answers = {}; // the last Ask Genesis answer per project, for this visit only
+  // The last Ask Genesis answer per project. Answers (not errors) are also
+  // kept in this browser (GenesisStore.openExtras), so a reload keeps them.
+  const answers = {};
   let asking = false;
   const Pro = window.GenesisPro || null; // only while Genesis Pro is switched on
   const isPro = () => Boolean(Pro && Pro.active());
@@ -40,7 +42,10 @@
   const base = $("genesis").dataset.base || "";
   const local = (() => { try { return window.localStorage; } catch (_) { return null; } })();
   const daily = S.openDaily(local);
+  const extras = S.openExtras(local);
+  for (const [id, a] of Object.entries(extras.load().answers)) answers[id] = { label: a.label, text: a.text, refused: a.refused, saved: a.saved };
   let prefill = null; // what the form starts with next time it opens
+  let formSpark = null; // the day of the spark the new-project form came from
 
   function el(tag, props = {}, ...children) {
     const node = document.createElement(tag);
@@ -103,6 +108,7 @@
     $("g-count").textContent = projects.length ? `${projects.length} project${projects.length === 1 ? "" : "s"}` : "";
     $("g-empty").hidden = projects.length > 0;
     $("g-tools-data").hidden = projects.length === 0;
+    $("g-more").hidden = projects.length === 0;
     // A first visit sees how Genesis works; a returning one, where their projects are.
     $("g-list-head").hidden = projects.length === 0;
     $("g-how").hidden = projects.length > 0;
@@ -125,7 +131,7 @@
       el("b", { text: String(projects.filter((p) => p.stage === s.key && !S.progress(p).launched).length) }),
       el("span", { text: s.name }))),
     el("li", { class: "stage-launched" },
-      el("b", { text: String(projects.filter((p) => S.progress(p).launched).length) }), el("span", { text: "Launched" })));
+      el("b", { text: String(projects.filter((p) => S.progress(p).launched).length) }), el("span", { text: "Live", title: "Launched: every step done" })));
   }
 
   // Genesis Pro shows only once it could matter: after a first project or a
@@ -191,6 +197,10 @@
     $("g-daily-done").hidden = writing;
     $("g-daily-answer").textContent = answer;
     $("g-daily").classList.toggle("done", Boolean(answer) && !editingDaily);
+    // Already a project: the spark opens it instead of starting another.
+    const made = sparkProject(today);
+    $("g-daily-project").textContent = made ? `Open ${made.name} →` : "Turn it into a project →";
+    $("g-daily-project").classList.toggle("g-daily-open", Boolean(made));
 
     const streakLine = $("g-streak");
     streakLine.hidden = st.streak === 0;
@@ -249,10 +259,18 @@
     $("g-daily-input").value = daily.load()[S.dayKey(new Date())] || "";
     $("g-daily-input").focus();
   });
+  // The project a day's spark became, if it is still here.
+  function sparkProject(day) {
+    const id = extras.load().links[day];
+    return id ? projects.find((p) => p.id === id) || null : null;
+  }
   $("g-daily-project").addEventListener("click", () => {
-    const answer = daily.load()[S.dayKey(new Date())];
+    const today = S.dayKey(new Date());
+    const made = sparkProject(today);
+    if (made) { window.location.hash = `#p/${made.id}`; return; }
+    const answer = daily.load()[today];
     if (!answer) return;
-    prefill = { pitch: answer.slice(0, S.LIMITS.pitch), note: "From today's spark. Give it a name and say who it's for." };
+    prefill = { pitch: answer.slice(0, S.LIMITS.pitch), note: "From today's spark. Give it a name and say who it's for.", sparkDay: today };
     window.location.hash = "#new";
   });
   $("g-daily-clear").addEventListener("click", () => {
@@ -294,6 +312,7 @@
     }
     drawAddress();
     $("g-form-error").textContent = "";
+    formSpark = (start && start.sparkDay) || null;
     if (start) fillForm(start);
     if (window.matchMedia("(min-width: 721px)").matches) $("g-name").focus({ preventScroll: true });
   }
@@ -358,6 +377,8 @@
     }
     projects.push(made.project);
     persist();
+    // Started from today's spark: the spark now opens this project.
+    if (formSpark) { const day = formSpark; extras.edit((x) => { x.links[day] = made.project.id; }); formSpark = null; }
     toast("Project started.");
     window.location.hash = `#p/${made.project.id}`;
   });
@@ -512,6 +533,8 @@
       if (!confirm(`Delete "${p.name}"? Its checklist and notes go with it.`)) return;
       projects = projects.filter((q) => q.id !== p.id);
       persist();
+      delete answers[p.id];
+      extras.forget(p.id);
       toast("Project deleted.");
       window.location.hash = "#";
     });
@@ -883,7 +906,7 @@
       b.addEventListener("click", () => send(p, key, label, "", out, panel));
       return b;
     });
-    const input = el("input", { type: "text", class: "g-question-input", placeholder: "Or ask a short question about your idea", autocomplete: "off" });
+    const input = el("input", { type: "text", class: "g-question-input", placeholder: "Or ask a question", "aria-label": "Or ask a short question about your idea", autocomplete: "off" });
     input.maxLength = pro ? PRO_QUESTION_LIMIT : QUESTION_LIMIT;
     const go = el("button", { class: "btn btn-genesis btn-small", type: "submit", text: "Ask" });
     const form = el("form", { class: "g-question" }, input, go);
@@ -991,6 +1014,7 @@
       flushNotes();
       update(p, (q) => { q.notes = joined; });
       last.saved = true;
+      keepAnswer(p.id, last);
       toast("Saved to notes.");
       drawProject(p);
     });
@@ -1011,8 +1035,7 @@
     if (ownKey()) {
       result = await askWithOwnKey(p, helper, label, question);
       asking = false;
-      answers[p.id] = result;
-      if (current && current.id === p.id && !$("g-detail").hidden) drawProject(current);
+      answered(p, result);
       return;
     }
     const headers = { "Content-Type": "application/json" };
@@ -1037,9 +1060,24 @@
       result = { label, error: "No connection. Check you're online and try again." };
     }
     asking = false;
+    answered(p, result);
+  }
+
+  // An answer is in: kept (answers only, not errors) in this browser, and,
+  // if the visitor is still on this project, shown and scrolled into view.
+  function answered(p, result) {
     answers[p.id] = result;
-    // Redraw only if the visitor is still on this project.
-    if (current && current.id === p.id && !$("g-detail").hidden) drawProject(current);
+    if (result && result.text) keepAnswer(p.id, result);
+    if (!(current && current.id === p.id && !$("g-detail").hidden)) return;
+    drawProject(current);
+    const shown = document.querySelector(".g-answer");
+    if (shown && shown.firstElementChild) {
+      const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      shown.scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" });
+    }
+  }
+  function keepAnswer(id, a) {
+    extras.edit((x) => { x.answers[id] = { label: a.label, text: a.text, at: Date.now(), refused: Boolean(a.refused), saved: Boolean(a.saved) }; });
   }
 
   // Ask Genesis with the visitor's own key, from this browser: the same
@@ -1104,10 +1142,16 @@
     drawList();
   });
 
+  // More closes again on a tap anywhere else, or Escape.
+  document.addEventListener("click", (event) => { if ($("g-more").open && !$("g-more").contains(event.target)) $("g-more").open = false; });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && $("g-more").open) { $("g-more").open = false; $("g-more").querySelector("summary").focus(); } });
   $("g-delete-all").addEventListener("click", () => {
     if (!confirm(`Delete all ${projects.length} project${projects.length === 1 ? "" : "s"} from this browser? This can't be undone.`)) return;
     projects = [];
     store.clear();
+    for (const id of Object.keys(answers)) delete answers[id];
+    extras.forget();
+    $("g-more").open = false;
     toast("All projects deleted from this browser.");
     drawList();
   });

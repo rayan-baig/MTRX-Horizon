@@ -163,3 +163,9 @@
   .offer .cta-row .btn { width: 100%; justify-content: center; }
   .o-cta .cta-row { justify-self: stretch; }
 }
+
+/* The smallest phones (320px): one card per row, so "Restaurants" and
+   "Pharmacies" fit inside their cards. */
+@media (max-width: 360px) {
+  .o-four { grid-template-columns: minmax(0, 1fr); }
+}

@@ -64,7 +64,24 @@
   window.Pilot.mount({
     appName: "MTRX Horizyn",
     name: "Pilot",
-    tagline: "Your AI copilot. Powered by you.",
+    // Core 1.2.0: the welcome is this site's own (docs/PILOT.md). The Mac app
+    // keeps the design's.
+    tagline: "Help with ideas and MTRX apps",
+    welcomePills: [
+      { icon: "spark", label: "Help with my idea", action: "Help me with my idea. Ask me one question at a time. My idea: " },
+      { icon: "chat", label: "What is Orbyt?", action: "What is Orbyt, and which of its forms fits me?", send: true },
+      { icon: "bars", label: "Explain this page", action: "explain-screen" },
+      { icon: "bolt", label: "What apps are coming?", action: "Which MTRX Horizyn apps are coming, what does each one do, and how do I hear when one opens?", send: true },
+      { icon: "key", label: "Add my AI key", action: "settings" },
+    ],
+    // This site has no use for making pictures or videos.
+    hideKeySections: ["image", "video"],
+    // Tucked away, the robot shrinks into its corner instead of hanging off
+    // the screen's edge.
+    keepInViewport: true,
+    // The home page's cards (Learn more, Projects, About...) are CSS :target
+    // pop-ups, not dialogs: the robot steps back while one is open.
+    modals: [".sheet:target"],
     storagePrefix: "mtrx-pilot",
     pack: d.pack || "",
     // Exactly the hosts the site's security policy lets a browser reach for
@@ -79,13 +96,14 @@
     // The MTRX site has no child accounts; RankUp's config says when a view is a child's.
     kidView: () => false,
     // The core already keeps the robot off the page's words and buttons
-    // wherever it is scrolled to. On top of that, on the Genesis project
+    // wherever it is scrolled to. On top of that, the row of streak dots
+    // under today's spark, and on the Genesis project
     // screen it keeps clear of the stage bar, the web address and the whole
     // launch checklist: each row with its Hide button, and each stage's
     // heading with its count and arrow (it moves to a free corner, or tucks
     // away beside them).
     avoid: [".g-track", "#g-address", ".g-head .g-address", ".g-item-row", ".g-group-head", ".g-hidden-steps > summary",
-      ".g-add-form", ".g-moves"],
+      ".g-add-form", ".g-moves", "#g-week"],
     screen,
     chips: () => (CHIPS[path] || []).map(([label, prompt]) => ({ label, prompt })),
     taskPrompt: () => TASKS[path] || "Help me get started on this page.",

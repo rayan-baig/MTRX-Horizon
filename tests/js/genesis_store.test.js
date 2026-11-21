@@ -499,3 +499,41 @@ test("at the limit: blocked until the wait is over, with a countdown in minutes"
   assert.equal(S.freeBlocked({ free_left: 4, free_day: 5, free_hour: 3, hour_used: 1 }, 5, 3, now), false);
   assert.equal(S.freeBlocked(null, 5, 3, now), false);
 });
+
+// ---------------------------------------------------------------- 1.16.0: what Genesis remembers besides projects
+
+test("1.16.0: the last Ask answer per project and which project a spark became survive a reload", () => {
+  const data = new Map();
+  const first = S.openExtras(memoryStorage(data));
+  first.edit((x) => {
+    x.links["2026-11-21"] = "p-1";
+    x.answers["p-1"] = { label: "Name ideas", text: "Paw Pal\n\nPet Post", at: 5, saved: true };
+  });
+  const again = S.openExtras(memoryStorage(data)).load(); // a reload
+  assert.deepEqual(again.links, { "2026-11-21": "p-1" });
+  assert.deepEqual(again.answers["p-1"], { label: "Name ideas", text: "Paw Pal\n\nPet Post", at: 5, saved: true });
+  // Deleting the project forgets both; deleting everything forgets all.
+  const x = S.openExtras(memoryStorage(data));
+  x.forget("p-1");
+  assert.deepEqual(x.load(), { links: {}, answers: {} });
+  x.edit((e) => { e.answers["p-2"] = { label: "a", text: "b" }; });
+  x.forget();
+  assert.equal(data.has(S.EXTRAS_KEY), false);
+});
+
+test("1.16.0: saved extras are cleaned: real days and ids only, answers capped, no errors kept", () => {
+  const clean = S.cleanExtras({
+    links: { "2026-11-21": "ok-1", "not a day": "ok-2", "2026-11-20": "<b>bad</b>" },
+    answers: { "ok-1": { label: "Q", text: "x".repeat(S.ANSWER_LIMIT + 50), at: 1 }, "bad id!": { label: "Q", text: "A" },
+      "ok-2": { label: "", text: "no label" }, "ok-3": { error: "Genesis couldn't answer" } },
+  });
+  assert.deepEqual(Object.keys(clean.links), ["2026-11-21"]);
+  assert.deepEqual(Object.keys(clean.answers), ["ok-1"]);
+  assert.equal(clean.answers["ok-1"].text.length, S.ANSWER_LIMIT);
+  assert.deepEqual(S.cleanExtras("junk"), { links: {}, answers: {} });
+  // Blocked storage: kept for this page only.
+  const b = S.openExtras(blocked);
+  assert.equal(b.usable, false);
+  b.edit((e) => { e.links["2026-11-21"] = "p-9"; });
+  assert.deepEqual(b.load().links, { "2026-11-21": "p-9" });
+});

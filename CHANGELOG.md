@@ -4,6 +4,46 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.16.0 (21 November 2026)
+
+Fixes from the next strict review of Home, Genesis and Orbyt, and Pilot core 1.2.0. Prices and the
+free limits are unchanged, and Orbyt still never takes money.
+
+- **Pilot greets visitors in this site's own words (Pilot core 1.2.0).** The owner approved
+  app-specific welcome buttons for the websites (Pilot for Mac keeps the design's exactly). On this
+  site the window says "Help with ideas and MTRX apps" under "Pilot", and its five buttons are
+  "Help with my idea", "What is Orbyt?", "Explain this page", "What apps are coming?" and "Add my AI
+  key". The suggestions for the page you're on are on the welcome too. The picture and video key
+  settings are gone from this site (it has no use for them).
+- **Nothing you type to Pilot is thrown away.** If you write a message (or press a button) before
+  adding an AI key, it stays in the box, the key settings open with "Your message is waiting", and
+  it is sent as soon as you add a key.
+- **People notice the robot, and it stays out of the way.** On the first page of a visit the robot
+  shows whole for a few seconds with a soft glow. After that, when it has to tuck away, it shrinks
+  into its corner, fully on screen, instead of hanging off the edge. It hides while any pop-up is
+  open, including the home page's cards (before, a slice of it showed on top of their blurred
+  backdrop). It keeps a little more room from the ends of lines, and it no longer covers today's dot
+  in Genesis's streak row.
+- **Home.** On a phone, Genesis came twice in a row (its card, then a Genesis figure). The strip
+  under the apps is now three big tiles, each one a link as a whole: Genesis (free: turn your idea
+  into a plan), Orbyt (pitch your idea, or work with us) and Projects (1 live, 3 in development).
+  The "Our apps: 3" and "CyberLogix: built for 12" figures are gone from it (the page already says
+  both). Once an app reports real numbers, an Active users tile joins them.
+- **Genesis.** The last stage tile says "Live" instead of a cut-off "Launch…". Once today's spark
+  has become a project, its button says "Open Paw Board" (the project's name) and opens it, instead
+  of starting another. The last Ask Genesis answer for each project is kept in your browser, so it
+  is still there after a reload, and a new answer scrolls into view. "Delete all" moved under a
+  smaller "More" button (it still asks first). The idea form's examples now say "e.g.", and on the
+  smallest phones the welcome's buttons and today's spark fit inside their cards.
+- **Orbyt.** App names no longer break in the middle ("OmniArmo / r.ai") on phones: the "In
+  development" badge sits under the name. Two promises at the top instead of four ("Takes about 2
+  minutes", "A real person replies"). Investors and buying are one "Business enquiries" row, with a
+  button for each. The idea name's example reads "e.g. Nova". On a 320px phone the label at the top
+  no longer runs into the swirl.
+- **Pilot for Mac** carries the same six shared core files at 1.2.0 (only their version line
+  changed for it). No new Mac version.
+- **For the other apps:** docs/PILOT.md has the new options and the steps to move to core 1.2.0.
+
 ## 1.15.0 (21 November 2026)
 
 Fixes from the next strict review of Home, Genesis and Orbyt. Prices and the free limits are

@@ -103,6 +103,18 @@
 .g-tool:hover { border-color: var(--spark); }
 .g-tool.danger { border-color: rgba(244, 63, 94, 0.5); color: #fda4af; }
 .g-tool.danger:hover { background: rgba(244, 63, 94, 0.12); }
+/* More: the rarely needed (and only risky) action, out of the main row. */
+.g-more { position: relative; }
+.g-more[hidden] { display: none; }
+.g-more > summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.g-more > summary::-webkit-details-marker { display: none; }
+.g-more > summary::after { content: "▾"; font-size: 11px; }
+.g-more[open] > summary::after { content: "▴"; }
+.g-more-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; padding: 8px; border-radius: 14px;
+  border: 1px solid var(--line-strong); background: rgba(8, 14, 36, 0.97); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.g-more-menu .g-tool { white-space: nowrap; }
 
 .g-cards {
   list-style: none; margin: 0; padding: 0;
@@ -480,7 +492,7 @@
 
 /* ---------- today's spark ---------- */
 .g-daily {
-  position: relative; overflow: hidden; display: grid; gap: 14px; padding: clamp(20px, 3.5vw, 30px);
+  position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: clamp(20px, 3.5vw, 30px);
   border-color: rgba(251, 191, 36, 0.45);
   background:
     radial-gradient(ellipse 50% 90% at 100% 0, rgba(251, 191, 36, 0.16), transparent 70%),
@@ -603,8 +615,11 @@
   .g-path { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
   .g-path li { padding: 8px 2px; text-align: center; }
   .g-path b { font-size: 18px; }
-  /* "Launched" whole on a 360px phone, not cut to "Launc...". */
-  .g-path span { font-size: clamp(9.5px, 2.8vw, 10.5px); overflow: hidden; text-overflow: ellipsis; }
+  /* The last tile says "Live" (1.16.0), short enough to show whole at 320px;
+     never cut short with an ellipsis. */
+  .g-path span { font-size: clamp(9.5px, 2.8vw, 10.5px); }
+  /* The small welcome's line stops before the spark in the corner. */
+  .g-hero-small .g-line { padding-right: 44px; }
   .g-checklist, .g-progress, .g-notes-panel, .g-danger { padding: 16px; }
   .g-item { padding: 8px 4px; }
   .g-pro-buy .btn { flex: 1 1 100%; }
@@ -624,4 +639,14 @@
   .g-add-open { min-height: 40px; }
   .g-compare th, .g-compare td { padding: 8px 6px; font-size: 13px; }
   .g-plan { margin-left: 0; }
+}
+
+/* The smallest phones (320px): the welcome's two buttons stack instead of
+   running out of the card, and today's date drops under the label. */
+@media (max-width: 360px) {
+  .g-hero-small .cta-row { flex-wrap: wrap; }
+  .g-hero-small .cta-row .btn { flex: 1 1 100%; }
+  .g-daily-eyebrow { letter-spacing: 0.12em; }
+  .g-daily-eyebrow span { display: block; margin-top: 4px; }
+  .g-day { width: 28px; }
 }

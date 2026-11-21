@@ -1,4 +1,5 @@
-// The Orbyt page: four paths, each a short form, and the released
+// The Orbyt page: four paths (investors and buying share one row,
+// "Business enquiries"), each a short form, and the released
 // apps, each with a button that opens the Partner form with that app picked. A form is sent
 // only when Send is pressed, to /api/vortex/send, with no cookie. Every
 // word a visitor typed is placed with textContent, never as HTML.
@@ -212,11 +213,14 @@
     $("v-sent").hidden = true;
     for (const k of V.KINDS) {
       $(`v-${k}`).hidden = k !== kind;
-      const card = document.querySelector(`.v-path[data-path="${k}"]`);
+      // A path's card, or its button in the Business enquiries row.
+      const card = document.querySelector(`[data-path="${k}"]`);
       card.classList.toggle("on", k === kind);
       if (k === kind) card.setAttribute("aria-current", "true");
       else card.removeAttribute("aria-current");
     }
+    // The Business enquiries row lights up for either of its two paths.
+    document.querySelectorAll(".v-business").forEach((row) => row.classList.toggle("on", kind === "invest" || kind === "buy"));
     document.querySelectorAll(".v-paths").forEach((nav) => nav.classList.toggle("chosen", Boolean(kind)));
     $("v-choose").hidden = Boolean(kind);
     if (kind) $(`v-${kind}`).scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
@@ -239,7 +243,7 @@
     });
   });
   // Pressing the path already open (after sending, say) opens its form again.
-  document.querySelectorAll(".v-path[data-path]").forEach((card) => {
+  document.querySelectorAll("[data-path]").forEach((card) => {
     card.addEventListener("click", () => {
       if (window.location.hash === `#${card.dataset.path}` && sentKind) route(true);
     });

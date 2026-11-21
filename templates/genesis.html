@@ -100,10 +100,16 @@
       <div class="g-tools">
         <span class="g-tools-data" id="g-tools-data">
           <button class="g-tool" type="button" id="g-download">Download</button>
-          <button class="g-tool danger" type="button" id="g-delete-all">Delete all</button>
         </span>
         <button class="g-tool" type="button" id="g-import">Import</button>
         <input type="file" id="g-file" accept=".json,application/json" hidden>
+        {#- Deleting everything is tucked away under More (it still asks first). #}
+        <details class="g-more" id="g-more">
+          <summary class="g-tool">More</summary>
+          <div class="g-more-menu">
+            <button class="g-tool danger" type="button" id="g-delete-all">Delete all projects</button>
+          </div>
+        </details>
       </div>
     </div>
     <ul class="g-cards" id="g-cards"></ul>
@@ -225,17 +231,17 @@
     <form id="g-form" novalidate>
       <label class="g-field">
         <span class="g-label">Name <small class="g-count" id="g-name-count"></small></span>
-        <input id="g-name" autocomplete="off" placeholder="Nova">
+        <input id="g-name" autocomplete="off" placeholder="e.g. Nova">
         <small class="g-msg" id="g-name-msg"></small>
       </label>
       <label class="g-field">
         <span class="g-label">One-line pitch <small class="g-count" id="g-pitch-count"></small></span>
-        <input id="g-pitch" autocomplete="off" placeholder="Homework reminders that actually work">
+        <input id="g-pitch" autocomplete="off" placeholder="e.g. Homework reminders that actually work">
         <small class="g-msg" id="g-pitch-msg"></small>
       </label>
       <label class="g-field">
         <span class="g-label">Who it's for <small class="g-count" id="g-audience-count"></small></span>
-        <input id="g-audience" autocomplete="off" placeholder="Students who forget what's due">
+        <input id="g-audience" autocomplete="off" placeholder="e.g. Students who forget what's due">
         <small class="g-msg" id="g-audience-msg"></small>
       </label>
       <label class="g-field">

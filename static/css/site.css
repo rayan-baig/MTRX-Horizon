@@ -459,20 +459,6 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 .page .btn-outline:hover { box-shadow: 0 0 16px color-mix(in srgb, var(--accent, var(--cyan)) 45%, transparent); }
 .page .is-soon { opacity: .6; cursor: default; }
 
-/* Genesis and Orbyt, as a row of their own: only on phones, where the top
-   links are folded into the menu (see the phone rules below). */
-.page .more-places { display: none; }
-.place {
-  display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; text-decoration: none; min-width: 0;
-  border: 1px solid color-mix(in srgb, var(--pc) 55%, transparent);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--pc) 16%, rgba(6, 14, 38, .9)), rgba(6, 14, 38, .85));
-}
-.place b { font: 700 15px/1.2 var(--head); color: var(--text); }
-.place b::after { content: " →"; color: var(--pc); }
-.place span { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
-.place-genesis { --pc: #fbbf24; }
-.place-orbyt { --pc: #c084fc; }
-
 /* ---------- the two bottom panels ---------- */
 .page .bottom { flex: none; display: grid; grid-template-columns: minmax(0, 2.05fr) minmax(0, 1fr); gap: clamp(14px, 1.5vw, 26px); }
 /* No live numbers yet: the company panel has the row to itself. */
@@ -496,27 +482,29 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 .page .about-brand .tagline { color: var(--muted); font-size: clamp(7.5px, 0.6vw, 9.5px); margin: 6px 0 0; }
 .page .about-text { color: var(--muted); font-size: clamp(12px, 1.4vh, 13px); line-height: 1.38; margin: 0 0 clamp(4px, 0.9vh, 10px); }
 .page .about .btn-outline { --accent: var(--cyan); }
+/* Where to go next: every tile is a link, the whole tile (Genesis, Orbyt,
+   the project list, and active users once the apps report them). */
 .page .facts {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; align-self: stretch;
+  list-style: none; padding: 0; margin: 0; align-self: stretch;
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
 }
-.page .facts > div {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-  gap: clamp(2px, 0.55vh, 6px); padding: 2px 6px; border-left: 1px solid rgba(86, 140, 255, 0.25);
+.page .facts > li { display: flex; min-width: 0; border-left: 1px solid rgba(86, 140, 255, 0.25); }
+.page .fact {
+  --fc: #4f9dff;
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  gap: clamp(2px, 0.55vh, 6px); margin: 2px 6px; padding: 6px 8px; border-radius: 12px;
+  color: inherit; text-decoration: none; transition: background .15s ease;
 }
-.page .facts svg { width: clamp(20px, 2.8vh, 30px); height: clamp(20px, 2.8vh, 30px); color: #4f9dff; filter: drop-shadow(0 0 6px rgba(59, 130, 246, .6)); }
-.page .facts dt { font-size: clamp(11.5px, 1.45vh, 13.5px); color: var(--text); }
-.page .facts dd { margin: 0; font: 700 clamp(20px, 3.2vh, 30px)/1 var(--head); }
-.page .facts dd.soon { font-size: clamp(16px, 2.4vh, 22px); color: #6ee7b7; }
-/* A tile that goes somewhere (Genesis, the project list): the whole tile is
-   the link, through its number. */
-.page .facts > div:has(.fact-link) { position: relative; }
-.page .facts .fact-link { color: inherit; text-decoration: none; }
-.page .facts .fact-link::after { content: ""; position: absolute; inset: 0; border-radius: 12px; }
-.page .facts > div:has(.fact-link):hover { background: rgba(59, 130, 246, 0.08); }
-.page .facts .fact-link:focus-visible { outline: none; }
-.page .facts .fact-link:focus-visible::after { outline: 2px solid var(--cyan); outline-offset: -2px; }
-.page .facts dd.fact-free { color: #fbbf24; }
-.page .facts span { font-size: clamp(10.5px, 1.3vh, 12px); color: var(--faint); }
+.page .fact:hover { background: color-mix(in srgb, var(--fc) 12%, transparent); }
+.page .fact:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
+.page .facts svg { width: clamp(20px, 2.8vh, 30px); height: clamp(20px, 2.8vh, 30px); color: var(--fc); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--fc) 60%, transparent)); }
+.page .fact-k { font-size: clamp(11.5px, 1.45vh, 13.5px); color: var(--text); }
+.page .fact-v { font: 700 clamp(20px, 3.2vh, 30px)/1 var(--head); }
+.page .fact-s { font-size: clamp(10.5px, 1.3vh, 12px); color: var(--faint); }
+.page .fact-s::after { content: " →"; color: var(--fc); }
+.page .fact-genesis { --fc: #fbbf24; }
+.page .fact-orbyt { --fc: #c084fc; }
+.page .fact-genesis .fact-v, .page .fact-orbyt .fact-v { color: var(--fc); }
 
 .page .activity { padding: clamp(8px, 1.3vh, 14px) clamp(14px, 1.3vw, 22px); display: flex; flex-direction: column; min-width: 0; }
 .page .activity .eyebrow { font-size: clamp(9.5px, 1.25vh, 12px); margin-bottom: clamp(4px, 0.8vh, 8px); }
@@ -769,7 +757,7 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .bottom.solo { grid-template-columns: minmax(0, 1fr); }
   .page .about { grid-template-columns: minmax(0, 1fr); padding: 10px 12px; }
   .page .about-side, .page .map { display: none; }
-  .page .facts > div:first-child { border-left: 0; }
+  .page .facts > li:first-child { border-left: 0; }
   .page .activity-body { grid-template-columns: minmax(0, 1fr); }
   .page .tags { white-space: normal; letter-spacing: .08em; }
 }
@@ -829,7 +817,6 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .app-card .tags { display: none; }
   /* One short line under each name, so a card says what the app does. */
   .page .app-card .app-lede { display: block; grid-column: 2; grid-row: 2; max-width: none; margin: 0; font-size: 13px; line-height: 1.35; color: #dfe6fb; }
-  .page .more-places { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .page .card-actions { grid-column: 1 / -1; grid-row: 3; flex-direction: row; gap: 8px; margin-top: 10px; }
   .page .card-actions .btn { flex: 1 1 0; justify-content: center; min-height: 44px; padding: 0 8px; font-size: 13px; gap: 6px; white-space: nowrap; }
   /* The tile already says which app it is. */
@@ -853,12 +840,27 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .page .tags { font-size: 8.5px; letter-spacing: .04em; }
   .page .tags i { margin: 0 2px; }
   .page .btn-outline { min-height: 30px; padding: 0 12px; font-size: 12.5px; gap: 8px; }
+  /* Where to go next, on a phone: Genesis and Orbyt side by side as big
+     tiles (the top links are folded into the menu), the project list
+     across underneath. Each whole tile is the link. */
+  .page .about { background: none; border: 0; box-shadow: none; padding: 0; }
+  .page .facts { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .page .facts > li { border-left: 0; }
+  .page .facts > li:nth-child(n+3) { grid-column: 1 / -1; }
+  .page .fact {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; justify-items: start; text-align: left;
+    gap: 4px 8px; margin: 0; padding: 12px; min-height: 76px;
+    border: 1px solid color-mix(in srgb, var(--fc) 50%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--fc) 15%, rgba(6, 14, 38, .9)), rgba(6, 14, 38, .85));
+  }
   .page .facts svg { width: 18px; height: 18px; }
-  .page .facts dt { font-size: 10px; line-height: 1.2; }
-  .page .facts dd { font-size: 17px; }
-  .page .facts dd.soon { font-size: 13px; }
-  .page .facts span { font-size: 9.5px; }
-  .page .facts > div { padding: 2px; gap: 2px; }
+  .page .fact-k { font: 700 15px/1.2 var(--head); }
+  .page .fact-v, .page .fact-s { grid-column: 1 / -1; }
+  .page .fact-v { font-size: 20px; }
+  .page .fact-s { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+  /* The project list, across the row: icon, name and number on one line. */
+  .page .facts > li:nth-child(n+3) .fact { grid-template-columns: auto auto minmax(0, 1fr); min-height: 0; }
+  .page .facts > li:nth-child(n+3) .fact-v { grid-column: auto; font-size: 17px; }
   .page .activity { padding: 8px 10px; }
   .page .live li { padding: 3px 0; font-size: 11px; gap: 6px; }
   .page .live-note { font-size: 10px; }
@@ -928,7 +930,7 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 .brand-logos span { display: grid; gap: 2px; color: var(--text); }
 .brand-logos a { justify-self: start; display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; }
 .brand-colours { list-style: none; padding: 0 !important; }
-.brand-colours li { display: flex; align-items: center; gap: 10px; }
+.brand-colours li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .brand-colours b { color: var(--text); min-width: 4.5em; }
 .sw { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); flex: none; }
 .sw-bg { background: #050816; } .sw-cyan { background: #22d3ee; } .sw-blue { background: #3b82f6; }

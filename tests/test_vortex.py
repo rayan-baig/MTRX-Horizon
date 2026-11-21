@@ -81,9 +81,10 @@ def test_the_four_paths_and_what_each_says(client):
     page = client.get("/orbyt").text
     for path in ('href="#partner"', 'href="#pitch"', 'href="#invest"', 'href="#buy"'):
         assert path in page
-    for title in ("Partner with us", "Pitch an idea", "Investors", "Buy the company or an app"):
+    for title in ("Partner with us", "Pitch an idea", "Investors", "Buy the company or an app", "Business enquiries"):
         assert title in page
-    assert page.count('class="v-path ') == 4
+    # Pitch and Partner, then one row for investors and buyers (1.16.0).
+    assert page.count('class="v-path ') == 3
     for app in ("RankUp", "CyberLogix AI", "OmniArmor.ai"):
         assert app in page
     assert "If you're under 13, ask a parent or guardian to send this for you." in page
@@ -686,8 +687,8 @@ def test_orbyt_says_who_it_is_for_and_how_it_works_at_once(client):
     page = client.get("/orbyt").text
     hero = page.split('<section class="v-hero panel">', 1)[1].split("</section>", 1)[0]
     assert "Want to work with MTRX Horizyn? Start here." in hero
-    for promise in ("Takes about 2 minutes", "A real person reads every message", "Nothing is bought or sold on this page"):
-        assert f"<li>{promise}</li>" in hero
+    # Two promises, not four (1.16.0).
+    assert re.findall(r"<li>(.*?)</li>", hero) == ["Takes about 2 minutes", "A real person replies"]
     paths = "".join(re.findall(r'<nav class="v-paths[^"]*"(.*?)</nav>', page, re.S))
     # The most common visitor first, each with who it's for in their words.
     assert [m for m in re.findall(r'data-path="(\w+)"', paths)] == ["pitch", "partner", "invest", "buy"]
@@ -759,8 +760,9 @@ def test_pitch_and_partner_first_then_other_ways_to_talk(client):
     more = page.split('<nav class="v-paths v-paths-more"', 1)[1].split("</nav>", 1)[0]
     assert page.index('<nav class="v-paths v-paths-more"') > how
     other = more.index("Other ways to talk to us")
-    assert other < more.index('data-path="invest"') < more.index('data-path="buy"')
-    assert more.count("v-path-small") == 2
+    assert other < more.index("Business enquiries") < more.index('data-path="invest"') < more.index('data-path="buy"')
+    # Folded into one row (1.16.0), with a button for each.
+    assert more.count("v-path-small") == 1 and more.count('class="v-pick ') == 2
     # Every nav of paths dims together once one is chosen.
     script = (ROOT / "static/js/vortex.js").read_text()
     assert 'document.querySelectorAll(".v-paths").forEach' in script
@@ -842,3 +844,55 @@ def test_orbyt_always_says_it_is_for_working_with_mtrx_horizyn(client):
     page = client.get("/orbyt").text
     assert "<title>Orbyt · Work with MTRX Horizyn</title>" in page
     assert '<p class="eyebrow v-eyebrow">Work with MTRX Horizyn</p>' in page
+
+
+# ---------------------------------------------------------------- 1.16.0: review fixes
+
+def _phone_rules(css, width=600):
+    return css.split(f"@media (max-width: {width}px) {{\n  .v-paths, .v-paths.with-early", 1)[1].split("\n}\n", 1)[0]
+
+
+@pytest.mark.parametrize("width", [320, 375])
+def test_app_names_never_break_inside_a_word_on_phones(client, width):
+    """At 375 and 320px "OmniArmor.ai" broke as "OmniArmo / r.ai" beside its
+    status badge. Names now never break inside a word, and on phones the
+    badge goes under the name, so the name has the card's width."""
+    css = (ROOT / "static/css/vortex.css").read_text()
+    h3 = css.split(".v-app h3 {", 1)[1].split("}", 1)[0]
+    assert "overflow-wrap: normal" in h3 and "word-break: normal" in h3 and "anywhere" not in h3
+    phone = _phone_rules(css)
+    assert ".v-app-head { display: grid; grid-template-columns: auto minmax(0, 1fr);" in phone
+    assert ".v-app-open, .v-app-soon { grid-column: 2;" in phone
+    # The room the name has at this width: the page's side room (the robot's,
+    # 30px, more than the page's own 16px), the card's padding (18px), the
+    # icon (44px) and the gap (12px). Each name fits, at about 0.66em a letter
+    # of the 18px heading.
+    pilot = (ROOT / "static/pilot/pilot.css").read_text()
+    side = int(re.search(r":root\.pilot-on\.pilot-keep-in \{ --pilot-side: (\d+)px; \}", pilot).group(1))
+    room = width - 2 * max(side, 16) - 2 * 18 - 44 - 12
+    page = client.get("/orbyt").text
+    names = re.findall(r'<li class="v-app [^"]*" data-app="[^"]+">\s*<div class="v-app-head">.*?<h3>(.*?)</h3>', page, re.S)
+    assert "OmniArmor.ai" in names
+    for name in names:
+        longest = max(name.split(), key=len)
+        assert len(longest) * 18 * 0.66 <= room, (width, name, room)
+
+
+def test_orbyt_is_shorter_and_its_examples_say_so(client):
+    page = client.get("/orbyt").text
+    # The idea name's placeholder is clearly an example, like the others.
+    assert 'placeholder="e.g. Nova"' in page and 'placeholder="Nova"' not in page
+    assert 'placeholder="e.g. Homework reminders that actually work"' in page
+    # Investors and buyers: one "Business enquiries" row, a button each,
+    # and either one lights the row up.
+    more = page.split('<nav class="v-paths v-paths-more"', 1)[1].split("</nav>", 1)[0]
+    assert more.count('<div class="v-path v-path-small v-business path-business">') == 1
+    assert '<a class="v-pick path-invest" href="#invest" data-path="invest">' in more
+    assert '<a class="v-pick path-buy" href="#buy" data-path="buy">' in more
+    script = (ROOT / "static/js/vortex.js").read_text()
+    assert 'row.classList.toggle("on", kind === "invest" || kind === "buy")' in script
+    assert 'document.querySelector(`[data-path="${k}"]`)' in script
+    # The label beside the swirl never runs into it at 320px.
+    css = (ROOT / "static/css/vortex.css").read_text()
+    small = css.split("@media (max-width: 360px) {", 1)[1].split("\n}\n", 1)[0]
+    assert ".v-hero-copy .v-eyebrow { padding-right: 0;" in small and ".v-hero-art { top: 46px; }" in small

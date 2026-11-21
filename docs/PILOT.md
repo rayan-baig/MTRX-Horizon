@@ -2,7 +2,7 @@
 
 Pilot is the AI assistant in every MTRX Horizyn app. It runs on **the user's own AI key**, from
 their browser: MTRX Horizyn never sees the key, never sees the conversation, and pays nothing for
-the AI. This file describes the shared core (**Pilot core 1.1.1**) and how it is used on the
+the AI. This file describes the shared core (**Pilot core 1.2.0**) and how it is used on the
 MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
 
 ## What the user sees
@@ -18,12 +18,16 @@ MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
 - **The window.** Tapping the robot opens the Pilot window: the P-with-orbit logo, **Pilot**,
   "Your AI copilot. Powered by you.", a greeting ("Hello! I'm Pilot. How can I help you
   today?"), five pills (Ask anything…, Get things done…, Help with code…, Analyze & explain…,
-  Customize with your API key), the "Type a message…" box with its send button, and the gear
+  Customize with your API key), the page's suggestions, the "Type a message…" box with its send
+  button, and the gear
   (settings), palette (a calmer look) and ? (help) buttons. On a computer it is a side window
   next to the robot; on a phone it is a full-width sheet. Answers stream in, with Copy on each,
   Stop while it runs, and Clear chat under the conversation.
-- **Suggestions** come first once a chat has started (the greeting and its five pills are for
-  starting, and fold away), and fit the page (on Genesis: "Show my projects", "What's my
+  That is the design, and Pilot for Mac keeps it exactly. Since core 1.2.0 a website can set its
+  own tagline and pills (`tagline`, `welcomePills`, see **Each app's own welcome** below); the
+  MTRX site does.
+- **Suggestions** are on the welcome too (before a key is added), and come first once a chat has
+  started (the greeting and its pills are for starting, and fold away), and fit the page (on Genesis: "Show my projects", "What's my
   next step?"), plus **Summarise this**. **Analyze & explain…** explains the screen.
 - **Voice**, where the browser has its own speech recognition: a microphone in the box. The words
   land in the box to check before sending. Hidden where the browser has none.
@@ -34,6 +38,65 @@ MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
   (sessionStorage). Tabs of the same site stay in step through a BroadcastChannel: a reply in one
   tab shows in the others, a new tab picks up the chat, and only one tab sends a request at a
   time (a Web Lock where the browser has them).
+
+## Each app's own welcome (core 1.2.0)
+
+The design's welcome (the tagline "Your AI copilot. Powered by you." and the five pills) is the
+default, and Pilot for Mac keeps it exactly. A website can make the welcome its own with four
+config fields:
+
+| Field | What it does | Default |
+|---|---|---|
+| `tagline` | the line under "Pilot" in the window's header | "Your AI copilot. Powered by you." |
+| `welcomePills` | up to 5 `{icon, label, action, send}` pills (below) | the design's five |
+| `hideKeySections` | key settings to leave out: `["image", "video"]`, either or both | none hidden |
+| `chips(screen)` | (already there) this page's suggestions: now also on the welcome, under the pills | none |
+
+A pill's `icon` is one of the window's line icons: `chat`, `bolt`, `code`, `bars`, `gear`, `key`,
+`spark`, `help`, `copy` (anything else shows `spark`). Its `label` is plain words (40 characters at
+most). Its `action` is either a built-in:
+
+| `action` | What the pill does |
+|---|---|
+| `ask` | puts the cursor in the message box |
+| `task` | puts the app's `taskPrompt(screen)` in the box |
+| `code` | puts "Help me with this code: " in the box |
+| `explain-screen` | explains the screen (sends its outline, as "Analyze & explain…" does) |
+| `summarise-screen` | summarises the screen |
+| `settings` | opens key settings |
+| `help` | opens help |
+
+or any other words: a prompt put in the box for the visitor to finish and send (a trailing space is
+kept, so "My idea: " leaves the cursor ready). With `send: true` the prompt is sent at once. The
+core cleans what it is given (words only, a known icon, at most five); if nothing usable is left it
+shows the design's five.
+
+**Nothing typed is thrown away before there is a key.** A message sent (or a pill or suggestion
+pressed) with no chat key yet stays in the box, key settings open with "Your message is waiting in
+the box. It sends as soon as you add a key.", and it is sent the moment a key is saved, here or in
+another tab of the site. Pressing "Explain this page" with no key does the same: the screen is
+explained once the key is in.
+
+On the MTRX site: the tagline is "Help with ideas and MTRX apps"; the pills are **Help with my idea**
+(a prompt to finish), **What is Orbyt?** and **What apps are coming?** (sent at once), **Explain this
+page** (`explain-screen`) and **Add my AI key** (`settings`); the image and video key sections are
+hidden (the site has no use for pictures or videos); and `keepInViewport` is on (below).
+
+### Moving an app to core 1.2.0
+
+1. Copy the thirteen core files from `static/pilot/` over the app's copies (they all say `Pilot core
+   1.2.0` on their first line). The robot pictures, layers and poses are unchanged.
+2. Nothing else is required: with no new fields the app looks and works as before (the design's
+   welcome, image and video keys offered), except that the robot now shows whole for 4 seconds on
+   the first page of a visit, steps back for any page-covering pop-up, keeps a little more room from
+   the page's words, and this page's suggestions also show on the welcome.
+3. Optional, in the app's config (`Pilot.mount({...})`): `tagline`, `welcomePills`,
+   `hideKeySections`; `keepInViewport: true` to have the tucked-away robot shrink into its corner
+   instead of hanging off the edge; `modals: [selectors]` for pop-ups that aren't `<dialog>` or
+   `role="dialog"` (a CSS `:target` sheet, say); `revealMs` (0 to turn the first look off).
+4. Run the app's copy of `tests/js/pilot.test.js` (copy the new one: it checks all of the above).
+5. If the app ships Pilot for Mac's six shared files (`pilot-desktop/src/core/`), copy them too and
+   update `core-version.json`; the Mac app's own welcome doesn't use these fields.
 
 ## The moving robot (core 1.1.0)
 
@@ -139,6 +202,24 @@ on a page, `<html>` has the class `pilot-on` and the CSS variable `--pilot-gutte
 needs at the bottom); a page can keep its last lines clear with `padding-bottom: var(--pilot-gutter)`
 or the `.pilot-gutter` class.
 
+**Noticed, then out of the way (core 1.2.0).** On the first page of a visit (once per tab, kept in
+sessionStorage) the robot shows whole for 4 seconds with a soft glow, even where it would otherwise
+tuck away (never on a box being typed in), so people notice it; `revealMs` changes how long (0 for
+never). It steps back for any pop-up of the page, marked or not: the four dialog selectors above,
+the app's own `modals` selectors, and anything fixed that covers the whole screen above the page
+(a backdrop: on top at the middle of the screen and near the robot's corner, not behind the page,
+and not see-through to taps, so scenery like a starry sky never counts). It looks again when the
+address changes too, for `:target` pop-ups. It keeps a little room from the page's words
+(`--pilot-clear-x`, 12 px across, where its hand reaches, and `--pilot-clear-y`, 4 px), and small
+things that mean something without words count as content: anything with a tooltip (`title`), a
+picture role, a progress bar or meter, or `data-pilot-clear` (Genesis's row of streak dots).
+
+**`keepInViewport` (an app's choice).** Tucked away, the robot doesn't hang off the edge: it shrinks
+to `--pilot-peek-scale` (0.42 on phones, 0.5 on computers) in its corner, `--pilot-keep-margin` from
+the edges (3 px on phones, 8 px on computers), fully on screen, and grows back on hover. On phones
+`--pilot-side` becomes 30 px so line ends stop before the small robot. Placement measures the robot
+at its own size, not as drawn while shrunk.
+
 **Clear of the page, wherever it's scrolled (core 1.1.1).** The robot also keeps off the page's own
 words and buttons: line ends, links, buttons, form fields, checkboxes and small icons (big pictures are
 scenery). `pilot-mascot.js` `contentIn` looks at a 4 × 4 grid of points over the robot's box (the top
@@ -162,7 +243,8 @@ even); `pilot.js` also puts the class on the app's gutter elements (`config.gutt
 `false` for none), but only where their own right padding is narrower. So line ends stop before the
 robot.
 
-On the MTRX site the robot also keeps clear of the Genesis project screen's stage bar and web address,
+On the MTRX site the robot also keeps clear of the row of streak dots under today's spark, the Genesis
+project screen's stage bar and web address,
 and of the whole launch checklist (each row with its Hide button, each stage's heading with its count
 and arrow, the add-a-step box and the stage buttons). On a computer the chat window opens beside the robot, as tall as the
 screen allows, so everything in it (the "Bring Your Own API Key" card too) is in view; short screens
@@ -309,7 +391,7 @@ Genesis Pro members keep Pro's own answers either way.
 
 ## The files
 
-The core is the same in every app. Each file starts with `Pilot core 1.1.1 · <file name>`, so
+The core is the same in every app. Each file starts with `Pilot core 1.2.0 · <file name>`, so
 copies in different repos can be compared.
 
 | File | What it is | DOM |
@@ -381,12 +463,17 @@ Per app (on the MTRX site):
    |---|---|
    | `appName` | the app's name, used in Pilot's rules ("the assistant built into …") |
    | `name`, `tagline` | the window's title and tagline (default "Pilot", "Your AI copilot. Powered by you.") |
+   | `welcomePills` | up to 5 `{icon, label, action, send}` pills for the welcome (default: the design's five; see **Each app's own welcome**) |
+   | `hideKeySections` | `["image", "video"]` (either or both) to leave those key settings out |
+   | `keepInViewport` | `true`: tucked away, the robot shrinks into its corner instead of hanging off the screen's edge |
+   | `modals` | CSS selectors of the app's own pop-ups that aren't marked as dialogs; the robot steps back while one shows |
+   | `revealMs` | how long the robot shows whole on a visit's first page (4000 by default; 0 for never) |
    | `storagePrefix` | the browser-storage prefix, e.g. `cyberlogix-pilot` (lowercase, digits, dashes) |
    | `pack` | the address of the knowledge-pack script, loaded on first open; it sets `window.PilotPack` |
    | `compatibleHosts` | the OpenAI-compatible hosts the app's policy allows, plus `localhost`, `127.0.0.1` |
    | `kidView()` | true on a child's view: Pilot isn't shown at all, and no tools are ever offered |
    | `screen()` | `{name, facts}`: the screen the user is on, and any short facts about it |
-   | `chips(screen)` | up to 3 `{label, prompt}` suggestions for this screen |
+   | `chips(screen)` | up to 3 `{label, prompt}` suggestions for this screen (on the welcome too) |
    | `taskPrompt(screen)` | what "Get things done…" puts in the box on this screen |
    | `keyNote` | the one-line note above the message box (until a key is added) and beside key settings (e.g. the 18+ line) |
    | `audienceNote` | who may be using it, for Pilot's rules |
@@ -417,8 +504,9 @@ Per app (on the MTRX site):
 ### Apps still on an older core
 
 CyberLogix and OmniArmor carry Pilot core 1.0.x. They keep working as they are; to get the moving
-robot they need the 1.1.x core files, the layers and the `poses/` folder copied in (and the new
-`data-*` on their tag), in their own repos, later. This repo doesn't change them.
+robot and the 1.2.0 welcome they need the 1.2.0 core files, the layers and the `poses/` folder copied
+in (and the new `data-*` on their tag), then the steps in **Moving an app to core 1.2.0**, in their
+own repos, later. This repo doesn't change them.
 
 ### Server-side AI in an app
 
