@@ -11,7 +11,7 @@
 
 const path = require("node:path");
 const fs = require("node:fs");
-const { execFile } = require("node:child_process");
+const { execFile, spawn } = require("node:child_process");
 const {
   app, BrowserWindow, Tray, Menu, ipcMain, screen, shell, clipboard, dialog, nativeImage,
   safeStorage, desktopCapturer, systemPreferences, protocol, session, net, powerMonitor,
@@ -32,6 +32,10 @@ const motion = require("../core/pilot-motion");
 const roam = require("../core/roam");
 const screenAccess = require("./screen-access");
 const uploads = require("./uploads");
+const tricks = require("../core/tricks");
+const clip = require("./clip");
+const linkread = require("./linkread");
+const voiceCore = require("./voice");
 
 const APP_DIR = path.join(__dirname, "..", "..");
 const TEST = process.env.PILOT_TEST === "1";
@@ -79,6 +83,10 @@ let locked = false; // the Mac's screen is locked
 let wasAway = false;
 let chatOpenedAt = 0;
 let fsCache = { at: 0, value: false }; // "full screen in front", checked at most every 15 s
+let talking = false; // Pilot is reading a reply aloud
+const sayer = voiceCore.sayer({ spawn, mac: MAC, onDone: () => setTalking(false) });
+const mute = voiceCore.muteWatch({ execFile, mac: MAC });
+const voiceNow = () => voiceCore.cleanVoice(settings.get("voice"));
 const testOverride = { away: null, fullscreen: null }; // the smoke test pretends with these
 const cards = new Map(); // id → {type, label, labels, step, resolve}
 const mediaItems = new Map(); // id → {kind, state, progress, mime, data, prompt, message}
@@ -155,6 +163,7 @@ function settingsView() {
     screenMode: screenMode(),
     screenExplained: settings.get("screenExplained"),
     welcomed: settings.get("welcomed"),
+    voice: voiceNow(),
     ready: ready(),
   };
 }
@@ -197,6 +206,8 @@ function push(state) {
       note: a.note || "", count: a.images ? a.images.length : 0, error: a.error || "" })),
     cards: [...cards.entries()].map(([id, c]) => ({ id, type: c.type, label: c.label, labels: c.labels, step: c.step, progress: c.progress })),
     providerName: providers.providerName(activeSettings()),
+    // Speaking aloud only when the Mac isn't muted, locked or idle, and nothing is full screen in front.
+    speakOk: !mute.muted && !userAway() && !fsCache.value,
   };
   if (chatWin && !chatWin.isDestroyed()) chatWin.webContents.send("pilot:state", view);
   pushRobot(s);
@@ -212,6 +223,9 @@ function pushRobot(state) {
     area: { width: a.width, height: a.height }, home: { x: h.x - a.x, y: h.y - a.y },
     poses: poseFiles.list(path.join(APP_DIR, "assets", "poses")),
     calm: levelNow() === "calm", reducedMotion, level: levelNow(), away: userAway(), chatOpen: chatOpen(), test: TEST,
+    talking,
+    sound: (() => { const v = voiceNow(); return { on: v.sounds, volume: v.soundVolume, quietFrom: v.quietFrom, quietTo: v.quietTo,
+      muted: mute.muted, fullscreen: fsCache.value }; })(),
   });
 }
 
@@ -611,7 +625,20 @@ function showChat(view) {
   else show();
 }
 
+// Stop reading aloud (the chat closed, the robot was clicked, a new message).
+function stopSpeaking() {
+  sayer.stop();
+  if (chatWin && !chatWin.isDestroyed()) chatWin.webContents.send("pilot:voice-stop", true);
+  setTalking(false);
+}
+function setTalking(on) {
+  if (talking === Boolean(on)) return;
+  talking = Boolean(on);
+  pushRobot();
+}
+
 function hideChat() {
+  stopSpeaking();
   const had = chatOpen() && chatWin.isFocused();
   if (chatWin && !chatWin.isDestroyed()) chatWin.hide();
   pushRobot();
@@ -652,22 +679,54 @@ const TRICKS = [["Backflip", "backflip"], ["Football", "football"], ["Soccer", "
   ["Celebrate", "celebrate"], ["Knee Slide", "slide"], ["Point", "point"], ["Power Up", "power"], ["Superhero Landing", "land"],
   ["Love", "love"], ["Waiting", "wait"]];
 const ANY_TRICK = ["backflip", "spin", "bounce", "peek", "football", "soccer", "tennis", "celebrate", "slide", "power", "land", "love"];
+const SEASON_WORDS = { winter: "winter", spring: "spring", summer: "summer", autumn: "autumn", rainy: "spring and autumn", halloween: "October",
+  december: "December", newyear: "New Year" };
+const TIME_WORDS = { morning: "mornings", night: "evenings" };
 
 // "Play a trick", from the menus: the user asked, so it plays even in calm
-// mode. The chat is closed first, so a prop never lands on it.
+// mode (and its sound skips the wait between sounds). The chat is closed
+// first, so a prop never lands on it. "Surprise Me" picks one that fits today.
 function playTrick(name) {
-  const move = name || ANY_TRICK[Math.floor(Math.random() * ANY_TRICK.length)];
+  const pool = ANY_TRICK.concat(tricks.eligible(new Date()));
+  const move = name || pool[Math.floor(Math.random() * pool.length)];
   const wasOpen = chatOpen();
   if (hidden) setHidden(false);
   if (wasOpen) hideChat();
-  setTimeout(() => sendMove({ move }), wasOpen ? 250 : 0);
+  setTimeout(() => sendMove({ move, user: true }), wasOpen ? 250 : 0);
 }
 
+// The "Play a Trick" menu: Surprise Me, the classics, and the 80 new tricks
+// by category (a seasonal one says when it's in season; it still plays when picked).
 function trickItems() {
+  const now = new Date();
+  const label = (m) => {
+    if (tricks.fits(m, now)) return m.name;
+    return `${m.name} (${m.season ? SEASON_WORDS[m.season] : TIME_WORDS[m.time]})`;
+  };
+  return [{ label: "Play a Trick", submenu: [
+    { label: "Surprise Me", click: () => playTrick() },
+    { type: "separator" },
+    { label: "Classics", submenu: TRICKS.map(([l, move]) => ({ label: l, click: () => playTrick(move) })) },
+    ...tricks.CATEGORIES.map((cat) => ({ label: cat, submenu: tricks.LIST.filter((m) => m.cat === cat)
+      .map((m) => ({ label: label(m), click: () => playTrick(m.id) })) })),
+  ] }];
+}
+
+// Speak replies and Sounds, for the menus.
+function voiceItems() {
+  const v = voiceNow();
   return [
-    { label: "Play a Trick", click: () => playTrick() },
-    { label: "Trick", submenu: TRICKS.map(([label, move]) => ({ label, click: () => playTrick(move) })) },
+    { label: "Speak Replies", type: "checkbox", checked: v.speak, click: (item) => setVoice({ speak: item.checked }) },
+    { label: "Sounds", type: "checkbox", checked: v.sounds, click: (item) => setVoice({ sounds: item.checked }) },
   ];
+}
+function setVoice(change) {
+  const next = voiceCore.cleanVoice({ ...voiceNow(), ...(change && typeof change === "object" ? change : {}) });
+  settings.set("voice", next);
+  if (!next.speak) stopSpeaking();
+  updateTray();
+  pushSettings();
+  return next;
 }
 
 // The Energy level that applies now: Calm, Relaxed or Always moving (the
@@ -836,6 +895,7 @@ function updateTray() {
     { type: "separator" },
     ...trickItems(),
     { label: "Energy", submenu: energyItems() },
+    ...voiceItems(),
     { type: "separator" },
     { label: "Start at Login", type: "checkbox", checked: Boolean(settings.get("openAtLogin")), click: (item) => setLogin(item.checked) },
     { label: "About Pilot", click: () => app.showAboutPanel() },
@@ -922,13 +982,15 @@ function registerIpc() {
     const reduced = Boolean(env && env.reducedMotion);
     if (reduced !== reducedMotion) { reducedMotion = reduced; updateTray(); pushSettings(); if (life) life.restart(); }
   });
-  handle("robot-click", () => toggleChat());
+  // A click on the robot while he's reading aloud just stops the voice.
+  handle("robot-click", () => { if (talking) stopSpeaking(); else toggleChat(); });
   // Right-click on the robot.
   handle("robot-menu", () => {
     Menu.buildFromTemplate([
       { label: "Open Chat", click: () => showChat() },
       { type: "separator" },
       ...trickItems(),
+      ...voiceItems(),
       { type: "separator" },
       ...energyItems(),
       { type: "separator" },
@@ -944,6 +1006,10 @@ function registerIpc() {
     const words = str(text, 8000).trim();
     if (!words) return {};
     chatActivity();
+    stopSpeaking();
+    // Pages read from links in the message ("Read this link") go along as text.
+    const pages = (Array.isArray(o.pages) ? o.pages : []).slice(0, 3).filter((pg) => pg && typeof pg === "object")
+      .map((pg) => `[The web page ${str(pg.url, 500)}${pg.title ? `, "${str(pg.title, 300)}"` : ""}, as text:]\n${str(pg.text, linkread.MAX_TEXT)}`);
     // Thanks in the chat: hearts (rarely seen, so it stays special).
     if (/\b(thanks|thank you|thank u|thx|ty|cheers)\b/i.test(words)) setTimeout(() => cheer("thanks"), 600);
     let images = [];
@@ -959,8 +1025,10 @@ function registerIpc() {
     if (pending.some((a) => a.progress !== undefined && a.progress < 1)) return { waiting: true };
     const sent = takePending();
     for (const n of sent.notes) engine.note(n);
-    const said = sent.words.length ? `${words}\n\n(${sent.words.join(" ")})` : words;
-    engine.send(said, { images: [...images, ...sent.images], videos: sent.videos, label: str(o.label, 200) || (sent.words.length ? words : undefined) });
+    let said = sent.words.length ? `${words}\n\n(${sent.words.join(" ")})` : words;
+    if (pages.length) said = `${said}\n\n${pages.join("\n\n")}`;
+    engine.send(said, { images: [...images, ...sent.images], videos: sent.videos,
+      label: str(o.label, 200) || (sent.words.length || pages.length ? words : undefined) });
     return {};
   });
   handle("chat-stop", () => engine.stop());
@@ -976,10 +1044,60 @@ function registerIpc() {
   });
   handle("chat-help-screen", (_e, on) => setScreenMode(on ? "help" : "ask"));
   registerAttachIpc();
-  handle("open-link", async (_e, url) => {
-    const safe = desktopTools.safeWebUrl(url);
-    if (safe) await shell.openExternal(safe);
+  // A link in the chat: only https, http or mailto, after "Open this link?", in the browser.
+  handle("open-link", (_e, url) => clip.openLink(str(url, 4000), {
+    confirm: async (u) => (await dialog.showMessageBox(chatWin, clip.confirmOptions(u))).response === 0,
+    openExternal: (u) => shell.openExternal(u),
+  }));
+  // Pasting: a picture or a Finder file from the clipboard, straight from memory.
+  handle("chat-paste", () => clip.readClipboard({ clipboard, fs }));
+  // "Read this link": the page as text, or the picture.
+  handle("link-read", async (_e, url) => {
+    try {
+      return await linkread.read(str(url, 4000), { fetch: (u, init) => net.fetch(u, init) });
+    } catch (e) {
+      return { error: e instanceof linkread.LinkError ? e.message : "Pilot couldn't read that page." };
+    }
   });
+  // Right-click in the chat.
+  handle("chat-context", (_e, raw) => {
+    const i = raw && typeof raw === "object" ? raw : {};
+    const info = { editable: Boolean(i.editable), selection: str(i.selection, 50000), text: str(i.text, 50000), link: str(i.link, 4000),
+      image: Boolean(i.mediaId || clip.dataUrlImage(i.src)) };
+    const picture = () => {
+      const m = i.mediaId ? mediaItems.get(str(i.mediaId, 20)) : null;
+      if (m && m.state === "done" && m.kind === "image") return { mime: m.mime, data: m.data };
+      return clip.dataUrlImage(str(i.src, 8000000));
+    };
+    const menu = Menu.buildFromTemplate(clip.menuTemplate(info, {
+      copyText: (t) => clipboard.writeText(t),
+      openLink: (u) => clip.openLink(u, { confirm: async (x) => (await dialog.showMessageBox(chatWin, clip.confirmOptions(x))).response === 0,
+        openExternal: (x) => shell.openExternal(x) }),
+      copyImage: () => clip.copyImage(picture(), { clipboard, nativeImage }),
+      saveImage: async () => {
+        const img = picture();
+        if (!img) return;
+        const ext = img.mime.includes("jpeg") ? "jpg" : img.mime.split("/")[1];
+        const res = await dialog.showSaveDialog(chatWin, { defaultPath: path.join(app.getPath("downloads"), `Pilot picture ${Date.now()}.${ext}`) });
+        if (!res.canceled && res.filePath) fs.writeFileSync(res.filePath, Buffer.from(img.data, "base64"));
+      },
+    }));
+    menu.popup({ window: chatWin });
+    return { ok: true };
+  });
+  // Speak replies and Sounds.
+  handle("voice-set", (_e, change) => setVoice(change));
+  handle("voice-talking", (_e, on) => { setTalking(Boolean(on)); return { ok: true }; });
+  handle("voice-say", (_e, text, voice, rate) => {
+    const v = voiceNow();
+    if (!v.speak && text !== "Hi! I'm Pilot.") return { ok: false };
+    if (mute.muted || userAway()) return { ok: false };
+    const ok = sayer.speak(str(text, voiceCore.SAY_MOST), str(voice, 60), Number(rate));
+    if (ok) setTalking(true);
+    return { ok };
+  });
+  // The window stopped its voice: stop the fallback one too (no echo back to the window).
+  handle("voice-stop", () => { sayer.stop(); setTalking(false); return { ok: true }; });
   handle("copy-text", (_e, text) => { clipboard.writeText(str(text, 50000)); return { ok: true }; });
   handle("media-get", (_e, id) => {
     const m = mediaItems.get(str(id, 20));

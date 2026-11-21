@@ -35,6 +35,9 @@ contextBridge.exposeInMainWorld("pilot", {
     answer: call("chat-answer"),
     helpScreen: call("chat-help-screen"),
     openLink: call("open-link"),
+    paste: call("chat-paste"),
+    readLink: call("link-read"),
+    context: call("chat-context"),
     copy: call("copy-text"),
     mediaGet: call("media-get"),
     mediaSave: call("media-save"),
@@ -59,6 +62,13 @@ contextBridge.exposeInMainWorld("pilot", {
     setEnergy: call("energy-set"),
     welcomeDone: call("welcome-done"),
     onChange: listen("pilot:settings"),
+  },
+  voice: {
+    set: call("voice-set"),
+    talking: call("voice-talking"),
+    say: call("voice-say"),
+    stop: call("voice-stop"),
+    onStop: listen("pilot:voice-stop"),
   },
   attach: {
     info: call("attach-info"),

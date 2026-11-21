@@ -18,6 +18,10 @@
     tray: $("tray"), dropzone: $("dropzone"), clip: $("clip"), file: $("file"),
   };
   const A = window.PilotAttach;
+  const L = window.PilotLinks;
+  const SP = window.PilotSpeech;
+  ui.linkbar = $("linkbar");
+  ui.speak = $("speak");
   let working = []; // files still being prepared in this window
   let trayError = "";
 
@@ -48,7 +52,8 @@
   const clear = (node) => { while (node.firstChild) node.removeChild(node.firstChild); };
   const atBottom = () => ui.scroll.scrollHeight - ui.scroll.scrollTop - ui.scroll.clientHeight < 40;
   // Answers are drawn by the shared core's safe renderer (text nodes only).
-  const rich = (text) => R.render(text, document);
+  // Bare web addresses become links too (https, http and mailto only).
+  const rich = (text) => L.linkify(R.render(text, document), document);
 
   function closeMenus() {
     ui.eyeMenu.hidden = true; ui.eye.setAttribute("aria-expanded", "false");
@@ -86,7 +91,7 @@
     box.appendChild(holder);
     const put = (data) => {
       if (!data) return;
-      if (m.kind === "image") holder.appendChild(el("img", { src: `data:${data.mime};base64,${data.data}`, alt: "The picture Pilot made" }));
+      if (m.kind === "image") holder.appendChild(el("img", { src: `data:${data.mime};base64,${data.data}`, alt: "The picture Pilot made", "data-media": m.id }));
       else {
         const bytes = Uint8Array.from(atob(data.data), (c) => c.charCodeAt(0));
         const url = URL.createObjectURL(new Blob([bytes], { type: data.mime }));
@@ -102,7 +107,7 @@
 
   function messageNode(m) {
     if (m.role === "user") {
-      const node = el("div", { class: "msg msg-user" }, m.text);
+      const node = L.linkify(el("div", { class: "msg msg-user" }, m.text), document);
       if (m.shots && m.shots.length) node.appendChild(el("div", { class: "shots" }, m.shots.map((s) => el("img", { src: s, alt: "The screenshot Pilot was sent" }))));
       return node;
     }
@@ -254,8 +259,27 @@
     if (!words) return;
     const o = { ...(opts || {}) };
     if (lookNext) o.look = true;
+    speaker.stop();
+    // "Read this link": each link left on is read first (a page goes along as
+    // text, a picture is attached like a pasted one).
+    const toRead = L.webLinks(words).filter((u) => linkOn.get(u)).slice(0, 3);
+    if (toRead.length) {
+      reading = "Reading link…";
+      renderLinks();
+      const pages = [];
+      for (const url of toRead) {
+        const got = await P.chat.readLink(url);
+        if (got && got.kind === "page") pages.push({ url: got.url, title: got.title, text: got.text });
+        else if (got && got.kind === "image") await takeFiles([fileFrom(got.data, got.mime, "Picture from a link")]);
+        else { trayError = `Pilot couldn't read ${url}: ${(got && got.error) || "it didn't answer."}`; }
+      }
+      reading = "";
+      if (pages.length) o.pages = pages;
+    }
+    linkOn.clear();
     ui.input.value = "";
     sizeInput();
+    renderLinks();
     const res = await P.chat.send(words, o);
     if (res && res.needPermission) { ui.input.value = words; return; }
     if (res && res.waiting) { ui.input.value = words; trayError = "Wait a moment: a video is still uploading."; renderChat(); return; }
@@ -331,10 +355,109 @@
   // Pictures and videos: the paperclip, paste, and drag and drop.
   ui.clip.addEventListener("click", () => ui.file.click());
   ui.file.addEventListener("change", () => { const f = [...ui.file.files]; ui.file.value = ""; takeFiles(f); });
+  // Pasting: files and pictures attach (a screenshot sent to the clipboard,
+  // a picture copied in a browser, Preview or Messages, a file copied in
+  // Finder), straight from memory; text and links paste as text. A single
+  // pasted link gets "Read this link" turned on.
+  const fileFrom = (b64, mime, name) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    return new File([bytes], name || "Pasted picture", { type: mime });
+  };
+  function insertText(text) {
+    const i = ui.input;
+    i.setRangeText(text, i.selectionStart, i.selectionEnd, "end");
+    i.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  async function pasteFromApp(text) {
+    const got = await P.chat.paste();
+    if (Array.isArray(got) && got.length) { await takeFiles(got.map((g) => fileFrom(g.data, g.mime, g.name))); return true; }
+    if (got && got.error) { trayError = got.error; renderChat(); return true; }
+    if (text) insertText(text);
+    return false;
+  }
   ui.input.addEventListener("paste", (ev) => {
-    const files = ev.clipboardData ? [...ev.clipboardData.files] : [];
-    if (files.length) { ev.preventDefault(); takeFiles(files); }
+    const cd = ev.clipboardData;
+    const files = cd ? [...cd.files] : [];
+    if (files.length) { ev.preventDefault(); takeFiles(files); return; }
+    const text = cd ? cd.getData("text/plain") : "";
+    const types = cd ? [...cd.types] : [];
+    if (!text || types.includes("Files") || types.some((t) => t.startsWith("image/"))) { ev.preventDefault(); pasteFromApp(text); return; }
+    const links = L.webLinks(text);
+    if (links.length === 1 && !linkOn.has(links[0])) linkOn.set(links[0], true);
   });
+
+  // ---------------------------------------------------------------- "Read this link"
+
+  const linkOn = new Map(); // address → read it?
+  let reading = "";
+  function renderLinks() {
+    const links = [...new Set(L.webLinks(ui.input.value))].slice(0, 3);
+    clear(ui.linkbar);
+    if (reading) ui.linkbar.appendChild(el("span", { class: "linkchip on", role: "status" }, el("span", { text: reading })));
+    else {
+      for (const url of links) {
+        const on = Boolean(linkOn.get(url));
+        let host = url;
+        try { host = new URL(url).hostname; } catch (_) { /* as is */ }
+        ui.linkbar.appendChild(el("label", { class: `linkchip${on ? " on" : ""}`, title: url },
+          el("input", { type: "checkbox", checked: on, onchange: (ev) => { linkOn.set(url, ev.target.checked); renderLinks(); } }),
+          el("span", { text: `Read this link (${host})` })));
+      }
+    }
+    ui.linkbar.hidden = !ui.linkbar.firstChild;
+  }
+  ui.input.addEventListener("input", renderLinks);
+
+  // ---------------------------------------------------------------- right-click
+
+  ui.messages.addEventListener("contextmenu", (ev) => {
+    ev.preventDefault();
+    const a = ev.target.closest("a[href]");
+    const img = ev.target.closest("img");
+    const msg = ev.target.closest(".msg");
+    const sel = String(window.getSelection ? window.getSelection() : "");
+    let text = "";
+    if (msg) {
+      const idx = [...ui.messages.querySelectorAll(".msg")].indexOf(msg);
+      const m = (state.messages || [])[idx];
+      text = m && typeof m.text === "string" ? m.text : msg.textContent;
+    }
+    P.chat.context({ selection: sel, text, link: a ? a.getAttribute("href") : "", src: img ? img.getAttribute("src") : "",
+      mediaId: img ? img.getAttribute("data-media") || "" : "" });
+  });
+  ui.input.addEventListener("contextmenu", (ev) => { ev.preventDefault(); P.chat.context({ editable: true }); });
+
+  // ---------------------------------------------------------------- speaking replies
+
+  const speaker = SP.create({
+    synth: window.speechSynthesis, Utterance: window.SpeechSynthesisUtterance,
+    say: (t, v, r) => P.voice.say(t, v, r), stopSay: () => P.voice.stop(),
+    talking: (on) => { ui.speak.classList.toggle("talking", on); P.voice.talking(on); },
+  });
+  const voiceOn = () => Boolean(settings && settings.voice && settings.voice.speak);
+  function syncVoice() {
+    const v = (settings && settings.voice) || {};
+    speaker.set({ on: Boolean(v.speak), voice: v.voice || "", rate: v.voiceRate || 1, ok: state.speakOk !== false });
+    ui.speak.setAttribute("aria-pressed", String(Boolean(v.speak)));
+    ui.speak.title = v.speak ? "Speak replies (on). Click to stop or turn off." : "Speak replies (off)";
+  }
+  // The speaker: stops him mid-sentence, or turns Speak replies on and off.
+  ui.speak.addEventListener("click", () => {
+    if (speaker.talking) { speaker.stop(); return; }
+    P.voice.set({ speak: !voiceOn() });
+  });
+  P.voice.onStop(() => speaker.stop(true));
+  let wasBusy = false;
+  let lastReply = "";
+  function followReply() {
+    if (state.busy && !wasBusy) speaker.begin();
+    if (state.busy && state.streaming) speaker.stream(state.streaming);
+    if (!state.busy && wasBusy) {
+      const last = (state.messages || []).filter((m) => m.role === "assistant").pop();
+      if (last && last.text !== lastReply) { lastReply = last.text; speaker.finish(last.text); }
+    }
+    wasBusy = Boolean(state.busy);
+  }
   let dragDepth = 0;
   const hasFiles = (ev) => ev.dataTransfer && [...ev.dataTransfer.types].includes("Files");
   document.addEventListener("dragenter", (ev) => { if (!hasFiles(ev)) return; ev.preventDefault(); dragDepth += 1; ui.dropzone.hidden = false; });
@@ -524,6 +647,8 @@
     } else notesCard.appendChild(el("p", { class: "empty", text: "No notes yet. Ask Pilot to “make a note”." }));
     page.appendChild(notesCard);
 
+    page.appendChild(voiceCard());
+
     // General
     page.appendChild(el("div", { class: "page-card" }, el("h3", { text: "Pilot on this Mac" }),
       el("label", { class: "toggle" }, "Start Pilot when I log in", el("input", { type: "checkbox", checked: settings.openAtLogin,
@@ -543,6 +668,38 @@
         el("button", { class: "btn", type: "button", text: "About Pilot", onclick: () => P.app.about() }),
         el("button", { class: "btn danger", type: "button", text: "Quit Pilot", onclick: () => P.app.quit() }))));
     page.scrollTop = keep;
+  }
+
+  // Voice and sounds.
+  function voiceCard() {
+    const v = settings.voice || {};
+    const all = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    const good = SP.goodVoices(all);
+    const chosen = SP.pickVoice(all, v.voice);
+    const hours = (val, onchange) => el("select", { onchange }, Array.from({ length: 24 }, (_, h) => el("option", { value: String(h),
+      text: `${h % 12 || 12} ${h < 12 ? "am" : "pm"}`, selected: h === val })));
+    return el("div", { class: "page-card" }, el("h3", { text: "Voice and sounds" }),
+      el("label", { class: "toggle" }, "Speak replies out loud", el("input", { type: "checkbox", checked: Boolean(v.speak),
+        onchange: (ev) => P.voice.set({ speak: ev.target.checked }) })),
+      el("p", { class: "small", text: "Off unless you turn it on. Pilot uses your Mac's own voices, on your Mac. Click the speaker or the robot to stop him. He stays quiet while your Mac is muted or locked, or a video is full screen." }),
+      good.length ? el("label", { class: "field" }, el("span", { text: "Voice" }),
+        el("select", { onchange: (ev) => P.voice.set({ voice: ev.target.value }) },
+          good.slice(0, 12).map((x) => el("option", { value: x.name, text: `${x.name} (${x.lang})`, selected: chosen && chosen.name === x.name })))) : null,
+      el("label", { class: "field" }, el("span", { text: `Speed: ${Number(v.voiceRate || 1).toFixed(1)}×` }),
+        el("input", { class: "slider", type: "range", min: "0.8", max: "1.3", step: "0.1", value: String(v.voiceRate || 1),
+          onchange: (ev) => P.voice.set({ voiceRate: Number(ev.target.value) }) })),
+      el("div", { class: "card-buttons" }, el("button", { class: "btn", type: "button", text: "Try it",
+        onclick: () => { speaker.set({ voice: v.voice || "", rate: v.voiceRate || 1, ok: true }); speaker.sample(); } })),
+      SP.onlyBasic(all) ? el("p", { class: "small", text: "Want a nicer voice? System Settings → Accessibility → Spoken Content → System voice → Manage voices, then download an Enhanced or Premium English voice." }) : null,
+      el("label", { class: "toggle" }, "Sounds with some of the robot's tricks", el("input", { type: "checkbox", checked: Boolean(v.sounds),
+        onchange: (ev) => P.voice.set({ sounds: ev.target.checked }) })),
+      el("label", { class: "field" }, el("span", { text: `Sound volume: ${Math.round((v.soundVolume || 0) * 100)}%` }),
+        el("input", { class: "slider", type: "range", min: "0", max: "1", step: "0.05", value: String(v.soundVolume || 0),
+          onchange: (ev) => P.voice.set({ soundVolume: Number(ev.target.value) }) })),
+      el("div", { class: "field" }, el("span", { text: "Quiet hours: no sounds from" }),
+        el("div", { class: "hours" }, hours(v.quietFrom, (ev) => P.voice.set({ quietFrom: Number(ev.target.value) })), el("span", { text: "to" }),
+          hours(v.quietTo, (ev) => P.voice.set({ quietTo: Number(ev.target.value) })))),
+      el("p", { class: "small", text: "Short, soft sounds made by Pilot itself: never while your Mac is muted, a video is full screen, you're away, or he's talking, and at most one every 20 seconds unless you pick a trick." }));
   }
 
   // Screen access: macOS's permission, live, and how Pilot may use it.
@@ -599,12 +756,15 @@
 
   P.chat.onState((s) => {
     state = s;
+    syncVoice();
+    followReply();
     renderChat();
   });
   P.settings.onChange((s) => {
     settings = s;
     document.documentElement.dataset.theme = s.theme || "blue";
     for (const b of ui.paletteMenu.querySelectorAll("[data-theme-pick]")) b.setAttribute("aria-checked", String(b.dataset.themePick === s.theme));
+    syncVoice();
     renderSettings();
     renderChat();
   });
@@ -616,6 +776,7 @@
   });
   // A click anywhere in the chat makes it the key window if it isn't.
   document.addEventListener("mousedown", () => { if (!document.hasFocus()) P.chat.focus(); }, true);
-  P.settings.get().then((s) => { if (s && !s.error) { settings = s; document.documentElement.dataset.theme = s.theme || "blue"; renderChat(); } });
+  P.settings.get().then((s) => { if (s && !s.error) { settings = s; document.documentElement.dataset.theme = s.theme || "blue"; syncVoice(); renderChat(); } });
+  if (window.speechSynthesis && window.speechSynthesis.addEventListener) window.speechSynthesis.addEventListener("voiceschanged", () => renderSettings());
   renderChat();
 })();

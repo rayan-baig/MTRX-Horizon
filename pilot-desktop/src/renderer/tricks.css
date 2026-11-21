@@ -1,0 +1,136 @@
+/* Pilot for Mac 1.3: the drawn props and effects of the new tricks
+   (props.js draws them; the actor places, animates and removes them).
+   Transforms and opacity only, so they run on the compositor. */
+
+/* Every drawing is one box, a robot-width square around its anchor, and
+   shows what lies outside it (props.js draws in hundredths of that width). */
+.pa-prop svg.pt, .pa-fx svg.pt {
+  position: absolute; display: block; overflow: visible;
+  left: calc(var(--pa-u) * -0.5); top: calc(var(--pa-u) * -0.5); width: var(--pa-u); height: var(--pa-u);
+}
+/* Big flat props (a wave, the water, a slope, a drawn smiley) and effects carry no glow. */
+.pa-prop svg.pa-flat, .pa-fx svg.pt { filter: none; }
+/* The owner's prop pictures, drawn at the pose sheet's scale (220 px a robot
+   width), anchored at the bottom middle (the crown: its middle). */
+.pa-prop .pt-pic { position: absolute; display: block; max-width: none; pointer-events: none; transform: translate(-50%, -100%); }
+.pa-prop-door .pt-pic { width: calc(var(--pa-u) * 0.45); }
+.pa-prop-trophy .pt-pic { width: calc(var(--pa-u) * 0.48); }
+.pa-prop-globe .pt-pic { width: calc(var(--pa-u) * 0.7); }
+.pa-prop-city-screen .pt-pic { width: calc(var(--pa-u) * 0.96); }
+.pa-prop-crystal-city .pt-pic { width: calc(var(--pa-u) * 0.58); }
+.pa-prop-crown .pt-pic { width: calc(var(--pa-u) * 0.36); transform: translate(-50%, -50%); }
+
+/* The big pose canvas (600 x 400 instead of 300 x 340) for poses whose
+   props reach further: robot.js marks those pictures once they're decoded. */
+.pa-pose.pt-big { left: calc(var(--pa-u) * -1.364); width: calc(var(--pa-u) * 2.727); height: calc(var(--pa-u) * 1.818); }
+
+.pa-fx-note .pa-fx-in { animation: pt-float 1.6s ease-out forwards; }
+.pa-fx-zzz .pa-fx-in { animation: pt-zzz 1.8s ease-out forwards; }
+.pa-fx-qmark .pa-fx-in, .pa-fx-bang .pa-fx-in { animation: pt-mark 1.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.pa-fx-heart .pa-fx-in { animation: pt-heart 1.6s ease-out forwards; }
+.pa-fx-confetti .pa-fx-in { animation: pt-confetti 1.7s cubic-bezier(0.2, 0.8, 0.4, 1) forwards; }
+.pa-fx-burst .pa-fx-in, .pa-fx-burst2 .pa-fx-in { animation: pt-burst 1.1s cubic-bezier(0.2, 0.8, 0.4, 1) forwards; }
+.pa-fx-flash .pa-fx-in { animation: pt-flash 0.45s ease-out forwards; }
+.pa-fx-ripple .pa-fx-in { animation: pt-ripple 0.7s ease-out forwards; }
+.pa-fx-splat .pa-fx-in { animation: pt-splat 1.2s ease-out forwards; }
+.pa-fx-drop .pa-fx-in { animation: pt-drop 0.9s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards; }
+.pa-fx-rain .pa-fx-in { animation: pt-rain 0.7s linear forwards; }
+.pa-fx-flake .pa-fx-in { animation: pt-flake 2.4s linear forwards; }
+.pa-fx-leaf .pa-fx-in, .pa-fx-petal .pa-fx-in { animation: pt-leaf 2.4s ease-in-out forwards; }
+.pa-fx-smoke .pa-fx-in, .pa-fx-steam .pa-fx-in, .pa-fx-heat .pa-fx-in { animation: pt-smoke 1.4s ease-out forwards; }
+.pa-fx-pop .pa-fx-in { animation: pt-pop 0.4s ease-out forwards; }
+.pa-fx-spray .pa-fx-in { animation: pt-spray 0.6s ease-out forwards; }
+.pa-fx-star .pa-fx-in, .pa-fx-ice .pa-fx-in { animation: pt-twinkle 1.1s ease-out forwards; }
+.pa-fx-rainbow .pa-fx-in { animation: pt-trail 1.1s ease-out forwards; }
+.pa-fx-blush .pa-fx-in { animation: pt-blush 1.6s ease-in-out forwards; }
+.pa-fx-swoosh .pa-fx-in { animation: pt-swoosh 0.6s ease-out forwards; }
+.pa-fx-bubbles .pa-fx-in { animation: pt-bubbles 1.4s ease-out forwards; }
+.pa-fx-spark .pa-fx-in { animation: pt-pop 0.4s ease-out forwards; }
+.pa-fx-streak .pa-fx-in { animation: pt-streak 0.6s ease-out forwards; }
+.pa-fx-bat .pa-fx-in { animation: pt-bat 1.8s ease-in-out forwards; }
+
+@keyframes pt-float {
+  0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+  15% { transform: translate(2px, -6px) scale(1); opacity: 1; }
+  60% { transform: translate(-4px, -26px) scale(1); opacity: 1; }
+  100% { transform: translate(4px, -44px) scale(0.9); opacity: 0; }
+}
+@keyframes pt-zzz {
+  0% { transform: translate(0, 0) scale(0.4); opacity: 0; }
+  20% { transform: translate(4px, -6px) scale(0.8); opacity: 1; }
+  100% { transform: translate(22px, -40px) scale(1.4); opacity: 0; }
+}
+@keyframes pt-mark {
+  0% { transform: scale(0.2); opacity: 0; }
+  20% { transform: scale(1.1); opacity: 1; }
+  35% { transform: scale(1); }
+  80% { transform: translateY(-4px) scale(1); opacity: 1; }
+  100% { transform: translateY(-12px) scale(0.9); opacity: 0; }
+}
+@keyframes pt-heart {
+  0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+  15% { transform: translate(0, -6px) scale(1.15); opacity: 1; }
+  30% { transform: translate(0, -10px) scale(0.95); }
+  45% { transform: translate(0, -16px) scale(1.1); }
+  100% { transform: translate(0, -46px) scale(0.9); opacity: 0; }
+}
+@keyframes pt-confetti {
+  0% { transform: scale(0.15) rotate(0deg); opacity: 1; }
+  35% { transform: scale(1.25) rotate(40deg); opacity: 1; }
+  100% { transform: translateY(36px) scale(1.45) rotate(110deg); opacity: 0; }
+}
+@keyframes pt-burst {
+  0% { transform: scale(0.1); opacity: 1; }
+  55% { transform: scale(1.25); opacity: 1; }
+  100% { transform: translateY(10px) scale(1.5); opacity: 0; }
+}
+@keyframes pt-flash { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.7); opacity: 0; } }
+@keyframes pt-ripple { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
+@keyframes pt-splat { 0% { transform: scale(0.3); opacity: 1; } 20% { transform: scale(1.1); } 30% { transform: scale(1); } 75% { opacity: 1; } 100% { transform: scale(1) translateY(4px); opacity: 0; } }
+@keyframes pt-drop { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 15% { transform: translateY(2px) scale(1); opacity: 1; } 100% { transform: translateY(34px) scale(0.9); opacity: 0; } }
+@keyframes pt-rain { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translateY(130px); opacity: 0.2; } }
+@keyframes pt-flake {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  50% { transform: translate(10px, 46px) rotate(90deg); }
+  100% { transform: translate(-6px, 96px) rotate(180deg); opacity: 0; }
+}
+@keyframes pt-leaf {
+  0% { transform: translate(0, 0) rotate(-20deg); opacity: 0; }
+  10% { opacity: 1; }
+  30% { transform: translate(16px, 28px) rotate(30deg); }
+  60% { transform: translate(-10px, 60px) rotate(-30deg); }
+  100% { transform: translate(12px, 100px) rotate(40deg); opacity: 0; }
+}
+@keyframes pt-smoke { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 20% { opacity: 0.9; } 100% { transform: translateY(-34px) scale(1.5); opacity: 0; } }
+@keyframes pt-pop { 0% { transform: scale(0.4); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes pt-spray { 0% { transform: translateX(0) scale(0.5); opacity: 1; } 100% { transform: translateX(18px) scale(1.3); opacity: 0; } }
+@keyframes pt-twinkle { 0% { transform: scale(0) rotate(0deg); opacity: 1; } 40% { transform: scale(1.2) rotate(45deg); opacity: 1; } 100% { transform: scale(0) rotate(120deg); opacity: 0; } }
+@keyframes pt-trail { from { transform: scale(1); opacity: 0.9; } to { transform: translateY(6px) scale(0.35); opacity: 0; } }
+@keyframes pt-blush { 0% { opacity: 0; } 25%, 75% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes pt-swoosh { 0% { transform: scale(0.8) rotate(-10deg); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1.1) rotate(10deg); opacity: 0; } }
+@keyframes pt-bubbles { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-40px) scale(1.2); opacity: 0; } }
+@keyframes pt-streak { 0% { transform: translateX(-20px) scaleX(0.4); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateX(30px) scaleX(1); opacity: 0; } }
+@keyframes pt-bat {
+  0% { transform: translate(0, 0) scale(0.6, 0.6); opacity: 0; }
+  10% { transform: translate(-6px, -4px) scale(1, 1); opacity: 1; }
+  20% { transform: translate(-12px, -10px) scale(1, 0.5); }
+  30% { transform: translate(-18px, -16px) scale(1, 1); }
+  40% { transform: translate(-24px, -22px) scale(1, 0.5); }
+  50% { transform: translate(-30px, -28px) scale(1, 1); }
+  100% { transform: translate(-70px, -60px) scale(0.8, 0.8); opacity: 0; }
+}
+
+/* Reading a reply aloud: a soft glow pulse on the eyes and a small head bob
+   (the resting robot), or a gentle bob of the standing picture. */
+.talking .pa-rest .pa-eyes { animation: pt-talk-eyes 1.1s ease-in-out infinite; }
+.talking .pa-rest .pa-head { animation: pt-talk-head 1.6s ease-in-out infinite; }
+@keyframes pt-talk-eyes { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.35) drop-shadow(0 0 3px rgba(125, 211, 252, 0.9)); } }
+@keyframes pt-talk-head { 0%, 100% { transform: translateY(0) rotate(0deg); } 30% { transform: translateY(-1.5px) rotate(-1.5deg); } 65% { transform: translateY(0.5px) rotate(1deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .talking .pa-rest .pa-head { animation: none; }
+}
+
+/* Only the picture showing now (and the one fading out) is drawn at all:
+   the other pose pictures, decoded and waiting, cost nothing per frame. */
+.pa-pose:not(.pa-on) { visibility: hidden; }

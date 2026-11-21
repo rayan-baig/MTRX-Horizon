@@ -122,6 +122,8 @@ const DEFAULTS = () => ({
   screenExplained: false,
   screenMode: "ask", // screen access: "off", "ask" (only when asked) or "help" (a screenshot with each message)
   welcomed: false,
+  // Pilot for Mac 1.3: Speak replies (off), the voice and its speed; Sounds (on, quiet), volume, quiet hours.
+  voice: { speak: false, voice: "", voiceRate: 1, sounds: true, soundVolume: 0.3, quietFrom: 21, quietTo: 7 },
 });
 
 // Settings from Pilot 1.0 and 1.1 (version 1) had calm mode (null, true or

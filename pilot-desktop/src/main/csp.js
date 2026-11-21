@@ -13,8 +13,9 @@ const path = require("node:path");
 const PROVIDER_HOSTS = ["https://api.anthropic.com", "https://api.openai.com", "https://generativelanguage.googleapis.com"];
 
 // Only these files can be served to a window.
-const SERVED = [/^src\/renderer\/[a-z0-9-]+\.(html|css|js|svg)$/, /^src\/core\/pilot-(render|motion|actor)\.js$/, /^src\/core\/roam\.js$/,
-  /^src\/core\/pilot-actor\.css$/, /^assets\/[a-z0-9@-]+\.(png|webp)$/, /^assets\/poses\/[a-z0-9-]+\.(png|webp)$/];
+const SERVED = [/^src\/renderer\/[a-z0-9-]+\.(html|css|js|svg)$/, /^src\/core\/pilot-(render|motion|actor)\.js$/, /^src\/core\/(roam|tricks)\.js$/,
+  /^src\/core\/pilot-actor\.css$/, /^assets\/[a-z0-9@-]+\.(png|webp)$/, /^assets\/poses\/[a-z0-9-]+\.(png|webp)$/,
+  /^assets\/props\/[a-z0-9-]+\.webp$/];
 
 const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8",
   ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp" };

@@ -111,7 +111,7 @@ try {
   const spots = [];
   for (let i = 0; i < 24; i += 1) { await wait(500); spots.push(await robot.evaluate(() => Math.round(window.__pilotRobot.actor.rect().left))); }
   check(Math.max(...spots) - Math.min(...spots) > 40, "Always moving: he sets off on his own within seconds");
-  check(await robot.evaluate(() => [...document.querySelectorAll(".pa-pose.pa-on")].length <= 1), "one pose picture at a time");
+  check(await robot.evaluate(() => [...document.querySelectorAll(".pa-pose.pa-on")].length <= 2), "one pose picture at a time (two only while they cross-fade)");
   // The rest is checked one tick at a time, from standing still (so it isn't
   // "mid-move" that holds him).
   await app.evaluate(() => global.__pilotTest.stopLife());
@@ -124,6 +124,17 @@ try {
     }
   };
   const MOVES = ["roam", "roam-look", "roam-wave", "roam-trick"];
+  await still();
+  // Pilot for Mac 1.3: a new trick from the menu plays, with its drawn props, and cleans up.
+  await robot.evaluate(() => window.__pilotRobot.warmed());
+  check(await robot.evaluate(() => window.__pilotRobot.actor.poses().length >= 59 && document.querySelectorAll(".pa-pose").length >= 59
+    && [...document.querySelectorAll(".pa-pose")].every((i) => i.complete && i.naturalWidth > 0)), "every pose picture is decoded before it's first used");
+  await app.evaluate((_e) => global.__pilotTest.playTrick("magic-hat"));
+  let sawProps = false;
+  for (let i = 0; i < 40 && !sawProps; i += 1) { await wait(150); sawProps = await robot.evaluate(() => document.querySelectorAll(".pa-prop svg").length >= 2); }
+  check(sawProps, "a new trick (Magic Trick) plays with its drawn props");
+  for (let i = 0; i < 60 && await robot.evaluate(() => window.__pilotRobot.actor.busy); i += 1) await wait(200);
+  check(await robot.evaluate(() => document.querySelectorAll(".pa-prop").length === 0), "its props are gone when it ends");
   await still();
   const why = await app.evaluate(() => global.__pilotTest.hold());
   const first = await app.evaluate(() => global.__pilotTest.life().tick());
@@ -212,7 +223,7 @@ try {
   check((await chat.textContent(".byok")).includes("Bring Your Own API Key"), "Bring Your Own API Key card");
   check((await chat.textContent(".tagline")) === "Your AI copilot. Powered by you.", "tagline");
   check(await chat.getAttribute("#input", "placeholder") === "Type a message...", "message box");
-  check(await chat.evaluate(() => typeof require === "undefined" && Object.keys(window.pilot).join() === "robot,chat,settings,attach,screen,app"), "chat window has only the small preload API");
+  check(await chat.evaluate(() => typeof require === "undefined" && Object.keys(window.pilot).join() === "robot,chat,settings,voice,attach,screen,app"), "chat window has only the small preload API");
   check(await app.evaluate(() => global.__pilotTest.context().chatOpen) === true, "the robot knows the chat is open (and stays calm)");
   check(await app.evaluate(() => global.__pilotTest.life().tick()) === null, "chat open: no wandering");
   check(await app.evaluate(() => global.__pilotTest.levelNow()) === "always" && await app.evaluate(() => global.__pilotTest.life().tick()) === null,

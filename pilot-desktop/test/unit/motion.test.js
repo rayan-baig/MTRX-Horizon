@@ -132,8 +132,12 @@ test("a pose picture dropped into assets/poses/ is picked up, with no code chang
 });
 
 test("the shipped pose pictures are all known poses", () => {
-  const found = poses.list(path.join(__dirname, "..", "..", "assets", "poses"));
-  assert.deepEqual(Object.keys(found).sort(), ALL.slice().sort());
+  const dir = path.join(__dirname, "..", "..", "assets", "poses");
+  const found = poses.list(dir);
+  const files = fs.readdirSync(dir).map((f) => f.replace(/\.(webp|png)$/, ""));
+  assert.deepEqual(Object.keys(found).sort(), files.sort());
+  // The owner's 18 earlier poses are all still there (1.3 adds the bigger sheet).
+  for (const name of ALL) assert.ok(found[name], name);
 });
 
 // ---------------------------------------------------------------- when it moves

@@ -7,12 +7,18 @@
 // - where the robot is after each move, for the chat window's place;
 // - drags (wherever it's dropped becomes home) and clicks (open the chat);
 // - when "reduce motion" changes.
+// Pilot for Mac 1.3: the 80 tricks (tricks.js) with their drawn props
+// (props.js), sound effects for some of them (sounds.js), every pose picture
+// fetched and decoded before it's first needed, and a gentle "talking" look
+// while Pilot reads a reply aloud.
 "use strict";
 
 (function () {
   const P = window.pilot.robot;
   const M = window.PilotMotion;
   const R = window.PilotRoam;
+  const T = window.PilotTricks;
+  const sfx = window.PilotSounds.create({});
   const stage = document.getElementById("stage");
   const words = document.getElementById("status-words");
   const SAY = { ready: "Pilot is ready.", nokey: "Pilot needs your AI key.", thinking: "Pilot is thinking.", looking: "Pilot is looking at your screen." };
@@ -34,12 +40,36 @@
   // and breathes. In Always moving the next move normally comes first.
   const SETTLE_MS = 6000;
 
+  // The drawn props and effects fill in as the actor adds them.
+  window.PilotProps.attach(stage);
+
   function makeActor(poses) {
     actor = window.PilotActor.create({
       stage, poses, extra: [dot], reduced: reduce.matches,
       art: { body: "../../assets/robot-rest-body.webp", head: "../../assets/robot-rest-head.webp", eyes: "../../assets/robot-rest-eyes.webp" },
     });
     actor.idle(!reduce.matches);
+    warm(poses);
+  }
+
+  // Fetch and decode every pose picture (and the prop pictures) up front, so
+  // a pose never stalls a frame the first time it shows. Pictures on the
+  // big canvas get the bigger box.
+  let warmed = Promise.resolve();
+  const propPics = [];
+  function warm(poses) {
+    warmed = actor.preload(Object.keys(poses || {})).then(() => {
+      for (const img of stage.querySelectorAll(".pa-pose")) img.classList.toggle("pt-big", img.naturalWidth > 400);
+    }).catch(() => {});
+    if (!propPics.length) {
+      for (const name of window.PilotProps.PICTURES) {
+        const img = new Image();
+        img.src = `../../assets/props/${name}.webp`;
+        if (img.decode) img.decode().catch(() => {});
+        propPics.push(img);
+      }
+    }
+    return warmed;
   }
 
   function rectOf() {
@@ -71,25 +101,62 @@
       // Always moving's own moves wait while the chat is open or the Mac is idle.
       const skip = roaming && state && (state.chatOpen || state.away || state.level !== "always");
       const g = geometry(cmd);
-      let plan = skip ? null : roaming ? R.plan(cmd.move, g, actor.pose)
-        : M.plan(cmd.move, g, { how: cmd.how, at: cmd.at, say: typeof cmd.say === "string" ? cmd.say.slice(0, 40) : undefined });
+      await warmed;
+      let plan = null;
+      if (skip) plan = null;
+      else if (roaming && cmd.move === "roam-trick" && T.has(cmd.trick)) plan = T.plan(cmd.trick, g, actor.pose);
+      else if (roaming) plan = R.plan(cmd.move, g, actor.pose);
+      else if (T.has(cmd.move)) plan = T.plan(cmd.move, g, actor.pose);
+      else plan = M.plan(cmd.move, g, { how: cmd.how, at: cmd.at, say: typeof cmd.say === "string" ? cmd.say.slice(0, 40) : undefined });
       plan = R.fromPose(plan, actor.pose, g);
       if (!plan) {
         // Nothing to play: say so at once, so the main process's timer carries on.
         if (roaming) { report(true); report(false); }
         return;
       }
-      await play(plan, roaming);
+      await play(plan, roaming, Boolean(cmd.user));
       checkOver(lastPoint);
     }).catch(() => {});
   }
 
-  async function play(plan, roaming) {
+  // ------------------------------------------------------------ sounds
+
+  // The classic moves' sounds (pilot-motion.js's plans carry none).
+  function classicSounds(plan) {
+    const goal = plan.fx.find((f) => f.kind === "bubble" && f.text === "GOAL!");
+    switch (plan.name) {
+      case "soccer": return goal ? [{ t: goal.t, kind: "applause" }] : [];
+      case "celebrate": return [{ t: 200, kind: "applause" }];
+      case "backflip": case "spin": return [{ t: 250, kind: "whoosh" }];
+      default: return [];
+    }
+  }
+  const soundState = (user, chain) => {
+    const sd = (state && state.sound) || {};
+    return { on: Boolean(sd.on), volume: sd.volume, muted: Boolean(sd.muted), fullscreen: Boolean(sd.fullscreen), away: Boolean(state && state.away),
+      talking: Boolean(state && state.talking), hour: new Date().getHours(), quietFrom: sd.quietFrom, quietTo: sd.quietTo, user, chain };
+  };
+  const soundLog = [];
+  function scheduleSounds(plan, user) {
+    const cues = (plan.sounds && plan.sounds.length ? plan.sounds : classicSounds(plan)).slice().sort((a, b) => a.t - b.t);
+    let played = false;
+    return cues.map((c) => setTimeout(() => {
+      const ok = sfx.play(c.kind, soundState(user, played));
+      soundLog.push({ kind: c.kind, played: ok, move: plan.name });
+      if (soundLog.length > 50) soundLog.shift();
+      if (ok) played = true;
+    }, c.t));
+  }
+
+  async function play(plan, roaming, user) {
     clearTimeout(settleTimer);
     report(true);
     // Fewer glow effects while travelling (cheaper to draw every frame).
     document.documentElement.classList.toggle("travel", Boolean(roaming));
+    const cues = scheduleSounds(plan, user);
     const end = await actor.play(plan);
+    for (const t of cues) clearTimeout(t);
+    if (end && end.stopped) sfx.stop();
     document.documentElement.classList.remove("travel");
     report(false);
     if (!(end && end.stopped)) settleLater();
@@ -190,7 +257,10 @@
     words.textContent = SAY[s.status] || "";
     stage.title = SAY[s.status] || "Pilot";
     if (!actor) makeActor(s.poses || {});
-    else if (posesChanged) actor.setPoses(s.poses || {});
+    else if (posesChanged) { actor.setPoses(s.poses || {}); warm(s.poses || {}); }
+    // Reading a reply aloud: a gentle talking look, and no sound effects.
+    document.documentElement.classList.toggle("talking", Boolean(s.talking));
+    if (s.talking) sfx.stop();
     // The chat opened while he was travelling: he stops right there, next to it.
     if (s.chatOpen && actor.busy && !first && !dragging) { actor.stop(); report(false); settleLater(); }
     // Nobody at the Mac (idle or locked): not even a blink until they're back.
@@ -198,8 +268,8 @@
     if (idleOk !== idleWas) { idleWas = idleOk; actor.idle(idleOk); }
     // Only in the smoke test: a handle to hold a move still for pictures.
     if (s.test && !window.__pilotRobot) {
-      window.__pilotRobot = { actor, geometry, plan: (move, extra) => (move.startsWith("roam")
-        ? R.plan(move, geometry(extra), actor.pose) : M.plan(move, geometry(extra), extra || {})) };
+      window.__pilotRobot = { actor, geometry, sounds: soundLog, warmed: () => warmed, perform, queue: () => queue, plan: (move, extra) => (move.startsWith("roam")
+        ? R.plan(move, geometry(extra), actor.pose) : T.has(move) ? T.plan(move, geometry(extra), actor.pose) : M.plan(move, geometry(extra), extra || {})) };
     }
     if (first) {
       actor.place(s.home.x, s.home.y);

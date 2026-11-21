@@ -4,7 +4,8 @@
 // Always moving (the default): he's nearly always travelling. As soon as
 // the robot window says a move has ended, a short pause (1 to 4 seconds)
 // and the next one: travel, now and then a quick look or a wave, and a
-// trick or a sport about every couple of minutes (roam.js). He holds still
+// trick every minute or two: one of the 80 new ones that fits the Mac's
+// date and time (tricks.js), sometimes a classic (roam.js). He holds still
 // while the chat is open, something is full screen in front, he's dragged
 // or hidden, the pointer is on him, or the Mac is idle (2 minutes) or
 // locked; then the hold is checked again every 2 seconds, and he waves when
@@ -21,6 +22,7 @@
 "use strict";
 
 const roamCore = require("../core/roam");
+const tricksCore = require("../core/tricks");
 
 // opts: {motion, roam, send(cmd), context() → {level, calm, reducedMotion,
 // energy, chatOpen, hidden, dragging, busy, away, atFloor, userAway,
@@ -30,6 +32,8 @@ function create(opts) {
   const o = opts || {};
   const motion = o.motion;
   const roam = o.roam || roamCore;
+  const tricks = o.tricks || tricksCore;
+  const recent = []; // the last few tricks, not picked again soon
   const random = o.random || Math.random;
   const now = o.now || Date.now;
   const T = o.timers || { setTimeout, clearTimeout };
@@ -102,8 +106,15 @@ function create(opts) {
     if (roam.holdReason(c2)) { lastSent = ""; after(roam.HOLD_MS); return null; }
     const name = roam.pick(c2, random, { trickDue: now() - lastTrick >= gap });
     if (!name) { lastSent = ""; after(roam.HOLD_MS); return null; }
-    if (name === "roam-trick") { lastTrick = now(); gap = roam.trickGap(random); }
-    o.send({ move: name });
+    if (name === "roam-trick") {
+      lastTrick = now();
+      gap = roam.trickGap(random);
+      // One of the 80 new tricks that fits today (season, time of day), now
+      // and then a classic (roam.js picks that one).
+      const trick = tricks.choose(new Date(now()), random, recent);
+      if (trick) { recent.push(trick); if (recent.length > 12) recent.shift(); }
+      o.send(trick ? { move: name, trick } : { move: name });
+    } else o.send({ move: name });
     lastSent = name;
     // In case the robot window never says it ended (it was reloaded, say).
     after(roam.MOST_MS);
@@ -163,6 +174,8 @@ function create(opts) {
     settled,
     tick,
     react,
+    // Only for pictures and checks: the next move is a trick.
+    trickNow() { lastTrick = -Infinity; },
     get waiting() { return Boolean(timer); },
     get running() { return running; },
   };
