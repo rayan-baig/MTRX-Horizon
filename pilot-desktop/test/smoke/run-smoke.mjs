@@ -151,7 +151,8 @@ const grabTo = async (name) => {
 };
 
 try {
-  // Which edition this is, and where its AI runs at first.
+  // Which edition this is, and where its AI runs at first (once the app has started).
+  for (let i = 0; i < 100 && !(await app.evaluate(() => Boolean(global.__pilotTest))); i += 1) await wait(100);
   const ed = await app.evaluate(() => global.__pilotTest.edition());
   check(ed.id === (FREE ? "free" : "pilot") && ed.appName === (FREE ? "Pilot Free" : "Pilot"), `the ${FREE ? "Pilot Free" : "Pilot"} edition starts`);
   check(await app.evaluate(({ app: a }) => a.getName()) === ed.appName, "the app is named after its edition");
