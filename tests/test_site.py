@@ -10,6 +10,8 @@ import pytest
 
 from tests.test_lock import ORIGIN, make_client, client, owner  # noqa: F401
 
+ROOT = Path(__file__).resolve().parent.parent
+
 
 def test_home_page_shows_all_three_apps(client):
     page = client.get("/").text
@@ -48,7 +50,7 @@ def test_no_open_app_button_for_an_address_that_is_not_one(client, monkeypatch, 
     monkeypatch.setenv("RANKUP_URL", typed)
     page = client.get("/").text
     assert 'aria-label="Open RankUp"' not in page and 'href="rankup.example"' not in page
-    assert "RankUp opens to the public soon." in page
+    assert "RankUp is in development." in page
 
 
 def test_robots_does_not_point_at_the_console(client):
@@ -129,7 +131,7 @@ def test_demo_build_links_each_app_and_leaves_out_the_knock(tmp_path, monkeypatc
 
     home = (out / "index.html").read_text()
     assert 'href="cyberlogix/index.html"' in home and 'href="omniarmor/index.html"' in home
-    assert "RankUp opens to the public soon." in home  # RankUp was not given
+    assert "RankUp is in development." in home  # RankUp was not given
     assert "knock.js" not in home and "<html" not in home
     # The home page's own script goes along; the lock's never does.
     assert sorted(p.name for p in (out / "static" / "js").iterdir()) == ["home.js"]
@@ -187,7 +189,10 @@ def test_on_a_phone_the_home_page_never_hides_what_it_is_or_where_to_go():
 
 def test_home_page_numbers_are_real_or_say_they_are_coming(client):
     page = client.get("/").text
-    assert "Soon" in page and "Counted from launch" in page
+    # No "Active Users: Soon" placeholder: until an app reports, that tile is
+    # something real (Genesis, free), and no tile shows a made-up figure.
+    assert "Counted from launch" not in page and '<dd class="soon">' not in page
+    assert '<dt>Genesis</dt><dd class="fact-free"><a class="fact-link" href="/genesis">Free</a></dd><span>Plan your idea</span>' in page
     # No live panel, and no Analytics link to it, until an app has reported:
     # an empty map with dashes looked alive and said nothing.
     assert 'id="activity"' not in page and 'href="#activity"' not in page
@@ -220,8 +225,12 @@ def test_projects_on_the_home_page_are_the_real_list(client):
                       r'<em class="status">(.*?)</em><span class="next">Next: (.*?)</span></li>', sheet)
     # An app's status comes from the catalog: "In development" until it opens.
     assert rows == [(p["name"], p["kind"], p.get("status", "In development"), p["next"]) for p in stats.PROJECTS]
-    # The count in the panel is the length of that same list.
-    assert f"<dt>Projects</dt><dd>{len(stats.PROJECTS)}</dd>" in page
+    # The count in the panel is the length of that same list, and it says
+    # plainly that one of them (this website) is the live one.
+    assert f'<dt>Projects</dt><dd><a class="fact-link" href="#projects">{len(stats.PROJECTS)}</a></dd>' in page
+    live = sum(1 for p in stats.PROJECTS if p.get("status") == "Live")
+    assert f"<span>{live} live, {len(stats.PROJECTS) - live} in development</span>" in page
+    assert "<span>Underway</span>" not in page
 
 
 def test_the_projects_list_never_says_built_and_flips_at_launch(client, monkeypatch):
@@ -250,7 +259,7 @@ def test_each_app_has_open_and_learn_more(client, monkeypatch):
         assert f'href="#learn-{key}"' in page and f'id="learn-{key}"' in page
     # An app with an address opens; one without says it is coming.
     assert 'aria-label="Open CyberLogix AI"' in page and "https://cyberlogix.example" in page
-    assert 'aria-label="Open RankUp"' not in page and "RankUp opens to the public soon." in page
+    assert 'aria-label="Open RankUp"' not in page and "RankUp is in development." in page
 
 
 @pytest.fixture
@@ -942,7 +951,7 @@ def test_until_launch_every_part_of_the_home_page_says_the_apps_are_in_developme
     assert "parent company of three apps, all in development" in page
     assert "parent company of three apps (3 in development)" in page
     # Released in the console but with no address: still in development.
-    assert "Open RankUp" not in page and "RankUp opens to the public soon." in page
+    assert "Open RankUp" not in page and "RankUp is in development." in page
 
 
 def test_the_day_the_apps_open_the_home_page_says_so(client, monkeypatch):
@@ -1064,3 +1073,26 @@ def test_the_open_apps_setting_is_read_carefully():
     assert config._open_apps("RankUp, cyberlogix  omniarmor") == {"rankup", "cyberlogix", "omniarmor"}
     assert config._open_apps("all") == {"*"} and config._open_apps("rankup,ALL") == {"*"}
     assert config._open_apps("rank up!, -bad-, ok") == {"rank", "ok"}
+
+
+# ---------------------------------------------------------------- 1.15.0
+
+def test_one_status_phrase_site_wide(client, monkeypatch):
+    """ "In development" everywhere an app isn't open yet: the home page's
+    cards and Learn more, and Orbyt's app cards. No "soon" variants."""
+    monkeypatch.setenv("EARLY_ACCESS_ENABLED", "0")
+    home = client.get("/").text
+    for name in ("RankUp", "CyberLogix AI", "OmniArmor.ai"):
+        assert f"{name} is in development." in home
+    assert "opens to the public soon" not in home and "<small>soon</small>" not in home and 'title="Opening soon"' not in home
+    orbyt = client.get("/orbyt").text
+    assert "Opening soon" not in orbyt and "opening soon" not in orbyt
+
+
+def test_the_help_address_is_in_the_mailbox_list_and_the_readme_is_right():
+    from horizon import config
+    running = (ROOT / "docs/RUNNING-MTRX-HORIZYN.md").read_text()
+    assert f"`{config.HELP_EMAIL}`" in running and "`hello@mtrxhorizyn.com`" in running
+    readme = " ".join((ROOT / "README.md").read_text().split())
+    assert "Unset (or not a plain address), nothing is shown." not in readme
+    assert f"`{config.HELP_EMAIL}`" in readme

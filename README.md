@@ -175,7 +175,7 @@ than a link to nowhere.
 
 **Launch day: `MTRX_OPEN_APPS`.** An address alone doesn't open an app to the public. Until
 an app's key is in `MTRX_OPEN_APPS` (`rankup,cyberlogix,omniarmor`, or `all`), every page says
-it is in development ("3 in development" on the home page, "Our apps (opening soon)" on Orbyt),
+it is in development ("3 in development" on the home page, "In development" on Orbyt's app cards),
 and nothing links to its address: no Open button, no bundle trial link, creator links go to
 its early access form. Name it there and every page changes together (`horizon/catalog.py`,
 `apps_line` and `opening`).
@@ -244,8 +244,12 @@ shows in the console's **Recent activity**.
 
 Set `MTRX_CONTACT_EMAIL` to the address business enquiries should go to, such as
 `hello@mtrxhorizyn.com`. The home page's About card, its footer and menu, and the privacy
-and terms pages then show it as an email link. Unset (or not a plain address), nothing is
-shown. Partners, ideas and investors have their own place: [Orbyt](#chroma-vortex).
+and terms pages then show it as an email link. Unset (or not a plain address), the home page
+still gives visitors somewhere to write: its "Questions?" line, About card and footer show the
+general help address, `help@mtrxhorizyn.com` (`config.HELP_EMAIL`), and the other pages show no
+address. Nothing is ever sent to that address from the site, so create that mailbox too
+([RUNNING-MTRX-HORIZYN.md](docs/RUNNING-MTRX-HORIZYN.md), "Answering customers"). Partners, ideas
+and investors have their own place: [Orbyt](#chroma-vortex).
 
 ## Privacy and terms
 
@@ -417,7 +421,9 @@ partner page for a partner, the apps for investors and buyers).
   the kind of partnership (resell, integrate, refer customers, refer my customers (repair /
   food safety), co-marketing, something else) and a message. An address such as
   `/orbyt#partner/cyberlogix/refer-trade` opens it with those choices made (the partner page's
-  Apply button).
+  Apply button). Like Pitch, it asks anyone under 13 to have a parent or guardian send it
+  (Investors and Buy don't); each app card under **Our apps** has **Get early access** (while the
+  early access list is open) beside **Partner on this**.
 - **Pitch an idea**: name, email, the idea's name, a one-line pitch, who it's for, and an
   optional message. **Bring a project from Genesis** lists the visitor's Genesis projects from
   their own browser and fills in the idea fields. On a Genesis project, **Pitch this in

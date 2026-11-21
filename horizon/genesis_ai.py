@@ -230,10 +230,16 @@ def _allowance(c: dict, now: float) -> dict:
     per_hour, per_day = settings.genesis_ai_per_hour, settings.genesis_ai_per_day
     out = {"free_left": max(0, per_day - c["day"]), "free_day": per_day, "free_hour": per_hour,
            "hour_used": c["hour"]}
+    seconds = None
     if c["day"] >= per_day:
-        out["wait"] = _wait(c["first_day"] + 86400 - now if c["first_day"] else 60)
+        seconds = c["first_day"] + 86400 - now if c["first_day"] else 60
     elif c["hour"] >= per_hour:
-        out["wait"] = _wait(c["first_hour"] + 3600 - now if c["first_hour"] else 60)
+        seconds = c["first_hour"] + 3600 - now if c["first_hour"] else 60
+    if seconds is not None:
+        out["wait"] = _wait(seconds)
+        # The same wait in whole seconds, so the page can count down "back in
+        # N min" and switch the buttons back on by itself when it is over.
+        out["wait_seconds"] = max(1, int(-(-seconds // 1)))
     return out
 
 

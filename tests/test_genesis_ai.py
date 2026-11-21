@@ -207,6 +207,9 @@ def test_the_page_can_ask_how_many_free_answers_are_left(client, provider, monke
         assert ask(client, headers={**ORIGIN, **one}).status_code == 200
     left = client.get("/api/genesis/ask", headers=one).json()
     assert left["free_left"] == 2 and left["hour_used"] == 3 and left["wait"] == "60 minutes"
+    # 1.15.0: the same wait in seconds, so the page can count down "back in N
+    # min" and switch Ask back on by itself.
+    assert 3500 < left["wait_seconds"] <= 3600
     assert provider["calls"] and len(provider["calls"]) == 3
     monkeypatch.delenv("GENESIS_AI_KEY")
     assert client.get("/api/genesis/ask").json() == {"enabled": False}

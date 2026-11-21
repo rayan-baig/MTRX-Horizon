@@ -179,7 +179,7 @@ def test_the_pack_and_the_kid_note():
     for fact in ("RankUp", "CyberLogix AI", "OmniArmor.ai", "Genesis", "Orbyt", "Kitchen Safety Bundle", "STRENGTHS"):
         assert fact in pack, fact
     config = (ROOT / "static/js/pilot-mtrx.js").read_text()
-    assert "AI keys are for grown-ups (the AI companies require 18+)." in config
+    assert "Pilot uses a grown-up's AI key (the AI companies require 18+)." in config
     assert "kidView: () => false" in config
 
 
@@ -295,3 +295,29 @@ def test_the_page_names_the_moving_robots_files(client):
     for pair in poses:
         name, url = pair.split("=", 1)
         assert re.fullmatch(rf"/static/pilot/poses/{re.escape(name)}\.webp\?v=[0-9a-f]{{10}}", url), pair
+
+
+
+def test_pilot_for_mac_carries_the_same_shared_core_files():
+    """Pilot for Mac copies six core files unchanged (pilot-desktop/src/core,
+    core-version.json); they must match the web core byte for byte."""
+    import hashlib
+    record = json.loads((ROOT / "pilot-desktop/src/core/core-version.json").read_text())
+    first = (ROOT / "static/pilot/pilot.js").read_text().splitlines()[0]
+    assert record["coreVersion"] in first
+    for name, digest in record["files"].items():
+        web = (ROOT / "static/pilot" / name).read_bytes()
+        mac = (ROOT / "pilot-desktop/src/core" / name).read_bytes()
+        assert web == mac, name
+        assert hashlib.sha256(mac).hexdigest() == digest, name
+
+
+def test_the_loader_stays_small_with_the_placement_work_fetched_later():
+    """Core 1.1.1's placement (the page's words, a box being typed in, the
+    side gutter) lives in pilot-mascot.js, fetched after the page has
+    loaded; the one script every page loads stays under its budget."""
+    loader = (ROOT / "static/pilot/pilot.js").read_text()
+    mascot = (ROOT / "static/pilot/pilot-mascot.js").read_text()
+    for name in ("function contentIn", "function placeNow", "function sideGutter", "function isEditable"):
+        assert name in mascot and name not in loader, name
+    assert len(gzip.compress(loader.encode())) < 6_000

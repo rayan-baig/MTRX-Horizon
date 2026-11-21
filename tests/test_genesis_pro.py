@@ -214,12 +214,12 @@ def test_pro_is_never_offered_or_sold_while_ask_genesis_is_off(client, pro, monk
     assert not genesis_pro.ready()
     assert any("Ask Genesis is off" in p for p in genesis_pro.problems())
     page = client.get("/genesis").text
-    assert "Genesis <b>Pro</b>" not in page and "Ask Genesis answers a day" not in page
+    assert "Genesis <b>Pro</b>" not in page and "Ask Genesis answers<" not in page
     assert client.post("/api/genesis/pro/checkout", json={"plan": "month"}, headers=ORIGIN).status_code == 404
     # Back on, Pro and its Ask Genesis rows are back.
     monkeypatch.setenv(missing, "test-value")
     page = client.get("/genesis").text
-    assert "Genesis <b>Pro</b>" in page and "Ask Genesis answers a day" in page
+    assert "Genesis <b>Pro</b>" in page and "Ask Genesis answers<" in page
 
 
 def test_a_written_price_shows_while_stripe_cant_be_reached(client, pro, monkeypatch):
@@ -267,7 +267,7 @@ def test_the_offer_shows_stripes_prices_and_says_a_grown_up_pays(client, pro):
     assert "Get Pro · $4.99 a month" in page
     assert "$49.90 a year · 2 months free" in page
     # Free and Pro side by side: the free plan's answers against Pro's.
-    assert "<td>5, up to 3 an hour</td><td>Up to 100, all yours</td>" in page
+    assert "<td>5 a day, up to 3 an hour</td><td>Up to 100 a day, from a monthly allowance</td>" in page
     # The block waits, hidden, until a first project or a first ask
     # (static/js/genesis.js, drawPro): a first visit isn't met with a price.
     assert '<section class="panel g-pro" id="pro" aria-labelledby="g-pro-title" data-pilot-private hidden>' in page

@@ -64,6 +64,13 @@
 }
 .g-line { font-size: clamp(18px, 2.4vw, 22px); margin-bottom: 10px; }
 .g-text { color: var(--muted); font-size: 15px; margin-bottom: 22px; }
+/* A returning visitor: a smaller welcome (title, buttons, where things stand). */
+.g-hero.g-hero-small { gap: 14px; padding: clamp(16px, 2.6vw, 26px); }
+.g-hero-small .g-eyebrow, .g-hero-small .g-text { display: none; }
+.g-hero-small .g-title { font-size: clamp(30px, 5vw, 44px); margin-bottom: 4px; }
+.g-hero-small .g-line { font-size: 16px; margin-bottom: 14px; }
+.g-hero-small .g-hero-art .g-spark { width: 40px; height: 40px; top: 18px; right: 18px; }
+.g-hero-small .cta-row .btn { min-height: 42px; padding-top: 8px; padding-bottom: 8px; font-size: 15px; }
 .g-path {
   position: relative; list-style: none; margin: 0; padding: 0;
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px;
@@ -325,7 +332,13 @@
 .g-question input { flex: 1; min-width: 0; min-height: 40px !important; padding: 8px 12px !important; font-size: 14px !important; }
 .g-ask-note { font-size: 12px; color: var(--faint); margin: 10px 0 0; }
 /* The free answers left today, and which AI help is which. */
-.g-ask-left { font-size: 13px; color: var(--text); margin: 10px 0 0; }
+/* Said up front, above the first question: how many are left, and the
+   hourly limit. At the limit it says when more come, and the questions and
+   Ask wait, greyed out, until then (static/js/genesis.js, drawAllowance). */
+.g-ask-left { font-size: 14px; font-weight: 600; color: var(--text); margin: 4px 0 12px; padding: 8px 12px;
+  border-radius: 10px; border: 1px solid rgba(251, 191, 36, 0.3); background: rgba(251, 191, 36, 0.06); }
+.g-ask-left.wait { border-color: rgba(251, 191, 36, 0.6); color: var(--spark); }
+.g-ask-wait .g-helper:disabled, .g-ask-wait .g-question :disabled { cursor: not-allowed; opacity: 0.45; }
 .g-ask-which { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
 .g-answer:empty { display: none; }
 .g-answer { margin-top: 14px; padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(5, 8, 22, 0.55); }
@@ -596,6 +609,8 @@
   .g-item { padding: 8px 4px; }
   .g-pro-buy .btn { flex: 1 1 100%; }
   .g-hero .cta-row .btn { flex: 1 1 auto; justify-content: center; }
+  .g-hero-small .cta-row { flex-wrap: nowrap; gap: 10px; }
+  .g-hero-small .cta-row .btn { flex: 1 1 0; min-width: 0; padding-left: 10px; padding-right: 10px; white-space: nowrap; }
   .g-how { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .g-how li { padding: 10px 12px; }
   .g-daily { padding: 18px 16px; }

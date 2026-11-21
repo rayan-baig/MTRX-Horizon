@@ -72,14 +72,20 @@
     // own computer).
     compatibleHosts: (d.hosts || "").split(/\s+/).filter(Boolean),
     privacyUrl: "/privacy",
-    // Visitors may be young: said once, plainly, with no nagging.
-    keyNote: "Pilot uses your own AI key. AI keys are for grown-ups (the AI companies require 18+).",
+    // Visitors may be young: said once, plainly, with no nagging. It sits
+    // just above the message box until a key is added.
+    keyNote: "Pilot uses a grown-up's AI key (the AI companies require 18+).",
     audienceNote: "Visitors to this site may be young people starting their first idea. Keep answers safe, kind and simple. For money, contracts, sign-ups or anything needing an adult, suggest asking a trusted adult.",
     // The MTRX site has no child accounts; RankUp's config says when a view is a child's.
     kidView: () => false,
-    // On the Genesis project screen the robot keeps clear of the stage bar
-    // and the web address (it moves to a free corner, or tucks away).
-    avoid: [".g-track", "#g-address", ".g-head .g-address"],
+    // The core already keeps the robot off the page's words and buttons
+    // wherever it is scrolled to. On top of that, on the Genesis project
+    // screen it keeps clear of the stage bar, the web address and the whole
+    // launch checklist: each row with its Hide button, and each stage's
+    // heading with its count and arrow (it moves to a free corner, or tucks
+    // away beside them).
+    avoid: [".g-track", "#g-address", ".g-head .g-address", ".g-item-row", ".g-group-head", ".g-hidden-steps > summary",
+      ".g-add-form", ".g-moves"],
     screen,
     chips: () => (CHIPS[path] || []).map(([label, prompt]) => ({ label, prompt })),
     taskPrompt: () => TASKS[path] || "Help me get started on this page.",

@@ -4,6 +4,50 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.15.0 (21 November 2026)
+
+Fixes from the next strict review of Home, Genesis and Orbyt. Prices and the free limits are
+unchanged, and Orbyt still never takes money.
+
+- **Pilot's robot stays off what you're reading, wherever you scroll (Pilot core 1.1.1).** Before,
+  on a phone it only kept clear before you scrolled; after that it could cover the ends of lines,
+  Genesis's "Hide" buttons, the step counts and arrows, and the Orbyt box you were typing in. Now
+  it looks again as you scroll (at most once a frame, and cheaply), and moves to a free corner when
+  your words or buttons are under it. If every corner is busy it tucks away at the edge, with only
+  a thin slice showing, and on phones the page keeps a little room at the sides so line ends stop
+  before that slice.
+- **The robot never sits on a box you're typing in.** While a text box has focus it moves to a
+  corner clear of it (a top corner when the box is low on the screen) or tucks away, and comes
+  back when you're done.
+- **Pilot's chat window.** On a phone, the note about AI keys was half hidden under the message
+  box; it now sits just above the box, in full view. It now reads "Pilot uses a grown-up's AI key
+  (the AI companies require 18+)." The five pills are still the greeting; once you start chatting,
+  the suggestions for the page you're on come first.
+- **Home.** The "Active Users: Soon" tile is gone: until an app reports real numbers, that tile is
+  a link to Genesis (free). The Projects tile no longer hides that this website is one of the
+  four: it says "1 live, 3 in development". Every status says "In development" (the Learn more
+  cards and Orbyt's app cards too, instead of "opens soon" and "Opening soon"). The early access
+  form says what's missing under the field itself, in plain words, instead of the browser's own
+  pop-up bubbles.
+- **Contact address.** help@mtrxhorizyn.com (shown on the home page while no business address is
+  set) is now in the docs' list of mailboxes to create, and the README no longer says nothing is
+  shown in that case.
+- **Genesis at the free limit.** When the hourly (or daily) free answers are used up, the quick
+  questions and Ask are greyed out, the line says "Back in 12 min" (the real minutes), and they
+  switch back on by themselves when the wait is over. "Up to 3 an hour" is said up front: in the
+  welcome, and in the first line of Ask Genesis, above the questions.
+- **Genesis says things once.** A first visit no longer shows a second pair of "Start my idea" /
+  "Try an example" buttons. Returning visitors get a smaller welcome, so their projects stay in
+  view. The Free and Pro table now reads "5 a day, up to 3 an hour" and "Up to 100 a day, from a
+  monthly allowance", with one plain line under it about that allowance (no daily promise).
+- **Orbyt says things once.** "Within 7 days" is said once before you send (just above Send), and
+  "We won't publish or pass on what you send" once, on the Pitch form. The under-13 note is only on
+  Pitch and Partner (Investors and Buy don't need it; Early access has its own 18+ tick). Each app
+  card has "Get early access" beside "Partner on this" while the early access list is open. The
+  email box no longer shows a character count.
+- **Pilot for Mac** carries the same six shared core files at 1.1.1 (only their version line
+  changed for it).
+
 ## 1.14.0 (20 November 2026)
 
 Fixes from a strict review of the main site. Prices and the free limits are unchanged.

@@ -2,20 +2,27 @@
     /early-access. static/js/early-access.js sends it; nothing is sent until
     the button is pressed. `picked` ticks one app; `ref` is a creator's code
     from their link, already checked. Labels hold their inputs, so the same
-    form can be on a page more than once. -#}
+    form can be on a page more than once. A mistake is said in plain words
+    under the field it is about (as Orbyt does), never in the browser's own
+    bubble: nothing here is `required`, and the script checks instead. -#}
 {% macro early_form(early, picked="", ref="") -%}
+{%- set fid = "ea-" ~ (picked or "all") -%}
 <form class="ea-form" novalidate>
   <label class="ea-field"><span class="ea-label">Your email</span>
-    <input type="email" name="email" maxlength="254" autocomplete="email" inputmode="email" placeholder="Your email address" required></label>
-  <fieldset class="ea-apps">
+    <input type="email" name="email" maxlength="254" autocomplete="email" inputmode="email" placeholder="Your email address"
+      aria-describedby="{{ fid }}-email-msg"></label>
+  <small class="ea-field-msg" id="{{ fid }}-email-msg" data-msg-for="email"></small>
+  <fieldset class="ea-apps" aria-describedby="{{ fid }}-apps-msg">
     <legend class="ea-label">Which apps?</legend>
     {%- for a in early.apps %}
     <label class="ea-app ea-{{ a.key }}"><input type="checkbox" name="apps" value="{{ a.key }}"{% if picked == a.key %} checked{% endif %}>
       <img src="/static/img/{{ a.key }}-icon.svg" alt="" width="28" height="28" loading="lazy">
       <span><b>{{ a.name }}</b>{% if a.percent %}<small>{{ a.percent }}% off for founding members</small>{% endif %}</span></label>
     {%- endfor %}
+    <small class="ea-field-msg" id="{{ fid }}-apps-msg" data-msg-for="apps"></small>
   </fieldset>
-  <label class="ea-check"><input type="checkbox" name="adult" required> <span>I'm a grown-up (18+)</span></label>
+  <label class="ea-check"><input type="checkbox" name="adult" aria-describedby="{{ fid }}-adult-msg"> <span>I'm a grown-up (18+)</span></label>
+  <small class="ea-field-msg" id="{{ fid }}-adult-msg" data-msg-for="adult"></small>
   <label class="ea-trap" aria-hidden="true">Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
   {%- if ref %}
   <input type="hidden" name="ref" value="{{ ref }}">{% endif %}

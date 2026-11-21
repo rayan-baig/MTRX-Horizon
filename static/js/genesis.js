@@ -107,6 +107,9 @@
     $("g-list-head").hidden = projects.length === 0;
     $("g-how").hidden = projects.length > 0;
     $("g-path").hidden = projects.length === 0;
+    // A returning visitor knows what Genesis is: the welcome shrinks to a
+    // title, the buttons and where their projects stand.
+    document.querySelector(".g-hero").classList.toggle("g-hero-small", projects.length > 0);
     // A returning visitor's projects come first; a first visit starts at the top.
     const view = $("g-list-view");
     const mine = $("g-mine");
@@ -871,7 +874,7 @@
     if (!aiUsable()) {
       return el("section", { class: "panel g-ask off" }, head,
         el("p", { class: "g-note", text: window.Pilot && window.Pilot.store
-          ? "AI help isn't switched on here yet. Everything else in Genesis works as usual, and you can use your own AI key: open Pilot, the robot in the corner, and add it."
+          ? "AI help isn't switched on here yet. Everything else in Genesis works as usual, and a grown-up can add their own AI key in Pilot, the robot in the corner."
           : "AI help isn't switched on yet. Everything else in Genesis works as usual." }));
     }
     const out = el("div", { class: "g-answer", "aria-live": "polite" });
@@ -894,12 +897,14 @@
     const left = pro || own ? null : el("p", { class: "g-ask-left", role: "status", text: freeText() });
     // Ask Genesis or Pilot? One plain line, where both can be seen.
     const which = !pro && !own && document.getElementById("pilot-core")
-      ? el("p", { class: "g-ask-which", text: "Ask Genesis is free here, with a daily limit. Pilot, the robot in the corner, uses your own AI key, with no limit." })
+      ? el("p", { class: "g-ask-which", text: "Ask Genesis is free here, with the limits above. Pilot, the robot in the corner, works with a grown-up's own AI key, with no limit." })
       : null;
-    const panel = el("section", { class: "panel g-ask" }, head,
-      el("div", { class: "g-helpers" }, ...buttons), form, left, which, note, out);
+    // The limit is said up front, above the first question, not in small print.
+    const panel = el("section", { class: "panel g-ask" }, head, left,
+      el("div", { class: "g-helpers" }, ...buttons), form, which, note, out);
     drawAnswer(p, out);
     if (left && !freeAllowance) loadAllowance();
+    if (left) { gate(panel, freeBlockedNow()); setTimeout(drawAllowance, 0); }
     return panel;
   }
 
@@ -911,14 +916,42 @@
   const freeHour = Number($("genesis").dataset.freeHour) || 0;
   let freeAllowance = null;
   let allowanceAsked = false;
-  const freeText = () => S.freeLine(freeAllowance, freeDay, freeHour);
+  const freeText = () => S.freeLine(freeAllowance, freeDay, freeHour, Date.now());
+  // At the limit (the free help only): the quick questions and Ask are
+  // greyed out, the line says "Back in N min", and they come back on by
+  // themselves when the wait is over.
+  const freeBlockedNow = () => !isPro() && !ownKey() && S.freeBlocked(freeAllowance, freeDay, freeHour, Date.now());
+  let reopen = 0;
+  function gate(panel, blocked) {
+    if (panel.classList.contains("busy")) return;
+    panel.classList.toggle("g-ask-wait", blocked);
+    panel.querySelectorAll(".g-helper, .g-question input, .g-question button").forEach((b) => { b.disabled = blocked; });
+  }
   function drawAllowance() {
-    document.querySelectorAll(".g-ask-left").forEach((line) => { line.textContent = freeText(); });
+    const blocked = freeBlockedNow();
+    document.querySelectorAll(".g-ask-left").forEach((line) => {
+      line.textContent = freeText();
+      line.classList.toggle("wait", blocked);
+    });
+    document.querySelectorAll(".g-ask:not(.off)").forEach((panel) => { if (panel.querySelector(".g-ask-left")) gate(panel, blocked); });
+    clearTimeout(reopen);
+    if (!blocked) return;
+    const until = Number(freeAllowance && freeAllowance.wait_until) || 0;
+    const soon = until ? until - Date.now() : 60000;
+    reopen = setTimeout(() => {
+      if (until && Date.now() >= until) {
+        // The wait is over: ask the server how many are left now (and switch
+        // the buttons back on even if it can't be reached; it checks again).
+        allowanceAsked = false;
+        loadAllowance().finally(drawAllowance);
+      } else drawAllowance();
+    }, Math.max(1000, Math.min(soon + 500, 30000)));
   }
   function keepAllowance(data) {
     if (!data || !Number.isFinite(Number(data.free_left))) return;
+    const seconds = Number(data.wait_seconds) || 0;
     freeAllowance = { free_left: data.free_left, free_day: data.free_day, free_hour: data.free_hour,
-      hour_used: data.hour_used, wait: data.wait || "" };
+      hour_used: data.hour_used, wait: data.wait || "", wait_until: seconds > 0 ? Date.now() + seconds * 1000 : 0 };
     drawAllowance();
   }
   async function loadAllowance() {

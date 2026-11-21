@@ -45,7 +45,8 @@
         <h1 class="g-title">Genesis</h1>
         <p class="g-line">Turn your idea into a real plan, one small step at a time.</p>
         <p class="g-text">Write it in three lines, then tick off easy steps from Spark to Launch. Free,
-          and your ideas stay in this browser: nothing is sent unless you press Ask.</p>
+          and your ideas stay in this browser: nothing is sent unless you press Ask{% if ai and free_hour %}
+          (free AI help, {{ free_day }} a day, up to {{ free_hour }} an hour){% endif %}.</p>
         <div class="cta-row">
           <a class="btn btn-genesis" href="#new">Start my idea <span aria-hidden="true">→</span></a>
           <a class="btn btn-ghost" href="#example">Try an example</a>
@@ -110,12 +111,9 @@
     <section class="g-empty panel" id="g-empty">
       <span class="g-spark g-spark-big" aria-hidden="true"></span>
       <h2>Every big thing starts as a spark.</h2>
+      {#- No second Start / Example pair here: the welcome above has them. -#}
       <p>RankUp, CyberLogix AI and OmniArmor.ai each began as one line. Write yours: a name, the
-        problem it solves in a sentence, and who it's for. Not sure yet? Try an example and change it.</p>
-      <div class="cta-row">
-        <a class="btn btn-genesis" href="#new">Start my idea <span aria-hidden="true">→</span></a>
-        <a class="btn btn-ghost" href="#example">Try an example</a>
-      </div>
+        problem it solves in a sentence, and who it's for. Not sure yet? Try an example above and change it.</p>
       <p class="g-empty-small">Have a Genesis file from another device?
         <button class="g-link" type="button" id="g-import-empty">Import it</button></p>
     </section>
@@ -143,15 +141,18 @@
             {#- Rows about Ask Genesis only while it is on (Pro itself is
                 only offered then: genesis_pro.ready). -#}
             {%- if pro.ai %}
-            <tr><th scope="row">Ask Genesis answers a day</th><td>{{ pro.free_per_day }}, up to {{ pro.free_per_hour }} an hour</td><td>Up to {{ pro.per_day }}, all yours</td></tr>
+            {#- Said the same way on both sides, and no promise of a number every
+                day: Pro's answers come from a monthly allowance. -#}
+            <tr><th scope="row">Ask Genesis answers</th><td>{{ pro.free_per_day }} a day, up to {{ pro.free_per_hour }} an hour</td><td>Up to {{ pro.per_day }} a day, from a monthly allowance</td></tr>
             <tr><th scope="row">Longer answers, plus a four-week plan, website words and price ideas</th><td>No</td><td>Yes</td></tr>
             {%- endif %}
             <tr><th scope="row">Private cloud backup, if this browser is cleared</th><td>No</td><td>Yes</td></tr>
             <tr><th scope="row">Download a project as a tidy plan</th><td>No</td><td>Yes</td></tr>
           </tbody>
         </table>
-        <p class="g-pro-small">Pro's answers come with a fair monthly allowance. Only you can see your
-          projects and backups.</p>
+        <p class="g-pro-small">{% if pro.ai %}Pro's answers come from a monthly allowance that is plenty for most
+          people; on any one day you can ask up to {{ pro.per_day }}. If you ever use it up, it tops up day by day.
+          {% endif %}Only you can see your projects and backups.</p>
         <div class="g-pro-buy">
           {#- Stripe's own figure once read; until then (or while Stripe
               can't be reached) the price as written in the settings. -#}

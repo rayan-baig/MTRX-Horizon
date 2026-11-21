@@ -43,7 +43,15 @@
 .ea-check input { flex: none; }
 .ea-trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .ea-go { justify-content: center; }
+/* A mistake, under the field it is about (as on Orbyt), never a browser bubble. */
+.ea-field-msg { display: block; margin-top: -6px; font-size: 13px; line-height: 1.35; color: #fda4af; }
+.ea-field-msg:empty { display: none; }
+.ea-apps .ea-field-msg { margin-top: 0; }
+.ea-form input[aria-invalid] { border-color: #fb7185; }
+.ea-apps[aria-invalid] .ea-app { border-color: color-mix(in srgb, #fb7185 60%, transparent); }
+.ea-check:has(input[aria-invalid]) { color: #fecdd3; }
 .ea-msg { min-height: 1.3em; font-size: 14px; color: var(--muted); }
+.ea-msg:empty { min-height: 0; }
 .ea-msg.good { color: var(--ea-green); }
 .ea-msg.bad { color: #ff8aa0; }
 .ea-small { color: var(--faint); font-size: 12.5px; }

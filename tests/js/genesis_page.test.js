@@ -87,6 +87,44 @@ test("Genesis Pro shows only after a first project or a first ask", () => {
 test("the free answers left today are shown from what the server says", () => {
   const panel = functionSource("askPanel");
   assert.match(panel, /el\("p", \{ class: "g-ask-left", role: "status", text: freeText\(\) \}\)/);
-  assert.match(panel, /Ask Genesis is free here, with a daily limit\. Pilot, the robot in the corner, uses your own AI key, with no limit\./);
+  assert.match(panel, /Ask Genesis is free here, with the limits above\. Pilot, the robot in the corner, works with a grown-up's own AI key, with no limit\./);
   assert.match(functionSource("loadAllowance"), /fetch\("\/api\/genesis\/ask", \{ credentials: "omit" \}\)/);
+});
+
+// 1.15.0: the limit is said up front, and at the limit the buttons wait.
+test("the limit line comes first, above the quick questions and Ask", () => {
+  const panel = functionSource("askPanel");
+  assert.match(panel, /el\("section", \{ class: "panel g-ask" \}, head, left,\n\s+el\("div", \{ class: "g-helpers" \}, \.\.\.buttons\), form,/);
+  assert.match(panel, /if \(left\) \{ gate\(panel, freeBlockedNow\(\)\); setTimeout\(drawAllowance, 0\); \}/);
+});
+
+test("at the hourly limit the quick questions and Ask grey out, and come back by themselves", () => {
+  // Run gate() as written, on a stand-in panel.
+  const { gate } = new Function(`${functionSource("gate")}\nreturn { gate };`)();
+  const buttons = [{ disabled: false }, { disabled: false }, { disabled: false }];
+  const classes = new Set();
+  const panel = {
+    classList: { contains: (c) => classes.has(c), toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)) },
+    querySelectorAll: (sel) => { assert.equal(sel, ".g-helper, .g-question input, .g-question button"); return buttons; },
+  };
+  gate(panel, true);
+  assert.ok(buttons.every((b) => b.disabled) && classes.has("g-ask-wait"));
+  gate(panel, false);
+  assert.ok(buttons.every((b) => !b.disabled) && !classes.has("g-ask-wait"));
+  // A panel busy sending is left alone (send() manages it).
+  classes.add("busy");
+  gate(panel, true);
+  assert.ok(buttons.every((b) => !b.disabled));
+  // The page keeps the server's wait as a moment, and looks again when it's over.
+  const keep = functionSource("keepAllowance");
+  assert.match(keep, /wait_until: seconds > 0 \? Date\.now\(\) \+ seconds \* 1000 : 0/);
+  const draw = functionSource("drawAllowance");
+  assert.match(draw, /allowanceAsked = false;\n\s+loadAllowance\(\)\.finally\(drawAllowance\);/);
+  assert.match(draw, /line\.classList\.toggle\("wait", blocked\)/);
+});
+
+test("a returning visitor gets a smaller welcome", () => {
+  assert.match(functionSource("drawList"), /classList\.toggle\("g-hero-small", projects\.length > 0\)/);
+  const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
+  assert.match(css, /\.g-hero-small \.g-eyebrow, \.g-hero-small \.g-text \{ display: none; \}/);
 });
