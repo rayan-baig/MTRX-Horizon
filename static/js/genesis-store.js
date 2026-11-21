@@ -708,20 +708,48 @@
   // limits; once the server has said, how many are left today, and while a
   // limit is reached, how long until more. `info` is what the server sent
   // (free_left, free_day, free_hour, hour_used, wait), or null.
-  function freeLine(info, perDay, perHour) {
+  // How long until the free answers come back, in plain words, from the
+  // moment the server's wait runs out (info.wait_until, in ms): "12 min",
+  // "about 3 hours". Without that moment, the server's own words.
+  function waitWords(info, now) {
+    const until = Number(info && info.wait_until);
+    if (!until) return (info && info.wait) || "";
+    const minutes = Math.max(1, Math.ceil((until - (now || Date.now())) / 60000));
+    if (minutes < 90) return `${minutes} min`;
+    const hours = Math.round(minutes / 60);
+    return `about ${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+
+  // Is the free help used up for now (the hour's or the day's)? While it
+  // is, the page greys out the quick questions and Ask, and switches them
+  // back on by itself once the wait is over.
+  function freeBlocked(info, perDay, perHour, now) {
+    if (!info || !Number.isFinite(Number(info.free_left))) return false;
+    const hour = Number(info.free_hour) || perHour;
+    const used = Number(info.free_left) <= 0 || (Boolean(info.wait) && Number(info.hour_used) >= hour);
+    if (!used) return false;
+    const until = Number(info.wait_until);
+    return !until || until > (now || Date.now());
+  }
+
+  function freeLine(info, perDay, perHour, now) {
     const day = Number(info && info.free_day) || perDay;
     const hour = Number(info && info.free_hour) || perHour;
     const limits = `Free: ${day} answer${day === 1 ? "" : "s"} a day, up to ${hour} an hour.`;
     if (!info || !Number.isFinite(Number(info.free_left))) return limits;
     const left = Math.max(0, Number(info.free_left));
-    if (left === 0) return `You've used all ${day} free answers for today${info.wait ? `; more in ${info.wait}` : ""}.`;
+    const until = Number(info.wait_until);
+    const over = until && until <= (now || Date.now());
+    if (left === 0 && !over) return `You've used all ${day} free answers for today. Back in ${waitWords(info, now)}.`;
     const today = `${left} of ${day} left today`;
-    if (info.wait && Number(info.hour_used) >= hour) return `You've used ${hour} this hour; more in ${info.wait}. ${today}.`;
+    if (info.wait && Number(info.hour_used) >= hour && !over) {
+      return `You've used ${hour} this hour. Back in ${waitWords(info, now)}. ${today}.`;
+    }
     return `${today} (up to ${hour} an hour).`;
   }
 
   const api = {
-    freeLine,
+    freeLine, freeBlocked, waitWords,
     KEY, LIMITS, STAGES, CHECKLIST, line, block, addressProblem, suggestAddress, nameWarning,
     check, create, progress, clean, cleanList, exportText, importText, open,
     steps, hiddenSteps, addStep, hideStep, showStep,

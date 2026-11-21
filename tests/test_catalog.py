@@ -340,11 +340,11 @@ def test_the_home_page_picks_up_a_released_app(client, monkeypatch):
     projects = home.split('id="projects"', 1)[1].split("</section>", 1)[0]
     assert "<b>Nova Notes</b>" in projects and '<em class="status">Open</em>' in projects
     assert 'style="' not in home
-    # The three founding cards stay; one in development shows "soon".
+    # The three founding cards stay; one in development says so.
     assert act(client, "rankup", "unrelease").status_code == 200
     home = client.get("/").text
     assert 'data-app="rankup"' in home and 'data-knock="rankup"' in home
-    assert "RankUp opens to the public soon." in home
+    assert "RankUp is in development." in home
 
 
 def test_a_founding_app_in_development_has_no_open_button_even_with_its_setting(client, monkeypatch):

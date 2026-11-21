@@ -7,6 +7,7 @@ and every limit. No email is really sent: they are kept in a list."""
 import hashlib
 import re
 import time
+from pathlib import Path
 
 import pytest
 
@@ -14,6 +15,7 @@ from tests.test_lock import ORIGIN, client, make_client  # noqa: F401
 from tests.test_lock import owner as sign_in
 
 EMAIL = "fan@example.com"
+ROOT = Path(__file__).resolve().parent.parent
 
 
 @pytest.fixture
@@ -800,3 +802,40 @@ def test_privacy_page_says_the_forms_keep_the_address_a_day(client, early, maker
     monkeypatch.setenv("CREATORS_ENABLED", "0")
     assert sentence not in client.get("/privacy").text
 
+
+
+# ---------------------------------------------------------------- 1.15.0
+
+def test_the_early_access_form_says_mistakes_in_place_not_in_browser_bubbles(client, early):
+    for path in ("/", "/early-access"):
+        page = client.get(path).text
+        forms = re.findall(r'<form class="ea-form" novalidate>(.*?)</form>', page, re.DOTALL)
+        assert forms, path
+        for form in forms:
+            # Nothing for the browser to complain about in its own bubble.
+            assert " required" not in form
+            for field in ("email", "apps", "adult"):
+                assert f'data-msg-for="{field}"' in form, (path, field)
+            # Each message is tied to its field for screen readers.
+            for msg_id in re.findall(r'<small class="ea-field-msg" id="([^"]+)"', form):
+                assert f'aria-describedby="{msg_id}"' in form, msg_id
+        # Ids stay unique on a page with the form four times over.
+        ids = re.findall(r' id="(ea-[^"]+)"', page)
+        assert len(ids) == len(set(ids))
+    js = (ROOT / "static/js/early-access.js").read_text()
+    assert "That email address doesn't look right. Please check it." in js and ".ea-field-msg" in js
+
+
+def test_orbyt_app_cards_offer_early_access_beside_partner(client, early):
+    page = client.get("/orbyt").text
+    catalog = page.split('id="our-apps"', 1)[1].split("</section>", 1)[0]
+    for key in ("rankup", "cyberlogix", "omniarmor"):
+        card = catalog.split(f'data-app="{key}"', 1)[1].split("</li>", 1)[0]
+        early_at = card.index(f'href="/early-access?app={key}">Get early access')
+        assert early_at < card.index("Partner on this"), key
+    # The early access page ticks that app.
+    assert 'value="cyberlogix" checked' in client.get("/early-access?app=cyberlogix").text
+
+
+def test_orbyt_app_cards_have_no_early_access_while_the_list_is_off(client):
+    assert "Get early access" not in client.get("/orbyt").text

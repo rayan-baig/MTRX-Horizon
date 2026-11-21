@@ -144,7 +144,7 @@
       <div class="card-actions">
         {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener" aria-label="Open {{ full }}"><span>Open<span class="app-name"> {{ name }}</span></span> <span class="arrow" aria-hidden="true">→</span></a>
         {% elif early %}<a class="btn btn-solid ea-card-btn" href="#early-access-{{ key }}" aria-label="Get early access to {{ full }}"><span>Early access</span> <span class="arrow" aria-hidden="true">→</span></a>
-        {% else %}<span class="btn btn-solid is-soon" aria-disabled="true" title="Opening soon"><span>Open<span class="app-name"> {{ name }}</span></span> <small>soon</small></span>{% endif %}
+        {% else %}<span class="btn btn-solid is-soon" aria-disabled="true" title="In development"><span>In development</span></span>{% endif %}
         <a class="btn btn-outline" href="#learn-{{ key }}" aria-label="Learn more about {{ full }}">Learn more <span class="arrow" aria-hidden="true">→</span></a>
       </div>
     </article>
@@ -178,14 +178,22 @@
           <dt>CyberLogix: built for</dt><dd>12</dd><span>Industries</span>
         </div>
         <div>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 6 5"/></svg>
-          <dt>Active Users</dt>
-          {% if n.users_online is not none %}<dd>{{ count(n.users_online) }}</dd><span>Across all apps</span>
-          {% else %}<dd class="soon">Soon</dd><span>Counted from launch</span>{% endif %}
+          {% if n.users_online is none and not demo %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.2 6.6 6.8 2.4-6.8 2.4L12 20.5l-2.2-6.6L3 11.5l6.8-2.4Z"/></svg>
+          {% else %}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14a5 5 0 0 1 6 5"/></svg>{% endif %}
+          {#- Real numbers only: active users once an app reports them. Until
+              then, something real instead of a placeholder: Genesis, free today. -#}
+          {% if n.users_online is not none %}<dt>Active Users</dt><dd>{{ count(n.users_online) }}</dd><span>Across all apps</span>
+          {% elif not demo %}<dt>Genesis</dt><dd class="fact-free"><a class="fact-link" href="/genesis">Free</a></dd><span>Plan your idea</span>
+          {% else %}<dt>Active Users</dt><dd class="soon">Soon</dd><span>Counted from launch</span>{% endif %}
         </div>
         <div>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c1-4 3-6 6-7m-3 3 3 3m-2.5-6.5C11 7 15 3 21 3c0 6-4 10-8.5 11.5z"/><circle cx="15" cy="9" r="1.5"/></svg>
-          <dt>Projects</dt><dd>{{ (projects or []) | length }}</dd><span>Underway</span>
+          {#- Honest about what the count holds: this website is one of the
+              projects, and it is the live one. -#}
+          {%- set plist = projects or [] %}
+          {%- set live_now = plist | selectattr("status", "in", ["Live", "Open"]) | list | length %}
+          <dt>Projects</dt><dd><a class="fact-link" href="#projects">{{ plist | length }}</a></dd>
+          <span>{% if live_now == plist | length %}All live{% else %}{{ live_now }} live, {{ plist | length - live_now }} in development{% endif %}</span>
         </div>
         <div>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 4.5 9-4.5"/></svg>
@@ -270,7 +278,7 @@
       {% for point in points %}<li>{{ point }}</li>{% endfor %}
     </ul>
     {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener">Open {{ name }} <span aria-hidden="true">→</span></a>
-    {% else %}<p class="learn-soon">{{ name }} opens to the public soon.</p>
+    {% else %}<p class="learn-soon">{{ full }} is in development.</p>
     {% if early %}<a class="btn btn-solid" href="#early-access-{{ key }}">Get early access <span aria-hidden="true">→</span></a>{% endif %}{% endif %}
   </div>
 </section>

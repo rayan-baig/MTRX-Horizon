@@ -9,15 +9,52 @@
     out.classList.toggle("bad", !good && Boolean(text));
   }
 
+  // The same email check as Orbyt's forms (static/js/vortex-form.js).
+  const EMAIL = /^[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
+
+  // Every mistake, as { field: why }, in plain words. Empty when it can go.
+  function problems(email, apps, adult) {
+    const out = {};
+    if (!email) out.email = "Please type your email address.";
+    else if (!EMAIL.test(email)) out.email = "That email address doesn't look right. Please check it.";
+    if (!apps.length) out.apps = "Tick at least one app.";
+    if (!adult) out.adult = "Please tick the box to say you're 18 or over.";
+    return out;
+  }
+
+  // A mistake goes under its own field, friendly and in place (as on
+  // Orbyt), and the first one gets the focus.
+  function mark(form, errors, focus = true) {
+    let first = null;
+    for (const out of form.querySelectorAll(".ea-field-msg")) {
+      const name = out.dataset.msgFor;
+      out.textContent = errors[name] || "";
+      out.classList.toggle("bad", Boolean(errors[name]));
+      const field = name === "apps" ? form.querySelector('input[name="apps"]') : form.elements.namedItem(name);
+      const target = name === "apps" ? form.querySelector(".ea-apps") : field;
+      if (target) target.toggleAttribute("aria-invalid", Boolean(errors[name]));
+      if (errors[name] && !first) first = field;
+    }
+    if (first && focus) first.focus();
+  }
+
   function setup(form) {
+    // A fix clears that field's message.
+    form.addEventListener("input", (event) => {
+      const name = event.target && event.target.name;
+      const out = name && form.querySelector(`.ea-field-msg[data-msg-for="${name}"]`);
+      if (out && out.textContent) mark(form, Object.fromEntries([...form.querySelectorAll(".ea-field-msg.bad")]
+        .map((m) => [m.dataset.msgFor, m.textContent]).filter(([k]) => k !== name)), false);
+    });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const email = form.elements.namedItem("email").value.trim();
       const apps = [...form.querySelectorAll('input[name="apps"]:checked')].map((box) => box.value);
       const adult = form.elements.namedItem("adult").checked;
-      if (!email || !email.includes("@")) { say(form, "Type your email address."); return; }
-      if (!apps.length) { say(form, "Tick at least one app."); return; }
-      if (!adult) { say(form, "Please tick the box to say you're 18 or over."); return; }
+      const errors = problems(email, apps, adult);
+      mark(form, errors);
+      say(form, "");
+      if (Object.keys(errors).length) return;
       const ref = form.elements.namedItem("ref");
       const body = { email, apps, adult, website: form.elements.namedItem("website").value };
       if (ref) body.ref = ref.value;

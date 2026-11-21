@@ -20,7 +20,7 @@
     placed with textContent, never as HTML. -#}
 {%- macro field(kind, name, label, limit, auto="off", wide=false, kind_of="text", placeholder="", optional=false) -%}
 <label class="v-field{% if wide %} v-wide{% endif %}">
-  <span class="v-label">{{ label }}{% if optional %} <em class="v-optional">optional</em>{% endif %}{% if limit > 100 %} <small class="v-count" data-count-for="{{ name }}"></small>{% endif %}</span>
+  <span class="v-label">{{ label }}{% if optional %} <em class="v-optional">optional</em>{% endif %}{% if limit > 100 and kind_of != "email" %} <small class="v-count" data-count-for="{{ name }}"></small>{% endif %}</span>
   <input name="{{ name }}" type="{{ kind_of }}" maxlength="{{ limit }}" autocomplete="{{ auto }}"
     {%- if placeholder %} placeholder="{{ placeholder }}"{% endif %}
     {%- if kind_of == "email" %} autocapitalize="off" spellcheck="false" inputmode="email"{% endif %}>
@@ -45,7 +45,9 @@
   {{ app_badge(a) }}<span>{{ a.name }}</span></label>
 {% endfor %}
 {%- endmacro -%}
-{#- Every form says this: the youngest visitors send through a grown-up. -#}
+{#- Pitch and Partner say this (the forms young people use): the youngest
+    visitors send through a grown-up. Investors and Buy don't: nobody young
+    is sending those. Early access has its own 18+ tick. -#}
 {%- macro young() -%}
 <p class="v-young">If you're under 13, ask a parent or guardian to send this for you.</p>
 {%- endmacro -%}
@@ -56,14 +58,16 @@
   <label>Leave this empty <input name="website" type="text" tabindex="-1" autocomplete="off"></label>
 </div>
 <p class="v-error" data-error></p>
+{#- Said once each, just before Send: the 7-day reply, and (for ideas)
+    that we won't publish or pass it on. -#}
+<p class="v-reply">We reply within 7 days, even if the answer is no.</p>
 {%- if kind == "pitch" %}
 <p class="v-open-ideas">We won't publish or pass on what you send, but we can't promise we aren't working on something similar.</p>
 {%- endif %}
-<p class="v-reply">We reply within 7 days, even if the answer is no.</p>
 <div class="v-send">
   <button class="btn btn-vortex" type="submit">Send <span aria-hidden="true">→</span></button>
-  <p class="v-private">We keep what you send here only to reply to you, for up to {{ keep_days }} days, and
-    never pass it on. <a href="/privacy">Privacy</a></p>
+  <p class="v-private">We keep what you send here only to reply to you, for up to {{ keep_days }} days{% if kind != "pitch" %}, and
+    never pass it on{% endif %}. <a href="/privacy">Privacy</a></p>
 </div>
 {%- endmacro -%}
 <div class="sky" aria-hidden="true"></div>
@@ -103,7 +107,7 @@
       <ul class="v-promises">
         <li>Takes about 2 minutes</li>
         <li>A real person reads every message</li>
-        <li>A reply within 7 days</li>
+        <li>Every message gets a reply</li>
         <li>Nothing is bought or sold on this page</li>
       </ul>
     </div>
@@ -137,7 +141,7 @@
   <ol class="v-how" id="v-choose" aria-label="How Orbyt works">
     <li><b>1</b><span><strong>Pick a path</strong> The one that sounds most like you.</span></li>
     <li><b>2</b><span><strong>Write a short note</strong> Your name, email and a few lines.</span></li>
-    <li><b>3</b><span><strong>We reply by email</strong> Within 7 days, even if it's a no. We won't publish or pass on what you send, but we can't promise we aren't working on something similar.</span></li>
+    <li><b>3</b><span><strong>We reply by email</strong> A yes, a no, or a question back, from a real person.</span></li>
   </ol>
 
   {#- Investors and buying come after the main paths: most visitors are here
@@ -226,7 +230,6 @@
     <p class="v-notice">Just so you know: we're not selling shares or asking anyone for money here, and
       nothing on this site is an investment. If you'd like to talk, leave your details and we'll get
       back to you.</p>
-    {{ young() }}
     <form class="v-form" data-kind="invest" novalidate>
       <div class="v-grid">
         {{ field("invest", "name", "Your name", limits.name, "name") }}
@@ -243,7 +246,6 @@
     <h2 class="v-h">Ask about buying</h2>
     <p class="v-notice v-notice-buy">This only starts a conversation. Nothing is for sale on this page and
       nobody can buy or pay for anything here.</p>
-    {{ young() }}
     <form class="v-form" data-kind="buy" novalidate>
       <div class="v-grid">
         {{ field("buy", "name", "Your name", limits.name, "name") }}
@@ -293,7 +295,7 @@
   <section class="v-catalog" id="our-apps" aria-labelledby="v-apps-title">
     <div class="v-catalog-head">
       <p class="eyebrow v-eyebrow">{% if opening %}In development{% else %}Open to the public{% endif %}</p>
-      <h2 class="v-h" id="v-apps-title">Our apps{% if opening %} (opening soon){% endif %}</h2>
+      <h2 class="v-h" id="v-apps-title">Our apps</h2>
       <p class="v-lede">{% if opening %}The apps MTRX Horizyn is making. They're in development now, and each
         one gets an Open button the day it launches.{% else %}Every app MTRX Horizyn makes. New ones join this
         list as they launch.{% endif %}</p>
@@ -312,10 +314,15 @@
           {%- else %}<span class="v-badge accent-{{ a.accent }}" aria-hidden="true">{{ a.letter }}</span>{% endif %}
           <h3>{{ a.name }}</h3>
           {% if a.open %}<a class="v-app-open" href="{{ a.url }}" rel="noopener">Open <span aria-hidden="true">↗</span></a>
-          {%- else %}<span class="v-app-soon">Opening soon</span>{% endif %}
+          {%- else %}<span class="v-app-soon">In development</span>{% endif %}
         </div>
         <p class="v-app-line">{{ a.line }}</p>
         <div class="v-app-actions">
+          {%- if not a.open and a.key in early_apps %}
+          {#- Early access for this app: the list's own page, with it ticked
+              (only while the list is open). -#}
+          <a class="btn btn-small v-app-early" href="/early-access?app={{ a.key }}">Get early access <span aria-hidden="true">→</span></a>
+          {%- endif %}
           <a class="btn btn-ghost btn-small v-app-pick path-partner" href="#partner" data-pick="{{ a.key }}">Partner on this</a>
         </div>
       </li>

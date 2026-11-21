@@ -2,7 +2,7 @@
 
 Pilot is the AI assistant in every MTRX Horizyn app. It runs on **the user's own AI key**, from
 their browser: MTRX Horizyn never sees the key, never sees the conversation, and pays nothing for
-the AI. This file describes the shared core (**Pilot core 1.1.0**) and how it is used on the
+the AI. This file describes the shared core (**Pilot core 1.1.1**) and how it is used on the
 MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
 
 ## What the user sees
@@ -22,7 +22,8 @@ MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
   (settings), palette (a calmer look) and ? (help) buttons. On a computer it is a side window
   next to the robot; on a phone it is a full-width sheet. Answers stream in, with Copy on each,
   Stop while it runs, and Clear chat under the conversation.
-- **Suggestions** under the conversation fit the page (on Genesis: "Show my projects", "What's my
+- **Suggestions** come first once a chat has started (the greeting and its five pills are for
+  starting, and fold away), and fit the page (on Genesis: "Show my projects", "What's my
   next step?"), plus **Summarise this**. **Analyze & explain…** explains the screen.
 - **Voice**, where the browser has its own speech recognition: a microphone in the box. The words
   land in the box to check before sending. Hidden where the browser has none.
@@ -136,8 +137,34 @@ corner (the other side, then the other edge); if none is free it tucks half away
 tapped. It doesn't wander while it's yielding. The visitor's own chosen corner is kept. While Pilot is
 on a page, `<html>` has the class `pilot-on` and the CSS variable `--pilot-gutter` (the room the robot
 needs at the bottom); a page can keep its last lines clear with `padding-bottom: var(--pilot-gutter)`
-or the `.pilot-gutter` class. On the MTRX site the robot keeps clear of the Genesis project screen's
-stage bar and web address. On a computer the chat window opens beside the robot, as tall as the
+or the `.pilot-gutter` class.
+
+**Clear of the page, wherever it's scrolled (core 1.1.1).** The robot also keeps off the page's own
+words and buttons: line ends, links, buttons, form fields, checkboxes and small icons (big pictures are
+scenery). `pilot-mascot.js` `contentIn` looks at a 4 × 4 grid of points over the robot's box (the top
+element of the page at each one, never Pilot's own) and at the real lines of text there, so the empty
+end of a short line doesn't count. It looks again on every scroll and resize (once a frame at most,
+with `requestAnimationFrame`), when the page changes, and when its address changes. While the page is
+scrolling it checks only its own spot, tucking away there or coming back out, so it never hops about;
+once scrolling stops (160 ms) it may move to a free corner. If no corner is free it tucks away at the
+edge, in the first corner where the slice that still shows (`--pilot-peek-show`: 20 px on phones, 36 px
+on computers) covers nothing. An app can turn the text check off with `keepClearOfText: false`.
+
+**A box being typed in comes first.** While an input, a textarea or an editable element of the page has
+focus, the robot never sits on it: it moves to a corner clear of it (a top corner when the box is near
+the bottom), or tucks away in one, until the box loses focus. A tap doesn't bring it back out over the
+box, and it doesn't wander while someone types.
+
+**Room at the side on phones.** Below 720 px wide, `--pilot-side` (24 px, a little more than the slice
+that shows) is the room the tucked-away robot needs at the edge. Anything with the `.pilot-gutter-side`
+class gets that as its right and left padding (the robot can tuck at either edge, and the page stays
+even); `pilot.js` also puts the class on the app's gutter elements (`config.gutter`, `main` by default;
+`false` for none), but only where their own right padding is narrower. So line ends stop before the
+robot.
+
+On the MTRX site the robot also keeps clear of the Genesis project screen's stage bar and web address,
+and of the whole launch checklist (each row with its Hide button, each stage's heading with its count
+and arrow, the add-a-step box and the stage buttons). On a computer the chat window opens beside the robot, as tall as the
 screen allows, so everything in it (the "Bring Your Own API Key" card too) is in view; short screens
 get slightly tighter spacing.
 
@@ -182,8 +209,9 @@ Errors are said plainly: "Your key was refused by Anthropic. Check it in Pilot s
 credit, too many requests, an unknown model, the provider busy, or no connection.
 
 The user's provider bills their key for everything Pilot uses. The window says so. AI keys are for
-grown-ups: the MTRX site says "Pilot uses your own AI key. AI keys are for grown-ups (the AI
-companies require 18+)." once, beside the key settings, and never nags.
+grown-ups: the MTRX site says "Pilot uses a grown-up's AI key (the AI companies require 18+)."
+once in the chat window, just above the message box (so it is always in full view, phones too) until
+a key is added, and beside the key settings, and never nags.
 
 ## What is sent, and to whom
 
@@ -266,7 +294,7 @@ Genesis Pro members keep Pro's own answers either way.
 
 ## The files
 
-The core is the same in every app. Each file starts with `Pilot core 1.1.0 · <file name>`, so
+The core is the same in every app. Each file starts with `Pilot core 1.1.1 · <file name>`, so
 copies in different repos can be compared.
 
 | File | What it is | DOM |
@@ -345,12 +373,14 @@ Per app (on the MTRX site):
    | `screen()` | `{name, facts}`: the screen the user is on, and any short facts about it |
    | `chips(screen)` | up to 3 `{label, prompt}` suggestions for this screen |
    | `taskPrompt(screen)` | what "Get things done…" puts in the box on this screen |
-   | `keyNote` | the one-line note beside key settings (e.g. the 18+ line) |
+   | `keyNote` | the one-line note above the message box (until a key is added) and beside key settings (e.g. the 18+ line) |
    | `audienceNote` | who may be using it, for Pilot's rules |
    | `privacyUrl` | the app's privacy page, linked from help |
    | `themeClass` | an optional class on Pilot's root, to restyle its colours from the app's CSS |
    | `avoid` | CSS selectors of things the robot must not cover; it moves to a free corner or tucks away |
    | `yieldTo` | CSS selectors of another helper character on the page; the robot gives it room the same way |
+   | `keepClearOfText` | `false` to stop the robot keeping off the page's own words and buttons (on by default) |
+   | `gutter` | CSS selectors that get the phone side gutter where they need it (`main` by default; `false` for none) |
    | `facts` | any app data the pack needs (on the MTRX site: the server's live settings) |
 
    The pack (`window.PilotPack`) gives `knowledge` (plain-language guide to the app's screens,
@@ -372,7 +402,7 @@ Per app (on the MTRX site):
 ### Apps still on an older core
 
 CyberLogix and OmniArmor carry Pilot core 1.0.x. They keep working as they are; to get the moving
-robot they need the 1.1.0 core files, the layers and the `poses/` folder copied in (and the new
+robot they need the 1.1.x core files, the layers and the `poses/` folder copied in (and the new
 `data-*` on their tag), in their own repos, later. This repo doesn't change them.
 
 ### Server-side AI in an app

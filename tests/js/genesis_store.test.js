@@ -472,11 +472,30 @@ test("the free limit line is honest: the limits first, then what's left today", 
   assert.equal(S.freeLine(known, 5, 3), "4 of 5 left today (up to 3 an hour).");
   // The hourly limit reached: how many this hour, and when more come.
   const hour = { free_left: 2, free_day: 5, free_hour: 3, hour_used: 3, wait: "41 minutes" };
-  assert.equal(S.freeLine(hour, 5, 3), "You've used 3 this hour; more in 41 minutes. 2 of 5 left today.");
+  assert.equal(S.freeLine(hour, 5, 3), "You've used 3 this hour. Back in 41 minutes. 2 of 5 left today.");
   // The day's answers used up.
   const day = { free_left: 0, free_day: 5, free_hour: 3, hour_used: 2, wait: "9 hours" };
-  assert.equal(S.freeLine(day, 5, 3), "You've used all 5 free answers for today; more in 9 hours.");
+  assert.equal(S.freeLine(day, 5, 3), "You've used all 5 free answers for today. Back in 9 hours.");
   // What the server says wins over what the page was given.
   assert.equal(S.freeLine({ free_left: 1, free_day: 2, free_hour: 1, hour_used: 0 }, 5, 3), "1 of 2 left today (up to 1 an hour).");
   assert.equal(S.freeLine({ nonsense: true }, 5, 3), "Free: 5 answers a day, up to 3 an hour.");
+});
+
+// 1.15.0: at the limit the page counts down and switches Ask back on by itself.
+test("at the limit: blocked until the wait is over, with a countdown in minutes", () => {
+  const now = 1_800_000_000_000;
+  const hour = { free_left: 2, free_day: 5, free_hour: 3, hour_used: 3, wait: "41 minutes", wait_until: now + 12 * 60000 - 5000 };
+  assert.equal(S.freeBlocked(hour, 5, 3, now), true);
+  assert.equal(S.freeLine(hour, 5, 3, now), "You've used 3 this hour. Back in 12 min. 2 of 5 left today.");
+  assert.equal(S.waitWords(hour, now + 11 * 60000), "1 min");
+  // Once the moment passes: not blocked, and the line no longer says "back in".
+  assert.equal(S.freeBlocked(hour, 5, 3, now + 12 * 60000), false);
+  assert.equal(S.freeLine(hour, 5, 3, now + 12 * 60000), "2 of 5 left today (up to 3 an hour).");
+  // A long wait is said in hours.
+  const day = { free_left: 0, free_day: 5, free_hour: 3, hour_used: 1, wait: "9 hours", wait_until: now + 9 * 3600000 };
+  assert.equal(S.freeLine(day, 5, 3, now), "You've used all 5 free answers for today. Back in about 9 hours.");
+  assert.equal(S.freeBlocked(day, 5, 3, now), true);
+  // Answers left this hour: never blocked; nothing known yet: never blocked.
+  assert.equal(S.freeBlocked({ free_left: 4, free_day: 5, free_hour: 3, hour_used: 1 }, 5, 3, now), false);
+  assert.equal(S.freeBlocked(null, 5, 3, now), false);
 });

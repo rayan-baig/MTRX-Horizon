@@ -555,8 +555,10 @@ def vortex_page(request: Request):
         "partnerships": vortex.PARTNERSHIPS,
         "limits": vortex.LIMITS,
         "keep_days": vortex.KEEP_DAYS,
-        # The early access list, beside Pitch, only while it is open.
+        # The early access list, beside Pitch, only while it is open; and the
+        # apps it covers, which get "Get early access" on their cards.
         "early": early_access.ready(),
+        "early_apps": list(growth.APP_NAMES) if early_access.ready() else [],
     })
 
 

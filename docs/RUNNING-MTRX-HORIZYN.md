@@ -115,6 +115,7 @@ a glance which app a message is about:
 | CyberLogix | `help@cyberlogix.mtrxhorizyn.com` |
 | OmniArmor | `help@omniarmor.mtrxhorizyn.com` |
 | MTRX Horizyn (business enquiries) | `hello@mtrxhorizyn.com`, shown on the site once `MTRX_CONTACT_EMAIL` is set to it |
+| MTRX Horizyn (general questions) | `help@mtrxhorizyn.com`: the home page shows it while `MTRX_CONTACT_EMAIL` is not set, so create this mailbox before launch |
 
 On launch day, send the people on the early access list their launch email from the console's
 **Early access** section (preview, then send; each person gets it once). It needs

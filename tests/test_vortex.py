@@ -738,14 +738,15 @@ def test_with_no_apps_released_orbyt_says_so_instead_of_an_empty_gap(client):
 def test_orbyt_says_the_apps_are_opening_soon_until_one_has_an_address(client, monkeypatch):
     page = client.get("/orbyt").text
     catalog = page.split('id="our-apps"', 1)[1].split("</section>", 1)[0]
-    assert "Our apps (opening soon)" in catalog and "Released to the public" not in page
-    assert catalog.count('<span class="v-app-soon">Opening soon</span>') == 3
+    # One status phrase site-wide: "In development" (1.15.0).
+    assert "Our apps</h2>" in catalog and "opening soon" not in catalog.lower() and "Released to the public" not in page
+    assert catalog.count('<span class="v-app-soon">In development</span>') == 3
     monkeypatch.setenv("RANKUP_URL", "https://rankup.example.com")
     assert "rankup.example.com" not in client.get("/orbyt").text  # not launched yet
     monkeypatch.setenv("MTRX_OPEN_APPS", "rankup")
     catalog = client.get("/orbyt").text.split('id="our-apps"', 1)[1].split("</section>", 1)[0]
     assert "(opening soon)" not in catalog and "Open to the public" in catalog
-    assert 'href="https://rankup.example.com"' in catalog and catalog.count("Opening soon") == 2
+    assert 'href="https://rankup.example.com"' in catalog and catalog.count('<span class="v-app-soon">In development</span>') == 2
 
 
 def test_pitch_and_partner_first_then_other_ways_to_talk(client):
@@ -786,21 +787,32 @@ def test_orbyt_label_stays_on_one_line_on_a_phone():
     assert "white-space: nowrap" in rule and "letter-spacing: 0.12em" in rule
 
 
-def test_every_form_has_the_under_13_note_and_the_7_day_reply(client):
+def test_every_form_has_the_7_day_reply_and_pitch_partner_the_under_13_note(client):
+    """1.15.0: each thing is said once before sending. "Within 7 days" just
+    above Send (not also in the hero and the steps), "we won't publish or
+    pass on" once on the Pitch form, and the under-13 note only on the forms
+    young people use (Pitch and Partner)."""
     page = client.get("/orbyt").text
+    young = "If you're under 13, ask a parent or guardian to send this for you."
     for kind in ("partner", "pitch", "invest", "buy"):
         panel = page.split(f'id="v-{kind}"', 1)[1].split("</section>", 1)[0]
-        assert "If you're under 13, ask a parent or guardian to send this for you." in panel, kind
-        assert "We reply within 7 days, even if the answer is no." in panel, kind
-        # Only the pitch form has the line about ideas, just above Send.
+        assert (young in panel) == (kind in ("partner", "pitch")), kind
+        assert panel.count("We reply within 7 days, even if the answer is no.") == 1, kind
         before_send = " ".join(panel.split('<div class="v-send">', 1)[0].split()).replace("&#39;", "'")
         assert (CONFIDENTIAL in before_send) == (kind == "pitch"), kind
+        # "pass on" is said once in each form, never twice.
+        assert " ".join(panel.split()).count("pass on") + " ".join(panel.split()).count("pass it on") == 1, kind
+    # Outside the forms, "7 days" and "pass on" aren't repeated before sending.
+    outside = page.split('<section class="panel v-panel', 1)[0]
+    assert "7 days" not in outside and "pass on" not in outside
     # The Sent screen says "within 7 days" once: in the line with their address.
     sent = " ".join(page.split('<section class="panel v-sent"', 1)[1].split("</section>", 1)[0].split())
     assert "7 days" not in sent
     assert "within 7 days, even if the answer is no." in (ROOT / "static/js/vortex-form.js").read_text()
     # Nothing is bought or sold here, and it says so in those words.
     assert "Nothing is bought or sold on this page" in page and "Nobody pays or gets paid" not in page
+    # No character count on an email box.
+    assert 'data-count-for="email"' not in page
 
 
 CONFIDENTIAL = "We won't publish or pass on what you send, but we can't promise we aren't working on something similar."
@@ -810,8 +822,11 @@ def test_orbyt_says_the_same_thing_about_what_you_send_everywhere(client):
     """One sentence about ideas, wherever it comes up: not "aren't
     confidential" in one place and "nothing is made public" in another."""
     page = " ".join(client.get("/orbyt").text.split()).replace("&#39;", "'")
-    how = page.split('<ol class="v-how" id="v-choose"', 1)[1].split("</ol>", 1)[0]
-    assert CONFIDENTIAL in how
+    # Said once, on the Pitch form, just before Send (1.15.0: no longer
+    # also in "How Orbyt works").
+    assert page.count(CONFIDENTIAL) == 1
+    pitch = page.split('id="v-pitch"', 1)[1].split("</section>", 1)[0]
+    assert CONFIDENTIAL in pitch
     for gone in ("aren't confidential", "made public", "never share it"):
         assert gone not in page, gone
     pack = (ROOT / "static/js/pilot-mtrx-pack.js").read_text()

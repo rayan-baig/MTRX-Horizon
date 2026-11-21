@@ -259,3 +259,27 @@ def test_later_stages_start_folded_and_steps_can_be_hidden_or_added():
     assert "S.addStep(" in script and "input.maxLength = S.LIMITS.step;" in script
     # Every word a visitor typed goes in with textContent, never as HTML.
     assert "innerHTML" not in script and "insertAdjacentHTML" not in script
+
+
+# ---------------------------------------------------------------- 1.15.0: said once, and up front
+
+def test_genesis_says_the_hourly_limit_up_front_and_shows_one_set_of_start_buttons(client, monkeypatch):
+    monkeypatch.setenv("GENESIS_AI_KEY", "test-key")
+    monkeypatch.setenv("GENESIS_AI_MODEL", "test-setting")
+    monkeypatch.setenv("GENESIS_AI_PER_DAY", "5")
+    monkeypatch.setenv("GENESIS_AI_PER_HOUR", "3")
+    page = client.get("/genesis").text
+    hero = page.split('<section class="g-hero panel">', 1)[1].split("</section>", 1)[0]
+    words = " ".join(hero.split())
+    # The welcome says the free limit, near the first mention of Ask.
+    assert "nothing is sent unless you press Ask (free AI help, 5 a day, up to 3 an hour)." in words
+    # One pair of Start / Example buttons on a first visit: the welcome's.
+    assert page.count('href="#new">Start my idea') == 1 and page.count('href="#example">Try an example') == 1
+    empty = page.split('<section class="g-empty panel" id="g-empty">', 1)[1].split("</section>", 1)[0]
+    assert 'class="cta-row"' not in empty and "Import it" in empty
+
+
+def test_genesis_hero_leaves_the_limit_out_while_ask_genesis_is_off(client, monkeypatch):
+    monkeypatch.delenv("GENESIS_AI_KEY", raising=False)
+    hero = client.get("/genesis").text.split('<section class="g-hero panel">', 1)[1].split("</section>", 1)[0]
+    assert "an hour" not in hero

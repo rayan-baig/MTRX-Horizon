@@ -332,6 +332,10 @@
 }
 .v-app-pick { border-color: color-mix(in srgb, var(--pc) 55%, transparent); color: var(--text); }
 .v-app-pick:hover { border-color: var(--pc); }
+/* Get early access, beside Partner on this: the app's own colour, filled. */
+.v-app-early { border: 1px solid transparent; color: #071022; font-weight: 600;
+  background: color-mix(in srgb, var(--ac, var(--v-cyan)) 85%, white 15%); }
+.v-app-early:hover { background: var(--ac, var(--v-cyan)); }
 
 /* ---------- the partner page and the bundle ---------- */
 .v-more { margin: -4px 0 16px; color: var(--muted); font-size: 14px; }
