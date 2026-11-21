@@ -528,15 +528,15 @@
     page.appendChild(el("div", { class: "page-card" }, el("h3", { text: "Pilot on this Mac" }),
       el("label", { class: "toggle" }, "Start Pilot when I log in", el("input", { type: "checkbox", checked: settings.openAtLogin,
         onchange: (ev) => P.settings.setLogin(ev.target.checked) })),
-      el("label", { class: "toggle" }, "Calm mode: the robot stays put", el("input", { type: "checkbox", checked: settings.calm,
-        onchange: (ev) => P.settings.setCalm(ev.target.checked) })),
-      el("label", { class: "field" }, el("span", { text: "Energy: how often the robot moves around" }),
+      el("label", { class: "field" }, el("span", { text: "Energy: how much the robot moves around" }),
         el("select", { onchange: (ev) => P.settings.setEnergy(ev.target.value) },
-          [["low", "Low"], ["normal", "Normal"], ["playful", "Playful: more flights, climbs and sports"]]
+          [["calm", "Calm: he rests"], ["relaxed", "Relaxed: a move now and then"], ["always", "Always moving: he wanders on his own"]]
             .map(([v, t]) => el("option", { value: v, text: t, selected: settings.energy === v })))),
-      el("p", { class: "small", text: settings.reducedMotion
-        ? "Your Mac is set to reduce motion, so calm mode is on unless you turn it off."
-        : "The robot keeps still while you type, while a video or game is full screen, and while this chat is open." }),
+      el("p", { class: "small", text: settings.reducedMotion && !settings.energyChosen
+        ? "Your Mac is set to reduce motion, so he rests unless you pick another setting here."
+        : settings.energy === "always"
+          ? "He keeps still while this chat is open, while a video or game is full screen, and while you're away from your Mac."
+          : "He keeps still while you type, while a video or game is full screen, and while this chat is open." }),
       el("p", { class: "small", text: `Pilot for Mac ${settings.version}. Hide Pilot or quit it any time from the robot head in the menu bar.` }),
       el("div", { class: "card-buttons" },
         el("button", { class: "btn", type: "button", text: "Clear this chat", onclick: () => { P.chat.clear(); show("chat"); } }),

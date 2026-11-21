@@ -1,58 +1,126 @@
 // When the robot does something (the main process decides; the robot window
-// plays it). Every so often, at random, it may walk or run somewhere, fly,
-// climb an edge, do a trick, wave or look around; most of the time it rests.
-// The choice itself is pilot-motion.js's, shared with the web robot.
+// plays it).
+//
+// Always moving (the default): he's nearly always travelling. As soon as
+// the robot window says a move has ended, a short pause (1 to 4 seconds)
+// and the next one: travel, now and then a quick look or a wave, and a
+// trick or a sport about every couple of minutes (roam.js). He holds still
+// while the chat is open, something is full screen in front, he's dragged
+// or hidden, the pointer is on him, or the Mac is idle (2 minutes) or
+// locked; then the hold is checked again every 2 seconds, and he waves when
+// the user comes back. Typing elsewhere doesn't stop him in this mode.
+//
+// Relaxed (Pilot 1.1's behaviour) and Calm: every so often, at random, he
+// may walk or run somewhere, fly, climb an edge, do a trick, wave or look
+// around; most of the time he rests (Calm: only resting). The choice is
+// pilot-motion.js's, shared with the web robot. Just before a move, the
+// slower checks run once (is the user typing, is something full screen in
+// front); if either says so, he keeps still.
 //
 // Nothing here runs between those moments: one timer waits for the next one.
-// Just before a move, the slower checks run once (is the user typing, is
-// something full screen in front); if either says so, the robot keeps still.
 "use strict";
 
-// opts: {motion, send(cmd), context() → {calm, reducedMotion, energy,
-// chatOpen, hidden, dragging, busy, away, atFloor}, check() → Promise<{typing,
-// fullscreen}>, random, timers: {setTimeout, clearTimeout}}
+const roamCore = require("../core/roam");
+
+// opts: {motion, roam, send(cmd), context() → {level, calm, reducedMotion,
+// energy, chatOpen, hidden, dragging, busy, away, atFloor, userAway,
+// hovered}, check(ctx) → Promise<{typing, fullscreen}>, back(seconds),
+// random, now, timers: {setTimeout, clearTimeout}}
 function create(opts) {
   const o = opts || {};
   const motion = o.motion;
+  const roam = o.roam || roamCore;
   const random = o.random || Math.random;
+  const now = o.now || Date.now;
   const T = o.timers || { setTimeout, clearTimeout };
   let timer = null;
   let glance = null;
   let running = false;
+  let lastSent = "";
+  let lastTrick = now();
+  let gap = roam.trickGap(random);
+  let awaySince = 0;
+  let lastReturn = -Infinity;
 
   const ctx = () => ({ profile: "desktop", ...(o.context ? o.context() : {}) });
+  const always = (c) => c.level === "always";
+  // What pilot-motion.js expects for Relaxed and Calm.
+  const coreOf = (c) => {
+    if (c.level === "calm") return { ...c, calm: true };
+    if (c.level === "relaxed") return { ...c, calm: false, energy: "normal" };
+    return c;
+  };
 
-  function schedule() {
+  function after(ms) {
     if (timer) T.clearTimeout(timer);
     timer = null;
-    if (!running) return;
-    timer = T.setTimeout(tick, motion.nextDelay(ctx(), random));
+    if (running) timer = T.setTimeout(tick, ms);
+  }
+
+  // The wait before the next tick: in Always moving the robot window's
+  // "move ended" (settled) normally comes first and starts the pause.
+  function schedule() {
+    const c = ctx();
+    if (always(c)) after(lastSent ? roam.MOST_MS : roam.pause(random));
+    else after(motion.nextDelay(coreOf(c), random));
   }
 
   // A glance toward the mouse now and then, even in calm mode (it's part of
-  // resting), but not while typing, full screen, hidden or under reduce motion.
+  // resting), but not while typing, full screen, hidden or under reduce
+  // motion. Always moving has its own looks, between moves.
   function scheduleGlance() {
     if (glance) T.clearTimeout(glance);
     glance = null;
-    if (!running) return;
+    if (!running || always(ctx())) return;
     glance = T.setTimeout(async () => {
       const c = ctx();
-      if (!c.hidden && !c.dragging && !c.busy && !c.reducedMotion && !c.typing && !c.fullscreen) {
-        const more = o.check ? await o.check() : {};
+      if (!c.hidden && !c.dragging && !c.busy && !c.reducedMotion && !c.typing && !c.fullscreen && !c.userAway && !c.chatOpen) {
+        const more = o.check ? await o.check(c) : {};
         if (!more.typing && !more.fullscreen) o.send({ move: "look" });
       }
       scheduleGlance();
     }, Math.round((25 + 40 * random()) * 1000));
   }
 
+  // Back at the Mac after it was idle or locked: a wave (or hearts, after a long time).
+  function noticeAway(c) {
+    if (c.userAway) { if (!awaySince) awaySince = now(); return false; }
+    if (!awaySince) return false;
+    const gone = (now() - awaySince) / 1000;
+    awaySince = 0;
+    if (o.back) o.back(gone);
+    else react("return");
+    return true;
+  }
+
+  async function tickAlways(c) {
+    if (noticeAway(c)) { lastSent = "wave"; after(roam.MOST_MS); return "wave"; }
+    if (roam.holdReason(c)) { lastSent = ""; after(roam.HOLD_MS); return null; }
+    const more = o.check ? await o.check(c) : {};
+    const c2 = { ...ctx(), fullscreen: Boolean(more.fullscreen) };
+    if (!always(c2)) { lastSent = ""; schedule(); return null; }
+    if (roam.holdReason(c2)) { lastSent = ""; after(roam.HOLD_MS); return null; }
+    const name = roam.pick(c2, random, { trickDue: now() - lastTrick >= gap });
+    if (!name) { lastSent = ""; after(roam.HOLD_MS); return null; }
+    if (name === "roam-trick") { lastTrick = now(); gap = roam.trickGap(random); }
+    o.send({ move: name });
+    lastSent = name;
+    // In case the robot window never says it ended (it was reloaded, say).
+    after(roam.MOST_MS);
+    return name;
+  }
+
   // Returns the move it sent, or null.
   async function tick() {
     timer = null;
+    const c = ctx();
+    if (always(c)) return tickAlways(c);
+    lastSent = "";
     try {
-      if (motion.stillReason(ctx())) return null;
-      const more = o.check ? await o.check() : {};
-      const c = { ...ctx(), ...more };
-      const name = motion.pick(c, random);
+      const cc = coreOf(c);
+      if (motion.stillReason(cc)) return null;
+      const more = o.check ? await o.check(c) : {};
+      const name = motion.pick({ ...cc, ...more }, random);
       if (name) o.send({ move: name });
       return name;
     } finally {
@@ -60,22 +128,43 @@ function create(opts) {
     }
   }
 
+  // The robot window says a move has ended (any move: travel, a trick from
+  // the menu, a wave). In Always moving: a short pause, then the next.
+  function settled() {
+    if (!running) return;
+    const c = ctx();
+    if (!always(c)) return;
+    const filler = lastSent === "roam-look" || lastSent === "roam-wave" || lastSent === "wave";
+    lastSent = "";
+    after(roam.pause(random, filler));
+  }
+
   // Something happened the robot may wave at: "return" (back after being
   // away) or "chat" (the chat opened). Returns how it waved, or null.
   function react(kind, extra) {
-    const how = motion.reaction(kind, { ...ctx(), ...(extra || {}) });
-    if (how) o.send({ move: "wave", how });
+    const c = { ...coreOf(ctx()), ...(extra || {}) };
+    // One wave for one return (unlocking and the idle check both notice it).
+    if (kind === "return" && now() - lastReturn < 15000) return null;
+    const how = motion.reaction(kind, { ...c, busy: false });
+    if (how) {
+      if (kind === "return") lastReturn = now();
+      o.send({ move: "wave", how });
+    }
     return how;
   }
 
   return {
-    start() { running = true; schedule(); scheduleGlance(); },
-    stop() { running = false; schedule(); scheduleGlance(); },
-    // Settings changed (energy, calm): start the wait again.
-    restart() { if (running) schedule(); },
+    start() { running = true; lastSent = ""; schedule(); scheduleGlance(); },
+    stop() { running = false; after(0); scheduleGlance(); },
+    // Settings changed (energy, calm), the chat closed, shown again: start the wait again.
+    restart() { if (running) { lastSent = ""; schedule(); scheduleGlance(); } },
+    // Something may have changed sooner than the next check (the mouse came to rest near him).
+    nudge() { if (running && always(ctx()) && !lastSent) after(0); },
+    settled,
     tick,
     react,
     get waiting() { return Boolean(timer); },
+    get running() { return running; },
   };
 }
 

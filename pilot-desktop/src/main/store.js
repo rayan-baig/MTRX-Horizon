@@ -1,8 +1,8 @@
 // Pilot's two stores on the Mac, both in the app's own folder
 // (~/Library/Application Support/Pilot):
 //
-//   settings.json  everything that isn't secret: the robot's home, calm
-//                  mode and energy, the key
+//   settings.json  everything that isn't secret: the robot's home, its
+//                  energy (Calm, Relaxed or Always moving), the key
 //                  list (names, providers, models; never the keys), notes,
 //                  memory, colours, start-at-login.
 //   keys.bin       the AI keys, encrypted with Electron's safeStorage, whose
@@ -102,12 +102,14 @@ class KeyStore {
 
 // ---------------------------------------------------------------- settings
 
+const ENERGY = ["calm", "relaxed", "always"];
+
 const DEFAULTS = () => ({
-  version: 1,
+  version: 2,
   robot: null, // Pilot 1.0: the old robot window's spot (read once, for home)
   home: null, // the point between the robot's feet, in screen points
-  calm: null, // calm mode: null follows "reduce motion"; true or false is the user's choice
-  energy: "normal", // low, normal or playful
+  energy: "always", // "calm" (only idles), "relaxed" (now and then) or "always" (always moving)
+  energyChosen: false, // false: "reduce motion" means calm; true: the user's choice wins
   profiles: [],
   activeProfile: "",
   media: { image: null, video: null },
@@ -122,14 +124,33 @@ const DEFAULTS = () => ({
   welcomed: false,
 });
 
+// Settings from Pilot 1.0 and 1.1 (version 1) had calm mode (null, true or
+// false) and energy (low, normal or playful). Everyone moves to Always
+// moving, the new default, except people who had turned Calm Mode on
+// themselves: they keep Calm. Turning calm mode off by hand (under reduce
+// motion) was a choice to see him move, so it stays a choice.
+function migrate(saved) {
+  const d = { ...saved };
+  if (!(Number(d.version) >= 2)) {
+    if (d.calm === true) { d.energy = "calm"; d.energyChosen = true; } else { d.energy = "always"; d.energyChosen = d.calm === false; }
+    delete d.calm;
+    d.version = 2;
+  }
+  if (!ENERGY.includes(d.energy)) d.energy = "always";
+  d.energyChosen = Boolean(d.energyChosen);
+  return d;
+}
+
 class Settings {
   constructor(dir) {
     this.file = path.join(dir, "settings.json");
     this.data = DEFAULTS();
-    try {
-      const saved = JSON.parse(fs.readFileSync(this.file, "utf8"));
-      if (saved && typeof saved === "object") this.data = { ...DEFAULTS(), ...saved };
-    } catch (_) { /* first run, or unreadable: defaults */ }
+    let saved = null;
+    try { saved = JSON.parse(fs.readFileSync(this.file, "utf8")); } catch (_) { /* first run, or unreadable: defaults */ }
+    if (saved && typeof saved === "object") {
+      this.data = { ...DEFAULTS(), ...migrate(saved) };
+      if (Number(saved.version) !== this.data.version) { try { this.save(); } catch (_) { /* read-only: migrated again next time */ } }
+    }
   }
 
   save() { writeAtomic(this.file, JSON.stringify(this.data, null, 2)); }
@@ -183,4 +204,4 @@ class Settings {
   removeMemory(mid) { this.data.memory = this.data.memory.filter((m) => m.id !== mid); this.save(); }
 }
 
-module.exports = { KeyStore, Settings, DEFAULTS };
+module.exports = { KeyStore, Settings, DEFAULTS, migrate, ENERGY };

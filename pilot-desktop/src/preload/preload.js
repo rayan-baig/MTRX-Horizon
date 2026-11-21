@@ -56,7 +56,6 @@ contextBridge.exposeInMainWorld("pilot", {
     copyNote: call("note-copy"),
     setTheme: call("theme-set"),
     setLogin: call("login-set"),
-    setCalm: call("calm-set"),
     setEnergy: call("energy-set"),
     welcomeDone: call("welcome-done"),
     onChange: listen("pilot:settings"),

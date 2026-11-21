@@ -122,7 +122,10 @@ Flights, climbing, running, soccer, tennis, the knee slide and the energy ball o
 picks **Playful** under "The
 robot" in Pilot's settings (Calm, Low, Normal or Playful, kept on that device). Under
 `prefers-reduced-motion` the moving robot isn't fetched at all. On the Mac there is more room: see
-`pilot-desktop/README.md`.
+`pilot-desktop/README.md`. Pilot for Mac (1.2 and later) defaults to **Always moving**, its own
+`pilot-desktop/src/core/roam.js` on top of this core (unchanged): he keeps travelling with short
+pauses, and its Energy choices are Calm, Relaxed (the rules above) and Always moving. The web robot
+is not affected.
 
 **Out of the way (web).** On phones the robot is 56 px. While a pop-up of the page is open
 (`<dialog open>`, `[aria-modal="true"]`, `[role="dialog"]`, `[role="alertdialog"]`; Pilot's own window

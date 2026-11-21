@@ -12,6 +12,8 @@ html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: trans
 .dragging .pa-rest, .dragging .pa-pose.pa-on { cursor: grabbing; }
 .pa-rest-body, .pa-rest-head { filter: drop-shadow(0 4px 8px rgba(0, 0, 20, 0.45)); }
 .pa-pose { filter: drop-shadow(0 4px 8px rgba(0, 0, 20, 0.45)) drop-shadow(0 0 6px rgba(var(--glow), 0.3)); }
+/* While travelling: one shadow and no glow, which is cheaper to draw on every frame. */
+.travel .pa-pose { filter: drop-shadow(0 4px 6px rgba(0, 0, 20, 0.4)); }
 /* A soft glow under the resting robot, brighter while Pilot is thinking. */
 .pa-rest::before {
   content: ""; position: absolute; left: 12%; right: 4%; bottom: -6px; height: 20px; border-radius: 50%;

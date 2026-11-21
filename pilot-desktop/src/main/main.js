@@ -29,6 +29,7 @@ const lifeCore = require("./life");
 const frontmost = require("./frontmost");
 const poseFiles = require("./poses");
 const motion = require("../core/pilot-motion");
+const roam = require("../core/roam");
 const screenAccess = require("./screen-access");
 const uploads = require("./uploads");
 
@@ -74,6 +75,11 @@ let moving = false;
 let reducedMotion = false;
 let life = null;
 let typingUntil = 0;
+let locked = false; // the Mac's screen is locked
+let wasAway = false;
+let chatOpenedAt = 0;
+let fsCache = { at: 0, value: false }; // "full screen in front", checked at most every 15 s
+const testOverride = { away: null, fullscreen: null }; // the smoke test pretends with these
 const cards = new Map(); // id → {type, label, labels, step, resolve}
 const mediaItems = new Map(); // id → {kind, state, progress, mime, data, prompt, message}
 let cardSeq = 0;
@@ -139,9 +145,10 @@ function settingsView() {
     notes: settings.get("notes"),
     theme: settings.get("theme"),
     openAtLogin: settings.get("openAtLogin"),
-    calm: motion.isCalm({ calm: settings.get("calm"), reducedMotion }),
+    calm: levelNow() === "calm",
     reducedMotion,
-    energy: settings.get("energy"),
+    energy: levelNow(),
+    energyChosen: Boolean(settings.get("energyChosen")),
     keychain: keys.available(),
     screenStatus: shots.status(),
     screen: screenAccess.view(shots.status(), screenMode(), screenOpened),
@@ -204,8 +211,7 @@ function pushRobot(state) {
     status: robotStatus(state || lastState), theme: settings.get("theme"),
     area: { width: a.width, height: a.height }, home: { x: h.x - a.x, y: h.y - a.y },
     poses: poseFiles.list(path.join(APP_DIR, "assets", "poses")),
-    calm: motion.isCalm({ calm: settings.get("calm"), reducedMotion }), reducedMotion,
-    energy: settings.get("energy"), chatOpen: chatOpen(), test: TEST,
+    calm: levelNow() === "calm", reducedMotion, level: levelNow(), away: userAway(), chatOpen: chatOpen(), test: TEST,
   });
 }
 
@@ -599,7 +605,7 @@ function showChat(view) {
     pushRobot();
     // The robot waves (gently) when the chat opens, then stays calm.
     if (!was && life) life.react("chat");
-    if (!was) { waitedThisOpen = false; chatActivity(); }
+    if (!was) { waitedThisOpen = false; chatActivity(); chatOpenedAt = Date.now(); }
   };
   if (chatWin.webContents.isLoading()) chatWin.webContents.once("did-finish-load", show);
   else show();
@@ -664,6 +670,22 @@ function trickItems() {
   ];
 }
 
+// The Energy level that applies now: Calm, Relaxed or Always moving (the
+// default). Under "reduce motion" it's Calm unless the user picked one.
+function levelNow() {
+  return roam.level(settings.get("energy"), settings.get("energyChosen"), reducedMotion);
+}
+
+// Nobody at the Mac: no keyboard or mouse for 2 minutes, or the screen locked.
+function userAway() {
+  if (testOverride.away !== null) return testOverride.away;
+  if (locked) return true;
+  try {
+    const st = powerMonitor.getSystemIdleState(120);
+    return st === "idle" || st === "locked";
+  } catch (_) { return false; }
+}
+
 // How lively the robot is right now, for life.js.
 function lifeContext() {
   const a = overlayDisplay ? overlayDisplay.workArea : null;
@@ -671,8 +693,9 @@ function lifeContext() {
   const at = robotAt;
   const away = Boolean(a && at && Math.hypot(a.x + at.x - h.x, a.y + at.y - h.y) > 20);
   return {
-    calm: settings.get("calm"), reducedMotion, energy: settings.get("energy"), chatOpen: chatOpen(),
-    hidden, dragging: Boolean(gate && gate.dragging), busy: moving, away,
+    level: levelNow(), reducedMotion, chatOpen: chatOpen(),
+    hidden, dragging: Boolean(gate && gate.dragging), busy: moving, away, userAway: userAway(),
+    hovered: Boolean(gate && (gate.over || gate.near)),
     atFloor: !a || !at ? true : at.y >= a.height - 8 - U * 0.1,
     typing: Date.now() < typingUntil,
   };
@@ -683,9 +706,15 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // A cheer for something the user did ("done", "thanks", "missed"): a
 // celebration or hearts, unless the robot must keep still.
 function cheer(kind) {
-  const move = motion.cheer(kind, { ...lifeContext(), calm: motion.isCalm({ calm: settings.get("calm"), reducedMotion }) || undefined });
+  const move = motion.cheer(kind, { ...lifeContext(), calm: levelNow() === "calm" || undefined });
   if (move) sendMove({ move });
   return move;
+}
+
+// Back at the Mac after it was idle or locked (Always moving): a wave, or
+// hearts after half an hour or more.
+function welcomeBack(seconds) {
+  setTimeout(() => { if (!(seconds >= 1800 && cheer("missed")) && life) life.react("return"); }, 600);
 }
 
 // The chat open with nothing happening for a while: a playful "waiting"
@@ -694,9 +723,22 @@ let chatQuietSince = 0;
 let waitedThisOpen = false;
 function chatActivity() { chatQuietSince = Date.now(); }
 
+// Is a window filling the screen in front (a video, a game)? Asked of macOS
+// at most every 15 seconds, so moving all the time stays cheap.
+async function fullscreenNow() {
+  if (testOverride.fullscreen !== null) return testOverride.fullscreen;
+  if (Date.now() - fsCache.at < 15000) return fsCache.value;
+  const info = await frontmost.read(execFile, process.platform);
+  fsCache = { at: Date.now(), value: overlay.fullscreenFront(info, overlayDisplay, process.pid) };
+  return fsCache.value;
+}
+
 // The slower checks, run only just before a move: typing elsewhere (keys
-// in use but the pointer still), or a full-screen window in front.
-async function lifeCheck() {
+// in use but the pointer still), or a full-screen window in front. Always
+// moving skips the typing check (he keeps moving while the user types).
+async function lifeCheck(c) {
+  if (c && c.level === "always") return { fullscreen: await fullscreenNow() };
+  if (testOverride.fullscreen !== null) return { typing: Date.now() < typingUntil, fullscreen: testOverride.fullscreen };
   const before = screen.getCursorScreenPoint();
   await wait(1200);
   const typing = overlay.typingGuess(powerMonitor.getSystemIdleTime(), before, screen.getCursorScreenPoint());
@@ -707,11 +749,22 @@ async function lifeCheck() {
 
 // A few times a second: is the cursor over the robot? (So a file dragged
 // from Finder can be dropped on it; drags send the window no mouse moves.)
+// And in Always moving: the pointer resting close to him (where the user is
+// working) means he moves on now rather than stand there.
+let restAt = null;
+let restSince = 0;
 function watchCursor() {
   if (!gate || !overlayDisplay || hidden || !robotAt || !robotAt.rect) return;
   const c = screen.getCursorScreenPoint();
   const a = overlayDisplay.workArea;
-  gate.set({ near: motion.hit(robotAt.rect, { x: c.x - a.x, y: c.y - a.y }, 6) });
+  const p = { x: c.x - a.x, y: c.y - a.y };
+  gate.set({ near: motion.hit(robotAt.rect, p, 6) });
+  if (!restAt || Math.abs(p.x - restAt.x) > 3 || Math.abs(p.y - restAt.y) > 3) { restAt = p; restSince = Date.now(); return; }
+  if (moving || gate.near || gate.over || !life || levelNow() !== "always") return;
+  if (Date.now() - restSince > 900 && motion.hit(robotAt.rect, p, U * 0.9)) {
+    restSince = Infinity; // once, until the pointer moves again
+    life.nudge();
+  }
 }
 
 // Every 10 seconds (in the main process only; the robot window sleeps):
@@ -721,8 +774,12 @@ let lastCursor = null;
 function watchUser() {
   const idle = powerMonitor.getSystemIdleTime();
   const cursor = screen.getCursorScreenPoint();
+  // Nobody at the Mac: the robot window stops even its blinking.
+  const away = userAway();
+  if (away !== wasAway) { wasAway = away; pushRobot(); }
   // Back after being away: a wave, or (after half an hour or more) hearts.
-  if (overlay.backFromIdle(lastIdle, idle)) {
+  // (Always moving notices it sooner, in life.js.)
+  if (overlay.backFromIdle(lastIdle, idle) && levelNow() !== "always") {
     const long = lastIdle >= 1800;
     setTimeout(() => { if (!(long && cheer("missed")) && life) life.react("return"); }, 1200);
   }
@@ -754,21 +811,20 @@ function setLogin(on) {
   pushSettings();
 }
 
-// Calm mode: no wandering, only resting. Under "reduce motion" it's on
-// unless the user turns it off here.
-function setCalm(on) {
-  settings.set("calm", Boolean(on));
-  updateTray();
-  pushSettings();
-  if (life) life.restart();
-}
-
+// Energy: Calm (only resting), Relaxed (a move now and then) or Always
+// moving (the default). Picking one here wins over "reduce motion".
 function setEnergy(level) {
-  if (!motion.ENERGY.includes(level)) return;
+  if (!roam.LEVELS.includes(level)) return;
+  settings.set("energyChosen", true);
   settings.set("energy", level);
   updateTray();
   pushSettings();
   if (life) life.restart();
+}
+const setCalm = (on) => setEnergy(on ? "calm" : "always");
+
+function energyItems() {
+  return roam.LEVELS.map((v) => ({ label: roam.LABELS[v], type: "radio", checked: levelNow() === v, click: () => setEnergy(v) }));
 }
 
 function updateTray() {
@@ -779,9 +835,7 @@ function updateTray() {
     { label: "Settings…", click: () => { setHidden(false); showChat("settings"); } },
     { type: "separator" },
     ...trickItems(),
-    { label: "Calm Mode", type: "checkbox", checked: motion.isCalm({ calm: settings.get("calm"), reducedMotion }), click: (item) => setCalm(item.checked) },
-    { label: "Energy", submenu: [["low", "Low"], ["normal", "Normal"], ["playful", "Playful"]].map(([v, label]) => ({
-      label, type: "radio", checked: settings.get("energy") === v, click: () => setEnergy(v) })) },
+    { label: "Energy", submenu: energyItems() },
     { type: "separator" },
     { label: "Start at Login", type: "checkbox", checked: Boolean(settings.get("openAtLogin")), click: (item) => setLogin(item.checked) },
     { label: "About Pilot", click: () => app.showAboutPanel() },
@@ -856,7 +910,13 @@ function registerIpc() {
     const r = p.rect && typeof p.rect === "object" ? p.rect : null;
     const n = (v) => (Number.isFinite(v) ? v : 0);
     robotAt = { x: n(p.x), y: n(p.y), rect: r ? { left: n(r.left), top: n(r.top), right: n(r.right), bottom: n(r.bottom) } : null };
+    const was = moving;
     moving = Boolean(p.moving);
+    if (was && !moving) {
+      // He stopped where the chat just opened: the chat goes next to him there.
+      if (chatOpen() && Date.now() - chatOpenedAt < 4000) chatWin.setBounds(chatBounds());
+      if (life) life.settled();
+    }
   });
   handle("robot-env", (_e, env) => {
     const reduced = Boolean(env && env.reducedMotion);
@@ -870,7 +930,8 @@ function registerIpc() {
       { type: "separator" },
       ...trickItems(),
       { type: "separator" },
-      { label: "Calm Mode", type: "checkbox", checked: motion.isCalm({ calm: settings.get("calm"), reducedMotion }), click: (item) => setCalm(item.checked) },
+      ...energyItems(),
+      { type: "separator" },
       { label: "Hide Pilot", click: () => setHidden(true) },
     ]).popup({ window: robotWin });
   });
@@ -1024,7 +1085,6 @@ function registerIpc() {
     return { ok: true };
   });
   handle("login-set", (_e, on) => { setLogin(Boolean(on)); return { ok: true }; });
-  handle("calm-set", (_e, on) => { setCalm(Boolean(on)); return { ok: true }; });
   handle("energy-set", (_e, level) => { setEnergy(str(level, 20)); return { ok: true }; });
   handle("screen-status", () => ({ status: shots.status(), explained: settings.get("screenExplained"), ...screenAccess.view(shots.status(), screenMode(), screenOpened) }));
   handle("screen-mode-set", (_e, mode) => setScreenMode(str(mode, 10)));
@@ -1142,19 +1202,25 @@ app.whenReady().then(async () => {
   });
 
   try { reducedMotion = Boolean(systemPreferences.getAnimationSettings().prefersReducedMotion); } catch (_) { reducedMotion = false; }
-  life = lifeCore.create({ motion, send: sendMove, context: lifeContext, check: lifeCheck });
+  life = lifeCore.create({ motion, send: sendMove, context: lifeContext, check: lifeCheck, back: welcomeBack });
 
   registerIpc();
   createTray();
   createRobot();
   createChat();
-  life.start();
+  // (The smoke test starts the timer itself, so moves don't get in its way.)
+  if (!TEST || process.env.PILOT_TEST_LIFE === "1") life.start();
   setInterval(watchUser, 10000);
   // No AI key yet: the robot points up (toward the menu bar) once, a little after start.
   if (!TEST) setTimeout(() => { if (!ready() && !chatOpen() && !reducedMotion) sendMove({ move: "point", say: "🔑" }); }, 8000);
   setInterval(watchCursor, 300);
   if (powerMonitor) {
-    for (const ev of ["unlock-screen", "resume"]) powerMonitor.on(ev, () => setTimeout(() => life && life.react("return"), 1500));
+    powerMonitor.on("lock-screen", () => { locked = true; pushRobot(); });
+    powerMonitor.on("unlock-screen", () => { locked = false; pushRobot(); });
+    // Back at the Mac: a wave (Always moving notices this in life.js, with its next check).
+    for (const ev of ["unlock-screen", "resume"]) {
+      powerMonitor.on(ev, () => setTimeout(() => { if (life && levelNow() !== "always") life.react("return"); else if (life) life.nudge(); }, 1500));
+    }
   }
   for (const ev of ["display-added", "display-removed", "display-metrics-changed"]) screen.on(ev, () => placeOverlay());
   // The first time, Pilot opens its chat with a short welcome.
@@ -1170,7 +1236,9 @@ app.whenReady().then(async () => {
       setLooking: (v) => { looking = v; push(); },
       seed: (list) => { for (const m of list) engine.attachRaw(m); push(); },
       move: (cmd) => sendMove(cmd), playTrick, life: () => life, gate: () => gate, robotAt: () => robotAt,
-      context: lifeContext, setCalm, setEnergy, home, cheer, addPending, pending: () => pending.slice(), setScreenMode, takePending,
+      context: lifeContext, setCalm, setEnergy, home, cheer, levelNow,
+      startLife: () => life.start(), stopLife: () => life.stop(), setHidden, hold: () => roam.holdReason(lifeContext()), settings: () => settings.data,
+      pretend: (k, v) => { testOverride[k] = v === null ? null : Boolean(v); pushRobot(); }, addPending, pending: () => pending.slice(), setScreenMode, takePending,
     };
   }
 });

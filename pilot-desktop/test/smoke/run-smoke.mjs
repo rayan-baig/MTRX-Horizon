@@ -101,6 +101,57 @@ try {
   check(await app.evaluate(() => global.__pilotTest.life().tick()) === null, "calm mode: no wandering");
   await app.evaluate(() => global.__pilotTest.setCalm(false));
 
+  // Always moving, the default: he travels on his own, with short pauses,
+  // and holds still for the chat, full screen, the Mac idle and hiding.
+  check(await app.evaluate(() => global.__pilotTest.levelNow()) === "always", "Always moving is the default");
+  check(await app.evaluate(() => global.__pilotTest.settings().energy) === "always", "the Energy setting is saved as Always moving");
+  // (A test display gets no keyboard or mouse, so it would soon count as "idle": someone's here.)
+  await app.evaluate(() => global.__pilotTest.pretend("away", false));
+  await app.evaluate(() => global.__pilotTest.startLife());
+  const spots = [];
+  for (let i = 0; i < 24; i += 1) { await wait(500); spots.push(await robot.evaluate(() => Math.round(window.__pilotRobot.actor.rect().left))); }
+  check(Math.max(...spots) - Math.min(...spots) > 40, "Always moving: he sets off on his own within seconds");
+  check(await robot.evaluate(() => [...document.querySelectorAll(".pa-pose.pa-on")].length <= 1), "one pose picture at a time");
+  // The rest is checked one tick at a time, from standing still (so it isn't
+  // "mid-move" that holds him).
+  await app.evaluate(() => global.__pilotTest.stopLife());
+  // Still: not moving, and sat down to rest (he sits 6 s after his last move).
+  const still = async () => {
+    for (let i = 0; i < 60; i += 1) {
+      const moving = (await app.evaluate(() => global.__pilotTest.robotAt()) || {}).moving;
+      if (!moving && await robot.evaluate(() => window.__pilotRobot.actor.pose === "rest" && !window.__pilotRobot.actor.busy)) return;
+      await wait(500);
+    }
+  };
+  const MOVES = ["roam", "roam-look", "roam-wave", "roam-trick"];
+  await still();
+  const why = await app.evaluate(() => global.__pilotTest.hold());
+  const first = await app.evaluate(() => global.__pilotTest.life().tick());
+  check(MOVES.includes(first), `with nothing holding him, the next move goes${first ? "" : ` (held: ${why || "?"})`}`);
+  await wait(300);
+  await still();
+  await app.evaluate(() => global.__pilotTest.pretend("fullscreen", true));
+  check(await app.evaluate(() => global.__pilotTest.life().tick()) === null, "Always moving holds still: full screen in front");
+  await app.evaluate(() => global.__pilotTest.pretend("fullscreen", null));
+  await app.evaluate(() => global.__pilotTest.setHidden(true));
+  check(await app.evaluate(() => global.__pilotTest.life().tick()) === null, "Always moving holds still: hidden");
+  await app.evaluate(() => global.__pilotTest.setHidden(false));
+  await app.evaluate(() => global.__pilotTest.pretend("away", true));
+  check(await app.evaluate(() => global.__pilotTest.life().tick()) === null, "Always moving holds still: the Mac idle or locked");
+  await app.evaluate(() => global.__pilotTest.pretend("away", false));
+  check(await app.evaluate(() => global.__pilotTest.life().tick()) === "wave", "back at the Mac: he waves");
+  await wait(300);
+  await still();
+  await app.evaluate(() => global.__pilotTest.setEnergy("calm"));
+  check(await app.evaluate(() => global.__pilotTest.life().tick()) === null, "Calm: he only rests");
+  check(await app.evaluate(() => global.__pilotTest.settings().energyChosen) === true, "picking an Energy level is remembered as the user's choice");
+  await app.evaluate(() => global.__pilotTest.setEnergy("always"));
+  check(MOVES.includes(await app.evaluate(() => global.__pilotTest.life().tick())), "back to Always moving: he goes again");
+  await wait(300);
+  await still();
+  await app.evaluate(() => global.__pilotTest.pretend("away", null));
+  await wait(300);
+
   // Security: every window is isolated and sandboxed, with no Node.js.
   const prefs = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((w) => {
     const p = w.webContents.getLastWebPreferences();
@@ -164,6 +215,8 @@ try {
   check(await chat.evaluate(() => typeof require === "undefined" && Object.keys(window.pilot).join() === "robot,chat,settings,attach,screen,app"), "chat window has only the small preload API");
   check(await app.evaluate(() => global.__pilotTest.context().chatOpen) === true, "the robot knows the chat is open (and stays calm)");
   check(await app.evaluate(() => global.__pilotTest.life().tick()) === null, "chat open: no wandering");
+  check(await app.evaluate(() => global.__pilotTest.levelNow()) === "always" && await app.evaluate(() => global.__pilotTest.life().tick()) === null,
+    "chat open: Always moving stays put next to it");
 
   // First launch: a short welcome with three steps.
   await chat.waitForSelector(".welcome");
