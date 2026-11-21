@@ -1,14 +1,32 @@
 ## Pilot for Mac {{VERSION}}
 
-**Smoother moves and 80 new tricks.**
+**Free mode: AI that runs on your Mac, with no keys. And now two editions.**
 
-Pilot is the MTRX Horizyn AI assistant: a friendly robot that sits on top of everything on your Mac. Click it to chat, get help with writing and code, or have it look at your screen when you ask. It runs on your own AI key (OpenAI, Claude, Gemini, or any compatible API), so your AI provider bills you directly and MTRX never sees your key.
+Pilot is the MTRX Horizyn AI assistant: a friendly robot that sits on top of everything on your Mac. Click it to chat, get help with writing and code, or have it look at your screen when you ask.
 
-### [Download Pilot for Mac (.dmg)]({{DMG_URL}})
+### Which one do I download?
 
-One file for every Mac: Apple Silicon and Intel, macOS 12 or newer.
+There are two apps. Both have the robot, all the moves and tricks, the voice and sounds, copy and paste, link reading and screen access.
 
-### What's new in 1.3.0
+- **[Pilot Free (.dmg)]({{FREE_DMG_URL}})**: free AI that runs on your Mac. No keys, no account, nothing you type leaves your Mac, and it works offline once set up. It uses two free apps, Ollama for chat and Draw Things for pictures, and walks you through installing them. Videos aren't available in Pilot Free.
+- **[Pilot (.dmg)]({{DMG_URL}})**: use your own AI key (OpenAI, Claude, Gemini, or any compatible API; your AI provider bills you directly and MTRX never sees your key), including picture and video keys. Free mode is in there too, if you'd rather not use a key.
+
+You can install both: they have different names and keep separate settings. Each file works on every Mac: Apple Silicon and Intel, macOS 12 or newer. Free mode runs best on Apple Silicon (M1 or newer).
+
+### What's new in 1.4.0
+
+- **Free mode.** Pilot's brain can run on your Mac with the free Ollama app. Pilot shows you where to download it (it opens the page in your browser; Pilot never installs anything by itself), notices when it's running, and a **Download brain** button gets a brain that fits your Mac's memory, with a progress bar. Any brain you already have in Ollama is listed too. The window says **Free mode · on your Mac**.
+- **Pictures on your Mac** with the free Draw Things app: turn on its API Server and ask Pilot for a picture. It shows up in the chat with a Save button.
+- **Actions in Free mode**: copy, open a website, notes and pictures work with brains that can use them, and Pilot still asks first every time. Other brains just chat.
+- **Two editions**: Pilot Free and Pilot, as above.
+
+### Set up Free mode (about 10 minutes, once)
+
+1. Open Pilot's settings (the gear) and press **Download Ollama (free)**. Install Ollama from the download and open it once.
+2. Back in Pilot, press **Download brain** and wait for the bar to finish (a few GB, once).
+3. Pictures, if you like: press **Get Draw Things (free)**, install it from the Mac App Store, open it and let it download a model. Then in Draw Things' settings turn on **API Server** (HTTP, port 7860) and leave Draw Things open.
+
+### What was new in 1.3.0
 
 - **Smoother moves.** Springy landings, a little crouch before every jump, real arcs through the air, a gentle bob as he walks, and steps that keep time with how fast he goes.
 - **80 new tricks**, from dances and sports to magic, moods, playing with your screen, and seasonal ones (snow in winter, a pumpkin in October, fireworks at New Year). Pick any of them from **Play a Trick** in the menu, or let him surprise you every minute or two.
@@ -35,8 +53,8 @@ One file for every Mac: Apple Silicon and Intel, macOS 12 or newer.
 ### Install in 4 steps
 
 1. Open the downloaded **.dmg** file.
-2. Drag **Pilot** onto **Applications**.
-3. Open **Pilot** from Applications. If your Mac says it can't check Pilot, press **Done**.
-4. Open **System Settings → Privacy & Security**, scroll down, press **Open Anyway** next to Pilot, then **Open**.
+2. Drag **Pilot Free** (or **Pilot**) onto **Applications**.
+3. Open it from Applications. If your Mac says it can't check it, press **Done**.
+4. Open **System Settings → Privacy & Security**, scroll down, press **Open Anyway** next to Pilot Free (or Pilot), then **Open**.
 
-Step 4 is only needed once, because Pilot isn't signed with an Apple developer account yet. Already have an older Pilot? Quit it from the menu bar, then drag the new Pilot onto Applications and choose Replace.
+Step 4 is only needed once, because Pilot isn't signed with an Apple developer account yet. Already have an older Pilot? Quit it from the menu bar, then drag the new Pilot onto Applications and choose Replace. Pilot Free installs next to it and doesn't replace it.

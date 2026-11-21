@@ -11,6 +11,7 @@
 
 const path = require("node:path");
 const fs = require("node:fs");
+const os = require("node:os");
 const { execFile, spawn } = require("node:child_process");
 const {
   app, BrowserWindow, Tray, Menu, ipcMain, screen, shell, clipboard, dialog, nativeImage,
@@ -36,6 +37,8 @@ const tricks = require("../core/tricks");
 const clip = require("./clip");
 const linkread = require("./linkread");
 const voiceCore = require("./voice");
+const editions = require("./edition");
+const freemode = require("./freemode");
 
 const APP_DIR = path.join(__dirname, "..", "..");
 const TEST = process.env.PILOT_TEST === "1";
@@ -43,7 +46,13 @@ const U = overlay.U; // the resting robot's width, in points
 const CHAT_SIZE = { width: 452, height: 744 };
 const MAC = process.platform === "darwin";
 
-if (process.env.PILOT_USER_DATA) app.setPath("userData", process.env.PILOT_USER_DATA);
+// Which edition this is: "Pilot" (own keys and Free mode) or "Pilot Free"
+// (Free mode only). Each has its own name, settings folder and Keychain item.
+const ED = editions.resolve({ env: process.env, pkg: require("../../package.json"), packaged: app.isPackaged });
+app.setName(ED.appName);
+app.setPath("userData", process.env.PILOT_USER_DATA || path.join(app.getPath("appData"), ED.appName));
+// Free mode's two addresses on this Mac (Ollama, Draw Things).
+const LOCAL = freemode.origins({ env: process.env, test: TEST, packaged: app.isPackaged });
 
 protocol.registerSchemesAsPrivileged([{ scheme: "pilot", privileges: { standard: true, secure: true, supportFetchAPI: false } }]);
 
@@ -92,6 +101,11 @@ const cards = new Map(); // id → {type, label, labels, step, resolve}
 const mediaItems = new Map(); // id → {kind, state, progress, mime, data, prompt, message}
 let cardSeq = 0;
 let mediaSeq = 0;
+// Free mode: what's on this Mac right now (checked every few seconds while
+// the chat is open, and when asked).
+let freeState = { ollama: "unknown", version: "", models: [], drawThings: "unknown", apps: { ollama: "", drawThings: "" }, checkedAt: 0 };
+let freePull = null; // {model, progress, words, error, done, controller}
+let recommended = [];
 
 // ---------------------------------------------------------------- where Pilot may connect
 
@@ -99,13 +113,15 @@ function compatibleOrigins() {
   const out = new Set();
   for (const p of settings.get("profiles")) { const o = providers.originFor(p); if (o) out.add(o); }
   for (const kind of ["image", "video"]) { const o = providers.originFor(settings.get("media")[kind]); if (o) out.add(o); }
+  // Free mode's two local addresses (the fixed ones are in the CSP already).
+  for (const o of [LOCAL.ollama, LOCAL.drawThings]) out.add(o);
   return [...out].filter((o) => !csp.PROVIDER_HOSTS.includes(o));
 }
 
 function allowedOrigin(url) {
   try {
     const origin = new URL(url).origin;
-    return csp.PROVIDER_HOSTS.includes(origin) || compatibleOrigins().includes(origin);
+    return csp.PROVIDER_HOSTS.includes(origin) || csp.LOCAL_HOSTS.includes(origin) || compatibleOrigins().includes(origin);
   } catch (_) { return false; }
 }
 
@@ -119,19 +135,33 @@ async function guardedFetch(url, init) {
 
 // ---------------------------------------------------------------- settings as the engine sees them
 
+// Where the AI runs now: "free" (on this Mac) or "key" (the user's own key).
+function aiSource() {
+  return editions.source({ edition: ED, saved: settings.get("aiSource"), hasKeys: settings.get("profiles").length > 0,
+    platform: process.platform, arch: process.arch, cpuModel: (os.cpus()[0] || {}).model });
+}
+const freeOn = () => aiSource() === "free";
+const freeNow = () => ({ model: "", noTools: false, vision: null, ...(settings.get("free") || {}) });
+
 function activeSettings() {
+  if (freeOn()) {
+    const f = freeNow();
+    return { provider: "local", baseUrl: `${LOCAL.ollama}/v1`, model: f.model, key: "", noTools: Boolean(f.noTools), edition: ED.id };
+  }
   const p = settings.profile();
-  if (!p) return { provider: "", model: "" };
-  return { ...p, key: keys.get(`profile:${p.id}`) };
+  if (!p) return { provider: "", model: "", edition: ED.id };
+  return { ...p, key: keys.get(`profile:${p.id}`), edition: ED.id };
 }
 
 function ready(s) {
   const p = s || activeSettings();
   if (!p.provider || !p.model) return false;
+  if (p.provider === "local") return true;
   return p.provider === "compatible" ? !providers.checkBaseUrl(p.baseUrl) : Boolean(p.key);
 }
 
 function mediaSettings(kind) {
+  if (freeOn()) return kind === "image" && freeState.drawThings === "on" ? { provider: "drawthings", local: true } : null;
   const m = settings.get("media")[kind];
   if (!m) return null;
   const key = keys.get(`media:${kind}`);
@@ -139,15 +169,47 @@ function mediaSettings(kind) {
   return { ...m, key };
 }
 
+// Free mode as the chat window shows it.
+function freeView() {
+  const f = freeNow();
+  const rec = freemode.recommend(recommended, os.totalmem());
+  return {
+    ollama: freeState.ollama, version: freeState.version, drawThings: freeState.drawThings,
+    ollamaInstalled: Boolean(freeState.apps.ollama), drawThingsInstalled: Boolean(freeState.apps.drawThings),
+    models: freeState.models, model: f.model, noTools: Boolean(f.noTools), vision: f.vision,
+    memoryGB: freemode.memoryGB(os.totalmem()),
+    recommended: rec ? { model: rec.model, label: rec.label, download: rec.download,
+      installed: freeState.models.some((m) => freemode.sameModel(m.id, rec.model)) } : null,
+    pull: freePull ? { model: freePull.model, progress: freePull.progress, words: freePull.words, error: freePull.error || "",
+      done: Boolean(freePull.finished) } : null,
+    status: freeStatusLine(),
+  };
+}
+
+// The words under "Pilot" while Free mode is on.
+function freeStatusLine() {
+  if (freeState.ollama === "running" && freeNow().model) return "Free mode · on your Mac";
+  if (freeState.ollama === "missing") return "Free mode · set up Ollama to start";
+  if (freeState.ollama === "stopped") return "Free mode · open Ollama to start";
+  if (freeState.ollama === "running") return "Free mode · download a brain to start";
+  return "Free mode · on your Mac";
+}
+
 function settingsView() {
   const m = settings.get("media");
   const mediaView = (kind) => (m[kind] ? { ...m[kind], keyHint: keys.hint(`media:${kind}`) } : null);
+  const src = aiSource();
   return {
     version: app.getVersion(),
-    providers: providers.LIST,
-    profiles: settings.get("profiles").map((p) => ({ ...p, keyHint: keys.hint(`profile:${p.id}`) })),
-    activeProfile: settings.get("activeProfile"),
-    media: { image: mediaView("image"), video: mediaView("video") },
+    edition: { id: ED.id, name: ED.appName, keys: ED.keys, subtitle: ED.subtitle },
+    source: src,
+    sections: editions.sections(ED, src),
+    free: freeView(),
+    // Pilot Free has no keys, no key slots and no provider list.
+    providers: ED.keys ? providers.LIST : [],
+    profiles: ED.keys ? settings.get("profiles").map((p) => ({ ...p, keyHint: keys.hint(`profile:${p.id}`) })) : [],
+    activeProfile: ED.keys ? settings.get("activeProfile") : "",
+    media: ED.keys ? { image: mediaView("image"), video: mediaView("video") } : { image: null, video: null },
     memoryOn: settings.get("memoryOn"),
     memory: settings.get("memory"),
     notes: settings.get("notes"),
@@ -157,7 +219,7 @@ function settingsView() {
     reducedMotion,
     energy: levelNow(),
     energyChosen: Boolean(settings.get("energyChosen")),
-    keychain: keys.available(),
+    keychain: ED.keys ? keys.available() : true,
     screenStatus: shots.status(),
     screen: screenAccess.view(shots.status(), screenMode(), screenOpened),
     screenMode: screenMode(),
@@ -183,7 +245,8 @@ function viewMessages(list) {
     } else if (m.role === "note") {
       const item = m.mediaId ? mediaItems.get(m.mediaId) : null;
       out.push({ role: "note", kind: m.kind, text: m.text, media: item ? {
-        id: m.mediaId, kind: item.kind, state: item.state, progress: item.progress, message: item.message || "" } : null });
+        id: m.mediaId, kind: item.kind, state: item.state, progress: item.progress, message: item.message || "",
+        local: Boolean(item.local), seconds: item.started && item.state === "working" ? Math.round((Date.now() - item.started) / 1000) : 0 } : null });
     }
   }
   return out;
@@ -206,6 +269,8 @@ function push(state) {
       note: a.note || "", count: a.images ? a.images.length : 0, error: a.error || "" })),
     cards: [...cards.entries()].map(([id, c]) => ({ id, type: c.type, label: c.label, labels: c.labels, step: c.step, progress: c.progress })),
     providerName: providers.providerName(activeSettings()),
+    source: aiSource(),
+    statusLine: freeOn() ? freeStatusLine() : "",
     // Speaking aloud only when the Mac isn't muted, locked or idle, and nothing is full screen in front.
     speakOk: !mute.muted && !userAway() && !fsCache.value,
   };
@@ -291,20 +356,113 @@ async function takeShot() {
 
 async function makeImage(prompt) {
   const p = mediaSettings("image");
-  if (!p) return { content: "There's no image key set in Pilot settings.", error: true };
+  if (!p) return { content: freeOn() ? "Draw Things isn't on, so Pilot can't make pictures right now." : "There's no image key set in Pilot settings.", error: true };
   const id = `m${(mediaSeq += 1)}`;
-  mediaItems.set(id, { kind: "image", state: "working", prompt });
+  mediaItems.set(id, { kind: "image", state: "working", prompt, local: Boolean(p.local), started: Date.now() });
   engine.attach({ kind: "image", text: prompt, mediaId: id });
+  // Draw Things doesn't report progress: the card counts the seconds.
+  const ticking = p.local ? setInterval(() => push(), 1000) : null;
   try {
-    const pic = await media.image(p, prompt, { fetch: guardedFetch });
-    mediaItems.set(id, { kind: "image", state: "done", prompt, mime: pic.mime, data: pic.data });
+    const pic = p.local
+      ? await freemode.drawThingsImage({ fetch: guardedFetch, base: LOCAL.drawThings, prompt })
+      : await media.image(p, prompt, { fetch: guardedFetch });
+    mediaItems.set(id, { kind: "image", state: "done", prompt, mime: pic.mime, data: pic.data, local: Boolean(p.local) });
     push();
-    return "Made the picture. It's shown in the chat with a Save button.";
+    return p.local ? "Made the picture on this Mac with Draw Things. It's shown in the chat with a Save button."
+      : "Made the picture. It's shown in the chat with a Save button.";
   } catch (e) {
     mediaItems.set(id, { kind: "image", state: "failed", prompt, message: e.message });
     push();
     return { content: e.message || "The picture didn't work.", error: true };
+  } finally {
+    if (ticking) clearInterval(ticking);
   }
+}
+
+// ---------------------------------------------------------------- Free mode (AI on this Mac)
+
+// Is Ollama running (and which models does it have)? Is Draw Things' API on?
+let freeChecking = null;
+function refreshFree() {
+  if (freeChecking) return freeChecking;
+  freeChecking = (async () => {
+    const apps = TEST && process.env.PILOT_TEST_APPS_DIR
+      ? freemode.installed({ appsDirs: [process.env.PILOT_TEST_APPS_DIR], binDirs: [] })
+      : MAC ? freemode.installed({ home: os.homedir() }) : { ollama: "", drawThings: "" };
+    const fetcher = (url, init) => guardedFetch(url, init);
+    const [o, d] = await Promise.all([
+      freemode.ollamaStatus({ fetch: fetcher, base: LOCAL.ollama, installed: Boolean(apps.ollama) }),
+      freemode.drawThingsStatus({ fetch: fetcher, base: LOCAL.drawThings, installed: Boolean(apps.drawThings) }),
+    ]);
+    const before = JSON.stringify([freeState.ollama, freeState.models, freeState.drawThings, freeState.apps]);
+    freeState = { ollama: o.state, version: o.version, models: o.models, drawThings: d.state, apps, checkedAt: Date.now() };
+    // The first brain there is gets picked when none is.
+    const f = freeNow();
+    if (o.state === "running" && !f.model && o.models.length) await useModel(o.models[0].id, true);
+    if (JSON.stringify([freeState.ollama, freeState.models, freeState.drawThings, freeState.apps]) !== before) pushSettings();
+    return freeView();
+  })().finally(() => { freeChecking = null; });
+  return freeChecking;
+}
+
+// Pick a brain. Ollama says whether it can use tools (Pilot's actions) and
+// look at pictures; without tools Pilot just chats.
+async function useModel(model, quiet) {
+  const name = str(model, 200).trim();
+  if (!name) return { error: "Pick a brain first." };
+  const caps = await freemode.capabilities({ fetch: (u, i) => guardedFetch(u, i), base: LOCAL.ollama, model: name });
+  settings.set("free", { ...freeNow(), model: name, noTools: caps ? !caps.tools : false, vision: caps ? caps.vision : null });
+  if (!quiet) pushSettings();
+  return { ok: true, model: name };
+}
+
+// "Download brain": Ollama downloads it; the progress bar follows.
+async function pullBrain(model) {
+  const name = str(model, 200).trim() || (freemode.recommend(recommended, os.totalmem()) || {}).model;
+  if (!name || !/^[a-z0-9][a-z0-9._\-/:]{0,120}$/i.test(name)) return { error: "That isn't a brain Ollama knows." };
+  if (freePull && !freePull.finished) return { error: "A brain is already downloading." };
+  const controller = new AbortController();
+  freePull = { model: name, progress: null, words: "Getting ready…", error: "", controller, finished: false };
+  pushSettings();
+  let last = 0;
+  try {
+    await freemode.pull({ fetch: (u, i) => guardedFetch(u, i), base: LOCAL.ollama, model: name, signal: controller.signal,
+      onProgress: (pr) => {
+        freePull.progress = pr.progress;
+        freePull.words = pr.words;
+        if (Date.now() - last > 250) { last = Date.now(); pushSettings(); }
+      } });
+    freePull = { ...freePull, progress: 1, words: "Done: the brain is ready.", finished: true };
+    freeState.checkedAt = 0;
+    await refreshFree();
+    if (!freeNow().model || !freeState.models.some((m) => freemode.sameModel(m.id, freeNow().model))) await useModel(name, true);
+    pushSettings();
+    return { ok: true };
+  } catch (e) {
+    const cancelled = e && e.name === "AbortError";
+    freePull = { ...freePull, error: cancelled ? "Download cancelled." : (e && e.message) || "The download stopped.", finished: true };
+    pushSettings();
+    return { error: freePull.error };
+  }
+}
+
+function setSource(src) {
+  if (!ED.keys) return { ok: true, source: "free" }; // Pilot Free is always Free mode
+  if (src !== "free" && src !== "key") return { error: "Pick Free or My AI key." };
+  settings.set("aiSource", src);
+  if (src === "free") refreshFree();
+  pushSettings();
+  return { ok: true, source: aiSource() };
+}
+
+// The setup cards' buttons: fixed pages in the browser, or the installed app.
+// Nothing is downloaded or installed by Pilot itself.
+async function freeOpen(what) {
+  if (what === "ollama-download") { await shell.openExternal(freemode.OLLAMA_DOWNLOAD); return { ok: true }; }
+  if (what === "drawthings-store") { await shell.openExternal(freemode.DRAW_THINGS_STORE); return { ok: true }; }
+  const where = what === "ollama-app" ? freeState.apps.ollama : what === "drawthings-app" ? freeState.apps.drawThings : "";
+  if (where && /\.app$/.test(where)) { await shell.openPath(where); setTimeout(() => { refreshFree(); }, 4000); return { ok: true }; }
+  return { error: "That app isn't installed yet." };
 }
 
 async function makeVideo(prompt) {
@@ -351,6 +509,7 @@ function setScreenMode(mode) {
 // ---------------------------------------------------------------- dropped pictures and videos
 
 function attachInfo() {
+  if (freeOn()) return { provider: "local", providerName: providers.NAMES.local, ready: ready(), upload: false };
   const p = settings.profile();
   const provider = p ? p.provider : "";
   return { provider, providerName: providers.providerName(activeSettings()), ready: ready(), upload: provider === "gemini" && ready() };
@@ -370,7 +529,7 @@ function addPending(item) {
 // Everything waiting, for the message being sent (and cleared).
 function takePending() {
   const out = { images: [], videos: [], notes: [], words: [] };
-  const gemini = (settings.profile() || {}).provider === "gemini";
+  const gemini = !freeOn() && (settings.profile() || {}).provider === "gemini";
   for (const a of pending.splice(0)) {
     if (a.error) continue;
     if (a.kind === "image") out.images.push({ mime: a.mime, data: a.data, thumb: a.thumb });
@@ -433,7 +592,7 @@ function registerAttachIpc() {
   handle("upload-start", async (_e, meta) => {
     const m = meta && typeof meta === "object" ? meta : {};
     const s = activeSettings();
-    if (s.provider !== "gemini" || !s.key) return { error: "Video upload works with a Google Gemini key." };
+    if (!ED.keys || s.provider !== "gemini" || !s.key) return { error: "Video upload works with a Google Gemini key." };
     const info = { name: str(m.name, 200) || "Video", size: Number(m.size) || 0, mime: /^video\/[a-z0-9.+-]+$/i.test(m.mime) ? m.mime : "video/mp4" };
     const url = await uploads.start(guardedFetch, s.key, info);
     const item = { kind: "video", name: info.name, size: info.size, mime: info.mime, thumb: thumbOk(m.thumb), progress: 0 };
@@ -898,15 +1057,15 @@ function updateTray() {
     ...voiceItems(),
     { type: "separator" },
     { label: "Start at Login", type: "checkbox", checked: Boolean(settings.get("openAtLogin")), click: (item) => setLogin(item.checked) },
-    { label: "About Pilot", click: () => app.showAboutPanel() },
+    { label: `About ${ED.appName}`, click: () => app.showAboutPanel() },
     { type: "separator" },
-    { label: "Quit Pilot", accelerator: "Command+Q", click: () => app.quit() },
+    { label: `Quit ${ED.appName}`, accelerator: "Command+Q", click: () => app.quit() },
   ]));
 }
 
 function createTray() {
   tray = new Tray(trayImage());
-  tray.setToolTip("Pilot");
+  tray.setToolTip(ED.appName);
   updateTray();
 }
 
@@ -929,7 +1088,13 @@ function handle(name, fn) {
 
 const str = (v, n) => (typeof v === "string" ? v.slice(0, n || 10000) : "");
 
+// Pilot Free has no API keys at all: these calls are refused there.
+function keysOnly() {
+  if (!ED.keys) throw Object.assign(new Error("Pilot Free doesn't use API keys. It runs on your Mac in Free mode."), { kind: "other" });
+}
+
 function draftSettings(d) {
+  keysOnly();
   const draft = d && typeof d === "object" ? d : {};
   const provider = str(draft.provider, 20);
   if (!providers.LIST.some((p) => p.id === provider)) throw Object.assign(new Error("Choose a provider first."), { kind: "other" });
@@ -1126,6 +1291,7 @@ function registerIpc() {
     return { models: list.slice(0, 300) };
   });
   handle("profile-save", async (_e, d, key) => {
+    keysOnly();
     const draft = d && typeof d === "object" ? d : {};
     const provider = str(draft.provider, 20);
     if (!providers.LIST.some((p) => p.id === provider)) throw Object.assign(new Error("Choose a provider first."), { kind: "other" });
@@ -1143,6 +1309,7 @@ function registerIpc() {
     return { ok: true, id: pid };
   });
   handle("profile-remove", async (_e, pid) => {
+    keysOnly();
     const id = str(pid, 40);
     await keys.remove(`profile:${id}`);
     settings.removeProfile(id);
@@ -1150,6 +1317,7 @@ function registerIpc() {
     return { ok: true };
   });
   handle("profile-activate", (_e, pid) => {
+    keysOnly();
     if (settings.profile(str(pid, 40))) settings.set("activeProfile", str(pid, 40));
     pushSettings();
     return { ok: true };
@@ -1166,6 +1334,7 @@ function registerIpc() {
     return { models: list.slice(0, 300) };
   });
   handle("media-key-save", async (_e, kind, d, key) => {
+    keysOnly();
     if (kind !== "image" && kind !== "video") return {};
     const draft = d && typeof d === "object" ? d : {};
     const provider = str(draft.provider, 20);
@@ -1183,12 +1352,20 @@ function registerIpc() {
     return { ok: true };
   });
   handle("media-key-remove", async (_e, kind) => {
+    keysOnly();
     if (kind !== "image" && kind !== "video") return {};
     await keys.remove(`media:${kind}`);
     settings.set("media", { ...settings.get("media"), [kind]: null });
     pushSettings();
     return { ok: true };
   });
+  // Free mode: where the AI runs, Ollama and Draw Things, the brains.
+  handle("source-set", (_e, src) => setSource(str(src, 10)));
+  handle("free-status", async () => refreshFree());
+  handle("free-pull", (_e, model) => { pullBrain(model); return { ok: true }; });
+  handle("free-cancel", () => { if (freePull && freePull.controller && !freePull.finished) freePull.controller.abort(); return { ok: true }; });
+  handle("free-use", async (_e, model) => useModel(model));
+  handle("free-open", (_e, what) => freeOpen(str(what, 30)));
   handle("memory-set", (_e, on) => { settings.set("memoryOn", Boolean(on)); pushSettings(); return { ok: true }; });
   handle("memory-remove", (_e, id) => { settings.removeMemory(str(id, 40)); pushSettings(); return { ok: true }; });
   handle("note-remove", (_e, id) => { settings.removeNote(str(id, 40)); pushSettings(); return { ok: true }; });
@@ -1256,9 +1433,9 @@ function appMenu() {
   // Pilot has no menu bar of its own, but the shortcuts (copy, paste, quit)
   // need one to exist.
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: "Pilot", submenu: [{ label: "About Pilot", click: () => app.showAboutPanel() }, { type: "separator" },
+    { label: ED.appName, submenu: [{ label: `About ${ED.appName}`, click: () => app.showAboutPanel() }, { type: "separator" },
       { label: "Hide Chat", accelerator: "Command+W", click: () => hideChat() },
-      { label: "Quit Pilot", accelerator: "Command+Q", click: () => app.quit() }] },
+      { label: `Quit ${ED.appName}`, accelerator: "Command+Q", click: () => app.quit() }] },
     // The standard Edit shortcuts (type, paste, copy, select all, undo) only
     // work in a menu-bar app if they're in its menu.
     { label: "Edit", submenu: [{ role: "undo" }, { role: "redo" }, { type: "separator" }, { role: "cut" }, { role: "copy" },
@@ -1278,15 +1455,19 @@ app.whenReady().then(async () => {
   const dir = app.getPath("userData");
   fs.mkdirSync(dir, { recursive: true });
   settings = new Settings(dir);
-  keys = new KeyStore(dir, safeStorage);
+  // Pilot Free never saves a key, so it never touches the Keychain.
+  keys = new KeyStore(dir, ED.keys ? safeStorage : null);
   await keys.init();
   shots = screenTools.make({ desktopCapturer, systemPreferences, shell, screen, platform: process.platform });
+  recommended = freemode.loadRecommended({ userDir: dir });
 
   app.setAboutPanelOptions({
-    applicationName: "Pilot",
+    applicationName: ED.appName,
     applicationVersion: app.getVersion(),
     copyright: "MTRX Horizyn",
-    credits: "Your AI copilot. Powered by you. Pilot uses your own AI key: your provider bills you directly, and MTRX never sees your key.",
+    credits: ED.keys
+      ? "Your AI copilot. Powered by you. Pilot uses your own AI key (your provider bills you directly, and MTRX never sees your key), or Free mode: AI that runs on your Mac."
+      : "Your AI copilot, free. Pilot Free runs AI on your Mac with the free Ollama and Draw Things apps: no keys, nothing leaves your Mac.",
   });
 
   if (MAC && app.dock) app.dock.hide();
@@ -1297,10 +1478,12 @@ app.whenReady().then(async () => {
 
   engine = engineCore.create({
     store: {
-      settings: () => ({ ...activeSettings(), noTools: Boolean((settings.profile() || {}).noTools) }),
+      settings: () => ({ ...activeSettings(), noTools: freeOn() ? Boolean(freeNow().noTools) : Boolean((settings.profile() || {}).noTools) }),
       ready,
       memory: () => ({ on: settings.get("memoryOn"), notes: settings.get("memory") }),
       saveSettings: (patch) => {
+        // A brain that can't use tools: remembered for that brain.
+        if (freeOn()) { settings.set("free", { ...freeNow(), noTools: Boolean(patch && patch.noTools) }); return; }
         const p = settings.profile();
         if (p) { Object.assign(p, patch); settings.save(); }
       },
@@ -1330,7 +1513,15 @@ app.whenReady().then(async () => {
   if (!TEST || process.env.PILOT_TEST_LIFE === "1") life.start();
   setInterval(watchUser, 10000);
   // No AI key yet: the robot points up (toward the menu bar) once, a little after start.
-  if (!TEST) setTimeout(() => { if (!ready() && !chatOpen() && !reducedMotion) sendMove({ move: "point", say: "🔑" }); }, 8000);
+  if (!TEST) setTimeout(() => { if (!ready() && !chatOpen() && !reducedMotion) sendMove({ move: "point", say: freeOn() ? "🧠" : "🔑" }); }, 8000);
+  // Free mode: check Ollama and Draw Things now, then every few seconds while
+  // the chat is open (a minute apart otherwise). Two quick calls to this Mac.
+  refreshFree().catch(() => {});
+  setInterval(() => {
+    if (!freeOn()) return;
+    const due = chatOpen() ? 5000 : 60000;
+    if (Date.now() - freeState.checkedAt >= due) refreshFree().catch(() => {});
+  }, 5000);
   setInterval(watchCursor, 300);
   if (powerMonitor) {
     powerMonitor.on("lock-screen", () => { locked = true; pushRobot(); });
@@ -1357,6 +1548,7 @@ app.whenReady().then(async () => {
       context: lifeContext, setCalm, setEnergy, home, cheer, levelNow,
       startLife: () => life.start(), stopLife: () => life.stop(), setHidden, hold: () => roam.holdReason(lifeContext()), settings: () => settings.data,
       pretend: (k, v) => { testOverride[k] = v === null ? null : Boolean(v); pushRobot(); }, addPending, pending: () => pending.slice(), setScreenMode, takePending,
+      edition: () => ED, refreshFree, freeView, setSource, activeSettings, aiSource,
     };
   }
 });

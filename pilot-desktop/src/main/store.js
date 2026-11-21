@@ -1,5 +1,6 @@
 // Pilot's two stores on the Mac, both in the app's own folder
-// (~/Library/Application Support/Pilot):
+// (~/Library/Application Support/Pilot, or .../Pilot Free for the Free
+// edition, so the two editions never share settings or keys):
 //
 //   settings.json  everything that isn't secret: the robot's home, its
 //                  energy (Calm, Relaxed or Always moving), the key
@@ -10,6 +11,7 @@
 //                  Keychain, Pilot refuses to save a key rather than write it
 //                  in plain text. Keys are never logged and never sent to a
 //                  window; a window only learns a key's last four characters.
+//                  Pilot Free has no keys: it never opens the Keychain.
 "use strict";
 
 const fs = require("node:fs");
@@ -124,6 +126,10 @@ const DEFAULTS = () => ({
   welcomed: false,
   // Pilot for Mac 1.3: Speak replies (off), the voice and its speed; Sounds (on, quiet), volume, quiet hours.
   voice: { speak: false, voice: "", voiceRate: 1, sounds: true, soundVolume: 0.3, quietFrom: 21, quietTo: 7 },
+  // Pilot for Mac 1.4: where the AI runs ("free" on this Mac, "key" the user's
+  // own key, null not picked yet) and Free mode's chosen brain (an Ollama model).
+  aiSource: null,
+  free: { model: "", noTools: false, vision: null },
 });
 
 // Settings from Pilot 1.0 and 1.1 (version 1) had calm mode (null, true or

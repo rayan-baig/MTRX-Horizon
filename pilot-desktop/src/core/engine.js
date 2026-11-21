@@ -46,6 +46,14 @@ What you can do on this Mac (only through the tools you are given, and only afte
 - You can't and won't: make payments or purchases, delete or move files, send messages or emails for the user, type or click in other apps, or change system settings. Say so kindly if asked, and explain how the user can do it themselves.
 - To write a reply or a draft for the user, write it, then offer to copy it to the clipboard so they can paste it themselves.`;
 
+// Free mode (1.4): a model on the Mac itself, through Ollama. No key, nothing
+// leaves the Mac. Pictures come from Draw Things when it's on; videos can't.
+const FREE_MODE = (edition) => `# Free mode
+You are running in Free mode: a local AI model on the user's Mac (through the free Ollama app), not on an AI key. Nothing the user types leaves the Mac, and it works offline. Ignore what the rules above say about the user's AI key or provider: there is none.
+- Pictures are made on the Mac by the free Draw Things app, when its API Server is switched on.
+- Videos can't be made in Free mode: making video on a Mac isn't practical yet, it needs a video key${edition === "free" ? ", which Pilot Free doesn't use" : " (Settings → My AI key)"}. Say so kindly if asked.
+- Keep answers short: a local model is slower than a big online one.`;
+
 const NO_TOOLS = "You have no tools right now, so you can't act on this Mac. Explain how the user can do it themselves.";
 
 const DESKTOP_GUIDE = `# Using Pilot for Mac
@@ -165,6 +173,7 @@ function create(options) {
     if (memory.on && memory.notes.length) {
       parts.push(`# The user asked you to remember\n${memory.notes.map((n) => `- ${n.text || n}`).join("\n")}`);
     }
+    if (extra && extra.local) parts.push(FREE_MODE(extra.edition));
     if (extra && extra.noTools) parts.push(NO_TOOLS);
     return parts.join("\n\n");
   }
@@ -304,7 +313,9 @@ function create(options) {
     if (!words || busy) return false;
     const settings = store.settings();
     if (!store.ready(settings)) {
-      note("Pilot needs your own AI key first. Press the gear button or “Bring Your Own API Key” to add one.", "error");
+      note(settings.provider === "local"
+        ? "Pilot needs a brain first. Open Settings (the gear button) and press “Download brain” under Free mode."
+        : "Pilot needs your own AI key first. Press the gear button or “Bring Your Own API Key” to add one.", "error");
       emit();
       return false;
     }
@@ -324,7 +335,7 @@ function create(options) {
         let reply;
         try {
           reply = await providers.chat(settings, {
-            system: system({ noTools }), messages: wire(), tools: specs(list),
+            system: system({ noTools, local: settings.provider === "local", edition: settings.edition }), messages: wire(), tools: specs(list),
             signal: controller.signal,
             onText: (t) => { streaming = t; emit(); },
           }, { fetch: o.fetch });

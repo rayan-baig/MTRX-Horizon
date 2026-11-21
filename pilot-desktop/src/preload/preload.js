@@ -61,6 +61,13 @@ contextBridge.exposeInMainWorld("pilot", {
     setLogin: call("login-set"),
     setEnergy: call("energy-set"),
     welcomeDone: call("welcome-done"),
+    // Free mode (AI on this Mac): where the AI runs, Ollama, the brains, Draw Things.
+    setSource: call("source-set"),
+    freeStatus: call("free-status"),
+    freePull: call("free-pull"),
+    freeCancel: call("free-cancel"),
+    freeUse: call("free-use"),
+    freeOpen: call("free-open"),
     onChange: listen("pilot:settings"),
   },
   voice: {

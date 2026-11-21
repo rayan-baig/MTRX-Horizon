@@ -325,3 +325,18 @@ progress.bar::-webkit-progress-value { background: linear-gradient(90deg, #38bdf
 .hours { display: flex; gap: 10px; align-items: center; }
 .hours select { flex: 1; }
 @media (prefers-reduced-motion: reduce) { #speak.talking .wave2 { animation: none; } }
+
+/* Pilot for Mac 1.4: Free mode (AI on this Mac) */
+.source { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 12px; color: var(--ink2); white-space: nowrap; }
+.source .dot { width: 7px; height: 7px; border-radius: 50%; background: #fbbf24; box-shadow: 0 0 6px rgba(251, 191, 36, 0.7); }
+.source.on .dot { background: #34d399; box-shadow: 0 0 6px rgba(52, 211, 153, 0.8); }
+.free-card h4 { margin: 12px 0 6px; font-size: 13px; font-weight: 650; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.free-card h4:first-of-type { margin-top: 2px; }
+.free-card .setup { border-radius: 14px; padding: 10px 12px; margin: 4px 0 10px; background: rgba(118, 146, 255, 0.1); border: 1px solid rgba(118, 146, 255, 0.25); }
+.free-card .setup p { margin-bottom: 6px; }
+.free-card .pullbox { margin: 6px 0 8px; }
+.free-card progress.bar { width: 100%; height: 7px; }
+.free-card .pullwords { font-size: 12px; color: var(--ink2); margin-top: 4px; }
+.free-card .rec { font-size: 12.5px; color: var(--ink2); margin: 2px 0 6px; }
+.free-card .rec b { color: var(--ink); }
+.byok.free .byok-key { stroke: #34d399; }

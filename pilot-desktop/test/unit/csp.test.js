@@ -9,14 +9,18 @@ const APP = path.join(__dirname, "..", "..");
 const read = (rel) => fs.readFileSync(path.join(APP, rel), "utf8");
 const renderer = fs.readdirSync(path.join(APP, "src/renderer"));
 
-test("the CSP is strict and lists only provider hosts plus the user's address", () => {
-  const policy = csp.buildCsp(["https://llm.example.com", "javascript:x", "https://bad host"]);
+test("the CSP is strict and lists only provider hosts, Free mode's two local addresses and the user's address", () => {
+  const policy = csp.buildCsp(["https://llm.example.com", "javascript:x", "https://bad host", "http://127.0.0.1:11434"]);
   assert.match(policy, /default-src 'none'/);
   assert.match(policy, /script-src 'self'(;|$)/);
   assert.match(policy, /style-src 'self'(;|$)/);
   assert.doesNotMatch(policy, /unsafe-inline|unsafe-eval|\*/);
   const connect = policy.split("; ").find((p) => p.startsWith("connect-src")).split(" ").slice(1);
-  assert.deepEqual(connect, ["https://api.anthropic.com", "https://api.openai.com", "https://generativelanguage.googleapis.com", "https://llm.example.com"]);
+  assert.deepEqual(connect, ["https://api.anthropic.com", "https://api.openai.com", "https://generativelanguage.googleapis.com",
+    "http://127.0.0.1:11434", "http://127.0.0.1:7860", "https://llm.example.com"]);
+  // Free mode adds exactly Ollama's and Draw Things' default local ports, nothing wider.
+  assert.deepEqual(csp.LOCAL_HOSTS, ["http://127.0.0.1:11434", "http://127.0.0.1:7860"]);
+  assert.doesNotMatch(policy, /localhost|127\.0\.0\.1:\*|http:\/\/\*/);
 });
 
 test("every window page is served with the CSP, and nothing outside the app is served", () => {
@@ -71,15 +75,23 @@ test("no AI model names and no secrets in the app's code or docs", () => {
       const rel = path.join(dir, f);
       if (["node_modules", "dist", "build", "assets", ".git"].includes(f)) continue;
       if (fs.statSync(path.join(APP, rel)).isDirectory()) walk(rel);
-      else if (/\.(js|mjs|cjs|json|md|html|css|yml|yaml)$/.test(f) && f !== "package-lock.json" && f !== "csp.test.js") files.push(rel); // this file holds the patterns
+      // free-models.json is the one place model names live (the owner edits it); this file holds the patterns.
+      else if (/\.(js|mjs|cjs|json|md|html|css|yml|yaml)$/.test(f) && !["package-lock.json", "csp.test.js", "free-models.json"].includes(f)) files.push(rel);
     }
   };
   walk(".");
-  const modelName = /\b(claude-(\d|opus|sonnet|haiku|fable|mythos|instant)|gpt-?\d|o\d-mini|gemini-\d|dall-e|sora-\d|veo-\d|imagen-\d|chatgpt-)/i;
+  const modelName = /\b(claude-(\d|opus|sonnet|haiku|fable|mythos|instant)|gpt-?\d|o\d-mini|gemini-\d|dall-e|sora-\d|veo-\d|imagen-\d|chatgpt-|llama|qwen|mistral|gemma|phi-?\d|deepseek|llava|stable-?diffusion|sdxl|flux\.)/i;
   const secret = /\b(sk-ant-[A-Za-z0-9]|sk-[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{20,})/;
   for (const f of files) {
     const text = read(f);
     assert.doesNotMatch(text, modelName, `${f}: model name`);
     assert.doesNotMatch(text, secret, `${f}: secret`);
   }
+});
+
+test("Free mode's model names live only in the editable data file", () => {
+  const data = JSON.parse(read("src/config/free-models.json"));
+  assert.ok(Array.isArray(data.recommend) && data.recommend.length >= 3, "a recommendation for small, medium and big Macs");
+  for (const m of data.recommend) assert.ok(typeof m.model === "string" && Number.isFinite(m.minMemoryGB), JSON.stringify(m));
+  assert.match(data.note, /Edit this file/);
 });

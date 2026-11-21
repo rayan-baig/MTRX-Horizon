@@ -1,0 +1,8 @@
+{
+  "note": "The brains Pilot recommends for Free mode, by how much memory the Mac has. Edit this file to change them: 'model' is the name Ollama knows the model by (as listed on ollama.com/library), 'minMemoryGB' is the least memory a Mac needs for it, 'download' is roughly how big it is. Pilot picks the last entry whose minMemoryGB fits the Mac. A file with this name in Pilot's settings folder (~/Library/Application Support/Pilot Free or Pilot) wins over this one, so it can be changed without a rebuild. Pilot also lists every model already in Ollama.",
+  "recommend": [
+    { "minMemoryGB": 0, "model": "llama3.2:3b", "label": "Small brain (fast, for 8 GB Macs)", "download": "about 2 GB" },
+    { "minMemoryGB": 16, "model": "qwen2.5:7b", "label": "Medium brain (good for 16 GB Macs)", "download": "about 4.7 GB" },
+    { "minMemoryGB": 24, "model": "qwen2.5:14b", "label": "Big brain (for 24 GB Macs and up)", "download": "about 9 GB" }
+  ]
+}

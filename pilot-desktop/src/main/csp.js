@@ -5,12 +5,17 @@
 // The AI calls themselves run in the main process (so a window never holds a
 // key), but connect-src still lists only the providers' API hosts plus the
 // user's own compatible address, so a window couldn't reach anywhere else.
+// Free mode (1.4) adds exactly two addresses on the Mac itself: Ollama's
+// local server and Draw Things' API Server. (The core already lets a
+// compatible address be http://localhost or http://127.0.0.1, and that one is
+// added only when the user types it; these two are fixed.)
 "use strict";
 
 const fs = require("node:fs");
 const path = require("node:path");
 
 const PROVIDER_HOSTS = ["https://api.anthropic.com", "https://api.openai.com", "https://generativelanguage.googleapis.com"];
+const LOCAL_HOSTS = ["http://127.0.0.1:11434", "http://127.0.0.1:7860"]; // Ollama, Draw Things
 
 // Only these files can be served to a window.
 const SERVED = [/^src\/renderer\/[a-z0-9-]+\.(html|css|js|svg)$/, /^src\/core\/pilot-(render|motion|actor)\.js$/, /^src\/core\/(roam|tricks)\.js$/,
@@ -21,7 +26,7 @@ const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=
   ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp" };
 
 function buildCsp(extraOrigins) {
-  const extra = (extraOrigins || []).filter((o) => /^https?:\/\/[a-z0-9.\-[\]:]+$/i.test(o) && !PROVIDER_HOSTS.includes(o));
+  const extra = [...new Set(extraOrigins || [])].filter((o) => /^https?:\/\/[a-z0-9.\-[\]:]+$/i.test(o) && !PROVIDER_HOSTS.includes(o) && !LOCAL_HOSTS.includes(o));
   return [
     "default-src 'none'",
     "script-src 'self'",
@@ -29,7 +34,7 @@ function buildCsp(extraOrigins) {
     "img-src 'self' data: blob:",
     "media-src 'self' blob:",
     "font-src 'self'",
-    `connect-src ${[...PROVIDER_HOSTS, ...extra].join(" ")}`,
+    `connect-src ${[...PROVIDER_HOSTS, ...LOCAL_HOSTS, ...extra].join(" ")}`,
     "object-src 'none'",
     "base-uri 'none'",
     "form-action 'none'",
@@ -59,4 +64,4 @@ function serve(appDir, rawUrl, extraOrigins) {
   };
 }
 
-module.exports = { PROVIDER_HOSTS, buildCsp, serve };
+module.exports = { PROVIDER_HOSTS, LOCAL_HOSTS, buildCsp, serve };

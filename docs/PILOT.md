@@ -213,6 +213,21 @@ grown-ups: the MTRX site says "Pilot uses a grown-up's AI key (the AI companies 
 once in the chat window, just above the message box (so it is always in full view, phones too) until
 a key is added, and beside the key settings, and never nags.
 
+### Pilot for Mac 1.4: Free mode and two editions
+
+The Mac app (not the web Pilot, which is unchanged) also has **Free mode**: AI that runs on the Mac
+with no key. Chat goes to the local OpenAI-compatible server of a free app that runs models on the
+Mac (named in `pilot-desktop/README.md`) at `http://127.0.0.1:11434`; pictures go to the free Draw Things app's API Server at
+`http://127.0.0.1:7860` when the user turns it on (Draw Things → Settings → API Server, HTTP, port
+7860); videos aren't offered, and the app says so. Setup cards open the download pages in the
+browser, and a "Download brain" button asks that app to download the model recommended for the Mac's
+memory, with a progress bar. The recommendations live in one editable data file in the Mac app
+(`pilot-desktop/src/config/free-models.json`); no model name is written in code or these docs.
+The Mac's CSP adds exactly those two local addresses (where the core lets a typed compatible address
+be any `localhost` or `127.0.0.1` port). The Mac app ships as two editions built from one codebase:
+**Pilot** (own keys plus Free mode) and **Pilot Free** (Free mode only, with no key settings at
+all). See `pilot-desktop/README.md`.
+
 ## What is sent, and to whom
 
 Only to the provider the user chose, only when they send a message:

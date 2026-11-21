@@ -1,6 +1,8 @@
 # Pilot for Mac
 
-Pilot is the MTRX Horizyn AI assistant as a Mac app: a small robot that floats above every app, on every desktop and over full-screen apps. Click it and a chat window opens next to it. It runs on the user's own AI key (Anthropic, OpenAI, Google Gemini, or any OpenAI-compatible API), so their provider bills them directly; there is no MTRX server in between.
+Pilot is the MTRX Horizyn AI assistant as a Mac app: a small robot that floats above every app, on every desktop and over full-screen apps. Click it and a chat window opens next to it. It runs on the user's own AI key (Anthropic, OpenAI, Google Gemini, or any OpenAI-compatible API), so their provider bills them directly, or, since 1.4, in **Free mode**: AI that runs on the Mac itself, with no key. There is no MTRX server in between.
+
+Since 1.4 every release ships **two editions** (see below): **Pilot** (`Pilot-X.Y.Z-mac.dmg`, own keys plus Free mode) and **Pilot Free** (`Pilot-Free-X.Y.Z-mac.dmg`, Free mode only).
 
 People who just want the app: see [INSTALL.md](INSTALL.md).
 
@@ -38,6 +40,32 @@ The engine is the web core's (`pilot-motion.js` and `pilot-actor.js`, copied int
 - **Paste and links** (`src/main/clip.js`, `src/renderer/links.js`): Cmd+V attaches a screenshot or a copied picture straight from memory (nothing written to disk), or a picture or video copied in Finder, through the same shrink-to-fit path as a dropped file; text and links paste as text. Web addresses in messages (both ways) become links, only https, http and mailto; a click asks "Open this link?" with the address, then opens the default browser. Right-click: Copy Text, Copy Link, Copy Image (as a picture), Save Image, and Cut, Copy, Paste and Select All in the message box.
 - **Read this link** (`src/main/linkread.js`): a chip under the message box for each web link (on by default for a single pasted link). On send the main process fetches it with `net.fetch`: http and https only, no cookies, 10 seconds and 2 MB at most, redirects followed by hand; never a local, private-network or file address (every address of the host is checked, and again on each redirect). A page goes along as its title and main text (scripts and styles stripped, about 20,000 characters at most); a picture is attached instead. "Reading link…" shows while it works; a page that can't be read gets a plain line.
 
+## Pilot for Mac 1.4: Free mode and two editions
+
+### Free mode: AI on the Mac, no keys
+
+- **Chat** goes to [Ollama](https://ollama.com), the free app, on its local server `http://127.0.0.1:11434` (its OpenAI-compatible `/v1` address, through the desktop provider layer's `local` adapter in `src/core/providers.js`; the model list, downloads and what a model can do come from Ollama's own `/api/tags`, `/api/pull` and `/api/show`). `src/main/freemode.js` does the detecting and downloading; `src/main/main.js` checks every 5 seconds while the chat is open (a minute apart otherwise), two quick calls to the Mac itself.
+- **Setup cards** (Settings → Free mode): Ollama not installed → what Ollama is and **Download Ollama (free)**, which opens https://ollama.com/download in the browser; installed but not running → **Open Ollama**; running → **Download brain**, which asks Ollama to pull the recommended model, with a progress bar, percent and Cancel. Nothing is installed by Pilot. Every model already in Ollama is listed to pick from; the first one is picked by itself when none is.
+- **Which brain is recommended** comes from a small data file, `src/config/free-models.json`, by the Mac's memory (`os.totalmem()`): roughly 3–4B for 8 GB Macs, 7–8B from 16 GB (the owner's MacBook Air, Apple M5, 16 GB, gets this one) and a bigger one from 24 GB. Model names live only in that file (the code and these docs never name one; a test checks). To change the recommendations, edit the file and rebuild, or put a file with the same name in Pilot's settings folder (`~/Library/Application Support/Pilot Free/free-models.json`, or `.../Pilot/`): that copy wins, no rebuild needed. Each entry: `model` (the name Ollama knows it by), `minMemoryGB`, `label`, `download`.
+- **Tools and actions**: Ollama says whether a model can use tools (`/api/show` capabilities). If it can, every Pilot action works as with a key, always asked first; if not (or if Ollama refuses the tools), Pilot just chats and remembers that for the brain. Models that think out loud have their `<think>` part hidden.
+- **Pictures** come from [Draw Things](https://apps.apple.com/app/draw-things/id6444050820), the free Mac app, when its **API Server** is on: in Draw Things' settings turn on **API Server** with **HTTP** on port **7860** (its default) and leave Draw Things open. Pilot sends the prompt to `http://127.0.0.1:7860/sdapi/v1/txt2img` and uses the model and settings chosen in Draw Things; the chat counts the seconds while it draws and shows the picture with Save. The setup card opens the Mac App Store page in the browser.
+- **Videos** aren't offered in Free mode: local video isn't practical on a Mac, so the settings and the AI say so plainly (in Pilot it needs a video key; Pilot Free doesn't use keys).
+- **Status**: under "Pilot" the window says **Free mode · on your Mac** (green dot) once Ollama runs with a brain; the key card says the same. It works offline: nothing in Free mode needs the internet except downloading Ollama, Draw Things and a brain.
+- **Where the AI runs** (Pilot only): Settings → AI source, **Free: runs on my Mac** or **My AI key**. With no pick, Free mode is the default when no key is saved and the Mac is Apple Silicon (`source` in `src/main/edition.js`).
+
+### Two editions from one codebase
+
+| | Pilot | Pilot Free |
+|---|---|---|
+| For | customers | the owner |
+| AI | own keys (every provider, image and video keys) and Free mode | Free mode only: no API key settings, no key slots, no provider list |
+| App name, bundle id | Pilot, `com.mtrxhorizyn.pilot` | Pilot Free, `com.mtrxhorizyn.pilot.free` |
+| Settings | `~/Library/Application Support/Pilot/settings.json` | `~/Library/Application Support/Pilot Free/settings.json` |
+| Keychain item | "Pilot Safe Storage" | none: it never saves a key, so it never opens the Keychain ("Pilot Free Safe Storage" if it ever did) |
+| Download | `Pilot-X.Y.Z-mac.dmg` | `Pilot-Free-X.Y.Z-mac.dmg` |
+
+Different names and ids mean both can be installed side by side. The edition is a build-time flag: `PILOT_EDITION=free` makes `electron-builder.config.js` set the name, id, .dmg name and output folder, and write `"pilotEdition": "free"` into the packaged `package.json` (`extraMetadata`); a packaged app always uses what it was built as (`resolve` in `src/main/edition.js`), while `npm start` reads `PILOT_EDITION`. The main process refuses every key call in Pilot Free and sends its window no provider list; the window shows the settings sections the main process lists (`sections` in `edition.js`). Neither edition holds any API key or secret. Everything from 1.3 (the moves, poses, tricks, sounds, voice, copy and paste, link reading and screen access) is in both.
+
 ## Screen access and dropped files (1.1)
 
 - **Screen access** in settings: the live macOS permission (Allowed or Not allowed), Open Mac settings, Check again, and Relaunch Pilot when macOS needs a restart to apply it. Modes: **Off** (the eye is hidden and the screen action isn't offered), **Only when I ask** (default) and **Help with what's on screen** (a fresh screenshot with each message). Nothing between messages; the "Pilot is looking" banner every time. The first-run welcome offers to turn it on and notices when it's allowed.
@@ -55,6 +83,9 @@ src/main/       main process: windows, menu bar, IPC, key store, screen capture,
 src/preload/    the small API the windows get (contextBridge)
 src/renderer/   robot.html and chat.html (no inline scripts or styles), attach.js
 src/core/       chat engine, providers, media, safe renderer, desktop tools, the moving robot, roam.js (Always moving), tricks.js (the 80 tricks)
+src/main/edition.js   the two editions (names, ids, which settings show)
+src/main/freemode.js  Free mode: finding Ollama and Draw Things, Download brain, pictures
+src/config/     free-models.json: the brains Free mode recommends, by memory (the owner edits it)
 assets/         the robot artwork (and its three resting layers), poses/, props/, its menu-bar head, the app icon
 tools/          poses.py: prepares the owner's pose sheet (a developer tool, not in the app)
 build/          icon.icns, the .dmg background, entitlements (for signing later)
@@ -71,8 +102,8 @@ To update the core: copy those files from `static/pilot/` over, update `core-ver
 ### Security
 
 - Every window: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, a preload with a fixed list of calls, no navigation, no new windows, no webviews, all permission requests refused.
-- Windows load only Pilot's own files from a `pilot://` scheme, each served with a strict Content-Security-Policy: no inline scripts or styles, no eval, `connect-src` limited to the three providers' API hosts plus the user's own compatible address. Any other request from a window is cancelled.
-- AI calls run in the main process, only to those same addresses, without cookies.
+- Windows load only Pilot's own files from a `pilot://` scheme, each served with a strict Content-Security-Policy: no inline scripts or styles, no eval, `connect-src` limited to the three providers' API hosts, Free mode's two fixed local addresses (`http://127.0.0.1:11434` for Ollama and `http://127.0.0.1:7860` for Draw Things, nothing wider), plus the user's own compatible address (which the core already allows to be `http://localhost` or `http://127.0.0.1`, only when the user types it). Any other request from a window is cancelled.
+- AI calls run in the main process, only to those same addresses, without cookies. Free mode's adapter refuses any address that isn't `http://127.0.0.1`.
 - "Open a website" uses `shell.openExternal` with https only, after the user presses Allow.
 - Electron fuses turn off `RunAsNode`, `NODE_OPTIONS` and the inspector flags, and only load the app from its checked asar.
 
@@ -81,14 +112,16 @@ To update the core: copy those files from `static/pilot/` over, update `core-ver
 ```
 npm ci
 npm start          # run Pilot
-npm test           # unit tests
-npm run smoke      # smoke test (on Linux: xvfb-run -a npm run smoke)
-npm run dist       # build the universal .dmg (on a Mac)
+npm run start:free # run Pilot Free
+npm test           # unit tests (Free mode against pretend Ollama and Draw Things servers)
+npm run smoke      # smoke test (on Linux: xvfb-run -a npm run smoke); PILOT_EDITION=free for Pilot Free
+npm run dist       # build Pilot's universal .dmg (on a Mac)
+npm run dist:free  # build Pilot Free's universal .dmg (into dist-free/)
 ```
 
 ## Releases
 
-`.github/workflows/pilot-desktop.yml` runs on `macos-latest` for every push that changes `pilot-desktop/**`, and by hand. It runs the tests and the smoke test, builds a universal (Apple Silicon + Intel) `.dmg`, checks it, uploads it as a workflow artifact, and creates or updates the GitHub Release **Pilot for Mac vX.Y.Z** (tag `pilot-mac-vX.Y.Z`, from `version` in `package.json`) with the `.dmg` attached. The release text comes from `RELEASE_NOTES.md`.
+`.github/workflows/pilot-desktop.yml` runs on `macos-latest` for every push that changes `pilot-desktop/**`, and by hand. It runs the tests and the smoke test for both editions, builds both universal (Apple Silicon + Intel) `.dmg`s, checks each (architectures, bundle id, the packaged edition flag, signature), uploads them as a workflow artifact, and creates or updates the GitHub Release **Pilot for Mac vX.Y.Z** (tag `pilot-mac-vX.Y.Z`, from `version` in `package.json`) with both attached: `Pilot-X.Y.Z-mac.dmg` and `Pilot-Free-X.Y.Z-mac.dmg`. The release text comes from `RELEASE_NOTES.md` (`{{DMG_URL}}` and `{{FREE_DMG_URL}}` are filled in).
 
 ### Signing (needs the owner)
 

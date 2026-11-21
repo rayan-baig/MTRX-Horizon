@@ -4,6 +4,11 @@
 // pictures of the robot and the chat window.
 //
 //   node test/smoke/run-smoke.mjs [--shots <folder>]
+//   PILOT_EDITION=free node test/smoke/run-smoke.mjs   (Pilot Free)
+//
+// Both editions go through Free mode (1.4) against a pretend Ollama and a
+// pretend Draw Things on this computer: the setup cards, "Download brain"
+// with its progress bar, a chat on the Mac and a picture from Draw Things.
 //
 // On Linux it needs a display (xvfb-run). In CI it runs on macOS.
 import { _electron as electron } from "playwright-core";
@@ -41,6 +46,77 @@ const mock = http.createServer((req, res) => {
 await new Promise((r) => mock.listen(0, "127.0.0.1", r));
 const mockUrl = `http://127.0.0.1:${mock.address().port}/v1`;
 
+// Pilot for Mac 1.4: which edition, and the pretend Free mode apps.
+const FREE = process.env.PILOT_EDITION === "free";
+const here0 = path.dirname(fileURLToPath(import.meta.url));
+const ROBOT_PNG = fs.readFileSync(path.join(here0, "..", "..", "assets", "robot-512.png")).toString("base64");
+const ollamaModels = [];
+const ollamaSeen = [];
+const ollama = http.createServer((req, res) => {
+  let body = "";
+  req.on("data", (c) => { body += c; });
+  req.on("end", () => {
+    const data = body ? JSON.parse(body) : {};
+    ollamaSeen.push({ url: req.url, body: data });
+    const json = (v, status) => { res.writeHead(status || 200, { "content-type": "application/json" }); res.end(JSON.stringify(v)); };
+    if (req.url === "/api/version") return json({ version: "0.12.0" });
+    if (req.url === "/api/tags") return json({ models: ollamaModels.map((m) => ({ name: m, model: m, size: 4.7 * 1024 ** 3, details: { parameter_size: "7.6B" } })) });
+    if (req.url === "/api/show") return json({ capabilities: ["completion", "tools"] });
+    if (req.url === "/api/pull") {
+      res.writeHead(200, { "content-type": "application/x-ndjson" });
+      const total = 4.7 * 1024 ** 3;
+      const lines = [{ status: "pulling manifest" }];
+      for (let i = 0; i <= 40; i += 1) lines.push({ status: "pulling 3a5b", digest: "sha256:3a5b", total, completed: Math.round((total * i) / 40) });
+      lines.push({ status: "verifying sha256 digest" }, { status: "writing manifest" }, { status: "success" });
+      let i = 0;
+      const next = () => {
+        if (i >= lines.length) { if (!ollamaModels.includes(data.model)) ollamaModels.push(data.model); res.end(); return; }
+        if (lines[i].status === "success" && !ollamaModels.includes(data.model)) ollamaModels.push(data.model);
+        res.write(`${JSON.stringify(lines[i])}\n`);
+        i += 1;
+        setTimeout(next, 150);
+      };
+      return next();
+    }
+    if (req.url === "/v1/chat/completions") {
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`);
+      const last = (data.messages || []).slice(-1)[0] || {};
+      const words = typeof last.content === "string" ? last.content : JSON.stringify(last.content || "");
+      if (last.role === "user" && /draw/i.test(words) && (data.tools || []).some((t) => t.function.name === "make_image")) {
+        send({ choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: "call_d", type: "function", function: { name: "make_image", arguments: "{\"prompt\":\"a friendly robot waving\"}" } }] } }] });
+        send({ choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }] });
+      } else if (last.role === "tool") {
+        for (const part of ["Here's your picture, ", "drawn right here on your Mac."]) send({ choices: [{ index: 0, delta: { content: part } }] });
+        send({ choices: [{ index: 0, delta: {}, finish_reason: "stop" }] });
+      } else {
+        for (const part of ["<think>short and friendly</think>", "Hi! I'm running ", "right here on your Mac, ", "so nothing you type leaves it. ", "What shall we do?"]) {
+          send({ choices: [{ index: 0, delta: { content: part } }] });
+        }
+        send({ choices: [{ index: 0, delta: {}, finish_reason: "stop" }] });
+      }
+      return res.end("data: [DONE]\n\n");
+    }
+    return json({ error: "not found" }, 404);
+  });
+});
+const drawSeen = [];
+const drawThings = http.createServer((req, res) => {
+  let body = "";
+  req.on("data", (c) => { body += c; });
+  req.on("end", () => {
+    drawSeen.push({ url: req.url, body: body ? JSON.parse(body) : null });
+    res.writeHead(200, { "content-type": "application/json" });
+    if (req.url === "/sdapi/v1/txt2img") setTimeout(() => res.end(JSON.stringify({ images: [ROBOT_PNG] })), 2500);
+    else res.end("{}");
+  });
+});
+// Spare ports, not listened on yet: at first Ollama and Draw Things "aren't there".
+const sparePort = () => new Promise((r) => { const s = http.createServer(); s.listen(0, "127.0.0.1", () => { const p = s.address().port; s.close(() => r(p)); }); });
+const ollamaPort = await sparePort();
+const drawPort = await sparePort();
+const appsDir = fs.mkdtempSync(path.join(os.tmpdir(), "pilot-apps-")); // no Ollama.app, no Draw Things.app
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const appDir = path.join(here, "..", "..");
 const shotsAt = process.argv.indexOf("--shots");
@@ -51,7 +127,8 @@ const check = (ok, what) => { console.log(`${ok ? "ok  " : "FAIL"} ${what}`); if
 
 const args = [appDir];
 if (process.platform === "linux") args.push("--no-sandbox");
-const env = { ...process.env, PILOT_TEST: "1", PILOT_USER_DATA: userData };
+const env = { ...process.env, PILOT_TEST: "1", PILOT_USER_DATA: userData, PILOT_TEST_OLLAMA: `http://127.0.0.1:${ollamaPort}`,
+  PILOT_TEST_DRAWTHINGS: `http://127.0.0.1:${drawPort}`, PILOT_TEST_APPS_DIR: appsDir };
 delete env.NODE_OPTIONS;
 const app = await electron.launch({ executablePath: electronPath, args, env });
 
@@ -66,7 +143,23 @@ async function pageFor(part) {
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const grabTo = async (name) => {
+  if (!shotsDir) return;
+  fs.mkdirSync(shotsDir, { recursive: true });
+  const b64 = await app.evaluate(async () => (await global.__pilotTest.chat().webContents.capturePage()).toPNG().toString("base64"));
+  fs.writeFileSync(path.join(shotsDir, name), Buffer.from(b64, "base64"));
+};
+
 try {
+  // Which edition this is, and where its AI runs at first.
+  const ed = await app.evaluate(() => global.__pilotTest.edition());
+  check(ed.id === (FREE ? "free" : "pilot") && ed.appName === (FREE ? "Pilot Free" : "Pilot"), `the ${FREE ? "Pilot Free" : "Pilot"} edition starts`);
+  check(await app.evaluate(({ app: a }) => a.getName()) === ed.appName, "the app is named after its edition");
+  const appleSilicon = process.platform === "darwin" && (process.arch === "arm64" || /apple/i.test((os.cpus()[0] || {}).model || ""));
+  const firstSource = await app.evaluate(() => global.__pilotTest.aiSource());
+  check(firstSource === (FREE || appleSilicon ? "free" : "key"), `the AI source starts as ${firstSource} (Free mode on Apple Silicon with no key)`);
+  // Pilot's key checks below run on "My AI key"; Free mode is checked after them.
+  if (!FREE) await app.evaluate(() => global.__pilotTest.setSource("key"));
   const robot = await pageFor("robot.html");
   await robot.waitForSelector(".pa-rest");
   await wait(800);
@@ -204,6 +297,88 @@ try {
   await wait(800);
   check(await app.evaluate(() => global.__pilotTest.chat().isVisible()), "clicking the robot opens the chat");
   const chat = await pageFor("chat.html");
+
+  // Free mode (1.4), end to end with the pretend Ollama and Draw Things.
+  async function openSettings() {
+    if (!(await chat.isVisible("#view-settings"))) await chat.click("#gear");
+    await wait(300);
+  }
+  async function freeMode() {
+    await chat.evaluate(() => window.pilot.chat.clear());
+    await openSettings();
+    await app.evaluate(() => global.__pilotTest.refreshFree());
+    await wait(300);
+    // 1. Nothing installed yet: friendly setup cards that open the download pages.
+    check(await chat.isVisible('[data-setup="ollama"]'), "Free mode: the Ollama setup card shows when it isn't installed");
+    check((await chat.textContent('[data-setup="ollama"]')).includes("Download Ollama (free)"), "the setup card has Download Ollama (free)");
+    check(await chat.isVisible('[data-setup="drawthings"]') && (await chat.textContent('[data-setup="drawthings"]')).includes("API Server (HTTP, port 7860)"),
+      "the Draw Things setup card names the one setting to turn on");
+    check((await chat.textContent("[data-video-note]")).includes("Videos aren't available"), "videos: an honest note");
+    check((await chat.textContent("#source-words")).startsWith("Free mode"), "the status line says Free mode");
+    await grabTo("pilot14-setup-ollama-raw.png");
+    await chat.evaluate(() => document.querySelector('[data-setup="drawthings"]').scrollIntoView());
+    await wait(200);
+    await grabTo("pilot14-setup-drawthings-raw.png");
+    // 2. Ollama is running now: "Download brain", with a progress bar.
+    await new Promise((r) => ollama.listen(ollamaPort, "127.0.0.1", r));
+    await chat.click('.free-card .btn:text("Check again")');
+    await chat.waitForSelector('.free-card .btn:text("Download brain")', { timeout: 8000 }).catch(() => {});
+    check(await chat.isVisible('.free-card .btn:text("Download brain")'), "Ollama running with no brain: Download brain");
+    const rec = await app.evaluate(() => global.__pilotTest.freeView().recommended);
+    check(Boolean(rec && rec.model && rec.label), `a brain is recommended for this Mac's memory (${rec && rec.label})`);
+    await chat.click('.free-card .btn:text("Download brain")');
+    let mid = false;
+    for (let i = 0; i < 60 && !mid; i += 1) {
+      await wait(150);
+      mid = await chat.evaluate(() => { const b = document.querySelector(".pullbox progress"); const v = b ? Number(b.getAttribute("value")) : 0; return v >= 30 && v <= 80; });
+    }
+    check(mid, "Download brain shows its progress bar");
+    await chat.evaluate(() => { const b = document.querySelector(".pullbox"); if (b) b.scrollIntoView(); });
+    await grabTo("pilot14-download-brain-raw.png");
+    await chat.waitForSelector('input[name="free-model"]:checked', { timeout: 15000 }).catch(() => {});
+    check(await chat.isVisible('input[name="free-model"]:checked'), "the downloaded brain is picked");
+    check(ollamaSeen.some((r) => r.url === "/api/pull" && r.body.model === rec.model && r.body.stream === true), "Pilot asked Ollama to pull the recommended brain");
+    const active = await app.evaluate(() => global.__pilotTest.activeSettings());
+    check(active.provider === "local" && active.key === "" && active.model === rec.model && !active.noTools, "Free mode: no key, the brain can use tools");
+    // 3. A chat on the Mac.
+    await chat.click("#view-settings .btn");
+    await wait(300);
+    check((await chat.textContent("#source-words")) === "Free mode · on your Mac", "status line: Free mode · on your Mac");
+    await wait(500);
+    check(await robot.getAttribute("html", "data-status") === "ready", "the robot's dot is green: ready");
+    await chat.fill("#input", "Hi Pilot! Are you really on my Mac?");
+    await chat.press("#input", "Enter");
+    await chat.waitForFunction(() => document.querySelector("#messages").textContent.includes("What shall we do?"), null, { timeout: 8000 }).catch(() => {});
+    const said = await chat.textContent("#messages");
+    check(said.includes("right here on your Mac") && !said.includes("think"), "a local chat streams in, without the brain's thinking");
+    const sent = ollamaSeen.filter((r) => r.url === "/v1/chat/completions").pop();
+    check(Boolean(sent && sent.body.stream && sent.body.model === rec.model && (sent.body.tools || []).length), "the chat went to Ollama's local server, with Pilot's tools");
+    check(Boolean(sent && /# Free mode/.test(sent.body.messages[0].content)), "the brain is told it runs in Free mode");
+    await wait(300);
+    await grabTo("pilot14-local-chat-raw.png");
+    // 4. A picture from Draw Things.
+    await new Promise((r) => drawThings.listen(drawPort, "127.0.0.1", r));
+    await app.evaluate(() => global.__pilotTest.refreshFree());
+    check((await app.evaluate(() => global.__pilotTest.freeView().drawThings)) === "on", "Draw Things' API Server is found");
+    await chat.evaluate(() => window.pilot.chat.clear());
+    await chat.fill("#input", "Can you draw me a friendly robot waving?");
+    await chat.press("#input", "Enter");
+    await chat.waitForSelector(".card .btn.primary", { timeout: 8000 }).catch(() => {});
+    check((await chat.textContent(".card").catch(() => "")).includes("Pilot wants to"), "making a picture asks first");
+    await chat.click(".card .btn.primary").catch(() => {});
+    await chat.waitForFunction(() => document.querySelector("#messages").textContent.includes("Drawing on your Mac"), null, { timeout: 4000 }).catch(() => {});
+    check((await chat.textContent("#messages")).includes("Drawing on your Mac with Draw Things"), "the picture shows its progress while Draw Things draws");
+    await chat.waitForSelector("#messages img[data-media]", { timeout: 10000 }).catch(() => {});
+    check(await chat.isVisible("#messages img[data-media]"), "the picture from Draw Things shows in the chat");
+    check(await chat.locator('#messages .media .mini:text("Save")').count() === 1, "with a Save button");
+    check(drawSeen.some((r) => r.url === "/sdapi/v1/txt2img" && r.body && r.body.prompt === "a friendly robot waving"), "Draw Things got the prompt");
+    await chat.waitForFunction(() => document.querySelector("#messages").textContent.includes("drawn right here"), null, { timeout: 8000 }).catch(() => {});
+    await chat.evaluate(() => { const i = document.querySelector("#messages img[data-media]"); if (i) i.scrollIntoView({ block: "center" }); });
+    await wait(400);
+    await grabTo("pilot14-local-image-raw.png");
+    await chat.evaluate(() => window.pilot.chat.clear());
+    await wait(200);
+  }
   // The chat must take the keyboard (Pilot 1.0 couldn't be typed into on a Mac).
   await wait(400);
   const focus = await app.evaluate(({ BrowserWindow }) => {
@@ -220,8 +395,13 @@ try {
   check(["undo", "redo", "cut", "copy", "paste", "selectall"].every((r) => roles.map((x) => x.toLowerCase()).includes(r)), "the app menu has the Edit shortcuts (paste, copy, select all, undo)");
   check((await chat.textContent(".greet")).includes("Hello! I'm Pilot."), "greeting bubble");
   check((await chat.locator(".chip").count()) === 5, "five pill buttons");
-  check((await chat.textContent(".byok")).includes("Bring Your Own API Key"), "Bring Your Own API Key card");
-  check((await chat.textContent(".tagline")) === "Your AI copilot. Powered by you.", "tagline");
+  if (FREE) {
+    check((await chat.textContent(".byok")).includes("Free mode · on your Mac"), "Pilot Free: the card says Free mode · on your Mac");
+    check((await chat.textContent(".tagline")) === "Your AI copilot. Free, on your Mac.", "Pilot Free tagline");
+  } else {
+    check((await chat.textContent(".byok")).includes("Bring Your Own API Key"), "Bring Your Own API Key card");
+    check((await chat.textContent(".tagline")) === "Your AI copilot. Powered by you.", "tagline");
+  }
   check(await chat.getAttribute("#input", "placeholder") === "Type a message...", "message box");
   check(await chat.evaluate(() => typeof require === "undefined" && Object.keys(window.pilot).join() === "robot,chat,settings,voice,attach,screen,app"), "chat window has only the small preload API");
   check(await app.evaluate(() => global.__pilotTest.context().chatOpen) === true, "the robot knows the chat is open (and stays calm)");
@@ -232,6 +412,7 @@ try {
   // First launch: a short welcome with three steps.
   await chat.waitForSelector(".welcome");
   check((await chat.locator(".welcome .steps li").count()) === 3, "first-launch welcome has three steps");
+  check((await chat.textContent(".welcome")).includes(FREE ? "Set up Free mode" : "Add your AI key"), "the welcome's first step fits the edition");
   if (shotsDir) {
     await wait(300);
     const b64 = await app.evaluate(async () => (await global.__pilotTest.chat().webContents.capturePage()).toPNG().toString("base64"));
@@ -265,7 +446,8 @@ try {
   await chat.fill("#input", "hello");
   await chat.press("#input", "Enter");
   await wait(400);
-  check((await chat.textContent("#messages")).includes("needs your own AI key"), "no key: Pilot says how to add one");
+  check((await chat.textContent("#messages")).includes(FREE ? "needs a brain first" : "needs your own AI key"),
+    FREE ? "no brain yet: Pilot says how to get one" : "no key: Pilot says how to add one");
 
   // Script injection in an answer shows as text.
   await app.evaluate(() => global.__pilotTest.seed([{ role: "assistant", text: "<img src=x onerror=alert(1)><script>window.__x=1</script> **safe**" }]));
@@ -284,7 +466,15 @@ try {
   await chat.click("#byok");
   await wait(300);
   check(await chat.isVisible("#view-settings"), "the key card opens settings");
-  check((await chat.textContent("#view-settings")).includes("Your AI keys"), "settings lists AI keys");
+  if (FREE) {
+    const page = await chat.textContent("#view-settings");
+    check(page.includes("Free mode · on your Mac") && page.includes("Download Ollama (free)"), "Pilot Free settings: the Free mode setup card");
+    check(!["Your AI keys", "API key", "Add a key", "Image key", "Video key", "AI source"].some((w) => page.includes(w))
+      && await chat.locator("#view-settings input[type=password]").count() === 0, "Pilot Free settings: no key settings, slots or provider list");
+  } else {
+    check((await chat.textContent("#view-settings")).includes("Your AI keys"), "settings lists AI keys");
+    check((await chat.textContent("#view-settings")).includes("AI source"), "Pilot settings: the AI source choice");
+  }
 
   if (shotsDir) {
     await chat.click("#view-settings .btn");
@@ -321,6 +511,11 @@ try {
   // End to end with the pretend provider: type, Enter, a streamed reply; an
   // action card answered with Allow; a dropped picture sent with a message.
   const saved = await chat.evaluate((url) => window.pilot.settings.saveProfile({ provider: "compatible", baseUrl: url, model: "local-test", label: "Local" }, ""), mockUrl);
+  if (FREE) {
+    check(saved && /doesn't use API keys/.test(saved.error || ""), "Pilot Free refuses to save a key");
+    check(Boolean((await chat.evaluate(() => window.pilot.settings.saveMedia("image", { provider: "openai", model: "x" }, "k"))).error), "Pilot Free refuses an image key");
+    await freeMode();
+  } else {
   check(saved && saved.ok, "a compatible key on this computer can be saved");
   await chat.click("#view-settings .btn").catch(() => {});
   await chat.evaluate(() => window.pilot.chat.clear());
@@ -357,6 +552,22 @@ try {
   await chat.evaluate(() => window.pilot.chat.clear());
   await wait(300);
   check(!(await chat.textContent("#messages")).includes("test reply"), "Clear empties the chat");
+  // Pilot: Free mode is there too, as the other AI source.
+  await app.evaluate(() => global.__pilotTest.setSource("free"));
+  await chat.click("#gear").catch(() => {});
+  await wait(400);
+  if (!(await chat.isVisible("#view-settings"))) { await chat.click("#gear"); await wait(300); }
+  const freePage = await chat.textContent("#view-settings");
+  check(freePage.includes("Download Ollama (free)") && freePage.includes("Videos aren't available in Free mode") && !freePage.includes("Your AI keys"),
+    "Pilot with Free mode picked: the Free mode cards instead of the keys");
+  check(await chat.isVisible("#source") && (await chat.textContent(".byok")).includes("Free mode · on your Mac"), "Pilot: the status line shows Free mode");
+  if (shotsDir) await grabTo("pilot14-pilot-ai-source-raw.png");
+  await chat.click('input[name="ai-source"][value="key"]');
+  await wait(300);
+  check((await chat.textContent("#view-settings")).includes("Your AI keys") && !(await chat.isVisible("#source")), "back to My AI key");
+  await chat.click("#view-settings .btn").catch(() => {});
+  await wait(200);
+  }
 
   // Screen access: the mode hides the eye when off.
   await chat.click("#gear").catch(() => {});
@@ -421,6 +632,9 @@ try {
   console.error(e);
 } finally {
   mock.close();
+  ollama.close();
+  drawThings.close();
+  fs.rmSync(appsDir, { recursive: true, force: true });
   await app.close().catch(() => {});
   fs.rmSync(userData, { recursive: true, force: true });
 }

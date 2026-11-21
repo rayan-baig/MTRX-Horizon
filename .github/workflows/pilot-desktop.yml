@@ -1,5 +1,8 @@
-# Pilot for Mac: tests the app, builds one universal .dmg (Apple Silicon and
-# Intel), and puts it on a GitHub Release named "Pilot for Mac vX.Y.Z".
+# Pilot for Mac: tests the app, builds both editions as universal .dmgs
+# (Apple Silicon and Intel), and puts both on a GitHub Release named
+# "Pilot for Mac vX.Y.Z":
+#   Pilot-X.Y.Z-mac.dmg       "Pilot", your own AI keys, plus Free mode
+#   Pilot-Free-X.Y.Z-mac.dmg  "Pilot Free", Free mode only (AI on the Mac, no keys)
 #
 # The app is signed and notarised only when these repository secrets exist:
 # CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD,
@@ -38,8 +41,12 @@ jobs:
         run: npm ci
       - name: Tests
         run: npm test
-      - name: Smoke test (the real app, clicked by Playwright)
-        run: node test/smoke/run-smoke.mjs --shots ../pilot-shots
+      - name: Smoke test, Pilot (the real app, clicked by Playwright)
+        run: node test/smoke/run-smoke.mjs --shots ../pilot-shots/pilot
+      - name: Smoke test, Pilot Free
+        env:
+          PILOT_EDITION: free
+        run: node test/smoke/run-smoke.mjs --shots ../pilot-shots/free
       - name: Screenshots from the smoke test
         if: always()
         uses: actions/upload-artifact@v7
@@ -47,7 +54,7 @@ jobs:
           name: pilot-mac-screenshots
           path: pilot-shots/
           if-no-files-found: ignore
-      - name: Build the universal .dmg
+      - name: Build both universal .dmgs (Pilot, then Pilot Free)
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -61,27 +68,44 @@ jobs:
           done
           if [ -z "${CSC_LINK:-}" ]; then export CSC_IDENTITY_AUTO_DISCOVERY=false; echo "No signing secrets: building an ad-hoc signed app."; fi
           npm run dist
-      - name: Check the .dmg
+          npm run dist:free
+      - name: Check both .dmgs
         run: |
           set -euo pipefail
-          DMG=$(ls dist/*.dmg)
+          VERSION=$(node -p "require('./package.json').version")
+          DMG="dist/Pilot-$VERSION-mac.dmg"
+          FREE_DMG="dist-free/Pilot-Free-$VERSION-mac.dmg"
           echo "DMG=$DMG" >> "$GITHUB_ENV"
-          hdiutil verify "$DMG"
-          MNT=$(mktemp -d)
-          hdiutil attach "$DMG" -nobrowse -readonly -mountpoint "$MNT"
-          ls -la "$MNT"
-          test -L "$MNT/Applications"
-          lipo -archs "$MNT/Pilot.app/Contents/MacOS/Pilot" | tee archs.txt
-          grep -q x86_64 archs.txt && grep -q arm64 archs.txt
-          /usr/libexec/PlistBuddy -c "Print :LSUIElement" "$MNT/Pilot.app/Contents/Info.plist" | grep -q true
-          codesign --verify --deep --strict "$MNT/Pilot.app"
-          codesign -dv "$MNT/Pilot.app" 2>&1 | grep -E "Signature|TeamIdentifier|Identifier" || true
-          hdiutil detach "$MNT"
-      - name: Upload the .dmg
+          echo "FREE_DMG=$FREE_DMG" >> "$GITHUB_ENV"
+          check() {
+            local dmg="$1" app="$2" id="$3" edition="$4"
+            hdiutil verify "$dmg"
+            MNT=$(mktemp -d)
+            hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$MNT"
+            ls -la "$MNT"
+            test -L "$MNT/Applications"
+            lipo -archs "$MNT/$app.app/Contents/MacOS/$app" | tee archs.txt
+            grep -q x86_64 archs.txt && grep -q arm64 archs.txt
+            /usr/libexec/PlistBuddy -c "Print :LSUIElement" "$MNT/$app.app/Contents/Info.plist" | grep -q true
+            test "$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$MNT/$app.app/Contents/Info.plist")" = "$id"
+            # The packaged app knows its edition (written by electron-builder's extraMetadata).
+            X=$(mktemp -d)
+            (cd "$X" && "$GITHUB_WORKSPACE/pilot-desktop/node_modules/.bin/asar" extract-file "$MNT/$app.app/Contents/Resources/app.asar" package.json)
+            node -e "const p=require(process.argv[1]);if(p.pilotEdition!==process.argv[2]||p.productName!==process.argv[3])process.exit(1)" "$X/package.json" "$edition" "$app"
+            rm -rf "$X"
+            codesign --verify --deep --strict "$MNT/$app.app"
+            codesign -dv "$MNT/$app.app" 2>&1 | grep -E "Signature|TeamIdentifier|Identifier" || true
+            hdiutil detach "$MNT"
+          }
+          check "$DMG" "Pilot" "com.mtrxhorizyn.pilot" "pilot"
+          check "$FREE_DMG" "Pilot Free" "com.mtrxhorizyn.pilot.free" "free"
+      - name: Upload the .dmgs
         uses: actions/upload-artifact@v7
         with:
           name: pilot-mac-dmg
-          path: pilot-desktop/dist/*.dmg
+          path: |
+            pilot-desktop/dist/*.dmg
+            pilot-desktop/dist-free/*.dmg
           if-no-files-found: error
       - name: Release "Pilot for Mac vX.Y.Z"
         if: github.event_name == 'workflow_dispatch' || github.ref_name == 'claude/trusting-carson-5aqdd1' || github.ref_name == github.event.repository.default_branch
@@ -91,14 +115,16 @@ jobs:
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
           TAG="pilot-mac-v$VERSION"
-          NAME=$(basename "$DMG")
-          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${NAME}"
-          sed -e "s|{{VERSION}}|$VERSION|g" -e "s|{{DMG_URL}}|$URL|g" RELEASE_NOTES.md > notes.md
+          BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          URL="$BASE/$(basename "$DMG")"
+          FREE_URL="$BASE/$(basename "$FREE_DMG")"
+          sed -e "s|{{VERSION}}|$VERSION|g" -e "s|{{DMG_URL}}|$URL|g" -e "s|{{FREE_DMG_URL}}|$FREE_URL|g" RELEASE_NOTES.md > notes.md
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$DMG" --clobber
+            gh release upload "$TAG" "$DMG" "$FREE_DMG" --clobber
             gh release edit "$TAG" --title "Pilot for Mac v$VERSION" --notes-file notes.md
           else
-            gh release create "$TAG" "$DMG" --title "Pilot for Mac v$VERSION" --notes-file notes.md --target "$GITHUB_SHA"
+            gh release create "$TAG" "$DMG" "$FREE_DMG" --title "Pilot for Mac v$VERSION" --notes-file notes.md --target "$GITHUB_SHA"
           fi
           echo "Release: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" >> "$GITHUB_STEP_SUMMARY"
-          echo "Download: $URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pilot (your own keys + Free mode): $URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pilot Free (Free mode only): $FREE_URL" >> "$GITHUB_STEP_SUMMARY"

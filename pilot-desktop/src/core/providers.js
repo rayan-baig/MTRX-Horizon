@@ -9,7 +9,10 @@
 //   - the calls run in the main process (Node), not a browser, so the
 //     Anthropic browser-access header is left out;
 //   - the user may type any https:// (or http://localhost) compatible address:
-//     it's their own app, so there's no site allowlist.
+//     it's their own app, so there's no site allowlist;
+//   - Free mode (1.4): "local", the OpenAI-compatible server of Ollama on the
+//     Mac itself (http://127.0.0.1 only). It isn't in the provider list (no
+//     key to add); the main process picks it when Free mode is on.
 //
 // Pilot's message shape (same as the core, plus `images` and `image`):
 //   {role: "user", text, images: [{mime, data}]}
@@ -32,9 +35,18 @@ const HOSTS = {
 };
 
 const LIST = CORE_LIST.map((p) => (p.id === "compatible" ? { ...p, label: "Any compatible API" } : { ...p }));
-const NAMES = { anthropic: "Anthropic", openai: "OpenAI", gemini: "Google Gemini", compatible: "your provider" };
+const NAMES = { anthropic: "Anthropic", openai: "OpenAI", gemini: "Google Gemini", compatible: "your provider", local: "Ollama on your Mac" };
+
+// Free mode only ever talks to this Mac.
+const localBase = (raw) => {
+  try {
+    const u = new URL(String(raw || ""));
+    return u.protocol === "http:" && u.hostname === "127.0.0.1" && !u.username && !u.password && !u.search && !u.hash;
+  } catch (_) { return false; }
+};
 
 function providerName(s) {
+  if (s && s.provider === "local") return NAMES.local;
   if (s && s.provider === "compatible" && s.baseUrl) {
     try { return new URL(s.baseUrl).host; } catch (_) { return "your provider"; }
   }
@@ -139,11 +151,47 @@ gemini.toWire = function toWire(messages) {
   return contents;
 };
 
-const ADAPTERS = { anthropic, openai: openaiLike("openai"), compatible: openaiLike("compatible"), gemini };
+// Free mode: the compatible adapter, pointed at Ollama on this Mac. Models
+// that think out loud wrap it in <think>…</think>: that part isn't shown.
+const stripThinking = (t) => String(t || "").replace(/<think>[\s\S]*?<\/think>\s*/g, "").replace(/<think>[\s\S]*$/, "");
+
+function localError(e, s) {
+  if (!e || !e.kind) return e;
+  const host = (() => { try { return new URL(s.baseUrl).host; } catch (_) { return ""; } })();
+  if (e.kind === "network") {
+    return new PilotError("network", "Pilot couldn't reach Ollama on your Mac. Open the Ollama app (it lives in the menu bar), then try again.");
+  }
+  if (e.kind === "model") return new PilotError("model", `Ollama doesn't have the brain “${s.model}” yet. Download it in Settings → Free mode.`, e.status);
+  if (e.kind === "noimages") return new PilotError("noimages", "This brain can't look at pictures. Pick one that can in Settings → Free mode.", e.status);
+  const words = host ? String(e.message).split(host).join(NAMES.local) : String(e.message);
+  return new PilotError(e.kind, words.replace(/your provider/g, NAMES.local), e.status);
+}
+
+const compatibleAdapter = openaiLike("compatible");
+const local = Object.create(compatibleAdapter);
+local.models = async function models(s, fetcher, signal) {
+  try { return await compatibleAdapter.models.call(this, s, fetcher, signal); } catch (e) { throw localError(e, s); }
+};
+local.chat = async function chat(s, req, fetcher) {
+  const onText = req.onText ? (t) => req.onText(stripThinking(t)) : undefined;
+  try {
+    const r = await compatibleAdapter.chat.call(this, s, { ...req, onText }, fetcher);
+    return { ...r, text: stripThinking(r.text).trim() };
+  } catch (e) {
+    if (e && e.name === "AbortError") throw e;
+    throw localError(e, s);
+  }
+};
+
+const ADAPTERS = { anthropic, openai: openaiLike("openai"), compatible: compatibleAdapter, gemini, local };
 
 function prepare(s) {
   const a = ADAPTERS[s && s.provider];
   if (!a) throw new PilotError("key", "Choose an AI provider in Pilot settings first.");
+  if (s.provider === "local") {
+    if (!localBase(s.baseUrl)) throw new PilotError("address", "Free mode only talks to Ollama on this Mac.");
+    return { a, s: { ...s, key: "", baseUrl: String(s.baseUrl).replace(/\/+$/, "") } };
+  }
   if (s.provider !== "compatible") return { a, s };
   const bad = checkBaseUrl(s.baseUrl);
   if (bad) throw bad;
@@ -171,10 +219,11 @@ function originFor(s) {
   if (!s) return null;
   if (HOSTS[s.provider]) return HOSTS[s.provider];
   if (s.provider === "compatible" && !checkBaseUrl(s.baseUrl)) return new URL(s.baseUrl).origin;
+  if (s.provider === "local" && localBase(s.baseUrl)) return new URL(s.baseUrl).origin;
   return null;
 }
 
 module.exports = {
   VERSION, CORE_VERSION: core.VERSION, LIST, NAMES, HOSTS, PilotError, providerName, checkBaseUrl, listModels, chat,
-  readEvents: core.readEvents, originFor, adapters: ADAPTERS,
+  readEvents: core.readEvents, originFor, adapters: ADAPTERS, stripThinking, localBase,
 };

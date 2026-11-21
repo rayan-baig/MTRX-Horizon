@@ -70,7 +70,7 @@
     $("gear").setAttribute("aria-pressed", String(next === "settings"));
     $("helpbtn").setAttribute("aria-pressed", String(next === "help"));
     closeMenus();
-    if (next === "settings") renderSettings();
+    if (next === "settings") { renderSettings(); if (settings && (settings.sections || []).includes("free")) P.settings.freeStatus(); }
     if (next === "help") renderHelp();
     if (next === "chat") setTimeout(() => ui.input.focus(), 0);
   }
@@ -83,7 +83,8 @@
       const pct = m.progress === null || m.progress === undefined ? null : Math.round(m.progress / 10) * 10;
       box.appendChild(el("div", { class: `progress${pct === null ? " unknown" : ""}` }, el("span", { class: pct === null ? "" : `p${pct}` })));
       box.appendChild(el("div", { class: "meta", text: m.kind === "video"
-        ? `Making your video${pct === null ? "…" : ` (${m.progress}%)`}. This can take a few minutes.` : "Making your picture…" }));
+        ? `Making your video${pct === null ? "…" : ` (${m.progress}%)`}. This can take a few minutes.`
+        : m.local ? `Drawing on your Mac with Draw Things… ${m.seconds || 0} s` : "Making your picture…" }));
       return box;
     }
     if (m.state === "failed") { box.appendChild(el("div", { class: "meta", text: m.message || "That didn't work." })); return box; }
@@ -169,12 +170,17 @@
   // The first time: three short steps, then the usual pill buttons.
   function welcomeNode() {
     const done = Boolean(settings && settings.ready);
+    const free = Boolean(settings && settings.source === "free");
     return el("div", { class: "card welcome", role: "region", "aria-label": "Welcome to Pilot" },
       el("h3", { text: "Welcome! Three quick steps" }),
       el("ol", { class: "steps" },
-        el("li", { class: done ? "done" : "" }, el("strong", { text: "Add your AI key. " }),
-          done ? "Done!" : "Your own OpenAI, Claude, Gemini or compatible key.",
-          done ? null : el("button", { class: "btn primary small", type: "button", text: "Add my key", onclick: () => show("settings") })),
+        free
+          ? el("li", { class: done ? "done" : "" }, el("strong", { text: "Set up Free mode. " }),
+            done ? "Done! Pilot's brain runs on your Mac." : "Free AI that runs on your Mac: install the free Ollama app, then download a brain.",
+            done ? null : el("button", { class: "btn primary small", type: "button", text: "Set up Free mode", onclick: () => show("settings") }))
+          : el("li", { class: done ? "done" : "" }, el("strong", { text: "Add your AI key. " }),
+            done ? "Done!" : "Your own OpenAI, Claude, Gemini or compatible key.",
+            done ? null : el("button", { class: "btn primary small", type: "button", text: "Add my key", onclick: () => show("settings") })),
         el("li", { class: settings && settings.screen && settings.screen.allowed ? "done" : "" }, el("strong", { text: "Screen access, if you like. " }),
           settings && settings.screen && settings.screen.allowed ? "Allowed. Pilot looks only when you ask."
             : "Let Pilot see your screen when you ask. In System Settings, turn on Pilot under Screen Recording.",
@@ -578,11 +584,125 @@
     clear(page);
     page.appendChild(el("div", { class: "page-title" }, el("h2", { text: "Settings" }),
       el("button", { class: "btn", type: "button", text: "Back to chat", onclick: () => show("chat") })));
-    if (!settings.keychain) {
-      page.appendChild(el("div", { class: "page-card" }, el("p", { class: "form-msg error", text: "Pilot can't reach your Mac's Keychain right now, so it can't save keys. Restart your Mac and try again." })));
+    // Which sections show comes from the main process: Pilot Free has no
+    // key sections at all; Pilot shows Free mode or the keys, as picked.
+    const sections = settings.sections || ["keys", "media", "screen", "memory", "notes", "voice", "general"];
+    const build = { source: sourceCard, free: freeCard, keys: keysCards, media: mediaCards, screen: screenCard,
+      memory: memoryCard, notes: notesCard, voice: voiceCard, general: generalCard };
+    for (const name of sections) {
+      const out = build[name] ? build[name]() : null;
+      for (const node of [].concat(out || [])) if (node) page.appendChild(node);
+    }
+    page.scrollTop = keep;
+  }
+
+  // Pilot (the customers' edition): where the AI runs.
+  function sourceCard() {
+    const radio = (src, title, words) => el("label", { class: "mode" },
+      el("input", { type: "radio", name: "ai-source", value: src, checked: settings.source === src, onchange: () => P.settings.setSource(src) }),
+      el("span", {}, el("b", { text: title }), el("small", { text: words })));
+    return el("div", { class: "page-card" }, el("h3", { text: "AI source" }),
+      radio("free", "Free: runs on my Mac", "AI on this Mac with the free Ollama app. No key, nothing leaves your Mac, works offline."),
+      radio("key", "My AI key", "Your own key from Anthropic, OpenAI, Google Gemini or a compatible API. Your provider bills you."));
+  }
+
+  // Free mode: Ollama for chat, Draw Things for pictures, an honest note on videos.
+  function freeCard() {
+    const f = settings.free || {};
+    const freeEdition = !(settings.edition && settings.edition.keys);
+    const btn = (text, onclick, primary) => el("button", { class: `btn${primary ? " primary" : ""}`, type: "button", text, onclick });
+    const check = () => P.settings.freeStatus();
+    const card = el("div", { class: "page-card free-card" }, el("h3", {}, "Free mode · on your Mac ",
+      el("span", { class: `badge${f.ollama === "running" && f.model ? "" : " warn"}`, text: f.ollama === "running" && f.model ? "Ready" : "Setting up" })),
+    el("p", { text: "Pilot's brain runs on this Mac, with free apps. No keys, no account, nothing you type leaves your Mac, and it works offline once set up." }));
+
+    // Chat: Ollama
+    card.appendChild(el("h4", {}, "Chat: Ollama ", el("span", { class: `badge${f.ollama === "running" ? "" : " warn"}`,
+      text: f.ollama === "running" ? "Running" : f.ollama === "stopped" ? "Not running" : f.ollama === "missing" ? "Not installed" : "Checking…" })));
+    if (f.ollama === "missing" || f.ollama === "unknown") {
+      card.appendChild(el("div", { class: "setup", "data-setup": "ollama" },
+        el("p", { text: "Ollama is a free app that runs AI models on your Mac. Pilot uses it for Free mode." }),
+        el("ol", {},
+          el("li", { text: "Press “Download Ollama (free)”. It opens ollama.com in your browser." }),
+          el("li", { text: "Open the download, drag Ollama to Applications, and open it once." }),
+          el("li", { text: "Come back here: Pilot notices Ollama by itself." })),
+        el("div", { class: "card-buttons" }, btn("Download Ollama (free)", () => P.settings.freeOpen("ollama-download"), true), btn("Check again", check))));
+    } else if (f.ollama === "stopped") {
+      card.appendChild(el("div", { class: "setup", "data-setup": "ollama-stopped" },
+        el("p", { text: "Ollama is installed but not running. Open it (it lives in the menu bar), then Pilot can chat." }),
+        el("div", { class: "card-buttons" }, btn("Open Ollama", () => P.settings.freeOpen("ollama-app"), true), btn("Check again", check))));
+    } else if (f.ollama === "running") {
+      // The brain: the recommended one for this Mac, and any already in Ollama.
+      const rec = f.recommended;
+      const pulling = f.pull && !f.pull.done;
+      if (rec) {
+        card.appendChild(el("p", { class: "rec" }, `Recommended for your Mac (${f.memoryGB} GB memory): `,
+          el("b", { text: rec.label }), rec.download ? ` · ${rec.download}` : "", rec.installed ? " · downloaded" : ""));
+      }
+      if (f.pull) {
+        const pct = f.pull.progress === null || f.pull.progress === undefined ? null : Math.round(f.pull.progress * 100);
+        card.appendChild(el("div", { class: "pullbox", "data-pull": f.pull.done ? "done" : "running" },
+          el("progress", { class: "bar", max: "100", value: pct === null ? null : String(pct), "aria-label": "Downloading the brain" }),
+          el("div", { class: `pullwords${f.pull.error ? " error" : ""}`,
+            text: f.pull.error || `${f.pull.words}${pct !== null && !f.pull.done ? ` ${pct}%` : ""}` })));
+      }
+      const buttons = el("div", { class: "card-buttons" });
+      if (pulling) buttons.appendChild(btn("Cancel download", () => P.settings.freeCancel()));
+      else if (rec && !rec.installed) buttons.appendChild(btn("Download brain", () => P.settings.freePull(rec.model), true));
+      buttons.appendChild(btn("Check again", check));
+      card.appendChild(buttons);
+      if (!pulling && rec && !rec.installed) {
+        card.appendChild(el("p", { class: "small", text: `The download is ${rec.download || "a few GB"}, once. After that, Free mode works offline.` }));
+      }
+      if (f.models && f.models.length) {
+        card.appendChild(el("p", { class: "small", text: "Brains in Ollama on this Mac (pick one):" }));
+        for (const m of f.models) {
+          card.appendChild(el("label", { class: "row" },
+            el("input", { type: "radio", name: "free-model", value: m.id, checked: m.id === f.model, onchange: () => P.settings.freeUse(m.id) }),
+            el("div", { class: "grow" }, el("div", { class: "name", text: m.id }), el("div", { class: "meta", text: [m.params, m.size].filter(Boolean).join(" · ") }))));
+        }
+        if (f.model) {
+          card.appendChild(el("p", { class: "small", text: f.noTools
+            ? "This brain just chats: it can't use Pilot's actions (copy, open a website, notes, pictures)."
+            : "This brain can use Pilot's actions, always asking you first." }));
+        }
+      } else if (!pulling) card.appendChild(el("p", { class: "empty", text: "No brain yet. Press “Download brain”." }));
     }
 
-    // Chat keys
+    // Pictures: Draw Things
+    card.appendChild(el("h4", {}, "Pictures: Draw Things ", el("span", { class: `badge${f.drawThings === "on" ? "" : " warn"}`,
+      text: f.drawThings === "on" ? "On" : f.drawThings === "off" ? "API off" : f.drawThings === "missing" ? "Not installed" : "Checking…" })));
+    if (f.drawThings === "on") {
+      card.appendChild(el("p", { class: "small", text: "Draw Things is on: ask Pilot for a picture and it's drawn on your Mac, with the model chosen in Draw Things." }));
+    } else {
+      card.appendChild(el("div", { class: "setup", "data-setup": "drawthings" },
+        el("p", { text: f.drawThings === "off"
+          ? "Draw Things is installed. Turn on its API Server so Pilot can ask it for pictures."
+          : "Draw Things is a free Mac app that makes pictures on your Mac. Optional: Free mode chats without it." }),
+        el("ol", {},
+          f.drawThings === "off" ? null : el("li", { text: "Press “Get Draw Things (free)”: the Mac App Store page opens in your browser. Install it and open it." }),
+          el("li", { text: "In Draw Things, download a model it suggests and make one test picture." }),
+          el("li", { text: "In Draw Things' settings, turn on API Server (HTTP, port 7860), and leave Draw Things open." })),
+        el("div", { class: "card-buttons" },
+          f.drawThings === "off" ? btn("Open Draw Things", () => P.settings.freeOpen("drawthings-app"), true)
+            : btn("Get Draw Things (free)", () => P.settings.freeOpen("drawthings-store"), true),
+          btn("Check again", check))));
+    }
+
+    // Videos: honest.
+    card.appendChild(el("h4", {}, "Videos ", el("span", { class: "badge warn", text: "Not in Free mode" })));
+    card.appendChild(el("p", { class: "small", "data-video-note": "1", text: freeEdition
+      ? "Videos aren't available in Pilot Free. Making video on a Mac isn't practical yet: it needs a video key, which Pilot Free doesn't use."
+      : "Videos aren't available in Free mode. Making video on a Mac isn't practical yet: it needs a video key (pick “My AI key” above)." }));
+    return card;
+  }
+
+  // Chat keys (Pilot only).
+  function keysCards() {
+    const out = [];
+    if (!settings.keychain) {
+      out.push(el("div", { class: "page-card" }, el("p", { class: "form-msg error", text: "Pilot can't reach your Mac's Keychain right now, so it can't save keys. Restart your Mac and try again." })));
+    }
     const keysCard = el("div", { class: "page-card" }, el("h3", { text: "Your AI keys" }),
       el("p", { text: "Pilot works with your own key from Anthropic, OpenAI, Google Gemini, or any OpenAI-compatible API. Your provider bills you; MTRX pays nothing and never sees your key." }));
     if (!settings.profiles.length) keysCard.appendChild(el("p", { class: "empty", text: "No key yet. Add one to start chatting." }));
@@ -597,13 +717,17 @@
     }
     keysCard.appendChild(el("div", { class: "card-buttons" }, el("button", { class: "btn primary", type: "button", text: "Add a key",
       onclick: () => { editing = { kind: "chat", id: null }; renderSettings(); } })));
-    page.appendChild(keysCard);
+    out.push(keysCard);
     if (editing && editing.kind === "chat") {
       const existing = editing.id ? settings.profiles.find((p) => p.id === editing.id) : null;
-      page.appendChild(keyForm("chat", existing, () => { editing = null; renderSettings(); }));
+      out.push(keyForm("chat", existing, () => { editing = null; renderSettings(); }));
     }
+    return out;
+  }
 
-    // Pictures and videos
+  // Picture and video keys (Pilot only).
+  function mediaCards() {
+    const out = [];
     const mediaCard = el("div", { class: "page-card" }, el("h3", { text: "Pictures and videos" }),
       el("p", { text: "Optional. Add an image key or a video key (OpenAI, Google Gemini, or a compatible API) and Pilot can make pictures and videos for you. Each one is billed by your provider." }));
     for (const kind of ["image", "video"]) {
@@ -614,43 +738,46 @@
         el("button", { class: "mini", type: "button", text: m ? "Change" : "Add", onclick: () => { editing = { kind }; renderSettings(); } }),
         m ? el("button", { class: "mini", type: "button", text: "Remove", onclick: () => P.settings.removeMedia(kind) }) : null));
     }
-    page.appendChild(mediaCard);
+    out.push(mediaCard);
     if (editing && (editing.kind === "image" || editing.kind === "video")) {
-      page.appendChild(keyForm(editing.kind, settings.media[editing.kind], () => { editing = null; renderSettings(); }));
+      out.push(keyForm(editing.kind, settings.media[editing.kind], () => { editing = null; renderSettings(); }));
     }
+    return out;
+  }
 
-    // Screen
-    page.appendChild(screenCard());
-
-    // Memory
+  function memoryCard() {
+    const free = settings.source === "free";
     const memCard = el("div", { class: "page-card" }, el("h3", { text: "Memory" }),
       el("label", { class: "toggle" }, "Let Pilot remember things you ask it to", el("input", { type: "checkbox", checked: settings.memoryOn,
         onchange: (ev) => P.settings.setMemory(ev.target.checked) })),
-      el("p", { class: "small", text: "Off unless you turn it on. Kept only on this Mac, and sent to your AI provider with your messages so Pilot can use it." }));
+      el("p", { class: "small", text: free
+        ? "Off unless you turn it on. Kept only on this Mac, and used by the brain on your Mac."
+        : "Off unless you turn it on. Kept only on this Mac, and sent to your AI provider with your messages so Pilot can use it." }));
     if (settings.memory.length) {
       for (const m of settings.memory) {
         memCard.appendChild(el("div", { class: "row" }, el("div", { class: "grow", text: m.text }),
           el("button", { class: "mini", type: "button", text: "Delete", onclick: () => P.settings.removeMemory(m.id) })));
       }
     } else memCard.appendChild(el("p", { class: "empty", text: "Nothing remembered." }));
-    page.appendChild(memCard);
+    return memCard;
+  }
 
-    // Notes
-    const notesCard = el("div", { class: "page-card" }, el("h3", { text: "Notes Pilot saved" }));
+  function notesCard() {
+    const card = el("div", { class: "page-card" }, el("h3", { text: "Notes Pilot saved" }));
     if (settings.notes.length) {
       for (const n of settings.notes) {
-        notesCard.appendChild(el("div", { class: "row" },
+        card.appendChild(el("div", { class: "row" },
           el("div", { class: "grow" }, el("div", { class: "name", text: n.title || "Note" }), el("div", { class: "meta", text: n.text })),
           el("button", { class: "mini", type: "button", text: "Copy", onclick: () => P.settings.copyNote(n.id) }),
           el("button", { class: "mini", type: "button", text: "Delete", onclick: () => P.settings.removeNote(n.id) })));
       }
-    } else notesCard.appendChild(el("p", { class: "empty", text: "No notes yet. Ask Pilot to “make a note”." }));
-    page.appendChild(notesCard);
+    } else card.appendChild(el("p", { class: "empty", text: "No notes yet. Ask Pilot to “make a note”." }));
+    return card;
+  }
 
-    page.appendChild(voiceCard());
-
-    // General
-    page.appendChild(el("div", { class: "page-card" }, el("h3", { text: "Pilot on this Mac" }),
+  function generalCard() {
+    const name = (settings.edition && settings.edition.name) || "Pilot";
+    return el("div", { class: "page-card" }, el("h3", { text: "Pilot on this Mac" }),
       el("label", { class: "toggle" }, "Start Pilot when I log in", el("input", { type: "checkbox", checked: settings.openAtLogin,
         onchange: (ev) => P.settings.setLogin(ev.target.checked) })),
       el("label", { class: "field" }, el("span", { text: "Energy: how much the robot moves around" }),
@@ -662,12 +789,11 @@
         : settings.energy === "always"
           ? "He keeps still while this chat is open, while a video or game is full screen, and while you're away from your Mac."
           : "He keeps still while you type, while a video or game is full screen, and while this chat is open." }),
-      el("p", { class: "small", text: `Pilot for Mac ${settings.version}. Hide Pilot or quit it any time from the robot head in the menu bar.` }),
+      el("p", { class: "small", text: `${name} for Mac ${settings.version}. Hide Pilot or quit it any time from the robot head in the menu bar.` }),
       el("div", { class: "card-buttons" },
         el("button", { class: "btn", type: "button", text: "Clear this chat", onclick: () => { P.chat.clear(); show("chat"); } }),
-        el("button", { class: "btn", type: "button", text: "About Pilot", onclick: () => P.app.about() }),
-        el("button", { class: "btn danger", type: "button", text: "Quit Pilot", onclick: () => P.app.quit() }))));
-    page.scrollTop = keep;
+        el("button", { class: "btn", type: "button", text: `About ${name}`, onclick: () => P.app.about() }),
+        el("button", { class: "btn danger", type: "button", text: `Quit ${name}`, onclick: () => P.app.quit() })));
   }
 
   // Voice and sounds.
@@ -727,7 +853,15 @@
     page.appendChild(el("div", { class: "page-title" }, el("h2", { text: "Help" }),
       el("button", { class: "btn", type: "button", text: "Back to chat", onclick: () => show("chat") })));
     const card = (title, items) => el("div", { class: "page-card" }, el("h3", { text: title }), el("ul", {}, items.map((t) => el("li", { text: t }))));
-    page.appendChild(card("Getting started", [
+    const free = settings && settings.source === "free";
+    const freeEdition = settings && settings.edition && !settings.edition.keys;
+    page.appendChild(card("Getting started", free ? [
+      "Free mode runs Pilot's brain on your Mac with the free Ollama app: no keys, nothing leaves your Mac, and it works offline.",
+      "Press the gear, then “Download Ollama (free)”. Install it, open it, and come back.",
+      "Press “Download brain” (once, a few GB). Pilot picks one that fits your Mac's memory.",
+      "Pictures, if you like: install the free Draw Things app and turn on its API Server (HTTP, port 7860).",
+      "Type a message and press Enter. Shift+Enter makes a new line.",
+    ] : [
       "Press the gear (or “Bring Your Own API Key”) and add your key from Anthropic, OpenAI, Google Gemini, or any compatible API.",
       "Press “Find my models” and choose one, then Save.",
       "Type a message and press Enter. Shift+Enter makes a new line.",
@@ -737,7 +871,8 @@
       "Look at your screen when you ask: the eye button.",
       "Write a reply or a draft and copy it to your clipboard, open a website, or save a note. It always asks first.",
       "Plan a few steps at once: you can approve all, step through, or cancel.",
-      "Make pictures and videos if you add an image or video key.",
+      free ? "Make pictures on your Mac with Draw Things. Videos aren't available in Free mode."
+        : "Make pictures and videos if you add an image or video key.",
     ]));
     page.appendChild(card("What Pilot never does", [
       "Pay for anything, delete files, send messages or emails for you, or type into other apps.",
@@ -745,17 +880,47 @@
     ]));
     page.appendChild(card("Good to know", [
       "Click the robot to open or close this chat. Drag it anywhere; it remembers the spot.",
-      "The robot's dot: green is ready, amber means no key yet, and it pulses while Pilot thinks.",
+      free ? "The robot's dot: green is ready, amber means Free mode isn't set up yet, and it pulses while Pilot thinks."
+        : "The robot's dot: green is ready, amber means no key yet, and it pulses while Pilot thinks.",
       "Voice: use your Mac's Dictation in the message box (the Dictation key, or press Fn twice).",
-      "Your provider bills you for what you use. MTRX pays nothing and never sees your key.",
+      free ? `${freeEdition ? "Pilot Free" : "Free mode"} costs nothing: the brain runs on your Mac. A local brain is slower than a big online one, so keep questions short.`
+        : "Your provider bills you for what you use. MTRX pays nothing and never sees your key.",
       "Hide or quit Pilot from the robot head in the menu bar.",
     ]));
+  }
+
+  // ---------------------------------------------------------------- Free mode in the window's frame
+
+  // The key card, the status line, the key pill and the drop zone follow
+  // where the AI runs: Free mode (on this Mac) or the user's own key.
+  const BYOK = { title: "Bring Your Own API Key", sub: "Use your OpenAI, Claude, Gemini, or any compatible API key." };
+  function syncSource() {
+    const free = Boolean(settings && settings.source === "free");
+    const ed = (settings && settings.edition) || { keys: true };
+    const card = $("byok");
+    card.classList.toggle("free", free);
+    card.querySelector(".byok-title").textContent = free ? "Free mode · on your Mac" : BYOK.title;
+    card.querySelector(".byok-sub").textContent = free
+      ? "AI that runs on this Mac: no keys, nothing leaves your Mac, works offline." : BYOK.sub;
+    card.setAttribute("aria-label", free ? "Free mode settings" : "Add your API key");
+    document.querySelector(".tagline").textContent = ed.keys ? "Your AI copilot. Powered by you." : "Your AI copilot. Free, on your Mac.";
+    const line = $("source");
+    const words = (state && state.statusLine) || (settings && settings.free && settings.free.status) || "";
+    line.hidden = !free || !words;
+    $("source-words").textContent = words;
+    line.classList.toggle("on", words === "Free mode · on your Mac");
+    const chip = ui.chips.querySelector('[data-chip="key"] span');
+    if (chip) chip.textContent = free ? "Set up Free mode" : "Customize with your API key";
+    const drop = ui.dropzone.querySelector("span");
+    if (drop) drop.textContent = free ? "Any size. Pilot shrinks them to fit, and keeps them on your Mac."
+      : "Any size. Pilot shrinks them to fit, and sends them only to your own AI provider.";
   }
 
   // ---------------------------------------------------------------- from the main process
 
   P.chat.onState((s) => {
     state = s;
+    syncSource();
     syncVoice();
     followReply();
     renderChat();
@@ -764,6 +929,7 @@
     settings = s;
     document.documentElement.dataset.theme = s.theme || "blue";
     for (const b of ui.paletteMenu.querySelectorAll("[data-theme-pick]")) b.setAttribute("aria-checked", String(b.dataset.themePick === s.theme));
+    syncSource();
     syncVoice();
     renderSettings();
     renderChat();
@@ -776,7 +942,7 @@
   });
   // A click anywhere in the chat makes it the key window if it isn't.
   document.addEventListener("mousedown", () => { if (!document.hasFocus()) P.chat.focus(); }, true);
-  P.settings.get().then((s) => { if (s && !s.error) { settings = s; document.documentElement.dataset.theme = s.theme || "blue"; syncVoice(); renderChat(); } });
+  P.settings.get().then((s) => { if (s && !s.error) { settings = s; document.documentElement.dataset.theme = s.theme || "blue"; syncSource(); syncVoice(); renderChat(); } });
   if (window.speechSynthesis && window.speechSynthesis.addEventListener) window.speechSynthesis.addEventListener("voiceschanged", () => renderSettings());
   renderChat();
 })();
