@@ -729,10 +729,10 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 @media (min-width: 1101px) and (max-width: 1240px) {
   .page .mainnav a { padding: 10px 6px; font-size: 13px; }
 }
-/* Eight links fit from here up; a little narrower, Vortex waits in the menu
-   and the footer. */
-@media (max-width: 1320px) {
-  .page .mainnav .nav-vortex { display: none; }
+/* Orbyt stays in the top links down to 1181px (1.19.0: it went to the menu
+   below 1320px); there, its "Work with MTRX Horizyn" waits for more room. */
+@media (max-width: 1440px) {
+  .page .mainnav .orbyt-sub { display: none; }
 }
 /* Below this the links no longer fit beside the brand; the menu has them all. */
 @media (max-width: 1180px) {
@@ -1026,4 +1026,89 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 /* The smallest phones: both hero buttons still fit side by side. */
 @media (max-width: 360px) {
   .page .cta-row .btn { font-size: 12px; padding: 0 4px; }
+}
+
+/* ---------- 1.19.0: whole screens, labelled news, a news strip ---------- */
+/* "Try Genesis now (free)", or "Try Genesis free" where the button is narrow. */
+.say-short { display: none; }
+@media (max-width: 720px) {
+  .say-long { display: none; }
+  .say-short { display: inline; }
+}
+/* The card's real screen, whole on a computer: below the tags, beside the
+   line and the buttons, never cut off by the card's edge. Pressing it opens
+   Learn more, with two big screens. */
+.page .app-card .app-shot {
+  top: auto; bottom: clamp(8px, 1.2vh, 12px); transform: none;
+  height: calc(100% - clamp(72px, 9.4vh, 88px)); width: auto; aspect-ratio: 192 / 320;
+}
+.page .app-card .app-shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.page .app-card:hover .app-shot { transform: translateY(-3px); }
+/* A small magnifier says it opens bigger. */
+.page .app-card .app-shot::after {
+  content: ""; position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(5, 10, 30, .85) center / 12px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eef3ff' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6'/%3E%3Cpath d='m20 20-5-5M10.5 8v5M8 10.5h5'/%3E%3C/svg%3E");
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+/* What's new: what a visitor can do today, a label on each app's item, and
+   an arrow on every link. */
+.news-today { margin: 0 0 12px; color: var(--text); font-size: 13.5px; line-height: 1.45; }
+.news-today a { color: var(--cyan); }
+.news .news-tag {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; vertical-align: 1px;
+  font: 600 10.5px/1.5 var(--body); font-style: normal; letter-spacing: .02em; color: var(--muted);
+  border: 1px solid var(--line-strong, rgba(120, 160, 255, .35));
+}
+.news .news-go { font-style: normal; color: var(--cyan); white-space: nowrap; }
+/* Learn more: the app's public demo, where it has one. */
+.learn-demo { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-left: 14px; color: var(--cyan); font-weight: 600; }
+/* The newest item, one line under the hero's buttons, on a computer. */
+.page .news-strip {
+  display: flex; align-items: center; gap: 10px; width: fit-content; max-width: min(100%, 560px);
+  margin: clamp(6px, 3.4cqh, 16px) 0 0; padding: 4px 12px 4px 4px; border-radius: 999px;
+  font-size: clamp(12px, 3.6cqh, 13.5px); color: var(--muted);
+  background: rgba(6, 14, 38, .88); border: 1px solid rgba(120, 160, 255, .22);
+}
+.news-strip-k {
+  flex: none; padding: 2px 8px; border-radius: 999px; font: 700 10.5px/1.5 var(--head); letter-spacing: .14em;
+  text-transform: uppercase; color: #04101f; background: var(--cyan);
+}
+.news-strip-item { display: flex; align-items: baseline; gap: 6px; min-width: 0; color: var(--text); text-decoration: none; }
+.news-strip-item b { flex: none; font-weight: 600; }
+.news-strip-item span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.news-strip-item i { flex: none; font-style: normal; color: var(--cyan); }
+.news-strip-item:hover span, .news-strip-item:focus-visible span { color: var(--text); text-decoration: underline; }
+.news-strip-all { flex: none; color: var(--cyan); white-space: nowrap; }
+@media (max-width: 900px) {
+  .page .news-strip { display: none; }
+}
+/* Phones: the screen is bigger, beside the name and its line, and opens
+   Learn more when tapped. */
+@media (max-width: 720px) {
+  .page .app-card { grid-template-columns: auto minmax(0, 1fr) auto; }
+  /* The name and its line stay together, centred beside the screen. */
+  .page .app-card .app-head > div { align-self: end; }
+  .page .app-card .app-lede { align-self: start; }
+  .page .app-card .app-shot {
+    position: relative; inset: auto; grid-column: 3; grid-row: 1 / span 2; align-self: start;
+    width: 54px; height: 90px; aspect-ratio: auto;
+  }
+  .page .app-card:hover .app-shot { transform: none; }
+  /* The screen has its own column now, so the words need no gap for it
+     (nor for the robot, which keeps to the card's lower corner). */
+  :root .page .app-card .app-lede, :root.pilot-on .page .app-card .app-lede, .page .app-card h2 { padding-right: 0; }
+  .learn-demo { margin-left: 0; }
+}
+@media (max-width: 360px) {
+  .page .app-card .app-shot { width: 48px; height: 80px; }
+}
+@media (min-width: 721px) and (max-width: 900px) {
+  .page .app-card .app-shot { height: 60px; width: 36px; aspect-ratio: auto; }
+  .page .app-card .app-shot::after { display: none; }
+}
+/* The other pages' top links: Orbyt's "Work with MTRX Horizyn" wrapped onto
+   two lines on narrower computers; there it waits for more room. */
+@media (max-width: 1180px) {
+  .mainnav .orbyt-sub { display: none; }
 }

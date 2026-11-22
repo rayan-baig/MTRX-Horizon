@@ -24,13 +24,13 @@ NEWS = [
      "href": "/orbyt#pitch"},
     {"date": "2026-11-21", "who": "CyberLogix AI", "dot": "blue", "source": "CyberLogix AI 3.24.0",
      "text": "Pilot answers what a café asks most: which fridges need me, and is the food still OK?",
-     "href": "/#learn-cyberlogix"},
+     "href": "/#learn-cyberlogix", "app": "cyberlogix"},
     {"date": "2026-11-21", "who": "OmniArmor.ai", "dot": "violet", "source": "OmniArmor.ai 1.14.0",
      "text": "Pilot tells you what's due or overdue, and explains any check in plain words.",
-     "href": "/#learn-omniarmor"},
+     "href": "/#learn-omniarmor", "app": "omniarmor"},
     {"date": "2026-11-21", "who": "RankUp", "dot": "green-dot", "source": "RankUp 0.28.0",
      "text": "Parents ask Pilot what's waiting for them, or start a new chore in one tap.",
-     "href": "/#learn-rankup"},
+     "href": "/#learn-rankup", "app": "rankup"},
 ]
 
 # How old the newest item may be next to the newest CHANGELOG entry, and the
@@ -45,7 +45,19 @@ def _shown(iso: str) -> str:
     return f"{d.day} {('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')[d.month - 1]} {d.year}"
 
 
-def items(on_home: bool = True) -> list:
+def label(item: dict, open_urls: dict | None = None, demo_urls: dict | None = None) -> str:
+    """What a visitor can do with an app's item today (1.19.0): nothing to
+    say once the app is open; "In the demo" while it has a public demo
+    with pretend data; otherwise "Preview" (the app is still in
+    development). This site's own items (Genesis, Orbyt, Pilot) work today
+    and have no label."""
+    app = item.get("app")
+    if not app or (open_urls or {}).get(app):
+        return ""
+    return "In the demo" if (demo_urls or {}).get(app) else "Preview"
+
+
+def items(on_home: bool = True, open_urls: dict | None = None, demo_urls: dict | None = None) -> list:
     """The list for a page. On the home page itself, links to its own cards
     are just the anchor (#learn-...), so they open without a reload."""
     out = []
@@ -53,5 +65,6 @@ def items(on_home: bool = True) -> list:
         href = item["href"]
         if on_home and href.startswith("/#"):
             href = href[1:]
-        out.append({**item, "href": href, "shown": _shown(item["date"])})
+        out.append({**item, "href": href, "shown": _shown(item["date"]),
+                    "label": label(item, open_urls, demo_urls)})
     return out

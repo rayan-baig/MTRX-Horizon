@@ -52,7 +52,7 @@ def render_home(urls: dict) -> str:
     # reporting to it, so its activity panel says the numbers come at launch.
     from horizon import news, stats
     html = env.get_template("home.html").render(
-        urls=urls, demo=True, numbers=None, projects=stats.PROJECTS, news=news.items())
+        urls=urls, demo=True, numbers=None, projects=stats.PROJECTS, news=news.items(open_urls=urls))
     html = html.replace('"/static/', '"static/')
     # Unwrap to the form an Artifact page takes.
     for pattern in (r"<!doctype html>\s*", r"<html[^>]*>\s*", r"</html>\s*",

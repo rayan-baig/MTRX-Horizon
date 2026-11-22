@@ -391,7 +391,7 @@ robot.
 On the MTRX site the robot also keeps clear of the row of streak dots under today's spark, the Genesis
 project screen's stage bar and web address,
 and of the whole launch checklist (each row with its Hide button, each stage's heading with its count
-and arrow, the add-a-step box and the stage buttons). On a computer the chat window opens beside the robot, as tall as the
+and arrow, the add-a-step box and the stage buttons), and of the arrow on each of Orbyt's path cards. On a computer the chat window opens beside the robot, as tall as the
 screen allows, so everything in it is in view; shorter screens get slightly tighter spacing.
 
 **Speed.** `pilot-motion.js`, `pilot-actor.js`, `pilot-actor.css` and the three layers (about 18 KB of

@@ -283,3 +283,35 @@ def test_genesis_hero_leaves_the_limit_out_while_ask_genesis_is_off(client, monk
     monkeypatch.delenv("GENESIS_AI_KEY", raising=False)
     hero = client.get("/genesis").text.split('<section class="g-hero panel">', 1)[1].split("</section>", 1)[0]
     assert "an hour" not in hero
+
+
+# ---------------------------------------------------------------- 1.19.0
+
+def test_a_first_visit_on_a_computer_shows_an_example_plan(client):
+    """The welcome's right half was one small spark: now an example plan
+    beside it, made of Genesis's own first steps (one ticked), on a computer
+    only and only on a first visit."""
+    page = client.get("/genesis").text
+    hero = page.split('<section class="g-hero panel">', 1)[1].split("</section>", 1)[0]
+    sample = hero.split('<figure class="g-sample" aria-label="An example plan">', 1)[1].split("</figure>", 1)[0]
+    store = (ROOT / "static/js/genesis-store.js").read_text()
+    for step in ("Pick a name and check nobody else uses it", "Say the problem it solves in one sentence",
+                 "Talk to 5 people it's for"):
+        assert step in sample and step in store, step
+    assert sample.count('<li class="done">') == 1 and "1 of 19 steps done" in sample
+    css = (ROOT / "static/css/genesis.css").read_text()
+    assert ".g-sample { display: none; }" in css
+    assert ".g-hero:not(.g-hero-back):not(.g-hero-small) .g-sample {" in css
+
+
+def test_one_project_has_todays_spark_beside_it(client):
+    script = (ROOT / "static/js/genesis.js").read_text()
+    assert 'view.classList.toggle("g-one", projects.length === 1);' in script
+    css = (ROOT / "static/css/genesis.css").read_text()
+    assert "#g-list-view.g-one > .g-daily { grid-column: 2; align-self: start; }" in css
+
+
+def test_ask_genesis_buttons_are_44px_on_touch(client):
+    css = (ROOT / "static/css/genesis.css").read_text()
+    touch = css.split("@media (pointer: coarse), (max-width: 720px) {", 1)[1].split("\n}\n", 1)[0]
+    assert ".g-ask .g-helper, .g-ask .g-tool, .g-ask .btn, .g-ask .g-question-input { min-height: 44px; }" in touch

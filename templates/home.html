@@ -47,9 +47,17 @@
     from this one list (horizon/news.py: dated, linked, newest first, and
     checked against the changelogs). -#}
 {%- set news = news or [] -%}
+{%- set demos = demos or {} -%}
+{#- One plain line on what a visitor can do here today (1.19.0): this site's
+    own tools work now; the apps' items are labelled "Preview" (or "In the
+    demo" where an app has a public demo). -#}
+{%- macro news_today() -%}
+<p class="news-today">{% if demo %}Each Open button opens that app's own demo, with pretend data.{% else %}Today you can plan your own idea in Genesis (free), send it to us on Orbyt, or ask Pilot.
+  {%- if opened == 0 %} The apps are in development{% if early %}: <a href="#early-access">get early access</a>{% endif %}.{% endif %}{% endif %}</p>
+{%- endmacro -%}
 {%- macro news_list() -%}
 <ul class="news">
-  {% for item in news %}<li><b class="dot {{ item.dot }}"></b><a class="news-item" href="{{ item.href }}"><b>{{ item.who }}</b> <time datetime="{{ item.date }}">{{ item.shown }}</time> <span>{{ item.text }}</span></a></li>
+  {% for item in news %}<li><b class="dot {{ item.dot }}"></b><a class="news-item" href="{{ item.href }}"><b>{{ item.who }}</b> <time datetime="{{ item.date }}">{{ item.shown }}</time>{% if item.label %} <em class="news-tag">{{ item.label }}</em>{% endif %} <span>{{ item.text }}&nbsp;<i class="news-go" aria-hidden="true">→</i></span></a></li>
   {% endfor %}
 </ul>
 {%- endmacro -%}
@@ -111,11 +119,19 @@
         {#- While early access is on, it takes the first button. -#}
         {% if early %}<a class="btn btn-primary" href="#early-access">Get early access <span aria-hidden="true">→</span></a>
         {% else %}<a class="btn btn-primary" href="#apps">Explore Our Apps <span aria-hidden="true">→</span></a>{% endif %}
-        {% if not demo %}<a class="btn btn-ghost btn-genesis" href="/genesis">Try Genesis now (free)</a>{% endif %}
+        {#- "Try Genesis free" where the button is narrow (phones). -#}
+        {% if not demo %}<a class="btn btn-ghost btn-genesis" href="/genesis"><span class="say-long">Try Genesis now (free)</span><span class="say-short">Try Genesis free</span></a>{% endif %}
         <a class="btn btn-ghost btn-tour" href="#tour">
           <svg class="play" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg>
           Quick tour</a>
       </div>
+      {#- What's new, one line on a computer (the page itself has the full
+          list on a phone, and the bell has it everywhere). -#}
+      {%- if news %}{% set top = news[0] %}
+      <p class="news-strip"><b class="news-strip-k">New</b>
+        <a class="news-strip-item" href="{{ top.href }}"><b>{{ top.who }}</b><span>{{ top.text }}</span> <i aria-hidden="true">→</i></a>
+        <a class="news-strip-all" href="#updates">All updates</a></p>
+      {%- endif %}
     </div>
   </section>
 
@@ -140,7 +156,7 @@
       </div>
       <p class="app-lede">{{ lede }}</p>
       {#- A real screen from the app's own demo (pretend data). -#}
-      <a class="app-shot" href="#learn-{{ key }}" tabindex="-1" aria-hidden="true"><img src="/static/img/{{ key }}-screen-sm.webp" alt="" width="192" height="320" loading="lazy" decoding="async"></a>
+      <a class="app-shot" href="#learn-{{ key }}" tabindex="-1" aria-hidden="true" title="See {{ full }}'s screens"><img src="/static/img/{{ key }}-screen-sm.webp" alt="" width="192" height="320" loading="lazy" decoding="async"></a>
       <div class="card-actions">
         {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener" aria-label="Open {{ full }}"><span>Open<span class="app-name"> {{ name }}</span></span> <span class="arrow" aria-hidden="true">→</span></a>
         {% elif early %}<a class="btn btn-solid ea-card-btn" href="#early-access-{{ key }}" aria-label="Get early access to {{ full }}"><span>Early access</span> <span class="arrow" aria-hidden="true">→</span></a>
@@ -223,6 +239,7 @@
       all this, and where to write. -#}
   <section class="panel home-news" id="news" aria-labelledby="home-news-title">
     <h2 class="eyebrow" id="home-news-title">What's new</h2>
+    {{ news_today() }}
     {{ news_list() }}
     <p class="home-who">MTRX Horizyn is a small independent software company.</p>
     <p class="home-contact">Questions? Write to <a href="mailto:{{ reach }}">{{ reach }}</a>.</p>
@@ -279,6 +296,8 @@
     {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener">Open {{ name }} <span aria-hidden="true">→</span></a>
     {% else %}<p class="learn-soon">{{ full }} is in development.</p>
     {% if early %}<a class="btn btn-solid" href="#early-access-{{ key }}">Get early access <span aria-hidden="true">→</span></a>{% endif %}{% endif %}
+    {#- Only where the app has a public demo set ({APP}_DEMO_URL). -#}
+    {% if demos[key] and not demo %}<a class="learn-demo" href="{{ demos[key] }}" rel="noopener">See the demo (pretend data) <span aria-hidden="true">→</span></a>{% endif %}
     </div>
     {#- Two real screens, taken from the app's own demo with pretend data. -#}
     <figure class="learn-shots">
@@ -375,6 +394,7 @@
     <a class="sheet-x" href="#" aria-label="Close">×</a>
     <p class="eyebrow">What's new</p>
     <h2>Latest updates</h2>
+    {{ news_today() }}
     {{ news_list() }}
   </div>
 </section>

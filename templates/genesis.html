@@ -52,6 +52,19 @@
           <a class="btn btn-ghost" href="#example">Try an example</a>
         </div>
       </div>
+      {#- What a plan looks like (1.19.0), beside the welcome on a computer:
+          a made-up example, with Genesis's own first steps. -#}
+      <figure class="g-sample" aria-label="An example plan">
+        <figcaption><span class="g-chip stage-spark">Spark</span> Example plan</figcaption>
+        <p class="g-sample-name">Paw Board</p>
+        <p class="g-sample-pitch">A noticeboard app for lost pets on my street</p>
+        <ul class="g-sample-steps">
+          <li class="done">Pick a name and check nobody else uses it</li>
+          <li>Say the problem it solves in one sentence</li>
+          <li>Talk to 5 people it's for</li>
+        </ul>
+        <p class="g-sample-total"><span class="g-sample-bar" aria-hidden="true"><i></i></span> 1 of 19 steps done</p>
+      </figure>
       {#- A returning visitor (1.17.0): no welcome, but the project they were
           on and its next step. static/js/genesis.js (drawContinue) fills it. -#}
       <div class="g-continue" id="g-continue" hidden></div>

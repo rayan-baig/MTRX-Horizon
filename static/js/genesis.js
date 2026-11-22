@@ -141,6 +141,9 @@
     // A returning visitor: the Continue card (in place of the welcome), then
     // their projects; a first visit starts with the welcome.
     const view = $("g-list-view");
+    // One project: today's spark sits beside it on a computer (1.19.0), not
+    // under a half-empty row.
+    view.classList.toggle("g-one", projects.length === 1);
     const mine = $("g-mine");
     const hero = document.querySelector(".g-hero");
     const anchor = projects.length ? (hero.nextElementSibling === mine ? mine : hero.nextElementSibling)
@@ -178,8 +181,11 @@
     const pr = S.progress(p);
     const step = S.nextStep(p);
     const go = el("a", { class: "btn btn-genesis", href: `#p/${p.id}` }, `Continue ${p.name} →`);
-    fill(box, el("p", { class: "eyebrow g-eyebrow", text: "Genesis · welcome back" }),
-      el("h1", { class: "g-continue-title" }, el("span", { text: "Continue " }), el("b", { text: p.name })),
+    // 1.19.0: the heading is a greeting, and the project's name under it is
+    // a link ("Continue <project>" looked like a button but wasn't one).
+    fill(box, el("p", { class: "eyebrow g-eyebrow", text: "Genesis" }),
+      el("h1", { class: "g-continue-title" }, el("span", { text: "Welcome " }), el("b", { text: "back" })),
+      el("p", { class: "g-continue-project" }, el("a", { href: `#p/${p.id}` }, p.name, el("span", { "aria-hidden": "true", text: " →" }))),
       el("p", { class: "g-continue-step" },
         el("span", { class: `g-chip stage-${p.stage}`, text: stageOf(p.stage).name }),
         el("span", { class: "g-continue-label", text: "Next step: " }),
@@ -595,13 +601,49 @@
     const danger = el("section", { class: "panel g-danger" },
       el("p", { text: "Deleting can't be undone, unless you downloaded a copy." }), del);
 
-    // On a computer: the checklist beside the stage and Ask Genesis, then
-    // notes across the page (1.17.0: notes in the side column left a big
-    // empty space under the checklist).
-    fill($("g-detail"), head, el("div", { class: "g-columns" },
-      el("div", { class: "g-main" }, checklist),
-      el("div", { class: "g-side" }, stagePanel, ask)),
-    el("div", { class: "g-lower" }, notes, danger));
+    // On a computer: the checklist beside the stage and Ask Genesis, and
+    // notes (then the delete box) under whichever column is shorter, so
+    // neither leaves a big empty space (1.19.0: notes across the page left
+    // one under the checklist when Ask Genesis was tall, at the limit).
+    const main = el("div", { class: "g-main" }, checklist);
+    const side = el("div", { class: "g-side" }, stagePanel, ask);
+    fill($("g-detail"), head, el("div", { class: "g-columns" }, main, side));
+    balanceColumns(main, side, notes, danger);
+  }
+
+  // Puts each of the extra panels at the foot of the shorter column, and
+  // again whenever the checklist or Ask Genesis changes height (a stage
+  // opened, an answer arrived) or the window is resized. A phone shows one
+  // column in a fixed order (genesis.css), so there it changes nothing that
+  // shows. Never while the notes are being typed in: moving them would drop
+  // the typing focus.
+  let balanceWatch = null;
+  function balanceColumns(main, side, ...extras) {
+    if (balanceWatch) balanceWatch.disconnect();
+    const height = (col) => col.getBoundingClientRect().height;
+    const balance = () => {
+      if (!main.isConnected) return;
+      if (extras.some((x) => x.contains(document.activeElement))) return;
+      // Measured without the extras, then each goes where there's more room.
+      extras.forEach((x) => x.remove());
+      const tops = { main: height(main), side: height(side) };
+      for (const x of extras) {
+        const col = tops.main <= tops.side ? main : side;
+        put(col, x);
+        const h = height(col);
+        if (col === main) tops.main = h; else tops.side = h;
+      }
+    };
+    balance();
+    if ("ResizeObserver" in window) {
+      let queued = false;
+      balanceWatch = new ResizeObserver(() => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => { queued = false; balance(); });
+      });
+      for (const x of [main.firstElementChild, ...side.children].filter((x) => x && !extras.includes(x))) balanceWatch.observe(x);
+    }
   }
 
   // Which stages the visitor opened or folded by hand, per project, for this visit.
@@ -1015,7 +1057,7 @@
     const pro = document.getElementById("pro") && !isPro()
       ? el("a", { class: "g-link g-wait-pro", href: "#pro" }, "More answers a day with Genesis Pro") : null;
     return el("div", { class: "g-wait" },
-      el("p", { class: "g-wait-head" }, el("b", { text: "While you wait" }),
+      el("p", { class: "g-wait-head" }, el("b", { text: "While you wait:" }),
         el("span", { text: step ? ` Your next step: ${step.label}` : " Every step here is ticked." })),
       el("div", { class: "g-tools" }, tick, pilot), pro);
   }

@@ -129,12 +129,15 @@ test("only the chosen path's fields are sent, with the hidden field", () => {
     organisation: "should not go", apps: ["rankup"], website: "" });
   assert.deepEqual(Object.keys(body).sort(), ["audience", "email", "idea", "kind", "message", "name", "pitch", "website"]);
   assert.equal(body.name, "Ada");
-  assert.equal(V.sentLine("ada@example.com"), "We'll reply to ada@example.com within 7 days, even if the answer is no.");
+  assert.equal(V.sentLine("ada@example.com"), "We'll reply to ada@example.com, even if the answer is no.");
 });
 
 test("1.17.0: after sending, a reply-by date from the promised 7 days, in plain words", () => {
   assert.equal(V.REPLY_DAYS, 7);
-  assert.ok(V.sentLine("a@example.com").includes(`within ${V.REPLY_DAYS} days`));
+  // 1.19.0: the Sent screen says when once, as a date (nextLine); the first
+  // line no longer repeats "within 7 days".
+  assert.ok(!/\d+ days/.test(V.sentLine("a@example.com")));
+  assert.ok(V.nextLine(new Date(2026, 10, 22, 9, 30)).includes("by Sunday 29 November"));
   // Sunday 22 November 2026 + 7 days, at any time of day.
   assert.equal(V.replyBy(new Date(2026, 10, 22, 9, 30)), "Sunday 29 November");
   assert.equal(V.replyBy(new Date(2026, 11, 28, 23, 50)), "Monday 4 January");

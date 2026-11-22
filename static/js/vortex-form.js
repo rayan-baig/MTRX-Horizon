@@ -106,11 +106,14 @@
     return out;
   }
 
-  // The reply time the page promises (above Send, and in sentLine): 7 days.
+  // The reply time the page promises (above Send, and as a date in
+  // nextLine on the Sent screen): 7 days.
   const REPLY_DAYS = 7;
 
+  // The Sent screen's first line: where the reply goes. The date is said
+  // once, in nextLine (1.19.0: "within 7 days" here repeated it).
   function sentLine(email) {
-    return `We'll reply to ${email} within 7 days, even if the answer is no.`;
+    return `We'll reply to ${email}, even if the answer is no.`;
   }
 
   // The date a reply is due by, in plain words ("Sunday 29 November"), the

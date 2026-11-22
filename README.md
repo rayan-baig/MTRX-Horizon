@@ -173,6 +173,11 @@ To show an **Open app** button on the home page, set `RANKUP_URL`, `CYBERLOGIX_U
 `https://rankup.mtrxhorizyn.com`. An address without `https://` shows no button, rather
 than a link to nowhere.
 
+If an app has a public demo with pretend data, set `RANKUP_DEMO_URL`, `CYBERLOGIX_DEMO_URL` or
+`OMNIARMOR_DEMO_URL` to its whole address: that app's Learn more card then links to it ("See the
+demo (pretend data)") and its What's new items say "In the demo" instead of "Preview". Unset, no
+demo link is shown.
+
 **Launch day: `MTRX_OPEN_APPS`.** An address alone doesn't open an app to the public. Until
 an app's key is in `MTRX_OPEN_APPS` (`rankup,cyberlogix,omniarmor`, or `all`), every page says
 it is in development ("3 in development" on the home page, "In development" on Orbyt's app cards),

@@ -166,10 +166,14 @@ test("1.16.0: the last stage tile says Live (never cut short), and Delete all is
 
 // ---------------------------------------------------------------- 1.17.0
 
-test("a returning visitor sees 'Continue <project>' with its next step, not the welcome", () => {
+test("a returning visitor sees 'Welcome back', their project as a link, and its next step", () => {
   const cont = functionSource("drawContinue");
   assert.match(cont, /sorted\.find\(\(q\) => !S\.progress\(q\)\.launched\)/);
-  assert.match(cont, /el\("span", \{ text: "Continue " \}\), el\("b", \{ text: p\.name \}\)/);
+  // 1.19.0: "Continue <project>" looked like a button and wasn't; the
+  // heading greets, and the project's name under it is a real link.
+  assert.match(cont, /el\("h1", \{ class: "g-continue-title" \}, el\("span", \{ text: "Welcome " \}\), el\("b", \{ text: "back" \}\)\)/);
+  assert.match(cont, /el\("p", \{ class: "g-continue-project" \}, el\("a", \{ href: `#p\/\$\{p\.id\}` \}, p\.name/);
+  assert.doesNotMatch(cont, /text: "Continue " \}/);
   assert.match(cont, /el\("span", \{ class: "g-continue-label", text: "Next step: " \}\)/);
   assert.match(cont, /href: `#p\/\$\{p\.id\}`/);
   assert.match(cont, /classList\.toggle\("g-hero-back", sorted\.length > 0\)/);
@@ -180,6 +184,7 @@ test("a returning visitor sees 'Continue <project>' with its next step, not the 
 test("at the free limit: a 'While you wait' line with useful buttons, not only greyed-out ones", () => {
   const wait = functionSource("waitBox");
   assert.match(wait, /text: "Tick your next step"/);
+  assert.match(wait, /el\("b", \{ text: "While you wait:" \}\)/);
   assert.match(wait, /text: "Use Pilot with your own AI key"/);
   assert.match(wait, /window\.Pilot\.open\(\)/);
   assert.match(wait, /"More answers a day with Genesis Pro"/);
@@ -213,10 +218,40 @@ test("small rewards: ticking a step or a stage, or a longer streak, cheers; neve
   assert.match(still, /\.g-toast\.cheer::before, \.g-toast\.cheer::after \{ animation: none; display: none; \}/);
 });
 
-test("the project on a computer: checklist beside the stage and Ask; notes across underneath", () => {
+test("the project on a computer: notes go under the shorter column, never leaving a big gap", () => {
   const project = functionSource("drawProject");
-  assert.match(project, /el\("div", \{ class: "g-side" \}, stagePanel, ask\)\),\n\s+el\("div", \{ class: "g-lower" \}, notes, danger\)\);/);
-  const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
-  assert.match(css, /\.g-lower \{ display: grid; grid-template-columns: minmax\(0, 1\.35fr\) minmax\(0, 1fr\);/);
-  assert.match(css, /\.g-lower \{ display: contents; \}/);
+  assert.match(project, /fill\(\$\("g-detail"\), head, el\("div", \{ class: "g-columns" \}, main, side\)\);\n\s+balanceColumns\(main, side, notes, danger\);/);
+  assert.doesNotMatch(project, /g-lower/);
+  assert.match(functionSource("balanceColumns"), /extras\.some\(\(x\) => x\.contains\(document\.activeElement\)\)/);
+});
+
+// A tiny layout: each node's height is its own plus its children's.
+function layoutNode(own, kids = []) {
+  const node = { own, kids: [], isConnected: true, parent: null };
+  node.getBoundingClientRect = () => ({ height: node.own + node.kids.reduce((h, k) => h + k.getBoundingClientRect().height, 0) });
+  node.append = (...more) => { for (const k of more) { if (k.parent) k.remove(); k.parent = node; node.kids.push(k); } };
+  node.remove = () => { if (node.parent) { node.parent.kids = node.parent.kids.filter((k) => k !== node); node.parent = null; } };
+  node.contains = (x) => x === node;
+  node.append(...kids);
+  return node;
+}
+
+test("1.19.0: at the free limit (a tall Ask Genesis) the notes fill the space under the checklist", () => {
+  const run = (checklistH, sideH) => {
+    const notes = layoutNode(200);
+    const danger = layoutNode(80);
+    const main = layoutNode(0, [layoutNode(checklistH)]);
+    const side = layoutNode(0, [layoutNode(sideH)]);
+    const fns = new Function("put", "window", "document", "requestAnimationFrame",
+      `let balanceWatch = null;\n${functionSource("balanceColumns")}\nreturn balanceColumns;`)(
+      (n, ...k) => { n.append(...k); return n; }, {}, { activeElement: null }, () => {});
+    fns(main, side, notes, danger);
+    return { notes: notes.parent === main ? "main" : "side", danger: danger.parent === main ? "main" : "side" };
+  };
+  // Ask Genesis at the limit makes the side column far taller: notes go left.
+  assert.deepEqual(run(600, 840), { notes: "main", danger: "main" });
+  assert.deepEqual(run(600, 1100), { notes: "main", danger: "main" });
+  assert.deepEqual(run(700, 840), { notes: "main", danger: "side" });
+  // A long, open checklist: notes go to the side instead.
+  assert.deepEqual(run(1200, 500), { notes: "side", danger: "side" });
 });

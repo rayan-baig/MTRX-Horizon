@@ -807,17 +807,23 @@ def test_every_form_has_the_7_day_reply_and_pitch_partner_the_under_13_note(clie
     # Outside the forms, "7 days" and "pass on" aren't repeated before sending.
     outside = page.split('<section class="panel v-panel', 1)[0]
     assert "7 days" not in outside and "pass on" not in outside
-    # The Sent screen says "within 7 days" once: in the line with their address.
+    # The Sent screen says when once, as a date (1.19.0: the line with their
+    # address no longer repeats "within 7 days").
     sent = " ".join(page.split('<section class="panel v-sent"', 1)[1].split("</section>", 1)[0].split())
     assert "7 days" not in sent
-    assert "within 7 days, even if the answer is no." in (ROOT / "static/js/vortex-form.js").read_text()
+    form_js = (ROOT / "static/js/vortex-form.js").read_text()
+    assert "return `We'll reply to ${email}, even if the answer is no.`;" in form_js
+    assert "within 7 days" not in form_js.split("function sentLine", 1)[1].split("}", 1)[0]
     # Nothing is bought or sold here, and it says so in those words.
     assert "Nothing is bought or sold on this page" in page and "Nobody pays or gets paid" not in page
     # No character count on an email box.
     assert 'data-count-for="email"' not in page
 
 
-CONFIDENTIAL = "We won't publish or pass on what you send, but we can't promise we aren't working on something similar."
+# 1.19.0: warmer, and still no more than the terms ("we may already be
+# working on something similar"): if we are, we say so in the reply.
+CONFIDENTIAL = ("We won't publish or pass on what you send. We may already be working on something similar; "
+                "if we are, we'll tell you when we reply, so you know where you stand.")
 
 
 def test_orbyt_says_the_same_thing_about_what_you_send_everywhere(client):
@@ -833,6 +839,7 @@ def test_orbyt_says_the_same_thing_about_what_you_send_everywhere(client):
         assert gone not in page, gone
     pack = (ROOT / "static/js/pilot-mtrx-pack.js").read_text()
     assert "aren't confidential" not in pack and "won't publish or pass on what is sent" in pack
+    assert "It may already be working on something similar; if so, it says so in its reply." in pack
     assert "Nobody pays or gets paid" not in pack
 
 
@@ -946,6 +953,62 @@ def test_a_direct_link_to_a_form_scrolls_instantly_and_again_after_load():
     script = (ROOT / "static/js/vortex.js").read_text()
     assert 'behavior: smooth ? "smooth" : "instant"' in script
     assert 'smooth" : "auto"' not in script
-    assert 'window.addEventListener("load", () => { again(); setTimeout(again, 250); }, { once: true });' in script
+    # 1.19.0: after load it checks where the form is, not whether the visitor
+    # is still at the top (tests/test_browser.py makes the race certain).
+    assert 'window.addEventListener("load", settle, { once: true });' in script
+    assert "if (top < 0 || top > 140) jump(kind, false);" in script
+    assert "window.scrollY < 40" not in script
     page_js = (ROOT / "static/js/vortex.js").read_text()
     assert '$("v-next-step").textContent = V.nextLine(new Date());' in page_js
+
+
+# ---------------------------------------------------------------- 1.19.0
+
+def test_orbyt_says_up_to_365_days_everywhere_it_says_how_long(client):
+    """The FAQ said "then delete it" with no number while the form's footer
+    and the privacy page said 365 days. Every place that says how long a
+    message is kept now says "up to 365 days" (the same KEEP_DAYS)."""
+    from horizon import vortex
+    assert vortex.KEEP_DAYS == 365
+    page = " ".join(client.get("/orbyt").text.split()).replace("&#39;", "'")
+    faq = page.split('<div class="v-faq" id="faq">', 1)[1].split("</div>", 1)[0]
+    assert "We keep your message only to reply, for up to 365 days, then delete it." in faq
+    for line in re.findall(r"[^.]*\bkeep[^.]*\.", page.split("<main", 1)[1]):
+        if "message" in line or "what you send" in line:
+            assert "365 days" in line, line
+    pilot = (ROOT / "static/js/pilot-mtrx.js").read_text()
+    assert "We keep your message only to reply, for up to 365 days." in pilot
+    privacy = " ".join(client.get("/privacy").text.split())
+    assert "for up to 365 days" in privacy
+
+
+def test_the_sent_screen_says_the_date_once(client):
+    script = (ROOT / "static/js/vortex-form.js").read_text()
+    sent = script.split("function sentLine", 1)[1].split("\n  }", 1)[0]
+    assert "7 days" not in sent and "REPLY_DAYS" not in sent
+    assert "by ${replyBy(now)}" in script
+
+
+def test_a_phone_shows_how_it_works_as_three_short_columns(client):
+    css = (ROOT / "static/css/vortex.css").read_text()
+    late = css.split("/* ---------- 1.19.0 ---------- */", 1)[1]
+    phone = late.split("@media (max-width: 720px) {", 1)[1].split("\n}\n", 1)[0]
+    assert ".v-how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));" in phone
+    assert "flex-wrap" not in phone
+
+
+def test_a_computer_hero_shows_an_example_pitch(client):
+    """The desktop hero's right half was a lone swirl: now a short, made-up
+    example pitch (the same three lines the Pitch form asks for) and a link
+    to the form. Shown from 901px; a phone keeps the small swirl."""
+    page = client.get("/orbyt").text
+    hero = page.split('<section class="v-hero panel">', 1)[1].split("</section>", 1)[0]
+    example = hero.split('<figure class="v-example">', 1)[1].split("</figure>", 1)[0]
+    assert "<figcaption>Example pitch</figcaption>" in example
+    for label in ("Idea", "In one line", "Who it's for"):
+        assert f"<dt>{label}</dt>" in example, label
+    assert '<a class="v-example-go" href="#pitch">Write mine' in example
+    assert "7 days" not in example
+    css = (ROOT / "static/css/vortex.css").read_text()
+    assert ".v-example { display: none; }" in css
+    assert "@media (min-width: 901px) {\n  .v-hero { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); }" in css

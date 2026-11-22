@@ -1071,9 +1071,11 @@ def test_on_a_phone_genesis_and_orbyt_are_on_the_page_and_the_menu_fits(client):
     # reviewers asked for it), so Genesis is the tile, that button, and its
     # dated line in What's new; never two cards in a row.
     hero = main.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
-    assert hero.count('href="/genesis"') == 1 and "Try Genesis now (free)" in hero
+    # (The one-line news strip in the hero is What's new, not a Genesis card.)
+    strip = hero.split('<p class="news-strip">', 1)[1].split("</p>", 1)[0] if 'class="news-strip"' in hero else ""
+    assert hero.count('href="/genesis"') - strip.count('href="/genesis"') == 1 and "Try Genesis now (free)" in hero
     news = main.split('id="news"', 1)[1]
-    assert main.count('href="/genesis"') - news.count('href="/genesis"') == 2
+    assert main.count('href="/genesis"') - news.count('href="/genesis"') - strip.count('href="/genesis"') == 2
     css = Path("static/css/site.css").read_text(encoding="utf-8")
     phone = css.split("@media (max-width: 720px) {\n  /* A phone may scroll", 1)[1].split("\n}\n", 1)[0]
     assert ".page .facts { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr));" in phone
@@ -1179,7 +1181,8 @@ def test_the_app_cards_and_learn_more_show_real_screens(client):
 def test_the_phone_hero_has_two_buttons_and_a_balanced_headline(client):
     page = client.get("/").text
     hero = page.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
-    assert '<a class="btn btn-ghost btn-genesis" href="/genesis">Try Genesis now (free)</a>' in hero
+    assert ('<a class="btn btn-ghost btn-genesis" href="/genesis"><span class="say-long">Try Genesis now (free)</span>'
+            '<span class="say-short">Try Genesis free</span></a>') in hero
     css = Path("static/css/site.css").read_text(encoding="utf-8")
     late = css.split("/* ---------- 1.17.0:", 1)[1]
     phone = late.split("@media (max-width: 720px) {", 1)[1].split("\n}\n", 1)[0]
@@ -1196,3 +1199,107 @@ def test_the_footer_is_three_labelled_groups(client):
         assert foot.count("<a ") <= 12
     css = Path("static/css/site.css").read_text(encoding="utf-8")
     assert ".foot-group { display: contents; }" in css and ".foot-h { display: none; }" in css
+
+
+# ---------------------------------------------------------------- 1.19.0
+
+def _late_css():
+    return Path("static/css/site.css").read_text(encoding="utf-8").split("/* ---------- 1.19.0:", 1)[1]
+
+
+def test_narrow_buttons_say_try_genesis_free(client):
+    """At phone widths the hero's button says "Try Genesis free" (shorter);
+    a computer keeps "Try Genesis now (free)". One is hidden at a time, so
+    a screen reader hears one name."""
+    late = _late_css()
+    assert ".say-short { display: none; }" in late
+    phone = late.split("@media (max-width: 720px) {", 1)[1].split("\n}\n", 1)[0]
+    assert ".say-long { display: none; }" in phone and ".say-short { display: inline; }" in phone
+
+
+def test_whats_new_labels_app_items_and_says_what_you_can_do_today(client):
+    """The apps' items say "Preview" (the apps are in development), this
+    site's own items (Genesis, Orbyt, Pilot) work today and have no label;
+    every item shows an arrow; one plain line says what a visitor can do
+    here today. The same on the page and in the bell's pop-up."""
+    from horizon import news
+    page = client.get("/").text
+    for where in ('id="news"', 'id="updates"'):
+        box = page.split(where, 1)[1].split("</section>", 1)[0]
+        assert ('<p class="news-today">Today you can plan your own idea in Genesis (free), send it to us on Orbyt, '
+                "or ask Pilot. The apps are in development.</p>") in box, where
+        items = re.findall(r"<li>.*?</li>", box, re.S)
+        assert len(items) == len(news.NEWS)
+        for li, item in zip(items, news.NEWS):
+            assert '&nbsp;<i class="news-go" aria-hidden="true">→</i>' in li
+            assert ('<em class="news-tag">Preview</em>' in li) == bool(item.get("app")), item["who"]
+    assert any(i.get("app") for i in news.NEWS) and any(not i.get("app") for i in news.NEWS)
+
+
+def test_an_open_app_or_a_demo_changes_its_label():
+    from horizon import news
+    item = {"app": "cyberlogix"}
+    assert news.label(item) == "Preview"
+    assert news.label(item, demo_urls={"cyberlogix": "https://demo.example"}) == "In the demo"
+    assert news.label(item, open_urls={"cyberlogix": "https://app.example"}) == ""
+    assert news.label({"who": "Genesis"}) == ""
+
+
+def test_learn_more_links_a_demo_only_where_one_is_set(client, monkeypatch):
+    """No public demo is set by default, so no "See the demo" link at all (no
+    made-up links). With CYBERLOGIX_DEMO_URL set, only CyberLogix's Learn
+    more links it, and its What's new item says "In the demo"."""
+    page = client.get("/").text
+    assert "See the demo" not in page and "In the demo" not in page
+    monkeypatch.setenv("CYBERLOGIX_DEMO_URL", "https://demo.cyberlogix.example/")
+    monkeypatch.setenv("RANKUP_DEMO_URL", "demo.rankup.example")  # not a whole address: ignored
+    page = client.get("/").text
+    learn = page.split('id="learn-cyberlogix"', 1)[1].split("</section>", 1)[0]
+    assert ('<a class="learn-demo" href="https://demo.cyberlogix.example/" rel="noopener">See the demo (pretend data) '
+            '<span aria-hidden="true">→</span></a>') in learn
+    assert page.count("See the demo (pretend data)") == 1
+    bell = page.split('id="updates"', 1)[1].split("</section>", 1)[0]
+    cyber = [li for li in re.findall(r"<li>.*?</li>", bell, re.S) if "<b>CyberLogix AI</b>" in li]
+    assert cyber and all('<em class="news-tag">In the demo</em>' in li for li in cyber)
+
+
+def test_a_computer_shows_the_newest_update_in_one_line(client):
+    """A small What's new strip under the hero's buttons on a computer: the
+    newest item, linked, and "All updates" opening the bell's pop-up. The
+    phone has the whole list on the page, so the strip is hidden there."""
+    from horizon import news
+    page = client.get("/").text
+    hero = page.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
+    strip = hero.split('<p class="news-strip">', 1)[1].split("</p>", 1)[0]
+    top = news.items()[0]
+    assert f'<a class="news-strip-item" href="{top["href"]}"><b>{top["who"]}</b>' in strip
+    assert '<a class="news-strip-all" href="#updates">All updates</a>' in strip
+    late = _late_css()
+    assert "@media (max-width: 900px) {\n  .page .news-strip { display: none; }" in late
+    assert "white-space: nowrap" in late.split(".news-strip-item span {", 1)[1].split("}", 1)[0]
+
+
+def test_orbyt_stays_in_the_top_links_at_1280(client):
+    """1.18 hid Orbyt's top link below 1320px, so a 1280px laptop had no
+    Orbyt in the menu bar. Now only its "Work with MTRX Horizyn" waits."""
+    css = Path("static/css/site.css").read_text(encoding="utf-8")
+    assert ".nav-vortex { display: none; }" not in css
+    assert "@media (max-width: 1440px) {\n  .page .mainnav .orbyt-sub { display: none; }" in css
+    nav = client.get("/").text.split('<nav class="mainnav"', 1)[1].split("</nav>", 1)[0]
+    assert 'href="/orbyt" class="nav-vortex"' in nav
+
+
+def test_the_card_screens_are_whole_on_a_computer_and_bigger_on_a_phone(client):
+    """1.17/1.18 pushed each card's screen 26% below the card's edge, so its
+    bottom was cut off; on a phone it was a 46 x 62 px thumbnail. Now it sits
+    whole inside the card (below the tags), and on a phone it is 54 x 90 px
+    in its own column; pressing it opens Learn more."""
+    late = _late_css()
+    desk = late.split(".page .app-card .app-shot {", 1)[1].split("}", 1)[0]
+    assert "transform: none" in desk and "height: calc(100% - clamp(72px, 9.4vh, 88px))" in desk
+    phone = late.split("@media (max-width: 720px) {\n  .page .app-card {", 1)[1].split("\n}\n", 1)[0]
+    assert "width: 54px; height: 90px" in phone and "grid-column: 3; grid-row: 1 / span 2" in phone
+    page = client.get("/").text
+    for key in ("rankup", "cyberlogix", "omniarmor"):
+        card = page.split(f'data-app="{key}"', 1)[1].split("</article>", 1)[0]
+        assert f'<a class="app-shot" href="#learn-{key}"' in card

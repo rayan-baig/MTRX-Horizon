@@ -62,7 +62,7 @@
     + "[Open Orbyt](/orbyt)";
 
   const AFTER_SEND = "A real person reads your message and emails you back within 7 days, even if the answer is no. "
-    + "If we'd like to hear more, we'll ask in that email. We keep your message only to reply.";
+    + "If we'd like to hear more, we'll ask in that email. We keep your message only to reply, for up to 365 days.";
 
   const START_IDEA = "**Genesis** turns an idea into a plan, one small step at a time. It's free, needs no account, and your ideas stay in "
     + "this browser.\n\n1. Write it in three lines: a name, one line about it, and who it's for.\n2. Tick off easy steps from Spark to Launch.\n\n"
@@ -153,9 +153,10 @@
     // screen it keeps clear of the stage bar, the web address and the whole
     // launch checklist: each row with its Hide button, and each stage's
     // heading with its count and arrow (it moves to a free corner, or tucks
-    // away beside them).
+    // away beside them). On Orbyt, each path card's arrow (1.19.0: on a
+    // phone it tucked over Partner's arrow, a big card being cheap to cover).
     avoid: [".g-track", "#g-address", ".g-head .g-address", ".g-item-row", ".g-group-head", ".g-hidden-steps > summary",
-      ".g-add-form", ".g-moves", "#g-week"],
+      ".g-add-form", ".g-moves", "#g-week", ".v-path-go"],
     screen,
     // A suggestion is an AI prompt (words), or an answer given at once (core 1.4.0).
     chips: () => (CHIPS[path] || []).map(([label, what]) => (typeof what === "string" ? { label, prompt: what } : { label, ...what })),

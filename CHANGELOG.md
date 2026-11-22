@@ -4,6 +4,42 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.19.0 (22 November 2026)
+
+- **Home: the app screens show whole.** On a computer each card's screen used to hang off the
+  bottom of the card and get cut off. Now the whole screen sits inside the card, with a small
+  magnifier, and pressing it opens Learn more with two big screens. On a phone the screen is
+  bigger (about twice the size) in its own space beside the app's name, and a tap opens Learn more.
+- **Home: What's new says what you can do today.** One plain line at the top: you can plan your
+  idea in Genesis, send it to us on Orbyt, or ask Pilot; the apps are in development. Each app's
+  item has a "Preview" label (or "In the demo", if that app has a public demo), and every item
+  shows an arrow, so it's clear they are links. On a computer, the newest item is one line under
+  the main buttons, with "All updates" beside it.
+- **Home: a demo link only where there is a demo.** Learn more shows "See the demo (pretend
+  data)" for an app only when its public demo address is set (`RANKUP_DEMO_URL`,
+  `CYBERLOGIX_DEMO_URL`, `OMNIARMOR_DEMO_URL`). None is set yet, so no such link shows.
+- **Home: Orbyt stays in the top menu on a 1280-pixel laptop** (it moved into the Menu below
+  1320 pixels). On a phone the second button says "Try Genesis free".
+- **Genesis.** A first visit on a computer shows an example plan beside the welcome (a project
+  with its first three steps, one ticked) instead of an empty half. Coming back, the heading says
+  "Welcome back", with your project's name under it as a link. With one project, today's spark sits
+  beside it instead of below a half-empty row. In a project, Notes go under whichever column is
+  shorter, so there's no big empty gap under the checklist when Ask Genesis is tall (at the free
+  limit, say). Ask Genesis's buttons are a full 44 pixels tall on touch screens, and "While you
+  wait:" has its colon.
+- **Orbyt.** Every place that says how long we keep your message now says "up to 365 days" (the
+  Pitch form's "What happens after I send?" said "then delete it" with no number). "Will you build
+  it without me?" is warmer: we won't publish or pass on your idea, and if we're already working on
+  something similar we'll tell you when we reply. The Sent screen says the reply date once (it also
+  said "within 7 days"). On a phone the three steps are three neat columns instead of two and one.
+  On a computer the hero shows a short example pitch beside the words.
+- **Orbyt: a link straight to a form always lands on it.** When the fonts arrived after the first
+  jump, the text above the form reflowed and the form ended up lower than it should (54 pixels on
+  a phone), and the check after loading only helped a visitor still at the top. Now, until a
+  moment after loading, the form is put back under the top bar whenever it drifts, unless you have
+  scrolled, tapped or pressed a key. A browser test makes the late fonts certain, and another
+  checks it never pulls back someone who scrolled.
+
 ## 1.18.0 (22 November 2026)
 
 - **Pilot is useful before you add an AI key (Pilot core 1.4.0).** Before, every button in

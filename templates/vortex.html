@@ -71,9 +71,11 @@
       agreement or any obligation for either of us.</p></details>
   <details class="v-faq-item"><summary>What happens after I send?</summary>
     <p>A real person reads it and emails you back, even if the answer is no. If we'd like to hear more,
-      we'll ask in that email. We keep your message only to reply, then delete it.</p></details>
+      we'll ask in that email. We keep your message only to reply, for up to {{ keep_days }} days, then
+      delete it.</p></details>
   <details class="v-faq-item"><summary>Will you build it without me?</summary>
-    <p class="v-open-ideas">We won't publish or pass on what you send, but we can't promise we aren't working on something similar.</p></details>
+    <p class="v-open-ideas">No. We won't publish or pass on what you send. We may already be working on
+      something similar; if we are, we'll tell you when we reply, so you know where you stand.</p></details>
 </div>
 {%- endif %}
 <p class="v-reply">We reply within 7 days, even if the answer is no.</p>
@@ -111,6 +113,18 @@
     <div class="v-hero-art" aria-hidden="true">
       <span class="v-swirl"><i class="v-ring r1"></i><i class="v-ring r2"></i><i class="v-ring r3"></i><i class="v-core"></i></span>
     </div>
+    {#- On a computer, what a pitch looks like (1.19.0): three short lines,
+        the same ones the Pitch form asks for. A made-up example. -#}
+    <figure class="v-example">
+      <figcaption>Example pitch</figcaption>
+      <dl>
+        <div><dt>Idea</dt><dd>Paw Board</dd></div>
+        <div><dt>In one line</dt><dd>A noticeboard app for lost pets on my street</dd></div>
+        <div><dt>Who it's for</dt><dd>Neighbours with pets</dd></div>
+      </dl>
+      <p class="v-example-next"><span aria-hidden="true">✓</span> A real person reads it and replies by email.</p>
+      <a class="v-example-go" href="#pitch">Write mine <span aria-hidden="true">→</span></a>
+    </figure>
     <div class="v-hero-copy">
       <p class="eyebrow v-eyebrow">Work with MTRX Horizyn</p>
       <h1 class="v-title"><span>Orbyt</span></h1>

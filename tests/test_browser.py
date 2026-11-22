@@ -70,29 +70,99 @@ def browser():
         b.close()
 
 
+_FORM_PLACE = """kind => {
+    const form = document.getElementById(`v-${kind}`);
+    return { hidden: form.hidden, top: Math.round(form.getBoundingClientRect().top), y: Math.round(window.scrollY) };
+}"""
+# The form is shown, near the top of the screen (under the bar).
+_FORM_IN_VIEW = f"""kind => {{
+    const w = ({_FORM_PLACE})(kind);
+    return !w.hidden && w.top >= -5 && w.top <= 140 && w.y >= 100;
+}}"""
+
+
+def _lands_on_form(page, site, kind, settle_ms=2500):
+    """Opens /orbyt#kind; None if the form ends up in view, else where it was."""
+    page.goto(f"{site}/orbyt#{kind}", wait_until="load")
+    try:
+        page.wait_for_function(_FORM_IN_VIEW, arg=kind, timeout=settle_ms)
+        return None
+    except sync_api.TimeoutError:
+        return page.evaluate(_FORM_PLACE, kind)
+
+
 @pytest.mark.parametrize("kind", ["pitch", "partner"])
 def test_a_direct_link_to_an_orbyt_form_always_lands_on_it(site, browser, kind):
     """/orbyt#pitch and /orbyt#partner open their form and scroll to it.
     1.16 scrolled with behavior "auto", which the page's smooth-scroll style
     turns into a smooth scroll; started that early it was often cut short,
     and the visitor was left at the top. Loaded many times, on a phone and a
-    computer, it must land on the form every time."""
+    computer, it must land on the form every time (and stay there: it is
+    checked again a moment later)."""
     misses = []
     for size in ({"width": 390, "height": 844}, {"width": 1440, "height": 900}):
         context = browser.new_context(viewport=size)
         page = context.new_page()
         for attempt in range(12):
-            page.goto(f"{site}/orbyt#{kind}", wait_until="load")
-            page.wait_for_timeout(350)
-            where = page.evaluate(f"""() => {{
-                const form = document.getElementById("v-{kind}");
-                return {{ hidden: form.hidden, top: form.getBoundingClientRect().top, y: window.scrollY }};
-            }}""")
-            # The form is shown, near the top of the screen (under the bar).
-            if where["hidden"] or not (-5 <= where["top"] <= 140) or where["y"] < 100:
-                misses.append((size["width"], attempt, where))
+            miss = _lands_on_form(page, site, kind)
+            if miss is None:
+                page.wait_for_timeout(200)
+                if not page.evaluate(_FORM_IN_VIEW, kind):
+                    miss = page.evaluate(_FORM_PLACE, kind)
+            if miss is not None:
+                misses.append((size["width"], attempt, miss))
         context.close()
     assert not misses, misses
+
+
+@pytest.mark.parametrize("kind", ["pitch", "partner"])
+def test_a_form_link_still_lands_when_the_fonts_arrive_late(site, browser, kind):
+    """The race behind the flaky test above, made certain: the first jump runs
+    before the fonts arrive; when they swap in, the text above the form
+    reflows and (on a phone, for Pitch) the form ended 54 px below where it
+    should be (scrollY 733, not 787). 1.18 checked again after loading only
+    if the visitor was still within 40 px of the top, so it stayed there.
+    Now it is put back whenever it isn't under the bar."""
+    misses = []
+    for size in ({"width": 390, "height": 844}, {"width": 1440, "height": 900}):
+        context = browser.new_context(viewport=size)
+        page = context.new_page()
+
+        def late(route):
+            time.sleep(0.3)
+            route.continue_()
+
+        page.route("**/*.woff2", late)
+        for attempt in range(2):
+            miss = _lands_on_form(page, site, kind)
+            if miss is not None:
+                misses.append((size["width"], attempt, miss))
+        context.close()
+    assert not misses, misses
+
+
+def test_a_form_link_leaves_a_visitor_who_scrolled_alone(site, browser):
+    """Putting the form back stops as soon as the visitor scrolls: the page
+    must never pull them back to the form."""
+    context = browser.new_context(viewport={"width": 390, "height": 844})
+    page = context.new_page()
+
+    def late(route):
+        time.sleep(0.4)
+        route.continue_()
+
+    page.route("**/*.woff2", late)
+    page.goto(f"{site}/orbyt#pitch", wait_until="domcontentloaded")
+    jumped = page.evaluate("window.scrollY")
+    page.mouse.move(200, 400)
+    page.mouse.wheel(0, -500)
+    page.wait_for_function("y => window.scrollY < y", arg=jumped - 300, timeout=3000)
+    page.wait_for_load_state("load")
+    page.wait_for_timeout(2000)
+    where = page.evaluate(_FORM_PLACE, "pitch")
+    context.close()
+    # Still well below the bar, where the visitor's scroll left it.
+    assert where["top"] > 300, where
 
 
 def test_after_sending_orbyt_says_what_happens_next_with_a_date(site, browser):

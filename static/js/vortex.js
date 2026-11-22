@@ -278,15 +278,43 @@
   if (offered && window.location.hash !== "#pitch") history.replaceState(null, "", "#pitch");
   route(false);
   if (offered) useProject(offered);
-  // Arrived straight at a form: make sure it is still in view once the
-  // page has finished loading (and again a moment later, after late layout).
+  // Arrived straight at a form: keep it in view while the page settles.
+  // The first jump runs as soon as this script does, often before the fonts
+  // have arrived; when they swap in, the text above the form reflows and the
+  // form can end up well below the bar (a phone stopped 54 px short, and the
+  // old check only helped a visitor still at the very top). So until a
+  // moment after the page has loaded, whenever the layout changes, the form's
+  // top is checked against the top of the screen (0 to 140 px, under the bar)
+  // and put back, unless the visitor has scrolled, tapped or pressed a key
+  // since: then the page is theirs (1.19.0).
   const arrived = V.fromHash(window.location.hash).kind;
   if (arrived) {
+    let moved = false;
+    let done = false;
+    const visitor = () => { moved = true; };
+    const touches = ["wheel", "touchstart", "keydown", "mousedown"];
+    touches.forEach((type) => window.addEventListener(type, visitor, { passive: true, once: true }));
     const again = () => {
+      if (done || moved || sentKind) return;
       const kind = V.fromHash(window.location.hash).kind;
-      if (kind === arrived && !sentKind && window.scrollY < 40) jump(kind, false);
+      if (kind !== arrived) return;
+      const top = $(`v-${kind}`).getBoundingClientRect().top;
+      if (top < 0 || top > 140) jump(kind, false);
     };
-    if (document.readyState === "complete") setTimeout(again, 0);
-    else window.addEventListener("load", () => { again(); setTimeout(again, 250); }, { once: true });
+    const watch = "ResizeObserver" in window ? new ResizeObserver(again) : null;
+    if (watch) watch.observe(document.body);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(again, () => {});
+    const settle = () => {
+      again();
+      setTimeout(again, 250);
+      setTimeout(() => {
+        again();
+        done = true;
+        if (watch) watch.disconnect();
+        touches.forEach((type) => window.removeEventListener(type, visitor));
+      }, 1500);
+    };
+    if (document.readyState === "complete") setTimeout(settle, 0);
+    else window.addEventListener("load", settle, { once: true });
   }
 })();

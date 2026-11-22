@@ -457,8 +457,11 @@ def home(request: Request):
         # about them on the page, while they are off.
         "early": early_access.offer(),
         "creators": creators.enabled(),
-        # What's new: dated, linked, newest first (horizon/news.py).
-        "news": news.items(),
+        # What's new: dated, linked, newest first (horizon/news.py), each
+        # app's item labelled "Preview" or "In the demo".
+        "news": news.items(open_urls=apps["urls"], demo_urls=settings.demo_urls),
+        # An app's public demo (pretend data), only where one is set.
+        "demos": settings.demo_urls,
     })
 
 

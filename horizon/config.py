@@ -45,6 +45,7 @@ class Settings:
     trust_proxy: bool
     stats_key: str
     app_urls: dict
+    demo_urls: dict
     open_apps: frozenset
     stats_urls: dict
     session_hours: int
@@ -233,6 +234,10 @@ def get() -> Settings:
         trust_proxy=env.get("MTRX_TRUST_PROXY", "") == "1",
         stats_key=env.get("MTRX_STATS_KEY", "").strip(),
         app_urls=app_urls,
+        # Each app's public demo with pretend data ({APP}_DEMO_URL), if it has
+        # one: Learn more links to it and What's new says "In the demo".
+        # Unset, nothing links to a demo (no made-up links).
+        demo_urls={k: _web_address(env.get(f"{k.upper()}_DEMO_URL")) for k in APP_KEYS},
         # Which apps are open to the public (launched): their keys, or "all".
         # Until an app is named here the site says it is in development and
         # shows no Open button, even with its address set (catalog.py).
