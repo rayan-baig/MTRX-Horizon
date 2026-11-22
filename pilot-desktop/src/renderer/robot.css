@@ -9,11 +9,28 @@ html[data-theme="aurora"] { --glow: 34, 211, 238; --glow2: 59, 130, 246; }
 html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; user-select: none; -webkit-user-select: none; }
 .stage { position: absolute; inset: 0; outline: none; pointer-events: none; }
 .stage .pa-rest, .stage .pa-pose.pa-on { pointer-events: auto; cursor: grab; }
+.stage .pa-rest.pa-off { pointer-events: none; }
 .dragging .pa-rest, .dragging .pa-pose.pa-on { cursor: grabbing; }
 .pa-rest-body, .pa-rest-head { filter: drop-shadow(0 4px 8px rgba(0, 0, 20, 0.45)); }
+/* The same shadow and glow moving or still (1.4 swapped them at every start
+   and stop of a walk, which flashed the glow). */
 .pa-pose { filter: drop-shadow(0 4px 8px rgba(0, 0, 20, 0.45)) drop-shadow(0 0 6px rgba(var(--glow), 0.3)); }
-/* While travelling: one shadow and no glow, which is cheaper to draw on every frame. */
-.travel .pa-pose { filter: drop-shadow(0 4px 6px rgba(0, 0, 20, 0.4)); }
+
+/* Pilot for Mac 1.5: sharp on a Retina screen. The pose pictures are drawn
+   300 x 340 (the big ones 600 x 400), exactly twice their box here, so each
+   box is whole points (no 150.04 x 169.95), whole points from the point
+   between his feet, and so drawn pixel for pixel at 2x, not resampled
+   soft. The resting robot's box too (the big pose box: tricks.css). */
+.pa-pose {
+  left: round(calc(var(--pa-u) * -0.682), 1px); bottom: round(calc(var(--pa-u) * -0.018), 1px);
+  width: round(calc(var(--pa-u) * 1.364), 1px); height: round(calc(var(--pa-u) * 1.545), 1px);
+}
+.pa-rest { left: round(calc(var(--pa-u) * -0.447), 1px); width: round(var(--pa-u), 1px); height: round(calc(var(--pa-u) * 0.966), 0.5px); }
+/* He's always on his own layer, moving or not: no re-drawing (and no
+   one-frame flash) each time a move starts or ends. */
+.pa, .pa-body { will-change: transform; }
+/* A picture going out dissolves on top of the one coming in (smooth.js). */
+.pa-body > .mac-out { z-index: 2; }
 /* A soft glow under the resting robot, brighter while Pilot is thinking. */
 .pa-rest::before {
   content: ""; position: absolute; left: 12%; right: 4%; bottom: -6px; height: 20px; border-radius: 50%;

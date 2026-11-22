@@ -127,6 +127,8 @@ const check = (ok, what) => { console.log(`${ok ? "ok  " : "FAIL"} ${what}`); if
 
 const args = [appDir];
 if (process.platform === "linux") args.push("--no-sandbox");
+// (Pilot for Mac 1.5: PILOT_SMOKE_SCALE=2 draws it as on a Retina screen, to look at the frames.)
+if (process.env.PILOT_SMOKE_SCALE) args.push(`--force-device-scale-factor=${Number(process.env.PILOT_SMOKE_SCALE) || 1}`);
 const env = { ...process.env, PILOT_TEST: "1", PILOT_USER_DATA: userData, PILOT_TEST_OLLAMA: `http://127.0.0.1:${ollamaPort}`,
   PILOT_TEST_DRAWTHINGS: `http://127.0.0.1:${drawPort}`, PILOT_TEST_APPS_DIR: appsDir };
 delete env.NODE_OPTIONS;
@@ -149,6 +151,153 @@ const grabTo = async (name) => {
   const b64 = await app.evaluate(async () => (await global.__pilotTest.chat().webContents.capturePage()).toPNG().toString("base64"));
   fs.writeFileSync(path.join(shotsDir, name), Buffer.from(b64, "base64"));
 };
+
+// ---------------------------------------------------------------- Pilot for Mac 1.5
+
+const robotNow = (robot) => robot.evaluate(() => {
+  const a = window.__pilotRobot.actor;
+  const r = a.rect();
+  return { pose: a.pose, busy: a.busy, at: a.at, rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom } };
+});
+async function untilPose(robot, test, ms) {
+  for (let i = 0; i < (ms || 15000) / 100; i += 1) {
+    const n = await robotNow(robot);
+    if (n.busy && test(n.pose)) return n;
+    await wait(100);
+  }
+  return null;
+}
+async function settle(robot) {
+  await robot.evaluate(() => window.__pilotRobot.actor.stop());
+  await wait(300);
+}
+
+// Frames of one move held still at given moments, cropped around him (for
+// looking at the walk cycle, the climb and so on): <prefix>-NN.png.
+async function frames(robot, prefix, make, times) {
+  if (!shotsDir) return 0;
+  fs.mkdirSync(shotsDir, { recursive: true });
+  await robot.evaluate(async (spec) => {
+    const R = window.PilotRoam;
+    const g = { ...window.__pilotRobot.geometry(), pace: 1 };
+    const at = (x) => ({ x: x < 0 ? g.right + x * g.u : g.left + x * g.u, y: g.floor });
+    let plan;
+    if (spec.kind === "walk") plan = R.walkTo({ ...g, pos: at(spec.from) }, at(spec.to).x, "standing", spec.run);
+    else {
+      const k = R.track(at(spec.from), g.poses, "standing");
+      if (spec.kind === "climb") { R.climbUp(k, g, spec.side, g.u * 2.4); R.climbDown(k, g, spec.side); }
+      else R.flyTo(k, g, at(spec.to), false);
+      plan = k.done(spec.kind);
+    }
+    window.__mac15 = await window.__pilotRobot.actor.scrub(window.__pilotRobot.refine(plan));
+    window.__mac15plan = plan;
+  }, make);
+  const dur = await robot.evaluate(() => window.__mac15plan.duration);
+  let n = 0;
+  for (const t of times(dur)) {
+    await robot.evaluate((ms) => window.__mac15.seek(ms), t);
+    await wait(220); // any dissolve finishes
+    const box = await robot.evaluate((side) => {
+      // (Where he's drawn at that moment: the held animation, not his last resting place.)
+      const r = window.__pilotRobot.actor.rect();
+      const w = 230;
+      const h = 250;
+      // (A climb: framed on the screen's edge, to see him against it.)
+      const x = side ? (side > 0 ? window.innerWidth - w : 0) : Math.round(Math.min(Math.max((r.left + r.right) / 2 - w / 2, 0), window.innerWidth - w));
+      const y = Math.round(Math.min(Math.max(r.bottom - 225, 0), window.innerHeight - h));
+      return { x, y, width: w, height: h };
+    }, make.side || 0);
+    const b64 = await app.evaluate(async (_e, r) => (await global.__pilotTest.robot().webContents.capturePage(r)).toPNG().toString("base64"), box);
+    fs.writeFileSync(path.join(shotsDir, `${prefix}-${String(n).padStart(2, "0")}.png`), Buffer.from(b64, "base64"));
+    n += 1;
+  }
+  await robot.evaluate(() => window.__mac15.end());
+  await wait(200);
+  return n;
+}
+
+async function motion15() {
+  const robot = await pageFor("robot.html");
+  await robot.evaluate(() => window.__pilotRobot.warmed());
+  // Sharp at any screen scale: his boxes are whole points.
+  const boxes = await robot.evaluate(() => {
+    window.__pilotRobot.actor.show("standing", 0);
+    const pose = getComputedStyle(document.querySelector('.pa-pose[data-pose="standing"]'));
+    const rest = getComputedStyle(document.querySelector(".pa-rest"));
+    const r = { pose: [pose.left, pose.width, pose.height, pose.bottom], rest: [rest.left, rest.width], dpr: window.devicePixelRatio, will: getComputedStyle(document.querySelector(".pa")).willChange };
+    window.__pilotRobot.actor.show("rest", 0);
+    return r;
+  });
+  check(boxes.pose.join() === "-75px,150px,170px,-2px" && boxes.rest.join() === "-49px,110px" && boxes.will === "transform",
+    `the pose pictures' boxes are whole points, drawn pixel for pixel (${boxes.pose.join(" ")}, at ${boxes.dpr}x)`);
+  check(await robot.evaluate(() => window.__pilotRobot.actor.poses().includes("walk1-left") && window.__pilotRobot.actor.poses().includes("climb1-left")),
+    "the left-facing walk and climb pictures are picked up");
+
+  // Clickable while he walks: the main process follows him (its own check of
+  // the cursor, which works whatever macOS sends the window).
+  await settle(robot);
+  await app.evaluate(() => global.__pilotTest.move({ move: "walk", user: true }));
+  const walking = await untilPose(robot, (p) => /^walk/.test(p));
+  check(Boolean(walking), "he sets off walking, a walk picture showing");
+  const area = await app.evaluate(() => global.__pilotTest.workArea());
+  let followed = 0;
+  let samples = 0;
+  for (let i = 0; i < 6; i += 1) {
+    const n = await robotNow(robot);
+    if (!n.busy) break;
+    const c = { x: area.x + (n.rect.left + n.rect.right) / 2, y: area.y + (n.rect.top + n.rect.bottom) / 2 };
+    await app.evaluate((_e, p) => global.__pilotTest.pretendCursor(p), c);
+    await wait(150);
+    samples += 1;
+    if (await app.evaluate(() => global.__pilotTest.gate().ignoring) === false) followed += 1;
+  }
+  check(samples >= 3 && followed === samples, `the cursor on him as he walks: the overlay takes the mouse every time (${followed}/${samples})`);
+  const start = walking.rect;
+  const later = await robotNow(robot);
+  if (later.busy && Math.abs(later.rect.left - start.left) > 160) {
+    await app.evaluate((_e, p) => global.__pilotTest.pretendCursor(p), { x: area.x + (start.left + start.right) / 2, y: area.y + (start.top + start.bottom) / 2 });
+    await wait(150);
+    check(await app.evaluate(() => global.__pilotTest.gate().ignoring) === true, "where his walk began, once he's gone: clicks go through to the apps again");
+  }
+  await app.evaluate(() => global.__pilotTest.pretendCursor(null));
+  await settle(robot);
+
+  // A click on him mid-walk, mid-climb and mid-trick opens the chat.
+  for (const [what, cmd, pose, extraWait] of [["mid-walk", { move: "walk", user: true }, (p) => /^walk/.test(p), 300],
+    ["mid-climb", { move: "climb", user: true }, (p) => /^climb/.test(p), 900], ["mid-trick", { move: "magic-hat", user: true }, (p) => p !== "rest", 1500]]) {
+    await app.evaluate((_e, c) => global.__pilotTest.move(c), cmd);
+    const n = await untilPose(robot, pose, 25000);
+    if (n) await wait(extraWait);
+    const m = await robotNow(robot);
+    const ok0 = Boolean(n) && m.busy;
+    await robot.mouse.click((m.rect.left + m.rect.right) / 2, (m.rect.top + m.rect.bottom) / 2);
+    await wait(700);
+    const open = await app.evaluate(() => global.__pilotTest.chat().isVisible());
+    if (open && shotsDir && what === "mid-climb") {
+      const b64 = await app.evaluate(async () => (await global.__pilotTest.robot().webContents.capturePage()).toPNG().toString("base64"));
+      fs.mkdirSync(shotsDir, { recursive: true });
+      fs.writeFileSync(path.join(shotsDir, "mac15-click-climb-robot.png"), Buffer.from(b64, "base64"));
+    }
+    check(ok0 && open, `clicking him ${what} opens the chat${ok0 ? "" : " (he wasn't moving)"}`);
+    await app.evaluate(() => global.__pilotTest.hideChat());
+    await wait(400);
+    await settle(robot);
+  }
+
+  // Frames to look at (with --shots): the walk cycle both ways, a run, a climb on each side, a flight.
+  const T = (d, k) => Array.from({ length: k }, (_v, i) => Math.round((d * (i + 0.5)) / k));
+  const stepMs = await robot.evaluate(() => window.PilotRoam.gait({ u: 110, pace: 1 }, false).stepMs);
+  const cycle = (d) => Array.from({ length: 8 }, (_v, i) => Math.round(stepMs * 2 + (stepMs * i) / 4)).filter((t) => t < d);
+  let made = 0;
+  // (Places in robot widths from the left edge, or from the right when negative.)
+  made += await frames(robot, "mac15-walk-right", { kind: "walk", from: 1, to: 6 }, cycle);
+  made += await frames(robot, "mac15-walk-left", { kind: "walk", from: -1, to: -6 }, cycle);
+  made += await frames(robot, "mac15-run-right", { kind: "walk", from: 1, to: -1, run: true }, (d) => T(d, 8));
+  made += await frames(robot, "mac15-climb-right", { kind: "climb", from: -0.01, side: 1 }, (d) => T(d, 12));
+  made += await frames(robot, "mac15-climb-left", { kind: "climb", from: 0.01, side: -1 }, (d) => T(d, 12));
+  made += await frames(robot, "mac15-fly", { kind: "fly", from: 1, to: -2 }, (d) => T(d, 10));
+  if (shotsDir) check(made >= 50, `frames of the walk, run, climbs and a flight saved (${made})`);
+}
 
 try {
   // Which edition this is, and where its AI runs at first (once the app has started).
@@ -187,9 +336,15 @@ try {
   // A move: the robot walks and reports where it ended up.
   const before = await app.evaluate(() => global.__pilotTest.robotAt());
   await app.evaluate(() => global.__pilotTest.move({ move: "walk" }));
-  await wait(6000);
+  // (1.5: a person's walking pace, so a walk can take several seconds.)
+  await wait(1500);
+  for (let i = 0; i < 60 && await robot.evaluate(() => window.__pilotRobot.actor.busy); i += 1) await wait(250);
+  await wait(200);
   const after = await app.evaluate(() => global.__pilotTest.robotAt());
-  check(after && before && Math.abs(after.x - before.x) > 20 && !after.moving, "the robot walks somewhere and rests");
+  check(after && before && Math.abs(after.x - before.x) > 20 && !after.moving, `the robot walks somewhere and rests (${before && Math.round(before.x)} → ${after && Math.round(after.x)})`);
+
+  // Pilot for Mac 1.5: he can be clicked while he moves, and he moves like a person.
+  await motion15();
   // Calm mode: the timer sends nothing.
   await app.evaluate(() => global.__pilotTest.setCalm(true));
   check(await app.evaluate(() => global.__pilotTest.life().tick()) === null, "calm mode: no wandering");

@@ -1100,7 +1100,7 @@
     R.climbUp(k, g, side, Math.min(g.u * 2.2, (g.floor - g.top) * 0.7));
     // Down fast, sparks from the friction.
     const y0 = k.now.y;
-    k.show("climb1", 80).to(120, { sy: 0.95 }, "out").sound("whoosh");
+    k.show(R.climbPose(side, 0), 80).to(120, { sy: 0.95 }, "out").sound("whoosh");
     for (let i = 1; i <= 6; i += 1) {
       const u = i / 6;
       k.to(90, { y: y0 + (g.floor - y0) * u * u, r: side * 2 }, "linear");

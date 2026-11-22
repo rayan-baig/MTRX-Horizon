@@ -96,7 +96,7 @@ let talking = false; // Pilot is reading a reply aloud
 const sayer = voiceCore.sayer({ spawn, mac: MAC, onDone: () => setTalking(false) });
 const mute = voiceCore.muteWatch({ execFile, mac: MAC });
 const voiceNow = () => voiceCore.cleanVoice(settings.get("voice"));
-const testOverride = { away: null, fullscreen: null }; // the smoke test pretends with these
+const testOverride = { away: null, fullscreen: null, cursor: null }; // the smoke test pretends with these
 const cards = new Map(); // id → {type, label, labels, step, resolve}
 const mediaItems = new Map(); // id → {kind, state, progress, mime, data, prompt, message}
 let cardSeq = 0;
@@ -965,18 +965,24 @@ async function lifeCheck(c) {
   return { typing: typing || Date.now() < typingUntil, fullscreen };
 }
 
-// A few times a second: is the cursor over the robot? (So a file dragged
-// from Finder can be dropped on it; drags send the window no mouse moves.)
+// 20 times a second: is the cursor over the robot? This is what lets a
+// click land on him whatever macOS does with mouse moves for a window that
+// lets clicks through (and a file dragged from Finder sends none at all).
+// Pilot for Mac 1.5: while he moves, the robot window sends his place 20
+// times a second, so this follows him. (1.4 checked twice as slowly against
+// the place where his move had begun: a walking robot couldn't be clicked,
+// and a click on the empty spot he'd left was swallowed.)
 // And in Always moving: the pointer resting close to him (where the user is
 // working) means he moves on now rather than stand there.
 let restAt = null;
 let restSince = 0;
+const cursorNow = () => testOverride.cursor || screen.getCursorScreenPoint();
 function watchCursor() {
   if (!gate || !overlayDisplay || hidden || !robotAt || !robotAt.rect) return;
-  const c = screen.getCursorScreenPoint();
+  const c = cursorNow();
   const a = overlayDisplay.workArea;
   const p = { x: c.x - a.x, y: c.y - a.y };
-  gate.set({ near: motion.hit(robotAt.rect, p, 6) });
+  gate.set({ near: motion.hit(robotAt.rect, p, 8) });
   if (!restAt || Math.abs(p.x - restAt.x) > 3 || Math.abs(p.y - restAt.y) > 3) { restAt = p; restSince = Date.now(); return; }
   if (moving || gate.near || gate.over || !life || levelNow() !== "always") return;
   if (Date.now() - restSince > 900 && motion.hit(robotAt.rect, p, U * 0.9)) {
@@ -1522,7 +1528,7 @@ app.whenReady().then(async () => {
     const due = chatOpen() ? 5000 : 60000;
     if (Date.now() - freeState.checkedAt >= due) refreshFree().catch(() => {});
   }, 5000);
-  setInterval(watchCursor, 300);
+  setInterval(watchCursor, 50);
   if (powerMonitor) {
     powerMonitor.on("lock-screen", () => { locked = true; pushRobot(); });
     powerMonitor.on("unlock-screen", () => { locked = false; pushRobot(); });
@@ -1547,7 +1553,10 @@ app.whenReady().then(async () => {
       move: (cmd) => sendMove(cmd), playTrick, life: () => life, gate: () => gate, robotAt: () => robotAt,
       context: lifeContext, setCalm, setEnergy, home, cheer, levelNow,
       startLife: () => life.start(), stopLife: () => life.stop(), setHidden, hold: () => roam.holdReason(lifeContext()), settings: () => settings.data,
-      pretend: (k, v) => { testOverride[k] = v === null ? null : Boolean(v); pushRobot(); }, addPending, pending: () => pending.slice(), setScreenMode, takePending,
+      pretend: (k, v) => { testOverride[k] = v === null ? null : Boolean(v); pushRobot(); }, addPending,
+      // Where the cursor is, in screen points (null: the real one), for the click-through checks.
+      pretendCursor: (p) => { testOverride.cursor = p && Number.isFinite(p.x) && Number.isFinite(p.y) ? { x: p.x, y: p.y } : null; watchCursor(); },
+      workArea: () => (overlayDisplay ? { ...overlayDisplay.workArea } : null), pending: () => pending.slice(), setScreenMode, takePending,
       edition: () => ED, refreshFree, freeView, setSource, activeSettings, aiSource,
     };
   }

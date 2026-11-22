@@ -22,7 +22,8 @@
 
 /* The big pose canvas (600 x 400 instead of 300 x 340) for poses whose
    props reach further: robot.js marks those pictures once they're decoded. */
-.pa-pose.pt-big { left: calc(var(--pa-u) * -1.364); width: calc(var(--pa-u) * 2.727); height: calc(var(--pa-u) * 1.818); }
+/* (1.5: in whole points, so the picture is drawn pixel for pixel at 2x.) */
+.pa-pose.pt-big { left: round(calc(var(--pa-u) * -1.364), 1px); width: round(calc(var(--pa-u) * 2.727), 1px); height: round(calc(var(--pa-u) * 1.818), 1px); }
 
 .pa-fx-note .pa-fx-in { animation: pt-float 1.6s ease-out forwards; }
 .pa-fx-zzz .pa-fx-in { animation: pt-zzz 1.8s ease-out forwards; }
