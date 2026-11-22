@@ -166,16 +166,32 @@ test("1.16.0: the last stage tile says Live (never cut short), and Delete all is
 
 // ---------------------------------------------------------------- 1.17.0
 
-test("a returning visitor sees 'Welcome back', their project as a link, and its next step", () => {
+test("a returning visitor sees 'Welcome back', their project's name, and its next three steps to tick", () => {
   const cont = functionSource("drawContinue");
   assert.match(cont, /sorted\.find\(\(q\) => !S\.progress\(q\)\.launched\)/);
   // 1.19.0: "Continue <project>" looked like a button and wasn't; the
-  // heading greets, and the project's name under it is a real link.
+  // heading greets. 1.21.0: the name under it is plain words: a link there
+  // too was a second way to the same place as the Continue button.
   assert.match(cont, /el\("h1", \{ class: "g-continue-title" \}, el\("span", \{ text: "Welcome " \}\), el\("b", \{ text: "back" \}\)\)/);
-  assert.match(cont, /el\("p", \{ class: "g-continue-project" \}, el\("a", \{ href: `#p\/\$\{p\.id\}` \}, p\.name/);
+  assert.match(cont, /el\("b", \{ class: "g-continue-name", text: p\.name \}\)/);
+  assert.doesNotMatch(cont.split('class: "g-continue-project"')[1].split("nextSteps(p)")[0], /href/);
+  assert.equal(cont.split("href: `#p/${p.id}`").length - 1, 1, "one link to the project: the Continue button");
   assert.doesNotMatch(cont, /text: "Continue " \}/);
-  assert.match(cont, /el\("span", \{ class: "g-continue-label", text: "Next step: " \}\)/);
-  assert.match(cont, /href: `#p\/\$\{p\.id\}`/);
+  assert.match(cont, /nextSteps\(p\),/);
+  // The next three steps, each ticked through update(), like the checklist.
+  const next = functionSource("nextSteps");
+  assert.match(next, /const steps = openSteps\(p, 3\);/);
+  assert.match(next, /el\("input", \{ type: "checkbox" \}\)/);
+  assert.match(next, /update\(p, \(q\) => \{ q\.ticks\[item\.key\] = true; \}\);/);
+  assert.match(next, /tickCheer\(p, item\.stage\);\n\s+drawList\(\);/);
+  // This stage's steps first, then the stages after it.
+  const open = functionSource("openSteps");
+  const S = { STAGES: [{ key: "spark" }, { key: "plan" }, { key: "build" }, { key: "launch" }],
+    steps: () => [{ key: "a", stage: "spark" }, { key: "b", stage: "plan" }, { key: "c", stage: "plan" }, { key: "d", stage: "build" }, { key: "e", stage: "launch" }] };
+  const openSteps = new Function("S", `${open}; return openSteps;`)(S);
+  assert.deepEqual(openSteps({ stage: "plan", ticks: { b: true } }, 3).map((i) => i.key), ["c", "d", "e"]);
+  assert.deepEqual(openSteps({ stage: "build", ticks: {} }, 3).map((i) => i.key), ["d", "e", "a"]);
+  assert.deepEqual(openSteps({ stage: "spark" }, 2).map((i) => i.key), ["a", "b"]);
   assert.match(cont, /classList\.toggle\("g-hero-back", sorted\.length > 0\)/);
   const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
   assert.match(css, /\.g-hero\.g-hero-back \.g-hero-copy \{ display: none; \}/);
@@ -254,4 +270,29 @@ test("1.19.0: at the free limit (a tall Ask Genesis) the notes fill the space un
   assert.deepEqual(run(700, 840), { notes: "main", danger: "side" });
   // A long, open checklist: notes go to the side instead.
   assert.deepEqual(run(1200, 500), { notes: "side", danger: "side" });
+});
+
+// ---------------------------------------------------------------- 1.21.0
+
+test("phones: a two-line intro and compact steps on a first visit, today's spark straight after 'Welcome back'", () => {
+  const page = fs.readFileSync(path.join(__dirname, "..", "..", "templates", "genesis.html"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
+  const late = css.split("/* ---------- 1.21.0 ---------- */")[1];
+  assert.ok(late, "genesis.css has its 1.21.0 part");
+  const intro = page.split('<p class="g-intro">')[1].split("</p>")[0];
+  assert.ok(intro.length <= 70, "short enough for two lines on a phone");
+  assert.match(intro, /Free, and it stays in this browser\./);
+  const phone = late.split("@media (max-width: 720px) {")[1].split("\n}\n")[0];
+  assert.match(phone, /\.g-hero:not\(\.g-hero-small\) \.g-line, \.g-hero:not\(\.g-hero-small\) \.g-text \{ display: none; \}/);
+  assert.match(phone, /\.g-hero:not\(\.g-hero-small\) \.g-intro \{ display: block;/);
+  assert.match(phone, /\.g-how strong \{ display: inline;/);
+  assert.match(phone, /#g-list-view\.g-returning > \.g-hero \{ order: -2; \}/);
+  assert.match(phone, /#g-list-view\.g-returning > \.g-daily \{ order: -1; \}/);
+  // The view's class is its own: ".g-back" is the "← All projects" link's
+  // (it greyed today's spark and the greeting when first tried).
+  assert.match(functionSource("drawList"), /view\.classList\.toggle\("g-returning", projects\.length > 0\);/);
+  assert.doesNotMatch(css, /#g-list-view\.g-back/);
+  // A computer: the next steps fill the welcome's right half.
+  const wide = late.split("@media (min-width: 901px) {")[1].split("\n}\n")[0];
+  assert.match(wide, /\.g-hero\.g-hero-back \.g-continue > \.g-continue-next \{\n\s+grid-column: 2; grid-row: 1 \/ span 4;/);
 });

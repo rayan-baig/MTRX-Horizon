@@ -1112,3 +1112,36 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 @media (max-width: 1180px) {
   .mainnav .orbyt-sub { display: none; }
 }
+
+/* ---------- 1.21.0: a short news headline, tidy tags, "Tap to see" ---------- */
+/* The "New" strip shows the newest item's short headline (horizon/news.py),
+   always whole: never cut off with "...". */
+.news-strip-item span { overflow: visible; text-overflow: clip; white-space: nowrap; }
+.page .news-strip { max-width: 100%; }
+/* Narrow computers (901-1100px): the tags would wrap onto a second line
+   beside the icon, so the card leaves them out; its line says the same. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .page .app-card .tags { display: none; }
+}
+/* "Tap to see" under each card's screen on a phone, so it's clear the
+   screen opens bigger (Learn more). */
+.app-shot-cue { display: none; }
+@media (max-width: 720px) {
+  .page .app-card .app-shot {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; height: auto; overflow: visible;
+    border: 0; border-radius: 0; box-shadow: none; line-height: 1;
+  }
+  .page .app-card .app-shot img {
+    width: 54px; height: 90px; border-radius: 8px;
+    border: 1.5px solid color-mix(in srgb, var(--accent) 65%, transparent);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent), 0 10px 26px rgba(0, 0, 0, .55);
+  }
+  .page .app-card .app-shot::after { right: 5px; bottom: 23px; }
+  .page .app-card .app-shot .app-shot-cue { display: block; font: 600 10.5px/1.2 var(--body); color: var(--muted); white-space: nowrap; letter-spacing: .01em; text-decoration: none; }
+  .page .app-card .app-shot { text-decoration: none; }
+}
+@media (max-width: 360px) {
+  .page .app-card .app-shot img { width: 48px; height: 80px; }
+}
+/* The Projects tile's line breaks only at its dots. */
+.page .fact-part { white-space: nowrap; }

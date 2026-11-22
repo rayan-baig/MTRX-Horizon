@@ -565,3 +565,28 @@
 @media (max-width: 480px) {
   .v-review-buy { justify-self: stretch; }
 }
+
+/* ---------- 1.21.0 ---------- */
+/* Our apps: a clear gap between the Kitchen Safety Bundle bar and the app
+   cards (a gap on the open <details> didn't reach its contents, so the bar
+   sat on the cards). */
+.v-apps-fold[open] { display: block; }
+.v-apps-fold > .v-bundle { margin: 0 0 14px; }
+@media (min-width: 721px) {
+  /* The path cards' links sit on one line at the bottom, whatever the
+     length of the words above them ("Pitch →", "Join →", "Partner →"). */
+  .v-paths:not(.v-paths-more) .v-path { grid-template-rows: 1fr auto; height: 100%; }
+  .v-paths:not(.v-paths-more) .v-path-go { align-self: end; margin-top: 6px; }
+}
+@media (min-width: 901px) {
+  /* A tighter hero: less empty space round the words, and a slimmer
+     example beside them. */
+  .v-hero { padding: clamp(24px, 2.6vw, 36px) clamp(28px, 3.4vw, 48px); column-gap: 40px; }
+  .v-hero-copy { max-width: 640px; }
+  .v-hero .v-title { margin-bottom: 8px; }
+  .v-hero .v-line { margin-bottom: 8px; }
+  .v-hero .v-text { margin-bottom: 14px; }
+  .v-example { gap: 8px; padding: 14px 18px; }
+  .v-example dl { gap: 6px; }
+  .v-example dl div { padding: 6px 10px; }
+}

@@ -144,6 +144,9 @@
     // One project: today's spark sits beside it on a computer (1.19.0), not
     // under a half-empty row.
     view.classList.toggle("g-one", projects.length === 1);
+    // A returning visitor on a phone: today's spark comes straight after the
+    // welcome back, on the first screen (1.21.0).
+    view.classList.toggle("g-returning", projects.length > 0);
     const mine = $("g-mine");
     const hero = document.querySelector(".g-hero");
     const anchor = projects.length ? (hero.nextElementSibling === mine ? mine : hero.nextElementSibling)
@@ -170,7 +173,9 @@
     box.hidden = sorted.length === 0;
     document.querySelector(".g-hero").classList.toggle("g-hero-back", sorted.length > 0);
     if (!sorted.length) { fill(box); return; }
-    const start = el("a", { class: "btn btn-ghost btn-small", href: "#new" }, "Start another idea");
+    // "New idea" where the button is narrow (phones), beside Continue.
+    const start = el("a", { class: "btn btn-ghost btn-small", href: "#new" },
+      el("span", { class: "say-long", text: "Start another idea" }), el("span", { class: "say-short", text: "New idea" }));
     if (!p) {
       fill(box, el("p", { class: "eyebrow g-eyebrow", text: "Genesis · welcome back" }),
         el("h1", { class: "g-continue-title", text: "Every project is launched." }),
@@ -179,19 +184,52 @@
       return;
     }
     const pr = S.progress(p);
-    const step = S.nextStep(p);
     const go = el("a", { class: "btn btn-genesis", href: `#p/${p.id}` }, `Continue ${p.name} →`);
-    // 1.19.0: the heading is a greeting, and the project's name under it is
-    // a link ("Continue <project>" looked like a button but wasn't one).
+    // 1.19.0: the heading is a greeting. 1.21.0: the project's name under it
+    // is plain words (the Continue button is the one way in, not a second
+    // link beside it), and its next three steps can be ticked right here:
+    // beside the greeting on a computer, under it on a phone.
     fill(box, el("p", { class: "eyebrow g-eyebrow", text: "Genesis" }),
       el("h1", { class: "g-continue-title" }, el("span", { text: "Welcome " }), el("b", { text: "back" })),
-      el("p", { class: "g-continue-project" }, el("a", { href: `#p/${p.id}` }, p.name, el("span", { "aria-hidden": "true", text: " →" }))),
-      el("p", { class: "g-continue-step" },
+      el("p", { class: "g-continue-project" },
         el("span", { class: `g-chip stage-${p.stage}`, text: stageOf(p.stage).name }),
-        el("span", { class: "g-continue-label", text: "Next step: " }),
-        el("b", { text: step ? step.label : `Move on from ${stageOf(p.stage).name}` })),
-      el("p", { class: "g-continue-done", text: `${pr.done} of ${pr.total} steps done` }),
+        el("b", { class: "g-continue-name", text: p.name }),
+        el("small", { class: "g-continue-done", text: `${pr.done} of ${pr.total} steps done` })),
+      nextSteps(p),
       el("div", { class: "cta-row" }, go, start));
+  }
+
+  // The next few steps still open: this stage's first, then the stages
+  // after it, in checklist order.
+  function openSteps(p, most) {
+    const here = S.STAGES.findIndex((s) => s.key === p.stage);
+    const at = (key) => S.STAGES.findIndex((s) => s.key === key);
+    const ticks = p.ticks || {};
+    const open = S.steps(p).filter((i) => !ticks[i.key]);
+    return open.filter((i) => at(i.stage) >= here).concat(open.filter((i) => at(i.stage) < here)).slice(0, most);
+  }
+
+  // A returning visitor's next three steps, each ticked with one tap
+  // (1.21.0), through the same update() the project's checklist uses.
+  function nextSteps(p) {
+    const steps = openSteps(p, 3);
+    const box = el("div", { class: "g-continue-next" },
+      el("p", { class: "g-continue-label", text: steps.length === 1 ? "Your next step" : "Your next steps" }));
+    if (!steps.length) {
+      put(box, el("p", { class: "g-continue-all", text: `Every step is ticked. Open ${p.name} to launch it.` }));
+      return box;
+    }
+    put(box, el("ul", { class: "g-continue-steps" }, ...steps.map((item) => {
+      const tick = el("input", { type: "checkbox" });
+      tick.addEventListener("change", () => {
+        if (!tick.checked) return;
+        update(p, (q) => { q.ticks[item.key] = true; });
+        tickCheer(p, item.stage);
+        drawList();
+      });
+      return el("li", {}, el("label", { class: `g-continue-tick stage-${item.stage}` }, tick, el("span", { text: item.label })));
+    })));
+    return box;
   }
 
   // Genesis Pro shows only once it could matter: after a first project or a
@@ -1366,6 +1404,13 @@
     },
     list() { return (store.usable ? store.load() : projects).slice().sort((a, b) => b.updated - a.updated).map(summary); },
     find(ref) { const q = findProject(ref); return q ? { id: q.id, name: q.name } : null; },
+    // For Pilot's own answers (1.21.0), read in this browser and never sent:
+    // each project with its id, so the answer can link straight to it.
+    mine() {
+      return (store.usable ? store.load() : projects).slice().sort((a, b) => b.updated - a.updated)
+        .map((q) => ({ id: q.id, ...summary(q) }));
+    },
+    nextOf(ref) { const q = findProject(ref); return q ? { id: q.id, ...summary(q) } : null; },
     next(ref) {
       const q = findProject(ref);
       if (!q) return { error: projects.length ? "I couldn't find that project." : "There are no projects yet." };

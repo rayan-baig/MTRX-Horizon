@@ -13,25 +13,36 @@ from datetime import date
 # Newest first. dot: the colour of the app it is about (see .dot in site.css).
 # href: a page of this site, or the app's Learn more card on the home page.
 NEWS = [
-    {"date": "2026-11-22", "who": "Pilot", "dot": "blue", "source": "MTRX Horizyn 1.18.0",
-     "text": "No AI key yet? Pilot still answers \"What is Orbyt?\" and \"What apps are coming?\" straight away.",
-     "href": "/orbyt"},
+    {"date": "2026-11-22", "who": "Pilot", "dot": "violet", "source": "MTRX Horizyn 1.21.0",
+     "text": "On Genesis, Pilot shows your projects and your next step straight away, read from this browser only.",
+     "headline": "Your projects and next step, no key needed",
+     "href": "/genesis"},
     {"date": "2026-11-22", "who": "Genesis", "dot": "violet", "source": "MTRX Horizyn 1.17.0",
      "text": "Coming back? Genesis opens on your project's next step, and cheers when you tick one.",
+     "headline": "Opens on your project's next step",
      "href": "/genesis"},
     {"date": "2026-11-22", "who": "Orbyt", "dot": "blue", "source": "MTRX Horizyn 1.17.0",
      "text": "Short answers before you send: who owns your idea, and what happens next.",
+     "headline": "Short answers before you send",
      "href": "/orbyt#pitch"},
     {"date": "2026-11-21", "who": "CyberLogix AI", "dot": "blue", "source": "CyberLogix AI 3.24.0",
      "text": "Pilot answers what a café asks most: which fridges need me, and is the food still OK?",
+     "headline": "Pilot answers a café's top questions",
      "href": "/#learn-cyberlogix", "app": "cyberlogix"},
     {"date": "2026-11-21", "who": "OmniArmor.ai", "dot": "violet", "source": "OmniArmor.ai 1.14.0",
      "text": "Pilot tells you what's due or overdue, and explains any check in plain words.",
+     "headline": "Pilot tells you what's due",
      "href": "/#learn-omniarmor", "app": "omniarmor"},
     {"date": "2026-11-21", "who": "RankUp", "dot": "green-dot", "source": "RankUp 0.28.0",
      "text": "Parents ask Pilot what's waiting for them, or start a new chore in one tap.",
+     "headline": "Parents start a chore in one tap",
      "href": "/#learn-rankup", "app": "rankup"},
 ]
+
+# The desktop "New" strip under the home page's buttons shows the newest
+# item's headline (1.21.0): short enough to show whole, never cut off with
+# "...". tests/test_site.py holds every headline to this many characters.
+HEADLINE_MOST = 44
 
 # How old the newest item may be next to the newest CHANGELOG entry, and the
 # oldest item next to the newest: anything older is stale (tests check both).

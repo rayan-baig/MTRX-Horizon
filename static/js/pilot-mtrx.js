@@ -53,13 +53,60 @@
     return `${head}\n\n${list.join("\n")}${hear}`;
   }
 
+  // On Orbyt itself there's no "Open Orbyt" (1.21.0): the visitor is there.
+  const onOrbyt = path === "/orbyt";
   const ORBYT = "**Orbyt** is the official place to work with MTRX Horizyn. Pick the path that fits you:\n\n"
     + "- [Pitch an idea](/orbyt#pitch): a business or app idea, or one from Genesis\n"
     + (early ? "- [Early access](/early-access): be first to try the apps\n" : "")
     + "- [Partner with us](/orbyt#partner): for businesses\n"
     + "- [Investors](/orbyt#invest) and [buying the company or an app](/orbyt#buy): these only start a conversation\n\n"
-    + "It takes about 2 minutes, a real person reads every message, and we reply by email within 7 days, even if the answer is no. "
-    + "[Open Orbyt](/orbyt)";
+    + "It takes about 2 minutes, a real person reads every message, and we reply by email within 7 days, even if the answer is no."
+    + (onOrbyt ? "" : " [Open Orbyt](/orbyt)");
+
+  // Orbyt's "Which form is for me?" (1.21.0): a chooser, one line per kind
+  // of visitor, each jumping straight to its form on this page.
+  const FORM_CHOOSER = "Pick the line that sounds most like you:\n\n"
+    + "- **I have an idea** (a business or app, or a project from Genesis): [Pitch an idea](/orbyt#pitch)\n"
+    + (early ? "- **I want to try the apps first**: [Early access](/early-access), and we email you the day one opens\n" : "")
+    + "- **I run a business** and want to resell, connect with or recommend one of our apps: [Partner with us](/orbyt#partner)\n"
+    + "- **I'd like to invest, or buy the company or an app**: [Investors](/orbyt#invest) or [Buying](/orbyt#buy). These only start a conversation.\n\n"
+    + "Each form takes about 2 minutes. A real person reads it and replies by email within 7 days, even if the answer is no.";
+
+  // The home page's Learn more cards, for the founding apps.
+  const LEARN = { rankup: "/#learn-rankup", cyberlogix: "/#learn-cyberlogix", omniarmor: "/#learn-omniarmor" };
+  const appLink = (a) => (a.open && /^https?:\/\//.test(a.url || "") ? `[${words(a.name)}](${a.url})`
+    : LEARN[a.key] ? `[${words(a.name)}](${LEARN[a.key]})` : words(a.name));
+
+  // Home's "What's ready today?" (1.21.0): what works today first (this
+  // site's own tools, and any app that's open), then what's coming.
+  function readyAnswer() {
+    const open = APPS.filter((a) => a.open);
+    const coming = APPS.filter((a) => !a.open);
+    const ready = ["[Genesis](/genesis) (free)", "[Orbyt](/orbyt)", ...open.map(appLink)];
+    const list = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")}, and ${xs[xs.length - 1]}`);
+    let text = `**Ready today:** ${list([...ready, "Pilot"])}.`;
+    if (coming.length) {
+      text += `\n\n**Coming:** ${coming.map(appLink).join(", ")}.`;
+      text += early ? " [Get early access](/#early-access) to hear the day each one opens." : " [Write to us in Orbyt](/orbyt) to hear more.";
+    }
+    return `${text}\n\nGenesis turns your idea into a plan, Orbyt is where you pitch it or work with us, and Pilot (me) answers questions.`;
+  }
+
+  // Home's "Which app fits me?" (1.21.0): a three-way chooser from the site's
+  // own words, no AI needed.
+  const FIT = {
+    rankup: "**For a family**, to turn chores into points and games",
+    cyberlogix: "**For a business with fridges or freezers**, alarms that call you",
+    omniarmor: "**For a business with safety checks**, checklists that count the deadlines",
+  };
+  function fitAnswer() {
+    const rows = APPS.filter((a) => FIT[a.key]).map((a) => `- ${FIT[a.key]}: ${appLink(a)}${a.open ? "" : " (in development)"}`);
+    if (!rows.length) return "MTRX Horizyn's apps are on the [home page](/): a chores game for families, and alarms and checklists for businesses.";
+    const soon = APPS.some((a) => FIT[a.key] && !a.open);
+    return `Which sounds like you?\n\n${rows.join("\n")}`
+      + (soon && early ? "\n\n[Get early access](/#early-access) to hear the day yours opens." : "")
+      + "\n\nGot an idea of your own instead? [Genesis](/genesis) turns it into a plan, free.";
+  }
 
   const AFTER_SEND = "A real person reads your message and emails you back within 7 days, even if the answer is no. "
     + "If we'd like to hear more, we'll ask in that email. We keep your message only to reply, for up to 365 days.";
@@ -81,14 +128,45 @@
     + "this browser.\n\n1. Write it in three lines: a name, one line about it, and who it's for.\n2. Tick off easy steps from Spark to Launch.\n\n"
     + "[Start my idea](/genesis#new) or [try an example](/genesis#example).";
 
+  // Genesis's "Show my projects" and "What's my next step?" (1.21.0):
+  // answered at once from this browser's own Genesis data (the page's
+  // window.GenesisBridge), with no AI key, and nothing is sent anywhere.
+  const bridge = () => (path === "/genesis" && window.GenesisBridge && typeof window.GenesisBridge.mine === "function"
+    ? window.GenesisBridge : null);
+  const NONE_YET = "There are no projects in this browser yet. [Start my idea](/genesis#new), or [try an example](/genesis#example) to see how it works.";
+  const PRIVATE = "This comes from this browser only: nothing was sent anywhere.";
+  const stop = (t) => (/[.!?]$/.test(t) ? t : `${t}.`);
+  const where = (p) => `${words(p.stage)}, ${words(p.done).replace(/\s*\(\d+%\)$/, "")} done`;
+  const openLink = (p) => (/^[A-Za-z0-9-]{1,64}$/.test(p.id || "") ? ` [Open ${words(p.name)}](/genesis#p/${p.id})` : "");
+  function projectsAnswer() {
+    const g = bridge();
+    if (!g) return "Your projects are on the [Genesis page](/genesis), kept in this browser.";
+    const list = g.mine();
+    if (!list.length) return NONE_YET;
+    const shown = list.slice(0, 8).map((p) => `- **${words(p.name)}** (${where(p)}). Next: ${stop(words(p.next))}${openLink(p)}`);
+    const more = list.length > shown.length ? `\n\n…and ${list.length - shown.length} more on the page.` : "";
+    return `You have ${list.length} project${list.length === 1 ? "" : "s"} in this browser, most recent first:\n\n${shown.join("\n")}${more}\n\n${PRIVATE}`;
+  }
+  function nextAnswer() {
+    const g = bridge();
+    if (!g) return "Open a project on the [Genesis page](/genesis): its next step is at the top.";
+    const p = g.nextOf("");
+    if (!p) return NONE_YET;
+    const id = /^[A-Za-z0-9-]{1,64}$/.test(p.id || "") ? p.id : "";
+    const go = id ? ` [Open ${words(p.name)}](/genesis#p/${id}) to tick it off.` : "";
+    if (p.next === "Every step is done") return `Every step of **${words(p.name)}** is done. Well done! [Start your next idea](/genesis#new).\n\n${PRIVATE}`;
+    return `For **${words(p.name)}** (${where(p)}), your next step is:\n\n**${words(p.next)}**\n\n`
+      + `One small step is enough for today.${go}\n\n${PRIVATE}`;
+  }
+
   const CHIPS = {
-    "/": [["Which app fits me?", "Which MTRX Horizyn app would fit me? Ask me one or two questions first."],
-      ["What's ready today?", { answer: appsAnswer }],
+    "/": [["Which app fits me?", { answer: fitAnswer }],
+      ["What's ready today?", { answer: readyAnswer }],
       ["How do I start an idea?", { answer: START_IDEA }]],
-    "/genesis": [["Show my projects", "Show my projects."], ["What's my next step?", "What's my next step?"],
+    "/genesis": [["Show my projects", { answer: projectsAnswer }], ["What's my next step?", { answer: nextAnswer }],
       ["Help with today's spark", "Help me think of an answer for today's spark."]],
     // At most three: while Pitch Review is on, its answer takes the third place.
-    "/orbyt": [["Which form is for me?", { answer: ORBYT }], ["What happens after I send?", { answer: AFTER_SEND }],
+    "/orbyt": [["Which form is for me?", { answer: FORM_CHOOSER }], ["What happens after I send?", { answer: AFTER_SEND }],
       review ? ["What's a Pitch Review?", { answer: REVIEW }]
         : ["Bring a Genesis idea", "How do I pitch a project from Genesis in Orbyt?"]],
     "/partners": [["How do partners earn?", "How do CyberLogix AI partners earn?"], ["What can partners see?", "What can a partner see in the partner portal?"],

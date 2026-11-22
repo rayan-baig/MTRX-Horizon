@@ -813,8 +813,13 @@ def test_every_form_has_the_7_day_reply_and_pitch_partner_the_under_13_note(clie
         assert panel.count("We reply within 7 days, even if the answer is no.") == 1, kind
         before_send = " ".join(panel.split('<div class="v-send">', 1)[0].split()).replace("&#39;", "'")
         assert (CONFIDENTIAL in before_send) == (kind == "pitch"), kind
-        # "pass on" is said once in each form, never twice.
-        assert " ".join(panel.split()).count("pass on") + " ".join(panel.split()).count("pass it on") == 1, kind
+        # The privacy line under Send is the same on every form, Pitch too
+        # (1.21.0: Pitch's left out "and never pass it on"); "pass on" is
+        # said nowhere else in a form, except Pitch's "Will you build it
+        # without me?" answer.
+        flat = " ".join(panel.split())
+        assert PRIVATE_LINE in flat, kind
+        assert flat.count("pass on") == (1 if kind == "pitch" else 0) and flat.count("pass it on") == 1, kind
     # Outside the forms, "7 days" and "pass on" aren't repeated before sending.
     outside = page.split('<section class="panel v-panel', 1)[0]
     assert "7 days" not in outside and "pass on" not in outside
@@ -832,6 +837,10 @@ def test_every_form_has_the_7_day_reply_and_pitch_partner_the_under_13_note(clie
     assert "Nothing is bought or sold" not in page and "Nobody pays or gets paid" not in page
     # No character count on an email box.
     assert 'data-count-for="email"' not in page
+
+
+PRIVATE_LINE = ('<p class="v-private">We keep what you send here only to reply to you, for up to 365 days, and '
+                'never pass it on. <a href="/privacy">Privacy</a></p>')
 
 
 # 1.19.0: warmer, and still no more than the terms ("we may already be
@@ -1026,3 +1035,18 @@ def test_a_computer_hero_shows_an_example_pitch(client):
     css = (ROOT / "static/css/vortex.css").read_text()
     assert ".v-example { display: none; }" in css
     assert "@media (min-width: 901px) {\n  .v-hero { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); }" in css
+
+
+def test_orbyt_desktop_cards_line_up_and_the_bundle_bar_has_room():
+    """1.21.0: on a computer the Kitchen Safety Bundle bar sat on the app
+    cards (a gap on the open <details> never reached its contents), the path
+    cards' links ("Pitch →", "Join →", "Partner →") sat at different heights,
+    and the hero had a lot of empty space round its words."""
+    css = (ROOT / "static/css/vortex.css").read_text().split("/* ---------- 1.21.0 ---------- */", 1)[1]
+    assert ".v-apps-fold[open] { display: block; }" in css
+    assert ".v-apps-fold > .v-bundle { margin: 0 0 14px; }" in css
+    wide = css.split("@media (min-width: 721px) {", 1)[1].split("\n}\n", 1)[0]
+    assert ".v-paths:not(.v-paths-more) .v-path { grid-template-rows: 1fr auto; height: 100%; }" in wide
+    assert ".v-paths:not(.v-paths-more) .v-path-go { align-self: end;" in wide
+    hero = css.split("@media (min-width: 901px) {", 1)[1].split("\n}\n", 1)[0]
+    assert ".v-hero { padding: clamp(24px, 2.6vw, 36px)" in hero

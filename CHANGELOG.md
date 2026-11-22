@@ -4,6 +4,37 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.21.0 (22 November 2026)
+
+- **Home: Pilot answers "What's ready today?" and "Which app fits me?" straight away.** "What's
+  ready today?" now starts with what you can use today: Genesis (free), Orbyt and Pilot, then the
+  apps that are coming (RankUp, CyberLogix AI, OmniArmor.ai), each linked. "Which app fits me?"
+  is a quick choice: a family, a business with fridges or freezers, or a business with safety
+  checks, each with its app. Neither needs an AI key.
+- **Home: the "New" line on a computer shows a short headline, never cut off.** Each update has a
+  short headline of its own, and the line shows all of it (it used to end in "..."). What's new
+  says Pilot now shows your Genesis projects without a key, in place of the older Pilot item.
+- **Home: the Projects tile says "Genesis & Orbyt live · 3 apps in development",** the same as
+  the Projects card. On a narrow computer (1024 to 1100 pixels) the small tags under each app's name
+  are left out instead of wrapping onto two lines, and on a phone each app's small screen says
+  "Tap to see" under it.
+- **Genesis: coming back on a computer, your next three steps sit beside "Welcome back",** and you
+  can tick them right there. Your project's name under the greeting is plain words now; the
+  Continue button is the way in.
+- **Genesis: Pilot shows your projects and your next step straight away,** read from this browser
+  only: no AI key, and nothing is sent anywhere. Each project has a link to open it.
+- **Genesis on a phone: today's spark is on the first screen.** A first visit has a two-line intro,
+  the two buttons side by side and shorter step rows. Coming back, today's spark comes straight after
+  "Welcome back" (with its three steps), and your projects follow.
+- **Orbyt: Pilot's "Which form is for me?" is a real choice.** One line for each kind of visitor
+  (an idea, trying the apps, a business, investing or buying), each jumping straight to its form.
+  While you're on Orbyt, Pilot no longer offers to "Open Orbyt".
+- **Orbyt on a computer is tidier.** The Kitchen Safety Bundle bar has a gap above the app cards
+  instead of touching them, "Pitch →", "Join →" and "Partner →" sit on one line at the bottom of
+  their cards, and the top of the page has less empty space.
+- **Orbyt: every form ends with the same privacy line,** Pitch too: "We keep what you send here
+  only to reply to you, for up to 365 days, and never pass it on."
+
 ## 1.20.0 (22 November 2026)
 
 - **Orbyt Pitch Review: an optional paid extra, off until you switch it on.** Orbyt stays free:

@@ -226,13 +226,24 @@ def test_projects_on_the_home_page_are_the_real_list(client):
                       r'<em class="status">(.*?)</em><span class="next">Next: (.*?)</span></li>', sheet)
     # An app's status comes from the catalog: "In development" until it opens.
     assert rows == [(p["name"], p["kind"], p.get("status", "In development"), p["next"]) for p in stats.PROJECTS]
-    # The count in the panel is the length of that same list, and it says
-    # plainly that one of them (this website) is the live one.
+    # The count in the panel is the length of that same list, and its line
+    # says it in the card's own words (1.21.0): this website (Genesis and
+    # Orbyt) is the live one, and the rest are apps in development. It used
+    # to say "1 live, 3 in development", which the card didn't.
     assert (f'<a class="fact fact-projects" href="#projects">' in page
             and f'<span class="fact-k">Projects</span><b class="fact-v">{len(stats.PROJECTS)}</b>' in page)
-    live = sum(1 for p in stats.PROJECTS if p.get("status") == "Live")
-    assert f'<span class="fact-s">{live} live, {len(stats.PROJECTS) - live} in development</span>' in page
+    assert _projects_line(page) == "Genesis &amp; Orbyt live · 3 apps in development"
+    assert "1 live, 3 in development" not in page
     assert "<span>Underway</span>" not in page
+
+
+def _projects_line(page: str) -> str:
+    """The Projects tile's line as words (each part is its own span, kept
+    together, so a narrow tile breaks it only at a dot)."""
+    tile = page.split('<a class="fact fact-projects"', 1)[1].split("</a>", 1)[0]
+    line = tile.split('<span class="fact-s">', 1)[1].rsplit("</span>", 1)[0]
+    assert re.fullmatch(r'<span class="fact-part">[^<]+</span>( · <span class="fact-part">[^<]+</span>)*', line), line
+    return re.sub(r"<[^>]+>", "", line)
 
 
 def test_the_projects_list_never_says_built_and_flips_at_launch(client, monkeypatch):
@@ -251,6 +262,8 @@ def test_the_projects_list_never_says_built_and_flips_at_launch(client, monkeypa
     sheet = client.get("/").text.split('id="projects"', 1)[1].split("</section>", 1)[0]
     status = dict(re.findall(r"<b>(.*?)</b>.*?<em class=\"status\">(.*?)</em>", sheet, re.S))
     assert status["CyberLogix AI"] == "Open" and status["RankUp"] == "In development"
+    # The Projects tile's line changes with it.
+    assert _projects_line(client.get("/").text) == "Genesis &amp; Orbyt live · 1 app open · 2 apps in development"
 
 
 def test_each_app_has_open_and_learn_more(client, monkeypatch):
@@ -1272,11 +1285,41 @@ def test_a_computer_shows_the_newest_update_in_one_line(client):
     hero = page.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
     strip = hero.split('<p class="news-strip">', 1)[1].split("</p>", 1)[0]
     top = news.items()[0]
-    assert f'<a class="news-strip-item" href="{top["href"]}"><b>{top["who"]}</b>' in strip
+    assert f'<a class="news-strip-item" href="{top["href"]}" title="{top["text"]}"><b>{top["who"]}</b>' in strip.replace("&#34;", '"')
     assert '<a class="news-strip-all" href="#updates">All updates</a>' in strip
     late = _late_css()
     assert "@media (max-width: 900px) {\n  .page .news-strip { display: none; }" in late
     assert "white-space: nowrap" in late.split(".news-strip-item span {", 1)[1].split("}", 1)[0]
+
+
+def test_the_new_strip_shows_a_short_headline_whole(client):
+    """1.21.0: the strip cut the newest item's sentence off with "..." on a
+    computer. Each item now has a short headline, and the strip shows it
+    whole: never clipped."""
+    from horizon import news
+    for item in news.NEWS:
+        assert item["headline"].strip() and len(item["headline"]) <= news.HEADLINE_MOST, item
+        assert not item["headline"].endswith((".", "…", "...")), item
+    hero = client.get("/").text.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
+    strip = hero.split('<p class="news-strip">', 1)[1].split("</p>", 1)[0]
+    assert f'<span>{news.NEWS[0]["headline"]}</span>' in strip
+    rules = Path("static/css/site.css").read_text(encoding="utf-8").split("/* ---------- 1.21.0:", 1)[1]
+    span = rules.split(".news-strip-item span {", 1)[1].split("}", 1)[0]
+    assert "text-overflow: clip" in span and "overflow: visible" in span
+
+
+def test_card_tags_stay_on_one_line_and_phone_screens_say_tap_to_see(client):
+    """1.21.0: at 1024-1100px the tags wrapped onto two lines beside the
+    icon (now left out there; one line everywhere else), and on a phone
+    nothing said the small screen opens bigger."""
+    page = client.get("/").text
+    apps = page.split('<section id="apps"', 1)[1].split("</section>", 1)[0]
+    assert apps.count('<span class="app-shot-cue">Tap to see</span></a>') == 3
+    rules = Path("static/css/site.css").read_text(encoding="utf-8").split("/* ---------- 1.21.0:", 1)[1]
+    assert "@media (min-width: 901px) and (max-width: 1100px) {\n  .page .app-card .tags { display: none; }" in rules
+    assert ".app-shot-cue { display: none; }" in rules
+    phone = rules.split("@media (max-width: 720px) {", 1)[1].split("\n}", 1)[0]
+    assert ".app-shot-cue { display: block;" in phone
 
 
 def test_orbyt_stays_in_the_top_links_at_1280(client):
@@ -1303,3 +1346,28 @@ def test_the_card_screens_are_whole_on_a_computer_and_bigger_on_a_phone(client):
     for key in ("rankup", "cyberlogix", "omniarmor"):
         card = page.split(f'data-app="{key}"', 1)[1].split("</article>", 1)[0]
         assert f'<a class="app-shot" href="#learn-{key}"' in card
+
+
+def test_the_sites_own_pilot_answers_in_node():
+    """1.21.0: Home's "What's ready today?" and "Which app fits me?",
+    Orbyt's "Which form is for me?" (no "Open Orbyt" while on Orbyt), and
+    Genesis's "Show my projects" and "What's my next step?" are answered at
+    once, with no AI key and nothing sent (tests/js/site_pilot_answers.test.js)."""
+    import shutil
+    import subprocess
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node is not installed here (CI has it)")
+    result = subprocess.run([node, "--test", "--test-reporter=tap", "tests/js/site_pilot_answers.test.js"],
+                            capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "# fail 0" in result.stdout
+
+
+def test_pilot_facts_carry_each_apps_key(client):
+    """The key lets Pilot link a founding app to its Learn more card."""
+    import html
+    page = client.get("/").text
+    apps = json.loads(html.unescape(re.search(r'data-apps="([^"]*)"', page).group(1)))
+    assert [a["key"] for a in apps][:3] == ["rankup", "cyberlogix", "omniarmor"]
+    assert all(set(a) == {"key", "name", "line", "open", "url"} for a in apps)

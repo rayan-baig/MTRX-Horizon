@@ -44,6 +44,9 @@
         <p class="eyebrow g-eyebrow">MTRX Horizyn</p>
         <h1 class="g-title">Genesis</h1>
         <p class="g-line">Turn your idea into a real plan, one small step at a time.</p>
+        {#- A phone's intro (1.21.0): the same in two lines, so today's spark
+            shows on the first screen. -#}
+        <p class="g-intro">Plan your idea step by step. Free, and it stays in this browser.</p>
         <p class="g-text">Write it in three lines, then tick off easy steps from Spark to Launch. Free,
           and your ideas stay in this browser: nothing is sent unless you press Ask{% if ai and free_hour %}
           (free AI help, {{ free_day }} a day, up to {{ free_hour }} an hour){% endif %}.</p>
@@ -69,9 +72,9 @@
           on and its next step. static/js/genesis.js (drawContinue) fills it. -#}
       <div class="g-continue" id="g-continue" hidden></div>
       <ol class="g-how" id="g-how">
-        <li class="stage-spark"><b>1</b><span><strong>Write it down</strong> A name, one line, and who it's for.</span></li>
-        <li class="stage-plan"><b>2</b><span><strong>Tick small steps</strong> 19 steps in plain words, in any order.</span></li>
-        <li class="stage-launch"><b>3</b><span><strong>Launch it</strong> Show someone, or pitch it to us in Orbyt.</span></li>
+        <li class="stage-spark"><b>1</b><span><strong>Write it down</strong> A name, one line, who it's for.</span></li>
+        <li class="stage-plan"><b>2</b><span><strong>Tick small steps</strong> 19 plain steps, any order.</span></li>
+        <li class="stage-launch"><b>3</b><span><strong>Launch it</strong> Show someone, or pitch it in Orbyt.</span></li>
       </ol>
       <ol class="g-path" id="g-path" hidden></ol>
     </section>

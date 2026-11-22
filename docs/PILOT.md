@@ -154,11 +154,14 @@ the network (use facts the server put on the page) and must never put another pe
 the chat.
 
 On the MTRX site: **What is Orbyt?** answers with Orbyt's paths (each a link to its form), the 2
-minutes, the real person and the 7-day reply, and **Open Orbyt**; **What apps are coming?** is built
-from the site's own app list (the catalog, as Orbyt's "Our apps" lists it, passed on Pilot's script
-tag as `data-apps` by `main.pilot_facts`), says which are open, and links to early access (or Orbyt
-when early access is off). The home page's "What's ready today?" and "How do I start an idea?", and
-Orbyt's "Which form is for me?" and "What happens after I send?", are answers too; the other
+minutes, the real person and the 7-day reply, and **Open Orbyt** (left out while on Orbyt); **What
+apps are coming?** is built from the site's own app list (the catalog, as Orbyt's "Our apps" lists
+it, passed on Pilot's script tag as `data-apps` by `main.pilot_facts`), says which are open, and
+links to early access (or Orbyt when early access is off). The home page's "What's ready today?"
+(what works today, then what's coming), "Which app fits me?" (a three-way choice) and "How do I
+start an idea?", Orbyt's "Which form is for me?" (a chooser jumping to each form) and "What happens
+after I send?", and Genesis's "Show my projects" and "What's my next step?" (read from this
+browser's own Genesis data through `window.GenesisBridge`, nothing sent) are answers too; the other
 suggestions are AI prompts.
 
 ### Moving an app to core 1.4.0

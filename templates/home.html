@@ -61,6 +61,19 @@
   {% endfor %}
 </ul>
 {%- endmacro -%}
+{#- The Projects tile's line, in the Projects card's own words (1.21.0):
+    this website (Genesis and Orbyt) is the live one, the rest are apps. -#}
+{%- macro projects_line(plist) -%}
+{%- set site_live = plist | selectattr("status", "equalto", "Live") | list | length -%}
+{%- set apps_open = plist | selectattr("status", "equalto", "Open") | list | length -%}
+{%- set apps_dev = plist | selectattr("status", "equalto", "In development") | list | length -%}
+{%- set parts = [] -%}
+{%- if site_live %}{% set _ = parts.append("Genesis & Orbyt live") %}{% endif -%}
+{%- if apps_open %}{% set _ = parts.append(apps_open ~ " app" ~ ("s" if apps_open != 1 else "") ~ " open") %}{% endif -%}
+{%- if apps_dev %}{% set _ = parts.append(apps_dev ~ " app" ~ ("s" if apps_dev != 1 else "") ~ " in development") %}{% endif -%}
+{#- Each part keeps together, so a narrow tile breaks the line at the dot. -#}
+{%- for part in parts %}{% if not loop.first %} · {% endif %}<span class="fact-part">{{ part }}</span>{% endfor -%}
+{%- endmacro -%}
 {%- macro count(value) -%}{{ "{:,}".format(value) if value is number else "—" }}{%- endmacro -%}
 <input type="checkbox" id="calm" class="calm-switch" aria-hidden="true" tabindex="-1">
 <div class="sky" aria-hidden="true"></div>
@@ -129,7 +142,7 @@
           list on a phone, and the bell has it everywhere). -#}
       {%- if news %}{% set top = news[0] %}
       <p class="news-strip"><b class="news-strip-k">New</b>
-        <a class="news-strip-item" href="{{ top.href }}"><b>{{ top.who }}</b><span>{{ top.text }}</span> <i aria-hidden="true">→</i></a>
+        <a class="news-strip-item" href="{{ top.href }}" title="{{ top.text }}"><b>{{ top.who }}</b><span>{{ top.headline }}</span> <i aria-hidden="true">→</i></a>
         <a class="news-strip-all" href="#updates">All updates</a></p>
       {%- endif %}
     </div>
@@ -156,7 +169,7 @@
       </div>
       <p class="app-lede">{{ lede }}</p>
       {#- A real screen from the app's own demo (pretend data). -#}
-      <a class="app-shot" href="#learn-{{ key }}" tabindex="-1" aria-hidden="true" title="See {{ full }}'s screens"><img src="/static/img/{{ key }}-screen-sm.webp" alt="" width="192" height="320" loading="lazy" decoding="async"></a>
+      <a class="app-shot" href="#learn-{{ key }}" tabindex="-1" aria-hidden="true" title="See {{ full }}'s screens"><img src="/static/img/{{ key }}-screen-sm.webp" alt="" width="192" height="320" loading="lazy" decoding="async"><span class="app-shot-cue">Tap to see</span></a>
       <div class="card-actions">
         {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener" aria-label="Open {{ full }}"><span>Open<span class="app-name"> {{ name }}</span></span> <span class="arrow" aria-hidden="true">→</span></a>
         {% elif early %}<a class="btn btn-solid ea-card-btn" href="#early-access-{{ key }}" aria-label="Get early access to {{ full }}"><span>Early access</span> <span class="arrow" aria-hidden="true">→</span></a>
@@ -201,7 +214,7 @@
             projects, and it is the live one. #}
         <li><a class="fact fact-projects" href="#projects">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c1-4 3-6 6-7m-3 3 3 3m-2.5-6.5C11 7 15 3 21 3c0 6-4 10-8.5 11.5z"/><circle cx="15" cy="9" r="1.5"/></svg>
-          <span class="fact-k">Projects</span><b class="fact-v">{{ plist | length }}</b><span class="fact-s">{% if live_now == plist | length %}All live{% else %}{{ live_now }} live, {{ plist | length - live_now }} in development{% endif %}</span></a></li>
+          <span class="fact-k">Projects</span><b class="fact-v">{{ plist | length }}</b><span class="fact-s">{{ projects_line(plist) }}</span></a></li>
         {%- if n.users_online is not none %}
         {#- Real numbers only: active users once an app reports them. #}
         <li><a class="fact fact-users" href="#activity">

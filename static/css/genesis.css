@@ -657,12 +657,10 @@
 .g-hero.g-hero-back .g-hero-copy { display: none; }
 .g-continue { position: relative; max-width: 640px; min-width: 0; }
 .g-hero-small .g-continue .g-eyebrow { display: block; }
-.g-continue-step b { flex-basis: 100%; overflow-wrap: anywhere; }
 .g-continue[hidden] { display: none; }
 .g-continue .g-eyebrow { margin-bottom: 8px; }
 .g-continue-title { font: 800 clamp(26px, 4.4vw, 40px)/1.1 var(--head); margin: 0 0 10px; overflow-wrap: anywhere; }
 .g-continue-title b { background: var(--dawn); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.g-continue-step { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 4px; font-size: 16px; }
 .g-continue-label { color: var(--muted); }
 .g-continue-done { color: var(--faint); font-size: 13px; margin: 0 0 16px; }
 /* At the free limit: things to do while the answers come back. */
@@ -750,10 +748,11 @@
   #g-list-view.g-one > .g-daily { grid-column: 2; align-self: start; }
   #g-list-view.g-one .g-cards { grid-template-columns: minmax(0, 1fr); }
 }
-/* A returning visitor: the project's name under "Welcome back" is a link. */
-.g-continue-project { margin: 0 0 8px; font: 700 clamp(18px, 2.4vw, 22px)/1.25 var(--head); overflow-wrap: anywhere; }
-.g-continue-project a { color: var(--text); text-decoration: underline; text-decoration-color: rgba(251, 191, 36, 0.6); text-underline-offset: 4px; }
-.g-continue-project a:hover { text-decoration-color: var(--spark); }
+/* A returning visitor: the project's stage, name and count under "Welcome
+   back", as plain words (1.21.0: the Continue button is the way in). */
+.g-continue-project { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0 0 14px; }
+.g-continue-name { font: 700 clamp(18px, 2.4vw, 22px)/1.25 var(--head); color: var(--text); overflow-wrap: anywhere; min-width: 0; }
+.g-continue-project .g-continue-done { margin: 0; flex-basis: 100%; }
 /* Ask Genesis: every button a full 44 px on a touch screen. */
 @media (pointer: coarse), (max-width: 720px) {
   .g-ask .g-helper, .g-ask .g-tool, .g-ask .btn, .g-ask .g-question-input { min-height: 44px; }
@@ -762,4 +761,79 @@
 /* Phones: the label stops before the spark in the corner. */
 @media (max-width: 720px) {
   .g-continue .g-eyebrow { padding-right: 48px; }
+}
+
+/* ---------- 1.21.0 ---------- */
+/* A returning visitor's next three steps, each ticked with one tap. */
+.g-continue-next { position: relative; display: grid; gap: 6px; margin: 0 0 16px; min-width: 0; }
+.g-continue-next .g-continue-label { margin: 0; font: 600 12px/1.3 var(--head); letter-spacing: 0.14em; text-transform: uppercase; color: var(--spark); }
+.g-continue-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.g-continue-tick {
+  display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 12px; border-radius: 12px; cursor: pointer;
+  font-size: 14.5px; line-height: 1.35; color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--st, var(--spark)) 40%, transparent);
+  background: color-mix(in srgb, var(--st, var(--spark)) 8%, rgba(5, 8, 22, 0.78));
+}
+.g-continue-tick:hover { border-color: var(--st, var(--spark)); }
+.g-continue-tick input { width: 20px; height: 20px; flex: none; margin: 0; accent-color: var(--spark); cursor: pointer; }
+.g-continue-tick span { min-width: 0; overflow-wrap: anywhere; }
+.g-continue-all { margin: 0; color: var(--muted); font-size: 14px; }
+.g-intro { display: none; }
+@media (min-width: 901px) {
+  /* Beside the greeting, so the right half of the welcome isn't empty. */
+  .g-hero.g-hero-back .g-continue {
+    max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 440px); column-gap: 36px; align-items: start;
+  }
+  .g-hero.g-hero-back .g-continue > * { grid-column: 1; }
+  .g-hero.g-hero-back .g-continue > .g-continue-next {
+    grid-column: 2; grid-row: 1 / span 4; align-self: center; margin: 0; padding: 16px 18px; border-radius: 16px;
+    background: rgba(8, 8, 26, 0.82); border: 1px solid rgba(251, 191, 36, 0.4);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45), 0 0 28px rgba(244, 114, 182, 0.15);
+  }
+  .g-hero.g-hero-back .g-continue > .cta-row { align-self: end; }
+  .g-hero.g-hero-back .g-hero-art .g-spark { display: none; }
+}
+@media (max-width: 720px) {
+  /* A first visit on a phone: a two-line intro, both buttons side by side
+     and the three steps as compact rows, so today's spark shows on the
+     first screen. */
+  .g-hero:not(.g-hero-small) .g-eyebrow { display: none; }
+  .g-hero:not(.g-hero-small) .g-title { font-size: clamp(38px, 11vw, 46px); margin-bottom: 8px; }
+  .g-hero:not(.g-hero-small) .g-line, .g-hero:not(.g-hero-small) .g-text { display: none; }
+  .g-hero:not(.g-hero-small) .g-intro { display: block; margin: 0 0 14px; font-size: 15px; line-height: 1.45; color: var(--text); }
+  .g-hero:not(.g-hero-small) { gap: 12px; padding: 18px 16px; }
+  .g-hero:not(.g-hero-small) .cta-row { flex-wrap: nowrap; gap: 8px; }
+  .g-hero:not(.g-hero-small) .cta-row .btn { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0 10px; font-size: 15px; white-space: nowrap; }
+  .g-how { gap: 6px; }
+  .g-how li { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 7px 10px; border-radius: 12px; }
+  .g-how b { width: 24px; height: 24px; font-size: 12.5px; }
+  .g-how span { font-size: 13px; line-height: 1.35; }
+  .g-how strong { display: inline; font-size: 14px; margin: 0 4px 0 0; }
+  /* A returning visitor on a phone: today's spark straight after the
+     welcome back, with compact step rows, so it shows on the first screen;
+     the projects follow. */
+  #g-list-view.g-returning > .g-hero { order: -2; }
+  #g-list-view.g-returning > .g-daily { order: -1; }
+  .g-hero.g-hero-back { padding: 18px 16px; gap: 12px; }
+  .g-continue .g-eyebrow { margin-bottom: 4px; }
+  .g-continue-title { margin-bottom: 6px; }
+  .g-continue-project { margin-bottom: 10px; }
+  .g-continue-next { margin-bottom: 12px; gap: 4px; }
+  .g-continue-steps { gap: 4px; }
+  .g-continue-tick { min-height: 40px; padding: 4px 10px; font-size: 14px; }
+  .g-hero-small .g-continue .cta-row { flex-wrap: nowrap; gap: 8px; }
+  .g-hero-small .g-continue .cta-row .btn { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 0 12px; font-size: 14.5px; white-space: nowrap; }
+  .g-hero-small .g-continue .cta-row .btn-genesis { flex: 1 1 auto; white-space: normal; text-align: center; line-height: 1.2; }
+  .g-hero-small .g-continue .cta-row .btn-ghost { flex: 0 0 auto; }
+  /* With one project the stage counts say what its chip says already. */
+  #g-list-view.g-one .g-path { display: none; }
+}
+@media (pointer: coarse) {
+  .g-continue-tick { min-height: 44px; }
+}
+@media (max-width: 360px) {
+  .g-hero:not(.g-hero-small) .cta-row .btn { padding: 0 6px; font-size: 13.5px; gap: 6px; white-space: normal; text-align: center; line-height: 1.2; }
+  .g-hero:not(.g-hero-small) .g-intro { font-size: 14px; }
+  .g-hero:not(.g-hero-small) .cta-row .btn > span[aria-hidden] { display: none; }
+  .g-hero-small .g-continue .cta-row .btn { padding: 0 10px; font-size: 14px; }
 }

@@ -91,8 +91,9 @@
 <p class="v-reply">We reply within 7 days, even if the answer is no.</p>
 <div class="v-send">
   <button class="btn btn-vortex" type="submit">Send <span aria-hidden="true">→</span></button>
-  <p class="v-private">We keep what you send here only to reply to you, for up to {{ keep_days }} days{% if kind != "pitch" %}, and
-    never pass it on{% endif %}. <a href="/privacy">Privacy</a></p>
+  {#- The same line under every form, Pitch too (1.21.0). -#}
+  <p class="v-private">We keep what you send here only to reply to you, for up to {{ keep_days }} days, and
+    never pass it on. <a href="/privacy">Privacy</a></p>
 </div>
 {%- endmacro -%}
 <div class="sky" aria-hidden="true"></div>
