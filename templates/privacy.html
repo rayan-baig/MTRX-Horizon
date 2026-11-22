@@ -37,6 +37,10 @@
   <li>Genesis Pro, if a grown-up buys it, is paid through Stripe. Card details never reach us, and we
     keep no email address: only what we need to know that Pro is paid for, and a member's own backup.</li>
   {%- endif %}
+  {%- if review %}
+  <li>Pitch Review, an optional extra a grown-up can buy after a pitch is sent in Orbyt, is paid through
+    Stripe. Card details never reach us; we keep the email used at checkout only to send the review.</li>
+  {%- endif %}
   <li>Like every website, the server notes each request it answers (see below).</li>
 </ul>
 
@@ -134,6 +138,24 @@
   browser. Voice uses your browser's own speech recognition, if it has one: nothing goes to us, but
   some browsers send the sound to their maker to turn it into words.</p>
 
+{% if review -%}
+<h2>Orbyt Pitch Review</h2>
+<p>Pitch Review is an optional paid extra for a pitch sent in Orbyt, bought by a grown-up through Stripe, our
+  payment provider. Stripe takes the payment and the email address on its own checkout page, under its own
+  privacy policy. Card details never reach us.</p>
+<p>When you send a pitch, your browser is given a one-time code for that pitch, so the page can offer a review;
+  we keep only a fingerprint of the code, for 2 days. When Stripe tells us a review has been paid for, we keep:
+  which pitch it's for, the idea's name, the email address used at checkout (to send the review to), the
+  amount, and when it was paid, when it's due, and when it was sent or refunded. We email that address a
+  confirmation, and the owner a short note with only the idea's name and the due date.</p>
+<p>The pitch itself is kept like any Orbyt message (above), except that a pitch with a review still to write
+  isn't deleted before the review is done. The email address and the idea's name are deleted
+  {{ review_forget_days }} days after the review is sent or refunded, and the rest of the order (the dates and
+  the amount, for our accounts) after {{ review_order_days }} days.</p>
+<p>To stop misuse, starting a checkout is limited too: the address a request came from (for an IPv6 address,
+  the block it belongs to) and the time are kept for 24 hours, then deleted.</p>
+
+{% endif -%}
 {% if pro -%}
 <h2>Genesis Pro</h2>
 <p>Genesis Pro is an optional paid upgrade to Genesis, bought by a grown-up through Stripe, our

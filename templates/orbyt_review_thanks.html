@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+<link rel="stylesheet" href="{{ asset('css/vortex.css') }}">
+<title>Pitch Review booked · MTRX Horizyn</title>
+<meta name="robots" content="noindex">
+</head>
+<body class="legal-page vortex-page">
+<div class="sky" aria-hidden="true"></div>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="MTRX Horizyn home">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-text">
+      <span class="wordmark">MTRX <b>HORIZYN</b></span>
+      <span class="tagline">One vision. Infinite possibilities.</span>
+    </span>
+  </a>
+  <nav class="mainnav" aria-label="Main">
+    <a href="/">Home</a>
+    <a href="/genesis">Genesis</a>
+    <a href="/orbyt" class="active">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/brand">Brand</a>
+  </nav>
+  <a class="v-home" href="/">Home</a>
+</header>
+
+{#- Where Stripe sends a Pitch Review buyer after paying (horizon/orbyt_review.py).
+    It only says what happens next: the order is made by Stripe's signed
+    webhook, and the confirmation email carries the due date. No script. -#}
+<main class="vortex">
+  <section class="panel v-sent v-thanks">
+    <span class="v-swirl v-swirl-small" aria-hidden="true"><i class="v-ring r1"></i><i class="v-ring r2"></i><i class="v-core"></i></span>
+    <p class="eyebrow v-kicker">Pitch Review</p>
+    <h1 class="v-sent-title">Thank you.</h1>
+    <p class="v-sent-line">Once Stripe confirms the payment (usually within a minute), we email a confirmation to the
+      address used at checkout, with the date your review is due.</p>
+    <ul class="v-thanks-list">
+      <li>A real person at MTRX Horizyn reads your pitch and emails a personal review within {{ review.days }}
+        day{{ 's' if review.days != 1 }}: what's strong, what to fix, and your next 3 steps.</li>
+      <li>If it's late, or we can't review your idea, you get a full refund.</li>
+      <li>It's a one-time payment, not a subscription.</li>
+    </ul>
+    <p class="v-sent-small">No confirmation after a few minutes? Check the spam folder{% if contact %}, or write to
+      <a href="mailto:{{ contact }}">{{ contact }}</a>{% endif %}.</p>
+    <div class="cta-row">
+      <a class="btn btn-ghost btn-small" href="/genesis">Keep building in Genesis</a>
+      <a class="btn btn-ghost btn-small" href="/">Back to MTRX Horizyn</a>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span class="foot-brand">MTRX HORIZYN</span>
+  <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
+  {% include "_foot_links.html" %}
+</footer>
+{% include "_pilot.html" %}
+</body>
+</html>

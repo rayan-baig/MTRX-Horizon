@@ -32,8 +32,10 @@ INVEST = {"kind": "invest", "name": "Sam Lee", "organisation": "", "email": "sam
           "message": f"I'd like to hear about your plans. {SECRET}"}
 BUY = {"kind": "buy", "name": "Jo Buyer", "organisation": "Example Holdings", "email": "jo@example.com",
        "apps": ["rankup", "company"], "message": f"We'd like to talk about buying. {SECRET}"}
-BUY_NOTICE = ("This only starts a conversation. Nothing is for sale on this page and nobody can buy or "
-              "pay for anything here.")
+# 1.20.0: about shares, apps and companies only, so it stays true while
+# Orbyt Pitch Review (an optional paid extra for a pitch) is on.
+BUY_NOTICE = ("This only starts a conversation. No shares, apps or companies are bought or sold here, and "
+              "no deal happens on this page.")
 
 
 def send(client, body, headers=None):
@@ -137,8 +139,12 @@ def test_genesis_has_the_way_to_pitch_a_project():
 def test_the_vortex_scripts_send_only_the_form():
     page = (ROOT / "static/js/vortex.js").read_text()
     rules = (ROOT / "static/js/vortex-form.js").read_text()
-    assert page.count("fetch(") == 1 and 'fetch("/api/vortex/send"' in page
-    assert 'credentials: "omit"' in page
+    # The form, and (only while Pitch Review is on and a pitch was just sent)
+    # its checkout, which sends the one-time ticket and the 18+ tick only.
+    assert page.count("fetch(") == 2 and 'fetch("/api/vortex/send"' in page
+    assert 'fetch("/api/orbyt/review/checkout"' in page
+    assert "body: JSON.stringify({ ticket: reviewTicket, adult: true })" in page
+    assert page.count('credentials: "omit"') == 2
     assert "fetch(" not in rules
     for script in (page, rules):
         for call in ("XMLHttpRequest", "sendBeacon", "WebSocket", "EventSource", "location.search"):
@@ -707,7 +713,7 @@ def test_after_sending_each_path_gets_a_next_step(client):
     assert 'link.dataset.next.split(" ").includes(kind)' in script
 
 
-def test_buying_is_only_the_buy_path_and_no_money_moves_on_orbyt(client):
+def test_buying_is_only_the_buy_path_and_no_money_moves_on_orbyt_while_review_is_off(client):
     page = client.get("/orbyt").text
     # No "Ask about buying" on each app: buying is one quiet path, under
     # "Other ways to talk to us".
@@ -718,9 +724,14 @@ def test_buying_is_only_the_buy_path_and_no_money_moves_on_orbyt(client):
     lowered = page.lower()
     for word in ("checkout", "stripe", "card number", "invest now", "buy now", "guaranteed", "profit"):
         assert word not in lowered, word
-    for script in ("static/js/vortex.js", "static/js/vortex-form.js"):
-        text = (ROOT / script).read_text().lower()
-        assert "checkout" not in text and "stripe" not in text and "/api/genesis/pro" not in text
+    text = (ROOT / "static/js/vortex-form.js").read_text().lower()
+    assert "checkout" not in text and "stripe" not in text and "/api/genesis/pro" not in text
+    # The page's script has one checkout, Pitch Review's, which runs only on
+    # the box the page has while it is on (tests/test_orbyt_review.py).
+    text = (ROOT / "static/js/vortex.js").read_text()
+    assert "/api/genesis/pro" not in text and 'const review = $("v-review");' in text
+    assert re.findall(r'fetch\("([^"]+)"', text) == ["/api/vortex/send", "/api/orbyt/review/checkout"]
+    assert 'id="v-review"' not in page
 
 
 def test_with_no_apps_released_orbyt_says_so_instead_of_an_empty_gap(client):
@@ -814,8 +825,11 @@ def test_every_form_has_the_7_day_reply_and_pitch_partner_the_under_13_note(clie
     form_js = (ROOT / "static/js/vortex-form.js").read_text()
     assert "return `We'll reply to ${email}, even if the answer is no.`;" in form_js
     assert "within 7 days" not in form_js.split("function sentLine", 1)[1].split("}", 1)[0]
-    # Nothing is bought or sold here, and it says so in those words.
-    assert "Nothing is bought or sold on this page" in page and "Nobody pays or gets paid" not in page
+    # No shares, apps or companies are bought or sold here, and it says so in
+    # those words (1.20.0: not "nothing is bought or sold", which Pitch Review
+    # would make untrue).
+    assert "No shares, apps or companies are bought or sold here." in page
+    assert "Nothing is bought or sold" not in page and "Nobody pays or gets paid" not in page
     # No character count on an email box.
     assert 'data-count-for="email"' not in page
 

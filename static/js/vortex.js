@@ -113,7 +113,7 @@
     button.disabled = false;
     form.classList.remove("busy");
     if (res && res.ok && data.ok) {
-      showSent(kind, data.email || vals.email.trim());
+      showSent(kind, data.email || vals.email.trim(), typeof data.review === "string" ? data.review : "");
       form.reset();
       $("v-genesis-note").textContent = "";
       return;
@@ -124,8 +124,9 @@
     if (data.field) focusField(form, data.field);
   }
 
-  function showSent(kind, email) {
+  function showSent(kind, email, ticket) {
     sentKind = kind;
+    offerReview(kind === "pitch" ? ticket : "");
     for (const k of V.KINDS) $(`v-${k}`).hidden = true;
     $("v-sent-line").textContent = V.sentLine(email);
     $("v-next-step").textContent = V.nextLine(new Date());
@@ -135,6 +136,59 @@
     });
     $("v-sent").hidden = false;
     $("v-sent").scrollIntoView({ block: "center" });
+  }
+
+  // ---------------------------------------------------------------- Pitch Review
+  // An optional paid extra (horizon/orbyt_review.py), on the Sent screen
+  // only, for a pitch just sent, and only while it is switched on: the page
+  // has the box then, and the server sends a one-time ticket for the pitch.
+  // A grown-up ticks the 18+ box, and the browser goes to Stripe's checkout.
+
+  const review = $("v-review");
+  let reviewTicket = "";
+
+  function offerReview(ticket) {
+    if (!review) return;
+    reviewTicket = ticket || "";
+    review.hidden = !reviewTicket;
+    $("v-review-adult").checked = false;
+    $("v-review-error").textContent = "";
+    $("v-review-buy").disabled = false;
+  }
+
+  if (review) {
+    $("v-review-adult").addEventListener("change", () => { $("v-review-error").textContent = ""; });
+    $("v-review-buy").addEventListener("click", async () => {
+      const error = $("v-review-error");
+      const adult = $("v-review-adult");
+      if (!adult.checked) {
+        error.textContent = "Please tick to say you're 18 or over. If you're not, ask a parent or guardian to buy it for you.";
+        adult.focus();
+        return;
+      }
+      const button = $("v-review-buy");
+      button.disabled = true;
+      error.textContent = "";
+      let res = null;
+      let data = {};
+      try {
+        res = await fetch("/api/orbyt/review/checkout", {
+          method: "POST", credentials: "omit",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticket: reviewTicket, adult: true }),
+        });
+        try { data = await res.json(); } catch (_) { /* not JSON */ }
+      } catch (_) {
+        res = null;
+      }
+      if (res && res.ok && typeof data.url === "string" && data.url.startsWith("https://")) {
+        window.location.assign(data.url);
+        return;
+      }
+      button.disabled = false;
+      error.textContent = res ? data.error || "Checkout couldn't start just now. Please try again in a minute."
+        : "No connection. Check you're online and try again.";
+    });
   }
 
   for (const kind of V.KINDS) {

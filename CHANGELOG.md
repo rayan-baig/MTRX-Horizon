@@ -4,6 +4,29 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.20.0 (22 November 2026)
+
+- **Orbyt Pitch Review: an optional paid extra, off until you switch it on.** Orbyt stays free:
+  pitching, partnering and business enquiries never cost anything, and every pitch still gets a
+  reply. Once switched on, the screen after sending a pitch offers a **Pitch Review**: for one
+  payment (`$19` by default, not a subscription), a real person at MTRX Horizyn writes a personal
+  review of the idea (what's strong, what to fix, the next 3 steps, and whether it might fit
+  Orbyt) and emails it within 5 days. If it's late, or we can't review the idea, the buyer gets a
+  full refund, which you make by hand in Stripe. A grown-up pays: they tick "I'm 18 or over" and
+  pay on Stripe's checkout page with their own email. Only Stripe's signed message (its own
+  webhook address and secret) records an order; the buyer gets a confirmation with the due date,
+  you get a short email, and the console's new **Pitch Reviews** section lists the open ones,
+  soonest due first, late ones in red, with **Write the review** and **Mark sent**. A pitch with a
+  review still to write can't be deleted by mistake. The terms and the privacy page each get a
+  Pitch Review section (what's paid, what you get, the day promise, the refunds, what is kept and
+  for how long), Orbyt's FAQ answers "What's a Pitch Review?", and so does Pilot. While it is off,
+  nothing about it shows anywhere. How to switch it on is in `docs/ORBYT-PITCH-REVIEW.md` (and in
+  short in the README): a Stripe product with a one-off price, a webhook endpoint, and the
+  `ORBYT_REVIEW_*` settings.
+- **Orbyt says exactly what isn't sold.** "Nothing is bought or sold on this page" is now "No
+  shares, apps or companies are bought or sold here", and the Buy form's notice and Pilot say the
+  same, so the words stay true with Pitch Review on.
+
 ## 1.19.0 (22 November 2026)
 
 - **Home: the app screens show whole.** On a computer each card's screen used to hang off the

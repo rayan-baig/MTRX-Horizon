@@ -29,11 +29,15 @@ def _free_port() -> int:
 
 @pytest.fixture(scope="module")
 def site(tmp_path_factory):
+    yield from _serve(tmp_path_factory, {})
+
+
+def _serve(tmp_path_factory, extra: dict):
     tmp = tmp_path_factory.mktemp("browser")
     port = _free_port()
-    env = {k: v for k, v in os.environ.items() if not k.startswith("MTRX_") and not k.endswith("_URL")}
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("MTRX_", "ORBYT_REVIEW_")) and not k.endswith("_URL")}
     env.update(MTRX_DB_PATH=str(tmp / "horizon.db"), MTRX_KNOCK="logo logo omniarmor rankup", MTRX_DEV="1",
-               MTRX_SETUP_TOKEN="a-browser-test-setup-code-123456")
+               MTRX_SETUP_TOKEN="a-browser-test-setup-code-123456", **extra)
     log = open(tmp / "server.log", "a")
     proc = subprocess.Popen([sys.executable, "-m", "uvicorn", "horizon.main:app", "--host", "127.0.0.1",
                              "--port", str(port)], cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
@@ -268,4 +272,73 @@ def test_pilot_on_a_phone_never_parks_in_a_top_corner_over_the_header(site, brow
     # And the page's own robot agrees once scrolling has stopped.
     page.wait_for_timeout(600)
     assert page.evaluate("document.querySelector('.pilot-root').className").count("pilot-at-b") == 1
+    context.close()
+
+
+# ---------------------------------------------------------------- Orbyt Pitch Review (1.20.0)
+
+@pytest.fixture(scope="module")
+def review_site(tmp_path_factory):
+    """The site with Pitch Review switched on and set up. Its mail server is
+    a closed port here, so nothing is ever sent, and Stripe is never reached:
+    the page's checkout request is answered by the test."""
+    yield from _serve(tmp_path_factory, {
+        "ORBYT_REVIEW_ENABLED": "1", "STRIPE_SECRET_KEY": "sk_test_not_real",
+        "ORBYT_REVIEW_STRIPE_WEBHOOK_SECRET": "whsec_browser_test", "ORBYT_REVIEW_STRIPE_PRICE": "price_review1",
+        "MTRX_ALERT_EMAIL": "alerts@example.com", "MTRX_ALERT_FROM": "site@example.com",
+        "MTRX_SMTP_HOST": "127.0.0.1", "MTRX_SMTP_PORT": str(_free_port())})
+
+
+def test_pitch_review_is_offered_after_a_pitch_and_needs_the_18_tick(review_site, browser):
+    """On a phone: the offer appears only on the Sent screen, fits the
+    screen, refuses to start checkout without the 18+ tick, and with it sends
+    only the pitch's ticket and the tick, then goes to Stripe's page."""
+    context = _phone(browser)
+    page = context.new_page()
+    asked = []
+
+    def checkout(route):
+        asked.append(route.request.post_data_json)
+        route.fulfill(status=200, content_type="application/json",
+                      body='{"url": "https://checkout.stripe.com/c/pay/cs_test_browser"}')
+
+    page.route("**/api/orbyt/review/checkout", checkout)
+    page.route("https://checkout.stripe.com/**", lambda route: route.fulfill(status=200, body="Stripe checkout"))
+    page.goto(f"{review_site}/orbyt#pitch", wait_until="load")
+    assert not page.is_visible("#v-review")
+    page.fill('form[data-kind="pitch"] input[name="name"]', "Ada")
+    page.fill('form[data-kind="pitch"] input[name="email"]', "ada@example.com")
+    page.fill('form[data-kind="pitch"] input[name="idea"]', "Nova")
+    page.fill('form[data-kind="pitch"] input[name="pitch"]', "Homework reminders")
+    page.fill('form[data-kind="pitch"] input[name="audience"]', "Students")
+    page.click('form[data-kind="pitch"] button[type="submit"]')
+    page.wait_for_selector("#v-review:not([hidden])", timeout=10000)
+    # It fits a 375 px phone: nothing wider than the screen.
+    assert page.evaluate("document.documentElement.scrollWidth") <= 375
+    box = page.locator("#v-review").bounding_box()
+    assert box["x"] >= 0 and box["x"] + box["width"] <= 375
+    assert page.locator("#v-review-buy").bounding_box()["height"] >= 44
+    # No tick: told why, the tick gets the focus, and nothing is asked.
+    page.click("#v-review-buy")
+    assert "18 or over" in page.text_content("#v-review-error")
+    assert page.evaluate("document.activeElement.id") == "v-review-adult"
+    assert asked == []
+    page.check("#v-review-adult")
+    page.click("#v-review-buy")
+    page.wait_for_url("https://checkout.stripe.com/**", timeout=10000)
+    assert len(asked) == 1 and set(asked[0]) == {"ticket", "adult"} and asked[0]["adult"] is True
+    assert len(asked[0]["ticket"]) >= 20
+    context.close()
+
+
+def test_pitch_review_is_never_offered_after_other_paths(review_site, browser):
+    context = browser.new_context(viewport={"width": 1280, "height": 900})
+    page = context.new_page()
+    page.goto(f"{review_site}/orbyt#invest", wait_until="load")
+    page.fill('form[data-kind="invest"] input[name="name"]', "Sam")
+    page.fill('form[data-kind="invest"] input[name="email"]', "sam@example.com")
+    page.fill('form[data-kind="invest"] textarea[name="message"]', "Hello there")
+    page.click('form[data-kind="invest"] button[type="submit"]')
+    page.wait_for_selector("#v-sent:not([hidden])", timeout=10000)
+    assert not page.is_visible("#v-review")
     context.close()

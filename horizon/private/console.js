@@ -980,6 +980,76 @@
     });
   }
 
+  // ---------------------------------------------------------------- Pitch Reviews
+  // Orbyt Pitch Review (horizon/orbyt_review.py): paid reviews to write,
+  // soonest due first. What visitors typed is placed with textContent.
+
+  const rvList = $("rv-open");
+  const when = (seconds) => new Date(seconds * 1000).toLocaleDateString([], { dateStyle: "medium" });
+
+  function rvOpen(r) {
+    const title = r.idea || "(the idea's name is gone)";
+    const pitch = r.pitch_there
+      ? el("p", { class: "cr-line", text: `Pitch #${r.message_id} from ${r.name}: ${r.pitch} · for ${r.audience}` })
+      : el("p", { class: "cr-line", text: `Pitch #${r.message_id} is no longer there. Refund it in Stripe.` });
+    const due = el("small", { class: r.late ? "rv-late" : "", text: r.late
+      ? `Late: was due ${r.due}. Send it now, or refund it in Stripe.` : `Due by ${r.due}` });
+    const send = r.email
+      ? el("a", { class: "btn btn-primary btn-small", text: "Write the review",
+        href: `mailto:${r.email}?subject=${encodeURIComponent(`Your Pitch Review: ${r.idea || "your idea"}`)}` })
+      : null;
+    const sent = el("button", { type: "button", class: "go", text: "Mark sent" });
+    sent.addEventListener("click", async () => {
+      if (!confirm(`Mark the review of ${title} as sent?`)) return;
+      const result = await post(`/api/console/orbyt-reviews/${encodeURIComponent(r.id)}/sent`)
+        .catch(() => ({ ok: false, data: { error: "No connection. Try again." } }));
+      if (!result.ok) { toast(result.data.error || "Couldn't do that.", true); loadReviews(); return; }
+      toast("Marked sent.");
+      drawReviews(result.data);
+    });
+    return el("li", { class: `cr-item${r.late ? " rv-item-late" : ""}` },
+      el("div", { class: "cr-main" },
+        el("b", { text: title }), pitch,
+        el("small", { text: `Send it to ${r.email || "(no email from Stripe: see the payment in Stripe)"}` }),
+        el("small", { text: `Paid ${r.paid ? `${r.paid} ` : ""}${ago(r.paid_at)}` }), due),
+      el("div", { class: "ca-actions" }, send, sent));
+  }
+
+  function rvDone(r) {
+    const what = r.status === "refunded" ? `Refunded ${when(r.refunded_at)}` : `Sent ${when(r.sent_at)}`;
+    return el("li", { class: "cr-item" },
+      el("div", { class: "cr-main" }, el("b", { text: r.idea || `Pitch #${r.message_id}` }),
+        el("small", { text: `${what} · paid ${when(r.paid_at)}${r.paid ? `, ${r.paid}` : ""}` })));
+  }
+
+  function drawReviews(data) {
+    const notes = [...data.problems];
+    if (!data.enabled) notes.push("Pitch Review is switched off (ORBYT_REVIEW_ENABLED), so Orbyt doesn't offer it. These are the orders still kept.");
+    $("rv-warn").replaceChildren(...notes.map((n) => el("li", { text: n })));
+    $("rv-note").textContent = `Paid reviews of pitches sent in Orbyt (${data.price}, due within ${data.days} day${data.days === 1 ? "" : "s"} of payment). `
+      + "Read the pitch, email your review to the buyer, then press Mark sent. A late review, or one you can't write, "
+      + "gets a full refund: do it by hand in Stripe (Payments, then Refund).";
+    rvList.replaceChildren(...data.open.map(rvOpen));
+    if (!data.open.length) rvList.append(el("li", { class: "vx-empty", text: "No reviews to write." }));
+    const done = $("rv-done");
+    done.replaceChildren(...data.done.map(rvDone));
+    if (!data.done.length) done.append(el("li", { class: "vx-empty", text: "None yet." }));
+    const badge = $("rv-badge");
+    badge.textContent = String(data.open.length);
+    badge.hidden = !data.open.length;
+  }
+
+  async function loadReviews() {
+    if (!rvList) return;
+    try {
+      const res = await fetch("/api/console/orbyt-reviews", { credentials: "same-origin" });
+      if (res.status === 404) { window.location.replace("/"); return; }
+      drawReviews(await res.json());
+    } catch (_) {
+      /* the overview says when the console can't refresh */
+    }
+  }
+
   // ---------------------------------------------------------------- loading
 
   async function load() {
@@ -999,6 +1069,7 @@
       // And for early access and creators while the owner is typing there.
       if (eaForm && !eaForm.contains(document.activeElement) && $("ea-preview").hidden) loadEarly();
       if (crList && !document.querySelector("#creators input:focus, #creators select:focus")) loadCreators();
+      loadReviews();
     } catch (_) {
       $("updated").textContent = "Couldn't refresh";
       $("updated").classList.add("stale");

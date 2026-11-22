@@ -23,7 +23,7 @@ import sqlite3
 import threading
 import time
 
-from . import config, early_access, genesis_pro, upkeep
+from . import config, early_access, genesis_pro, orbyt_review, upkeep
 
 LOG = logging.getLogger("horizon")
 
@@ -78,6 +78,7 @@ def worth_a_look() -> list:
     if not production() and os.environ.get("MTRX_KNOCK", "").strip() and not s.knock:
         out.append(_knock_problem())
     out += [f"Genesis Pro is switched on but stays off until this is done: {p}" for p in genesis_pro.problems()]
+    out += [f"Pitch Review is switched on but stays off until this is done: {p}" for p in orbyt_review.problems()]
     out += [f"Early access is switched on but stays hidden until this is done: {p}"
             for p in early_access.setup_problems()]
     if bool(s.genesis_ai_key) != bool(s.genesis_ai_model):

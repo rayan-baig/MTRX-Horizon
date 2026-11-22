@@ -64,6 +64,19 @@
   const AFTER_SEND = "A real person reads your message and emails you back within 7 days, even if the answer is no. "
     + "If we'd like to hear more, we'll ask in that email. We keep your message only to reply, for up to 365 days.";
 
+  // Orbyt Pitch Review (horizon/orbyt_review.py): only while the server says
+  // it is offered (main.pilot_facts), with its price and days from the
+  // settings. Nothing beyond what the terms promise.
+  const review = d.review === "on";
+  const reviewDays = Number(d.reviewDays) || 0;
+  const REVIEW = review
+    ? `A **Pitch Review** is an optional extra you can add after sending a pitch in Orbyt. A real person at MTRX Horizyn `
+      + `writes you a personal review of your idea: what's strong, what to fix, your next 3 steps, and whether it might fit Orbyt. `
+      + `It's emailed within ${reviewDays} day${reviewDays === 1 ? "" : "s"}, for one payment of ${words(d.reviewPrice)} (not a subscription). `
+      + "A grown-up (18+) pays through Stripe. If it's late, or we can't review your idea, you get a full refund.\n\n"
+      + "Pitching is free, and every pitch gets a reply with or without one. [Pitch an idea](/orbyt#pitch)"
+    : "";
+
   const START_IDEA = "**Genesis** turns an idea into a plan, one small step at a time. It's free, needs no account, and your ideas stay in "
     + "this browser.\n\n1. Write it in three lines: a name, one line about it, and who it's for.\n2. Tick off easy steps from Spark to Launch.\n\n"
     + "[Start my idea](/genesis#new) or [try an example](/genesis#example).";
@@ -74,8 +87,10 @@
       ["How do I start an idea?", { answer: START_IDEA }]],
     "/genesis": [["Show my projects", "Show my projects."], ["What's my next step?", "What's my next step?"],
       ["Help with today's spark", "Help me think of an answer for today's spark."]],
+    // At most three: while Pitch Review is on, its answer takes the third place.
     "/orbyt": [["Which form is for me?", { answer: ORBYT }], ["What happens after I send?", { answer: AFTER_SEND }],
-      ["Bring a Genesis idea", "How do I pitch a project from Genesis in Orbyt?"]],
+      review ? ["What's a Pitch Review?", { answer: REVIEW }]
+        : ["Bring a Genesis idea", "How do I pitch a project from Genesis in Orbyt?"]],
     "/partners": [["How do partners earn?", "How do CyberLogix AI partners earn?"], ["What can partners see?", "What can a partner see in the partner portal?"],
       ["How do I apply?", "How do I apply to be a partner?"]],
     "/bundle": [["What does it do?", "What does the Kitchen Safety Bundle do?"], ["What does it cost?", "How much does the bundle cost?"],
@@ -164,6 +179,7 @@
     facts: {
       ai: d.ai === "on", freeDay: Number(d.freeDay) || 0, freeHour: Number(d.freeHour) || 0,
       pro: d.pro === "on", proPrice: d.proPrice || "", early: d.early === "on", creators: d.makers === "on",
+      review, reviewPrice: review ? d.reviewPrice || "" : "", reviewDays,
     },
   });
 })();
