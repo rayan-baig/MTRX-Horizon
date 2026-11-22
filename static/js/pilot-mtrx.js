@@ -53,7 +53,7 @@
     return `${head}\n\n${list.join("\n")}${hear}`;
   }
 
-  // On Orbyt itself there's no "Open Orbyt" (1.21.0): the visitor is there.
+  // On Orbyt itself there's no "Open Orbyt" (1.22.0): the visitor is there.
   const onOrbyt = path === "/orbyt";
   const ORBYT = "**Orbyt** is the official place to work with MTRX Horizyn. Pick the path that fits you:\n\n"
     + "- [Pitch an idea](/orbyt#pitch): a business or app idea, or one from Genesis\n"
@@ -63,7 +63,7 @@
     + "It takes about 2 minutes, a real person reads every message, and we reply by email within 7 days, even if the answer is no."
     + (onOrbyt ? "" : " [Open Orbyt](/orbyt)");
 
-  // Orbyt's "Which form is for me?" (1.21.0): a chooser, one line per kind
+  // Orbyt's "Which form is for me?" (1.22.0): a chooser, one line per kind
   // of visitor, each jumping straight to its form on this page.
   const FORM_CHOOSER = "Pick the line that sounds most like you:\n\n"
     + "- **I have an idea** (a business or app, or a project from Genesis): [Pitch an idea](/orbyt#pitch)\n"
@@ -77,7 +77,7 @@
   const appLink = (a) => (a.open && /^https?:\/\//.test(a.url || "") ? `[${words(a.name)}](${a.url})`
     : LEARN[a.key] ? `[${words(a.name)}](${LEARN[a.key]})` : words(a.name));
 
-  // Home's "What's ready today?" (1.21.0): what works today first (this
+  // Home's "What's ready today?" (1.22.0): what works today first (this
   // site's own tools, and any app that's open), then what's coming.
   function readyAnswer() {
     const open = APPS.filter((a) => a.open);
@@ -92,7 +92,7 @@
     return `${text}\n\nGenesis turns your idea into a plan, Orbyt is where you pitch it or work with us, and Pilot (me) answers questions.`;
   }
 
-  // Home's "Which app fits me?" (1.21.0): a three-way chooser from the site's
+  // Home's "Which app fits me?" (1.22.0): a three-way chooser from the site's
   // own words, no AI needed.
   const FIT = {
     rankup: "**For a family**, to turn chores into points and games",
@@ -128,7 +128,7 @@
     + "this browser.\n\n1. Write it in three lines: a name, one line about it, and who it's for.\n2. Tick off easy steps from Spark to Launch.\n\n"
     + "[Start my idea](/genesis#new) or [try an example](/genesis#example).";
 
-  // Genesis's "Show my projects" and "What's my next step?" (1.21.0):
+  // Genesis's "Show my projects" and "What's my next step?" (1.22.0):
   // answered at once from this browser's own Genesis data (the page's
   // window.GenesisBridge), with no AI key, and nothing is sent anywhere.
   const bridge = () => (path === "/genesis" && window.GenesisBridge && typeof window.GenesisBridge.mine === "function"

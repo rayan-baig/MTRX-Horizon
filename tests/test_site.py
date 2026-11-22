@@ -227,7 +227,7 @@ def test_projects_on_the_home_page_are_the_real_list(client):
     # An app's status comes from the catalog: "In development" until it opens.
     assert rows == [(p["name"], p["kind"], p.get("status", "In development"), p["next"]) for p in stats.PROJECTS]
     # The count in the panel is the length of that same list, and its line
-    # says it in the card's own words (1.21.0): this website (Genesis and
+    # says it in the card's own words (1.22.0): this website (Genesis and
     # Orbyt) is the live one, and the rest are apps in development. It used
     # to say "1 live, 3 in development", which the card didn't.
     assert (f'<a class="fact fact-projects" href="#projects">' in page
@@ -1293,7 +1293,7 @@ def test_a_computer_shows_the_newest_update_in_one_line(client):
 
 
 def test_the_new_strip_shows_a_short_headline_whole(client):
-    """1.21.0: the strip cut the newest item's sentence off with "..." on a
+    """1.22.0: the strip cut the newest item's sentence off with "..." on a
     computer. Each item now has a short headline, and the strip shows it
     whole: never clipped."""
     from horizon import news
@@ -1303,19 +1303,19 @@ def test_the_new_strip_shows_a_short_headline_whole(client):
     hero = client.get("/").text.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
     strip = hero.split('<p class="news-strip">', 1)[1].split("</p>", 1)[0]
     assert f'<span>{news.NEWS[0]["headline"]}</span>' in strip
-    rules = Path("static/css/site.css").read_text(encoding="utf-8").split("/* ---------- 1.21.0:", 1)[1]
+    rules = Path("static/css/site.css").read_text(encoding="utf-8").split("/* ---------- 1.22.0:", 1)[1]
     span = rules.split(".news-strip-item span {", 1)[1].split("}", 1)[0]
     assert "text-overflow: clip" in span and "overflow: visible" in span
 
 
 def test_card_tags_stay_on_one_line_and_phone_screens_say_tap_to_see(client):
-    """1.21.0: at 1024-1100px the tags wrapped onto two lines beside the
+    """1.22.0: at 1024-1100px the tags wrapped onto two lines beside the
     icon (now left out there; one line everywhere else), and on a phone
     nothing said the small screen opens bigger."""
     page = client.get("/").text
     apps = page.split('<section id="apps"', 1)[1].split("</section>", 1)[0]
     assert apps.count('<span class="app-shot-cue">Tap to see</span></a>') == 3
-    rules = Path("static/css/site.css").read_text(encoding="utf-8").split("/* ---------- 1.21.0:", 1)[1]
+    rules = Path("static/css/site.css").read_text(encoding="utf-8").split("/* ---------- 1.22.0:", 1)[1]
     assert "@media (min-width: 901px) and (max-width: 1100px) {\n  .page .app-card .tags { display: none; }" in rules
     assert ".app-shot-cue { display: none; }" in rules
     phone = rules.split("@media (max-width: 720px) {", 1)[1].split("\n}", 1)[0]
@@ -1349,7 +1349,7 @@ def test_the_card_screens_are_whole_on_a_computer_and_bigger_on_a_phone(client):
 
 
 def test_the_sites_own_pilot_answers_in_node():
-    """1.21.0: Home's "What's ready today?" and "Which app fits me?",
+    """1.22.0: Home's "What's ready today?" and "Which app fits me?",
     Orbyt's "Which form is for me?" (no "Open Orbyt" while on Orbyt), and
     Genesis's "Show my projects" and "What's my next step?" are answered at
     once, with no AI key and nothing sent (tests/js/site_pilot_answers.test.js)."""

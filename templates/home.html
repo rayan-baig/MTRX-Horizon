@@ -61,7 +61,7 @@
   {% endfor %}
 </ul>
 {%- endmacro -%}
-{#- The Projects tile's line, in the Projects card's own words (1.21.0):
+{#- The Projects tile's line, in the Projects card's own words (1.22.0):
     this website (Genesis and Orbyt) is the live one, the rest are apps. -#}
 {%- macro projects_line(plist) -%}
 {%- set site_live = plist | selectattr("status", "equalto", "Live") | list | length -%}

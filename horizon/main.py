@@ -167,7 +167,7 @@ def pilot_facts() -> dict:
         # The apps, exactly as Orbyt's "Our apps" lists them (catalog.public:
         # an address only once an app is open), so Pilot's own answer to
         # "What apps are coming?" needs no AI and can't disagree with the site.
-        # The key (1.21.0) lets Pilot link a founding app to its Learn more
+        # The key (1.22.0) lets Pilot link a founding app to its Learn more
         # card on the home page.
         "apps": json.dumps([{k: a[k] for k in ("key", "name", "line", "open", "url")} for a in pilot_apps()],
                            separators=(",", ":")),

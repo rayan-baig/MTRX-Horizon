@@ -13,7 +13,7 @@ from datetime import date
 # Newest first. dot: the colour of the app it is about (see .dot in site.css).
 # href: a page of this site, or the app's Learn more card on the home page.
 NEWS = [
-    {"date": "2026-11-22", "who": "Pilot", "dot": "violet", "source": "MTRX Horizyn 1.21.0",
+    {"date": "2026-11-22", "who": "Pilot", "dot": "violet", "source": "MTRX Horizyn 1.22.0",
      "text": "On Genesis, Pilot shows your projects and your next step straight away, read from this browser only.",
      "headline": "Your projects and next step, no key needed",
      "href": "/genesis"},
@@ -40,7 +40,7 @@ NEWS = [
 ]
 
 # The desktop "New" strip under the home page's buttons shows the newest
-# item's headline (1.21.0): short enough to show whole, never cut off with
+# item's headline (1.22.0): short enough to show whole, never cut off with
 # "...". tests/test_site.py holds every headline to this many characters.
 HEADLINE_MOST = 44
 

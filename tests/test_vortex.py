@@ -814,7 +814,7 @@ def test_every_form_has_the_7_day_reply_and_pitch_partner_the_under_13_note(clie
         before_send = " ".join(panel.split('<div class="v-send">', 1)[0].split()).replace("&#39;", "'")
         assert (CONFIDENTIAL in before_send) == (kind == "pitch"), kind
         # The privacy line under Send is the same on every form, Pitch too
-        # (1.21.0: Pitch's left out "and never pass it on"); "pass on" is
+        # (1.22.0: Pitch's left out "and never pass it on"); "pass on" is
         # said nowhere else in a form, except Pitch's "Will you build it
         # without me?" answer.
         flat = " ".join(panel.split())
@@ -1038,11 +1038,11 @@ def test_a_computer_hero_shows_an_example_pitch(client):
 
 
 def test_orbyt_desktop_cards_line_up_and_the_bundle_bar_has_room():
-    """1.21.0: on a computer the Kitchen Safety Bundle bar sat on the app
+    """1.22.0: on a computer the Kitchen Safety Bundle bar sat on the app
     cards (a gap on the open <details> never reached its contents), the path
     cards' links ("Pitch →", "Join →", "Partner →") sat at different heights,
     and the hero had a lot of empty space round its words."""
-    css = (ROOT / "static/css/vortex.css").read_text().split("/* ---------- 1.21.0 ---------- */", 1)[1]
+    css = (ROOT / "static/css/vortex.css").read_text().split("/* ---------- 1.22.0 ---------- */", 1)[1]
     assert ".v-apps-fold[open] { display: block; }" in css
     assert ".v-apps-fold > .v-bundle { margin: 0 0 14px; }" in css
     wide = css.split("@media (min-width: 721px) {", 1)[1].split("\n}\n", 1)[0]

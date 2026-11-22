@@ -1,4 +1,4 @@
-"""Home, Genesis and Orbyt (1.21.0) in a real browser: what only layout can
+"""Home, Genesis and Orbyt (1.22.0) in a real browser: what only layout can
 show. The server and browser come from tests/test_browser.py (skipped there
 too where Playwright or its Chromium isn't installed; CI has both)."""
 

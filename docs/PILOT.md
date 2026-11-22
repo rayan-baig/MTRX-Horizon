@@ -2,7 +2,7 @@
 
 Pilot is the AI assistant in every MTRX Horizyn app. It runs on **the user's own AI key**, from
 their browser: MTRX Horizyn never sees the key, never sees the conversation, and pays nothing for
-the AI. This file describes the shared core (**Pilot core 1.4.0**) and how it is used on the
+the AI. This file describes the shared core (**Pilot core 1.4.1**) and how it is used on the
 MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
 
 ## What the user sees
@@ -94,6 +94,10 @@ and the note under them). Now:
 - **One line for the grown-ups note on the welcome.** `keyNoteShort` (optional) is a one-line
   version of `keyNote` shown above the box while the welcome is up (the full note is its tooltip,
   and stays beside the key settings and in help). Without it, `keyNote` shows as before.
+  **Since core 1.4.1** the one line stays for the whole chat (not just the welcome), with a
+  **More** link after it that opens the full note in place (**Less** closes it): RankUp's reviewer
+  found the two- or three-line note above the box too long once a chat had started. An app with no
+  `keyNoteShort` keeps the design's full note.
 - **Everything on the welcome fits.** On shorter screens (computers up to 900 px tall, phones up
   to 760 px) the header, greeting, pills and suggestions are a little tighter and phone sheets a
   little taller, so every pill and suggestion shows whole above the note and the box at 700 to
@@ -126,12 +130,23 @@ elements and text nodes only, never HTML), so `<b>` in an answer shows as those 
 difference: an app's own answer may link to **this site's pages**, `[Orbyt](/orbyt)`, and those links
 open in the same tab (Pilot closes first). Links elsewhere open in a new tab without the page's
 address, as in AI answers. AI answers never get path links. An answer is kept as part of the chat
-(page to page, tab to tab, marked `local` in storage) and, once a key is added, is part of what the AI
-sees, like any earlier message.
+(page to page, tab to tab, marked `local` in storage), on screen only.
+
+**An app's own answer never leaves the device (core 1.4.1).** It is built from what the page holds
+(on RankUp: counts, chore titles, a check's details), so it is never sent to the AI provider, not
+even once a key is added and the visitor asks something else. In 1.4.0 it was part of the chat
+history sent with the next question, so those words could leave the device (found by RankUp's
+helper). Now the engine (`wire()` in `pilot-engine.js`) sends the provider the short stand-in
+**"(Pilot showed a built-in answer)"** (`PilotEngine.LOCAL_STANDIN`) in its place, so the turns stay
+in order; the visitor's question (the pill's own words) is sent as usual. The answer stays in the chat
+on screen, unchanged. An app's answer must still never put another person's private details on the
+screen beyond what the page itself shows.
 
 While there is no key, a line under an answer offers it: **"Want more? Add your AI key to ask
 anything."** with a **Key settings** button. `answerMore` (optional) changes the words; `answerMore:
-false` leaves the line out. The line goes once a key is added.
+false` leaves the line out. The line goes once a key is added. Since core 1.4.1 it shows **once per
+chat**, under the first such answer (it repeated under every one); under later answers the compact
+row of pills (below) keeps the key pill instead.
 
 The existing pills are unchanged: a prompt (`action` words, `send`), and the built-ins (`ask`,
 `task`, `code`, `explain-screen`, `summarise-screen`, `settings`, `help`). **The no-key "message
@@ -153,6 +168,24 @@ An answer function runs in the visitor's browser with what the page already has:
 the network (use facts the server put on the page) and must never put another person's details in
 the chat.
 
+**The welcome stays (core 1.4.1).** In 1.4.0 the welcome's pills went away after the first answer
+and came back only with **Clear chat**, so a visitor who asked "What is Orbyt?" had to clear the chat
+to ask "What apps are coming?". Now, under an app's own answer (when it is the newest thing in the
+chat, with the "Want more?" line under it or not), the welcome's pills come back as a **compact row**:
+the same pills, smaller, wrapping (`.pilot-again`, `.pilot-pills-row`, `.pilot-pill-small`). The pill
+just pressed is left out, and so is the key pill while the "Want more?" line right above offers the
+key (or once a key is set). The row is
+not shown under the AI's answers (the page's suggestions and **Summarise this** are already above the
+chat there), and not while Pilot is busy. An app that gives no pills of its own never has an answer
+of its own, so the design's window is unchanged (`againPills`, `localAnswerAt` in `pilot-panel.js`).
+
+**Long answers open at their start (core 1.4.1).** The chat used to scroll to its end after every
+change, so a long answer of the app's own opened at its last line and had to be scrolled back up.
+Now a new answer of the app's own that doesn't fit shows from its first line (8 px under the top of
+the chat), and is then left where the visitor scrolls it; one that fits whole shows with the end of
+the chat, as before (`answerScroll`). Opening Pilot again shows the newest one from its start too. AI
+answers still follow their text as it streams in.
+
 On the MTRX site: **What is Orbyt?** answers with Orbyt's paths (each a link to its form), the 2
 minutes, the real person and the 7-day reply, and **Open Orbyt** (left out while on Orbyt); **What
 apps are coming?** is built from the site's own app list (the catalog, as Orbyt's "Our apps" lists
@@ -163,6 +196,30 @@ start an idea?", Orbyt's "Which form is for me?" (a chooser jumping to each form
 after I send?", and Genesis's "Show my projects" and "What's my next step?" (read from this
 browser's own Genesis data through `window.GenesisBridge`, nothing sent) are answers too; the other
 suggestions are AI prompts.
+
+### Moving an app to core 1.4.1 (from 1.4.0)
+
+1. Copy the thirteen core files from `static/pilot/` over the app's copies (they all say `Pilot core
+   1.4.1` on their first line). Nothing else is required: an app that sets nothing new keeps its look.
+2. Placement changes for everyone (**Hide rather than cover** below): on a phone the robot keeps to
+   one bottom corner, tucked away, once the page is scrolled, and fades out instead of covering a
+   link, a button, a header that stays put or something in `avoid` (and while a box is typed in, on
+   any screen). `hideWhenCrowded: false` in the config keeps 1.4.0's "tuck where it covers least".
+   App-side stopgaps for the robot landing over a header or a search box can go.
+3. The welcome's pills now come back under the app's own answers, and long answers open at their
+   first line: nothing to do.
+4. Optional, for a crisp robot on phones: copy the new pictures (`pilot-robot-112.webp`, `-168`,
+   `-176`, and `pilot-rest-body-112.webp`, `-168` and the same for `-head` and `-eyes`) and add to
+   Pilot's script tag, with the app's own fingerprinted addresses:
+   `data-robot-set="…/pilot-robot-112.webp 112w, …/pilot-robot-168.webp 168w, …/pilot-robot-176.webp 176w"`,
+   `data-rest-body-set="…/pilot-rest-body-112.webp 112w, …/pilot-rest-body-168.webp 168w"`, and
+   `data-rest-head-set`, `data-rest-eyes-set` the same way (see `templates/_pilot.html`). Without them
+   the robot shows as before.
+5. Optional: recolour the window with the CSS variables in **Theming the window** below, under the
+   app's `themeClass`.
+6. Copy the new `tests/js/pilot.test.js` core tests, and Pilot for Mac's six shared files if the app
+   ships them (`pilot-actor.js` takes a layer as `{src, srcset, sizes}` as well as an address; Pilot
+   for Mac passes addresses, so it is unchanged).
 
 ### Moving an app to core 1.4.0
 
@@ -349,8 +406,10 @@ words; (3) on a phone nothing made a top corner the last choice. Now:
 - **A header or bar that stays put** (`position: fixed` or `sticky`, under 40% of the screen; never a
   whole-screen layer) counts as busy (`pinnedBar`, kind `pinned`), so its empty end is never "free".
 - **What it would cover is weighed** (`costOf`, `WEIGHT`): a link, a button or a box costs
-  1,000,000 times the share of it covered (at least a tenth), so it never tucks over one while another
-  corner avoids one, and a big card's corner costs less than most of a small "Home" link; a bar that
+  1,000,000 times the share covered (at least a tenth), so it never tucks over one while another
+  corner avoids one (since 1.4.1 the share is the larger of the share of the link covered and the
+  share of the robot that lies over the link, so a big card's corner under the whole robot counts in
+  full, like a small "Home" link: a tap there could mean either); a bar that
   stays put 50,000; something the app asked it to avoid 100,000 plus its area; a busy top corner on a
   phone 10,000,000 more (only a box being typed in along the bottom sends it up); words and small
   pictures their area. Each thing found counts once.
@@ -358,6 +417,42 @@ words; (3) on a phone nothing made a top corner the last choice. Now:
   plays tucked away, and it stays tucked until the visitor scrolls (`tuck` in `placeNow`), so the
   whole robot never lands on a card the moment the page opens.
 - Computers keep their order (the chosen corner, the other side, then the other edge).
+
+**Hide rather than cover, one corner while scrolling (core 1.4.1).** The round-7 reviews still found
+the phone robot in the way: typing in Genesis's "today's spark" (low on the screen) or Orbyt's Pitch
+and Partner forms sent it to the top left, 3 px from the corner, over the logo and Home link (the box
+being typed in ruled out both bottom corners, so the least-bad corner was a top one); on the home page
+it changed corner about every 100 px of scrolling and sat whole in a top corner over the headline or a
+card; resting at the top of Orbyt it tucked over the corner of the big "Early access" and "Partner
+with us" path cards, so tapping the card's corner opened Pilot; and on CyberLogix's console at 320 px,
+with a sticky alert bar on top and the search box and tabs along the bottom, it tucked over the search
+box. Now (`pilot-mascot.js`):
+
+- **Hide rather than cover.** On a phone, and while a box of the page is being typed in (any screen),
+  when even the least-bad spot would cover a link, a button, a header or bar that stays put, or
+  something in `avoid` (a cost of `WEIGHT.pinned` or more), or every corner is on the box being typed
+  in, the robot fades out (`hide: true` from `placeNow`; `.pilot-away` on `.pilot-root`: hidden, and
+  taps go through) and keeps its corner. It comes back at the next look with room: when typing ends,
+  or the visitor scrolls on. At the top of a page where every corner has a link, it stays hidden until
+  the visitor scrolls. Words under the tucked robot are still fine (it tucks, as before). An open chat
+  window is never hidden, and opening Pilot (from the page's own buttons) always works.
+  `hideWhenCrowded: false` in the config keeps 1.4.0's choice.
+- **One bottom corner while scrolling (phones).** Once the page is scrolled away from its top
+  (`scrolled` in `placeNow`; the window, or an app's own box that scrolls in its place when it is at
+  least half the screen tall), the phone robot is always tucked away, in one corner of its edge (the
+  bottom, unless the visitor dragged it to the top), and stays there while words pass under it
+  (`scrollPlace`). It moves only when that corner would cover a link, a button, a bar that stays put
+  or something to avoid: while the page is still moving it fades out until that has passed; once the
+  scrolling stops it takes the other bottom corner, else it stays hidden (it never hops to the top
+  while the page is scrolled). Back at the top of the page the usual rules apply (whole in a free
+  corner). Computers and tablets are unchanged.
+- **The covered share counts the robot's side too** (`costOf`, above), so a big link card under the
+  whole robot is never a cheap place to tuck.
+
+A crisp robot on phones (core 1.4.1): the still picture and the resting robot's layers can come in the
+sizes they are drawn at (56 px at 2x and 3x, 88 px at 2x: `data-robot-set`, `data-rest-*-set`,
+**Moving an app to core 1.4.1** step 4), so the browser shows a file at its own size instead of
+shrinking the 128 px or 192 px one (soft on phones). Same pictures, same look.
 
 **`keepInViewport` (an app's choice).** Tucked away, the robot doesn't hang off the edge: it shrinks
 to `--pilot-peek-scale` (0.82 on phones, 0.52 on computers) in its corner, `--pilot-keep-margin` from
@@ -402,6 +497,44 @@ pictures) are fetched once the page is idle, after load; a pose picture is fetch
 first needs it (each under 21 KB). Everything moves with the Web Animations API on transforms and
 opacity, on the compositor: no script runs per frame, and nothing animates while the robot rests
 apart from a blink (170 ms every few seconds) and a slow breath every half a minute or so, from timers.
+
+### Theming the window (core 1.4.1)
+
+An app colours the robot's window with its own stylesheet; no core file changes. `config.themeClass`
+is put on `.pilot-root`; set these CSS variables there (`.pilot-root.my-theme { … }`). Each falls back
+to the design's own value, so an app that sets none looks exactly as before:
+
+| Variable | What it colours |
+|---|---|
+| `--pilot-panel-bg`, `--pilot-panel-shadow` | the window's background (any `background` value) and its glow |
+| `--pilot-title`, `--pilot-soft-ink` | "Pilot" and the greeting; the quieter words (tagline, labels, status, round buttons' icons) |
+| `--pilot-accent`, `--pilot-link` | icons and the send arrow; links in answers |
+| `--pilot-hover-line` | a pill's, suggestion's or button's edge on hover and keyboard focus |
+| `--pilot-hello-bg`, `--pilot-hello-line`, `--pilot-hello-tail` | the greeting bubble, its edge, and its little tail |
+| `--pilot-pill-bg`, `--pilot-pill-line`, `--pilot-pill-ink` | the welcome's pills (and the small row under an answer); `--pilot-pill-ink` is the suggestions' words too |
+| `--pilot-chip-bg`, `--pilot-chip-line` | this page's suggestions |
+| `--pilot-user-bg` | the visitor's own messages |
+| `--pilot-bubble-bg`, `--pilot-bubble-line` | Pilot's answers |
+| `--pilot-keycard-bg` | the "your own key" card |
+| `--pilot-compose-bg`, `--pilot-compose-line` | the message box |
+| `--pilot-round-bg`, `--pilot-round-line` | the round buttons at the bottom |
+
+The colours in `pilot.css` are variables too, and also apply to the window: `--pilot-ink` (words),
+`--pilot-muted`, `--pilot-edge` (the window's edge), `--pilot-glass` and `--pilot-glass-2` (the
+default background's gradient), `--pilot-blue`, `--pilot-cyan`, `--pilot-violet`, `--pilot-ready`
+and `--pilot-nokey`. For anything else, a rule of the app's own under its theme class
+(`.pilot-root.my-theme .pilot-note { … }`) is more specific than the core's and wins. The visitor's
+calmer look (the palette button, `.pilot-theme-calm`) still applies on top.
+
+```css
+.pilot-root.omni-theme {
+  --pilot-panel-bg: linear-gradient(165deg, #0b1a14, #10261c);
+  --pilot-edge: rgba(52, 211, 153, 0.5);
+  --pilot-accent: #34d399;
+  --pilot-pill-bg: rgba(16, 48, 36, 0.7);
+  --pilot-user-bg: linear-gradient(135deg, #059669, #0d9488);
+}
+```
 
 ## Keys and providers
 
@@ -462,7 +595,9 @@ all). See `pilot-desktop/README.md`.
 
 Only to the provider the user chose, only when they send a message:
 
-- what they typed, and the conversation so far in that tab;
+- what they typed, and the conversation so far in that tab (Pilot's own notes, and an app's own
+  built-in answers, are never sent: a built-in answer goes as "(Pilot showed a built-in answer)",
+  core 1.4.1);
 - Pilot's rules, the app's knowledge pack and "why it's better" list, the name of the screen, and a
   few facts about it (on Genesis: today's spark prompt);
 - the notes in "What Pilot remembers", if memory is on;
@@ -539,7 +674,7 @@ Genesis Pro members keep Pro's own answers either way.
 
 ## The files
 
-The core is the same in every app. Each file starts with `Pilot core 1.4.0 · <file name>`, so
+The core is the same in every app. Each file starts with `Pilot core 1.4.1 · <file name>`, so
 copies in different repos can be compared.
 
 | File | What it is | DOM |
@@ -551,10 +686,12 @@ copies in different repos can be compared.
 | `static/pilot/pilot-render.js` | the safe markdown renderer (`parse` needs no DOM) | builds nodes |
 | `static/pilot/pilot-mascot.js` | the robot picture (as an `<img>` with both sizes) and the P mark (SVG) | builds nodes |
 | `static/pilot/pilot-robot-128.webp`, `pilot-robot-256.webp` | the owner's robot, transparent | — |
+| `static/pilot/pilot-robot-112.webp`, `-168.webp`, `-176.webp` | the same robot at the sizes it is drawn (core 1.4.1, optional: `data-robot-set`) | — |
 | `static/pilot/pilot-motion.js` | the moving robot: poses and fallbacks, moves as plans, when to move | none |
 | `static/pilot/pilot-actor.js` | plays the plans: the layered robot, pose pictures, effects, props; the web robot's wandering | builds nodes |
 | `static/pilot/pilot-actor.css` | the moving robot's look, effects and props | web |
 | `static/pilot/pilot-rest-body.webp`, `-head.webp`, `-eyes.webp` | the design robot in three layers | — |
+| `static/pilot/pilot-rest-*-112.webp`, `-168.webp` | the layers at a phone's 2x and 3x (core 1.4.1, optional: `data-rest-*-set`) | — |
 | `static/pilot/poses/<pose>.webp` | the pose pictures (any of the names above) | — |
 | `static/pilot/pilot.js` | the web loader: robot in the corner, dragging, lazy loading, tabs | web |
 | `static/pilot/pilot-panel.js` | the web window: chat, cards, settings, help, voice, screen outline | web |
@@ -612,7 +749,8 @@ Per app (on the MTRX site):
    | `appName` | the app's name, used in Pilot's rules ("the assistant built into …") |
    | `name`, `tagline` | the window's title and tagline (default "Pilot", "Your AI copilot. Powered by you.") |
    | `welcomePills` | up to 5 `{icon, label, action, send}` pills for the welcome (default: the design's five; see **Each app's own welcome**); 1.4.0: `link` or `answer` instead of `action` (**Pill actions**) |
-   | `answerMore` | (1.4.0) the line under an answer given with no key ("Want more? Add your AI key to ask anything."); `false` for none |
+   | `answerMore` | (1.4.0) the line under an answer given with no key ("Want more? Add your AI key to ask anything."), once per chat since 1.4.1; `false` for none |
+   | `hideWhenCrowded` | (1.4.1) `false` keeps 1.4.0's "tuck where it covers least" instead of fading the robot out when every spot would cover a link, a button, a bar that stays put or something to avoid |
    | `hideKeySections` | `["image", "video"]` (either or both) to leave those key settings out |
    | `keepInViewport` | `true`: tucked away, the robot shrinks into its corner instead of hanging off the screen's edge |
    | `modals` | CSS selectors of the app's own pop-ups that aren't marked as dialogs; the robot steps back while one shows |
@@ -625,7 +763,7 @@ Per app (on the MTRX site):
    | `chips(screen)` | up to 3 `{label, prompt}` suggestions for this screen (on the welcome too); 1.4.0: `{label, link}` or `{label, answer}` too |
    | `taskPrompt(screen)` | what "Get things done…" puts in the box on this screen |
    | `keyNote` | the note above the message box (until a key is added) and beside key settings (e.g. the 18+ line) |
-   | `keyNoteShort` | (1.3.0) a one-line version of `keyNote` for the welcome, so the pills and suggestions keep their room |
+   | `keyNoteShort` | (1.3.0) a one-line version of `keyNote` for the welcome, so the pills and suggestions keep their room; (1.4.1) shown for the whole chat, with a **More** link to the full note |
    | `audienceNote` | who may be using it, for Pilot's rules |
    | `privacyUrl` | the app's privacy page, linked from help |
    | `themeClass` | an optional class on Pilot's root, to restyle its colours from the app's CSS |
@@ -654,7 +792,8 @@ Per app (on the MTRX site):
 ### Apps still on an older core
 
 CyberLogix, OmniArmor and RankUp carried core 1.3.0 (or older) when 1.4.0 came out. They keep working
-as they are; each moves to 1.4.0 in its own repo by the steps in **Moving an app to core 1.4.0** (core
+as they are; each moves to 1.4.1 in its own repo by the steps in **Moving an app to core 1.4.0** and
+**Moving an app to core 1.4.1** (core
 files are only ever changed here and copied byte for byte). This repo doesn't change them.
 
 ### Server-side AI in an app

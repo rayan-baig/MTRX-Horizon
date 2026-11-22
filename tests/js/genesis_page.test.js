@@ -170,7 +170,7 @@ test("a returning visitor sees 'Welcome back', their project's name, and its nex
   const cont = functionSource("drawContinue");
   assert.match(cont, /sorted\.find\(\(q\) => !S\.progress\(q\)\.launched\)/);
   // 1.19.0: "Continue <project>" looked like a button and wasn't; the
-  // heading greets. 1.21.0: the name under it is plain words: a link there
+  // heading greets. 1.22.0: the name under it is plain words: a link there
   // too was a second way to the same place as the Continue button.
   assert.match(cont, /el\("h1", \{ class: "g-continue-title" \}, el\("span", \{ text: "Welcome " \}\), el\("b", \{ text: "back" \}\)\)/);
   assert.match(cont, /el\("b", \{ class: "g-continue-name", text: p\.name \}\)/);
@@ -272,13 +272,13 @@ test("1.19.0: at the free limit (a tall Ask Genesis) the notes fill the space un
   assert.deepEqual(run(1200, 500), { notes: "side", danger: "side" });
 });
 
-// ---------------------------------------------------------------- 1.21.0
+// ---------------------------------------------------------------- 1.22.0
 
 test("phones: a two-line intro and compact steps on a first visit, today's spark straight after 'Welcome back'", () => {
   const page = fs.readFileSync(path.join(__dirname, "..", "..", "templates", "genesis.html"), "utf8");
   const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
-  const late = css.split("/* ---------- 1.21.0 ---------- */")[1];
-  assert.ok(late, "genesis.css has its 1.21.0 part");
+  const late = css.split("/* ---------- 1.22.0 ---------- */")[1];
+  assert.ok(late, "genesis.css has its 1.22.0 part");
   const intro = page.split('<p class="g-intro">')[1].split("</p>")[0];
   assert.ok(intro.length <= 70, "short enough for two lines on a phone");
   assert.match(intro, /Free, and it stays in this browser\./);

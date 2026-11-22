@@ -341,4 +341,208 @@ def test_pitch_review_is_never_offered_after_other_paths(review_site, browser):
     page.click('form[data-kind="invest"] button[type="submit"]')
     page.wait_for_selector("#v-sent:not([hidden])", timeout=10000)
     assert not page.is_visible("#v-review")
+
+
+# ---------------------------------------------------------------- core 1.4.1
+
+# Where the robot is and what it covers: hidden (faded out), its corner,
+# tucked or not, and the links and buttons under the part of it that shows.
+_ROBOT = """() => {
+  const root = document.querySelector(".pilot-root");
+  const l = root.querySelector(".pilot-launcher");
+  const hidden = getComputedStyle(l).visibility === "hidden" || getComputedStyle(root).visibility === "hidden";
+  const r = l.getBoundingClientRect();
+  const q = { left: Math.max(r.left, 0), right: Math.min(r.right, innerWidth), top: Math.max(r.top, 0), bottom: Math.min(r.bottom, innerHeight) };
+  const under = [];
+  if (!hidden) {
+    for (const e of document.querySelectorAll("a[href], button, input, textarea, select, summary, [role=button]")) {
+      if (root.contains(e)) continue;
+      for (const b of e.getClientRects()) {
+        const ix = Math.min(b.right, q.right) - Math.max(b.left, q.left), iy = Math.min(b.bottom, q.bottom) - Math.max(b.top, q.top);
+        if (ix > 2 && iy > 2) { under.push((e.innerText || e.getAttribute("aria-label") || e.tagName).trim().slice(0, 40)); break; }
+      }
+    }
+  }
+  return { hidden, corner: (root.className.match(/pilot-at-(\\w\\w)/) || [])[1], peek: root.classList.contains("pilot-peek"),
+    away: root.classList.contains("pilot-away"), top: Math.round(q.top), left: Math.round(q.left), under, y: Math.round(scrollY) };
+}"""
+
+
+def _phone_size(browser, width, height):
+    return browser.new_context(viewport={"width": width, "height": height}, is_mobile=True, has_touch=True,
+                               device_scale_factor=2)
+
+
+def _pilot_page(context, url):
+    page = context.new_page()
+    page.goto(url, wait_until="networkidle")
+    # Attached, maybe not visible: with no room it waits out of sight (1.4.1).
+    page.wait_for_selector(".pilot-launcher", state="attached", timeout=10000)
+    # The first look (4 s) is over, and the moving robot is awake.
+    page.wait_for_timeout(4800)
+    return page
+
+
+def test_pilot_typing_low_on_a_phone_fades_out_and_comes_back(site, browser):
+    """Core 1.4.1: typing in Genesis's "today's spark" low on a phone's
+    screen sent the robot to the top left, 3 px from the corner, over the
+    logo and the Home link (round-7). Now it fades out while the box is
+    typed in (every corner left would cover the header) and comes back
+    after."""
+    context = _phone_size(browser, 375, 812)
+    page = _pilot_page(context, f"{site}/genesis")
+    # Since 1.22.0 today's spark is on a phone's first screen, too high to
+    # scroll down to 770 px: room above it puts the box low again.
+    page.evaluate("""() => { const e = document.querySelector('#g-daily-input');
+      const gap = Math.ceil(770 - e.getBoundingClientRect().top - scrollY);
+      if (gap > 0) { const s = new CSSStyleSheet(); s.replaceSync(`#g-daily { margin-top: ${gap}px; }`);
+        document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; } }""")
+    page.evaluate("""() => { const e = document.querySelector('#g-daily-input'); scrollBy(0, e.getBoundingClientRect().top - 770); }""")
+    page.wait_for_timeout(900)
+    page.tap("#g-daily-input")
+    page.keyboard.type("Homework reminders", delay=10)
+    page.wait_for_timeout(900)
+    typing = page.evaluate(_ROBOT)
+    assert typing["hidden"] and typing["away"], typing
+    assert not (typing["top"] < 60 and not typing["hidden"]), typing
+    page.evaluate("document.activeElement.blur()")
+    page.wait_for_timeout(900)
+    after = page.evaluate(_ROBOT)
+    assert not after["hidden"] and after["corner"][0] == "b", after
+    context.close()
+
+
+@pytest.mark.parametrize("size", [(375, 812), (375, 667), (320, 640)])
+def test_pilot_while_scrolling_a_phone_keeps_one_bottom_corner(site, browser, size):
+    """Core 1.4.1: on Home it changed corner about every 100 px and sat
+    whole in a top corner over the headline or a card. Now, once scrolled,
+    it is tucked in one bottom corner (or faded out for a moment), never
+    whole, never at the top, never over a link or button, and it changes
+    corner only a few times from the top of the page to the bottom."""
+    context = _phone_size(browser, *size)
+    page = _pilot_page(context, f"{site}/")
+    height = page.evaluate("document.documentElement.scrollHeight - innerHeight")
+    seen, problems = [], []
+    for y in range(100, height + 100, 100):
+        page.evaluate(f"window.scrollTo(0, {min(y, height)})")
+        page.wait_for_timeout(700)
+        r = page.evaluate(_ROBOT)
+        if r["y"] <= 8:
+            continue
+        key = "hidden" if r["hidden"] else r["corner"]
+        if not seen or seen[-1] != key:
+            seen.append(key)
+        if not r["hidden"] and (r["corner"][0] != "b" or not r["peek"] or r["under"]):
+            problems.append(r)
+    context.close()
+    assert not problems, problems
+    assert len(seen) <= 4, seen
+
+
+@pytest.mark.parametrize("size", [(375, 667), (390, 844)])
+def test_pilot_resting_on_orbyt_never_covers_a_path_card(site, browser, size):
+    """Core 1.4.1: at the top of Orbyt the tucked robot sat on the corner of
+    the big "Early access" / "Partner with us" cards, so tapping the card's
+    corner opened Pilot. A link under the robot now counts in full; with a
+    link in every corner the robot waits out of sight until a scroll."""
+    context = _phone_size(browser, *size)
+    page = _pilot_page(context, f"{site}/orbyt")
+    for y in (0, 100, 200):
+        page.evaluate(f"window.scrollTo(0, {y})")
+        page.wait_for_timeout(800)
+        r = page.evaluate(_ROBOT)
+        assert not r["under"], (y, r)
+    context.close()
+
+
+# A phone page where every corner would cover something: RankUp's gift page
+# (full-width "Pay" buttons, no tab bar) or CyberLogix's console at 320 px
+# (a sticky bar on top that the app asks Pilot to avoid, a search box and
+# tabs along the bottom).
+CROWDED_PAGE = """(kind) => {
+  for (const n of [...document.body.children]) if (!n.classList.contains("pilot-root")) n.remove();
+  const main = document.createElement("main");
+  const s = new CSSStyleSheet();
+  if (kind === "gift") {
+    for (let i = 0; i < 14; i++) { const b = document.createElement("button"); b.className = "t-pay"; b.textContent = "Pay"; main.append(b); }
+    s.replaceSync(`.t-pay{display:block;width:100%;height:96px;margin:0 0 4px;border:0;background:#335}`);
+  } else {
+    const bar = document.createElement("div"); bar.className = "t-bar"; bar.textContent = "Needs you now"; document.body.append(bar);
+    for (let i = 0; i < 30; i++) { const p = document.createElement("p"); p.textContent = "Fridge " + i; main.append(p); }
+    const finder = document.createElement("input"); finder.className = "t-finder"; finder.placeholder = "Search";
+    const tab = document.createElement("button"); tab.className = "t-tab"; tab.textContent = "Everything";
+    const row = document.createElement("div"); row.className = "t-row"; row.append(finder, tab); document.body.append(row);
+    s.replaceSync(`.t-bar{position:sticky;top:0;height:56px;background:#511} .t-row{position:fixed;left:0;right:0;bottom:0;display:flex;height:52px}
+      .t-finder{flex:1} .t-tab{width:120px}`);
+    window.Pilot.config.avoid = [".t-bar", ".t-finder", ".t-tab"];
+  }
+  document.body.prepend(main);
+  document.adoptedStyleSheets = [s];
+  window.scrollTo(0, 0);
+}"""
+
+
+@pytest.mark.parametrize("kind,size", [("gift", (375, 812)), ("console", (320, 640))])
+def test_pilot_hides_rather_than_covers_when_every_corner_is_taken(site, browser, kind, size):
+    """Core 1.4.1: RankUp's gift page scrolled to 500 px (a full-width Pay
+    button in every corner) and CyberLogix's console at 320 px (avoided
+    bars top and bottom): 1.4.0 tucked over the edge of a Pay button or the
+    search box. Now it fades out; and the window still opens."""
+    context = _phone_size(browser, *size)
+    page = _pilot_page(context, f"{site}/privacy")
+    page.evaluate(CROWDED_PAGE, kind)
+    page.wait_for_timeout(300)
+    page.evaluate("window.scrollTo(0, 500)")
+    page.wait_for_timeout(900)
+    r = page.evaluate(_ROBOT)
+    assert r["hidden"] and r["away"] and not r["under"], r
+    page.evaluate("Pilot.open()")
+    page.wait_for_selector(".pilot-panel:not([hidden])")
+    assert page.is_visible(".pilot-panel")
+    context.close()
+
+
+def test_pilot_keeps_the_welcome_pills_under_its_own_answers_and_opens_long_ones_at_the_top(site, browser):
+    """Core 1.4.1: after one built-in answer the welcome's pills were gone
+    until "Clear chat"; now a compact row of them sits under the answer and
+    works. A long answer opens at its first line, not its last."""
+    context = _phone(browser)
+    page = context.new_page()
+    page.goto(f"{site}/", wait_until="networkidle")
+    page.wait_for_selector(".pilot-launcher", timeout=10000)
+    page.click(".pilot-launcher")
+    page.click('.pilot-pill:has-text("What is Orbyt?")')
+    page.wait_for_selector(".pilot-again .pilot-pill")
+    row = page.eval_on_selector_all(".pilot-again .pilot-pill", "ps => ps.map(p => p.innerText.trim())")
+    assert "What apps are coming?" in row and "Help with my idea" in row, row
+    assert "What is Orbyt?" not in row and "Add my AI key" not in row, row
+    # Smaller than the welcome's pills, and in a wrapping row (each as wide as its words, not the window).
+    sizes = page.evaluate("""() => { const p = [...document.querySelectorAll('.pilot-again .pilot-pill')];
+      const row = document.querySelector('.pilot-pills-row').getBoundingClientRect();
+      return { h: Math.max(...p.map(x => x.getBoundingClientRect().height)), w: Math.max(...p.map(x => x.getBoundingClientRect().width)), row: row.width }; }""")
+    assert sizes["h"] < 40 and sizes["w"] < sizes["row"] * 0.8, sizes
+    page.click('.pilot-again .pilot-pill:has-text("What apps are coming?")')
+    page.wait_for_function("() => document.querySelectorAll('.pilot-from-pilot .pilot-md').length === 2")
+    page.wait_for_timeout(300)
+    # The newest answer opens at its first line when it doesn't fit (the phone's sheet is short enough here).
+    where = page.evaluate("""() => {
+      const box = document.querySelector('.pilot-scroll'); const a = [...document.querySelectorAll('.pilot-from-pilot')].pop();
+      const top = a.getBoundingClientRect().top - box.getBoundingClientRect().top;
+      return { top, fits: box.scrollHeight - (a.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop) <= box.clientHeight,
+        atEnd: Math.abs(box.scrollTop - (box.scrollHeight - box.clientHeight)) < 2 }; }""")
+    if where["fits"]:
+        assert where["atEnd"], where
+    else:
+        assert 0 <= where["top"] <= 16, where
+    assert page.is_visible('.pilot-again .pilot-pill:has-text("What is Orbyt?")')
+    # "Want more?" shows once per chat; under the second answer the row keeps the key pill instead.
+    assert page.locator(".pilot-more").count() == 1
+    assert page.is_visible('.pilot-again .pilot-pill:has-text("Add my AI key")')
+    # The grown-ups note stays one line in the chat, with "More" for the whole note.
+    assert page.inner_text(".pilot-foot-note-words") == "AI keys are for grown-ups (18+)."
+    one_line = page.eval_on_selector(".pilot-foot-note", "n => n.getBoundingClientRect().height")
+    page.click(".pilot-note-more")
+    assert page.inner_text(".pilot-foot-note-words").startswith("Pilot uses a grown-up's AI key")
+    assert page.inner_text(".pilot-note-more") == "Less"
+    assert one_line < 24, one_line
     context.close()

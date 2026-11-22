@@ -145,7 +145,7 @@
     // under a half-empty row.
     view.classList.toggle("g-one", projects.length === 1);
     // A returning visitor on a phone: today's spark comes straight after the
-    // welcome back, on the first screen (1.21.0).
+    // welcome back, on the first screen (1.22.0).
     view.classList.toggle("g-returning", projects.length > 0);
     const mine = $("g-mine");
     const hero = document.querySelector(".g-hero");
@@ -185,7 +185,7 @@
     }
     const pr = S.progress(p);
     const go = el("a", { class: "btn btn-genesis", href: `#p/${p.id}` }, `Continue ${p.name} →`);
-    // 1.19.0: the heading is a greeting. 1.21.0: the project's name under it
+    // 1.19.0: the heading is a greeting. 1.22.0: the project's name under it
     // is plain words (the Continue button is the one way in, not a second
     // link beside it), and its next three steps can be ticked right here:
     // beside the greeting on a computer, under it on a phone.
@@ -210,7 +210,7 @@
   }
 
   // A returning visitor's next three steps, each ticked with one tap
-  // (1.21.0), through the same update() the project's checklist uses.
+  // (1.22.0), through the same update() the project's checklist uses.
   function nextSteps(p) {
     const steps = openSteps(p, 3);
     const box = el("div", { class: "g-continue-next" },
@@ -1404,7 +1404,7 @@
     },
     list() { return (store.usable ? store.load() : projects).slice().sort((a, b) => b.updated - a.updated).map(summary); },
     find(ref) { const q = findProject(ref); return q ? { id: q.id, name: q.name } : null; },
-    // For Pilot's own answers (1.21.0), read in this browser and never sent:
+    // For Pilot's own answers (1.22.0), read in this browser and never sent:
     // each project with its id, so the answer can link straight to it.
     mine() {
       return (store.usable ? store.load() : projects).slice().sort((a, b) => b.updated - a.updated)

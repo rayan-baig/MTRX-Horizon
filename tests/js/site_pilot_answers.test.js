@@ -1,4 +1,4 @@
-// The MTRX site's own Pilot answers (static/js/pilot-mtrx.js, 1.21.0): the
+// The MTRX site's own Pilot answers (static/js/pilot-mtrx.js, 1.22.0): the
 // suggestions answered at once, with no AI key and nothing sent.
 // `node --test tests/js/site_pilot_answers.test.js`; tests/test_site.py runs it too.
 "use strict";

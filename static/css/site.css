@@ -1113,7 +1113,7 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .mainnav .orbyt-sub { display: none; }
 }
 
-/* ---------- 1.21.0: a short news headline, tidy tags, "Tap to see" ---------- */
+/* ---------- 1.22.0: a short news headline, tidy tags, "Tap to see" ---------- */
 /* The "New" strip shows the newest item's short headline (horizon/news.py),
    always whole: never cut off with "...". */
 .news-strip-item span { overflow: visible; text-overflow: clip; white-space: nowrap; }
