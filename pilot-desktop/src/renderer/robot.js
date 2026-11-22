@@ -18,6 +18,11 @@
 // the main process 20 times a second, so its own check of the cursor (which
 // works even when macOS sends this window no mouse moves) follows him
 // instead of the spot where the move began.
+// Pilot for Mac 1.5.1: the pictures change on the move's own clock
+// (smooth.js's poseClock), so a walk's body can move at the very moment its
+// picture changes and his planted foot stays put; a dissolving picture is
+// really seen (tricks.css); and the "Pilot needs your AI key." tooltip only
+// comes up when you point at him, not when he walks under a still pointer.
 "use strict";
 
 (function () {
@@ -51,7 +56,12 @@
   // The drawn props and effects fill in as the actor adds them.
   window.PilotProps.attach(stage);
   // Each change of picture dissolves (a step of a walk or climb is a clean cut).
-  const dissolve = S.dissolver(stage, { sameCycle: R.sameCycle, reduced: () => reduce.matches });
+  let clock = null; // the pictures' clock while a move plays (smooth.js's poseClock)
+  const dissolve = S.dissolver(stage, { sameCycle: R.sameCycle, reduced: () => reduce.matches, skip: () => Boolean(clock && clock.active) });
+  const picture = (name) => (name === "rest" ? stage.querySelector(".pa-rest") : stage.querySelector(`.pa-pose[data-pose="${name}"]`));
+  function stopClock() { if (clock) { clock.stop(); clock = null; } }
+  // Stop whatever plays (the pictures' clock first, so stopping dissolves as usual).
+  function halt() { stopClock(); return actor.stop(); }
   const dpr = () => window.devicePixelRatio || 1;
   const snap = (v) => S.snap(v, dpr());
 
@@ -110,7 +120,7 @@
     const h = window.innerHeight;
     return {
       u, pos: actor.at, home: state ? state.home : null, floor: h - 8, left: u * 0.62, right: w - u * 0.62, top: u * 1.7,
-      poses: actor.poses(), profile: "desktop", random: Math.random, pointer: extra && extra.at, sky: h * 0.6, wall: { left: 0, right: w },
+      poses: actor.poses(), profile: "desktop", random: Math.random, pointer: extra && extra.at, sky: h * 0.6, wall: { left: 0, right: w }, dpr: dpr(),
     };
   }
 
@@ -128,7 +138,7 @@
       else if (roaming && cmd.move === "roam-trick" && T.has(cmd.trick)) plan = T.plan(cmd.trick, g, actor.pose);
       else if (roaming) plan = R.plan(cmd.move, g, actor.pose);
       else if (T.has(cmd.move)) plan = T.plan(cmd.move, g, actor.pose);
-      else plan = R.desktop(cmd.move, g, actor.pose) || M.plan(cmd.move, g, { how: cmd.how, at: cmd.at, say: typeof cmd.say === "string" ? cmd.say.slice(0, 40) : undefined });
+      else plan = R.desktop(cmd.move, g, actor.pose) || R.mac(M.plan(cmd.move, g, { how: cmd.how, at: cmd.at, say: typeof cmd.say === "string" ? cmd.say.slice(0, 40) : undefined }), g);
       plan = R.fromPose(plan, actor.pose, g);
       if (!plan) {
         // Nothing to play: say so at once, so the main process's timer carries on.
@@ -177,8 +187,17 @@
     const cues = scheduleSounds(plan, user);
     playing += 1;
     follow();
+    hint(false);
     let end;
-    try { end = await actor.play(plan); } finally { playing -= 1; }
+    stopClock();
+    const running = actor.play(plan);
+    const mine = S.poseClock(plan, { clock: actor.el, picture, sameCycle: R.sameCycle, reduced: () => reduce.matches });
+    clock = mine;
+    try { end = await running; } finally {
+      playing -= 1;
+      mine.stop();
+      if (clock === mine) clock = null;
+    }
     for (const t of cues) clearTimeout(t);
     if (end && end.stopped) sfx.stop();
     document.documentElement.classList.remove("travel");
@@ -232,15 +251,31 @@
     if (now !== over) { over = now; P.hover(over); }
   }
   // Mouse moves arrive even while the window lets clicks through.
-  window.addEventListener("mousemove", (ev) => { lastPoint = { x: ev.clientX, y: ev.clientY }; checkOver(lastPoint); });
-  document.addEventListener("mouseleave", () => { lastPoint = null; if (over && !dragging && !down) { over = false; P.hover(false); } });
+  window.addEventListener("mousemove", (ev) => {
+    const moved = !lastPoint || lastPoint.x !== ev.clientX || lastPoint.y !== ev.clientY;
+    lastPoint = { x: ev.clientX, y: ev.clientY };
+    checkOver(lastPoint);
+    // The pointer itself moved onto him while he stands still: the tooltip may come up.
+    if (moved && over && actor && !actor.busy) hint(true);
+    else if (!over) hint(false);
+  });
+  document.addEventListener("mouseleave", () => { lastPoint = null; hint(false); if (over && !dragging && !down) { over = false; P.hover(false); } });
+
+  // 1.5.1: the tooltip with what Pilot needs ("Pilot needs your AI key.") is
+  // there only when you point at him on purpose. macOS shows a tooltip under
+  // a still pointer too, so when he walked under it, it popped up and stayed
+  // while he moved. (The screen reader still hears it: status-words.)
+  function hint(on) {
+    const want = on && state ? SAY[state.status] || "Pilot" : "";
+    if (stage.title !== want) stage.title = want;
+  }
 
   // ------------------------------------------------------------ drag and click
 
   stage.addEventListener("pointerdown", (ev) => {
     if (ev.button !== 0 || !actor) return;
     clearTimeout(settleTimer);
-    actor.stop();
+    halt();
     const at = actor.at;
     down = { x: ev.clientX, y: ev.clientY, ox: ev.clientX - at.x, oy: ev.clientY - at.y, id: ev.pointerId };
     dragging = false;
@@ -310,20 +345,20 @@
     document.documentElement.dataset.status = s.status;
     document.documentElement.dataset.theme = s.theme || "blue";
     words.textContent = SAY[s.status] || "";
-    stage.title = SAY[s.status] || "Pilot";
+    if (stage.title) stage.title = SAY[s.status] || "Pilot";
     if (!actor) makeActor(s.poses || {});
     else if (posesChanged) { actor.setPoses(s.poses || {}); warm(s.poses || {}); }
     // Reading a reply aloud: a gentle talking look, and no sound effects.
     document.documentElement.classList.toggle("talking", Boolean(s.talking));
     if (s.talking) sfx.stop();
     // The chat opened while he was travelling: he stops right there, next to it.
-    if (s.chatOpen && actor.busy && !first && !dragging) { actor.stop(); report(false); settleLater(); }
+    if (s.chatOpen && actor.busy && !first && !dragging) { halt(); report(false); settleLater(); }
     // Nobody at the Mac (idle or locked): not even a blink until they're back.
     const idleOk = !reduce.matches && !hidden && !s.away;
     if (idleOk !== idleWas) { idleWas = idleOk; actor.idle(idleOk); }
     // Only in the smoke test: a handle to hold a move still for pictures.
     if (s.test && !window.__pilotRobot) {
-      window.__pilotRobot = { actor, geometry, sounds: soundLog, warmed: () => warmed, perform, queue: () => queue, dissolve, refine: (p) => S.refine(p, dpr()),
+      window.__pilotRobot = { actor, halt, clock: () => clock, play: (plan) => play(plan, false, true), geometry, sounds: soundLog, warmed: () => warmed, perform, queue: () => queue, dissolve, refine: (p) => S.refine(p, dpr()),
         over: () => over, plan: (move, extra) => (move.startsWith("roam")
         ? R.plan(move, geometry(extra), actor.pose) : T.has(move) ? T.plan(move, geometry(extra), actor.pose)
           : R.desktop(move, geometry(extra), actor.pose, extra) || M.plan(move, geometry(extra), extra || {})) };
@@ -344,7 +379,7 @@
   P.onDo((cmd) => perform(cmd));
   P.onShow((shown) => {
     hidden = !shown;
-    if (actor) { if (hidden) { clearTimeout(settleTimer); actor.stop(); } idleWas = shown && !reduce.matches; actor.idle(idleWas); }
+    if (actor) { if (hidden) { clearTimeout(settleTimer); halt(); } idleWas = shown && !reduce.matches; actor.idle(idleWas); }
   });
 
   function env() { P.env({ reducedMotion: reduce.matches }); if (actor) { idleWas = !reduce.matches && !hidden; actor.idle(idleWas); } }

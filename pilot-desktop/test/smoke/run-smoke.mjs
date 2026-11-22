@@ -304,6 +304,206 @@ async function motion15() {
   if (shotsDir) check(made >= 50, `frames of the walk, run, climbs and a flight saved (${made})`);
 }
 
+// ---------------------------------------------------------------- Pilot for Mac 1.5.1: frame logs
+
+// A move really played (the same path as any move: the pictures on the
+// move's clock), with every animation frame logged from the robot window:
+// where he's drawn (the computed transform), and each picture that is drawn
+// at all (visibility visible, opacity above 0) with its opacity and layer.
+// make: {kind: "walk" | "climb-drop" | "trick", ...}. Returns the log.
+async function frameLog(robot, make) {
+  await settle(robot);
+  return robot.evaluate(async (spec) => {
+    const R = window.PilotRoam;
+    const T = window.PilotTricks;
+    const P = window.__pilotRobot;
+    const actor = P.actor;
+    const g = { ...P.geometry(), pace: 1 };
+    const at = (x) => (x < 0 ? g.right + x * g.u : g.left + x * g.u);
+    // He starts standing where the move starts (placed there, not walked).
+    actor.place(at(spec.from), g.floor);
+    actor.show("standing", 0);
+    await new Promise((r) => setTimeout(r, 300));
+    const g0 = { ...g, pos: { x: at(spec.from), y: g.floor } };
+    let plan;
+    if (spec.kind === "walk") plan = R.walkTo(g0, at(spec.to), "standing", spec.run);
+    else if (spec.kind === "climb-drop") {
+      const k = R.track(g0.pos, g.poses, "standing", g);
+      R.climbUp(k, g0, spec.side, g.u * 1.6);
+      R.dropOff(k, g0, spec.side);
+      plan = k.done("climb-drop");
+    } else plan = T.plan(spec.trick, g0, "standing");
+    const pics = [...document.querySelectorAll(".pa-pose, .pa-rest")];
+    const rows = [];
+    let on = true;
+    const t0 = performance.now();
+    const sample = () => {
+      if (!on) return;
+      const m = /matrix(?:3d)?\(([^)]+)\)/.exec(getComputedStyle(actor.el).transform || "");
+      const v = m ? m[1].split(",").map(Number) : null;
+      const x = v ? (v.length === 16 ? v[12] : v[4]) : actor.at.x;
+      const y = v ? (v.length === 16 ? v[13] : v[5]) : actor.at.y;
+      const drawn = [];
+      for (const el of pics) {
+        const cs = getComputedStyle(el);
+        const o = Number(cs.opacity);
+        if (cs.visibility !== "visible" || !(o > 0)) continue;
+        drawn.push({ pose: el.classList.contains("pa-rest") ? "rest" : el.dataset.pose, o: Math.round(o * 1000) / 1000, z: cs.zIndex,
+          cls: el.classList.contains("mac-out") ? "out" : el.classList.contains("mac-sync") ? "sync" : "" });
+      }
+      rows.push({ t: Math.round((performance.now() - t0) * 10) / 10, x, y, drawn });
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+    await P.play(plan);
+    await new Promise((r) => setTimeout(r, 250));
+    on = false;
+    return { name: spec.name, u: g.u, floor: g.floor, dpr: window.devicePixelRatio, duration: plan.duration, feet: R.FEET, rows };
+  }, make);
+}
+
+// What a frame log shows: for each walk or run picture while it shows (the
+// one fully drawn and not fading), how far its planted foot moves on screen;
+// how the pictures fading out look (seen, and how many frames); the
+// standing (or wave) picture drawn up in the air; the frame times.
+function readLog(log) {
+  const foot = (pose) => {
+    if (Number.isFinite(log.feet[pose])) return log.feet[pose];
+    const m = /^(.*)-left$/.exec(pose);
+    return m && Number.isFinite(log.feet[m[1]]) ? -log.feet[m[1]] : 0;
+  };
+  const step = /^(walk|run)\d+(-left)?$/;
+  const segs = [];
+  let cur = null;
+  const fades = { frames: 0, seen: 0, minOpacity: 1, poses: new Set() };
+  let midAir = 0;
+  let maxAir = 0;
+  const dts = [];
+  log.rows.forEach((r, i) => {
+    if (i) dts.push(r.t - log.rows[i - 1].t);
+    const showing = r.drawn.filter((d) => d.o >= 0.99 && String(d.z) !== "2" && d.cls !== "out");
+    const main = showing.length ? showing[showing.length - 1] : null;
+    for (const d of r.drawn) {
+      if ((String(d.z) === "2" || d.cls === "out") && d.o < 0.99) { fades.frames += 1; fades.minOpacity = Math.min(fades.minOpacity, d.o); fades.poses.add(d.pose); if (d.o > 0.03) fades.seen += 1; }
+      if ((d.pose === "standing" || d.pose === "wave") && d.o > 0.5 && log.floor - r.y > log.u * 0.12) { midAir += 1; maxAir = Math.max(maxAir, log.floor - r.y); }
+    }
+    const name = main ? main.pose : null;
+    if (!cur || cur.pose !== name) { cur = { pose: name, start: r.t, frames: 0, x0: r.x, y0: r.y, drift: 0 }; segs.push(cur); }
+    cur.frames += 1;
+    cur.end = r.t;
+    if (name && step.test(name)) {
+      const d = foot(name) * log.u;
+      cur.drift = Math.max(cur.drift, Math.hypot(r.x + d - (cur.x0 + d), r.y - cur.y0));
+    }
+  });
+  const stepSegs = segs.filter((s) => s.pose && step.test(s.pose));
+  // (The first and last frame of a showing can straddle a change; the middle ones are the picture alone.)
+  const drifts = stepSegs.map((s) => Math.round(s.drift * 100) / 100);
+  dts.sort((a, b) => a - b);
+  return {
+    name: log.name, frames: log.rows.length, dtMedian: dts[dts.length >> 1], dtMax: dts[dts.length - 1],
+    stepPictures: stepSegs.length, footDriftMax: drifts.length ? Math.max(...drifts) : 0, footDrifts: drifts,
+    poses: segs.filter((s) => s.pose).map((s) => `${s.pose}:${s.frames}`),
+    fadeFrames: fades.frames, fadeFramesSeen: fades.seen, fadeMinOpacity: fades.minOpacity, fadePoses: [...fades.poses],
+    standingMidAirFrames: midAir, standingMidAirMaxPt: Math.round(maxAir),
+    twoDrawnFrames: log.rows.filter((r) => r.drawn.length >= 2).length,
+  };
+}
+
+async function frameLogs15() {
+  const robot = await pageFor("robot.html");
+  await robot.evaluate(() => window.__pilotRobot.warmed());
+  const dir = shotsDir || fs.mkdtempSync(path.join(os.tmpdir(), "pilot-frames-"));
+  fs.mkdirSync(dir, { recursive: true });
+  const runs = [
+    { name: "walk-right", kind: "walk", from: 1, to: 6 },
+    { name: "walk-left", kind: "walk", from: -1, to: -6 },
+    { name: "run-right", kind: "walk", from: 1, to: -1, run: true },
+    { name: "climb-right-push-off", kind: "climb-drop", from: -0.01, side: 1 },
+    { name: "climb-left-push-off", kind: "climb-drop", from: 0.01, side: -1 },
+    { name: "climb-and-wave", kind: "trick", trick: "climb-wave", from: -2 },
+  ];
+  const summary = [];
+  for (const spec of runs) {
+    const log = await frameLog(robot, spec);
+    fs.writeFileSync(path.join(dir, `mac151-frames-${spec.name}.json`), JSON.stringify(log));
+    summary.push(readLog(log));
+  }
+  fs.writeFileSync(path.join(dir, "mac151-frames-summary.json"), JSON.stringify(summary, null, 1));
+  console.log(`     (frame logs: ${dir})`);
+  const walks = summary.filter((s) => /^(walk|run)/.test(s.name));
+  for (const s of walks) {
+    check(s.stepPictures >= 6 && s.footDriftMax <= 3, `frame log, ${s.name}: his planted foot moves at most ${s.footDriftMax} pt while each of ${s.stepPictures} pictures shows (${s.frames} frames)`);
+  }
+  const fadeSeen = summary.reduce((n, s) => n + s.fadeFramesSeen, 0);
+  check(fadeSeen >= 10, `frame logs: the picture going out is drawn while it fades (${fadeSeen} frames, down to ${Math.min(...summary.map((s) => s.fadeMinOpacity))} opacity)`);
+  const air = summary.filter((s) => /climb/.test(s.name));
+  check(air.every((s) => s.standingMidAirFrames === 0), `frame logs: no standing picture up in the air pushing off the wall or waving from it (${air.map((s) => `${s.name} ${s.standingMidAirFrames}`).join(", ")})`);
+  return summary;
+}
+
+// Pilot for Mac 1.5.1: on a Mac, with PILOT_REAL_CLICK set to the
+// realclick helper (test/smoke/realclick.swift), real system clicks: the
+// pointer moved and clicked by macOS's own mouse events, through the
+// click-through overlay, the way a person clicks. First a control click on
+// him standing still: if even that doesn't open the chat, this Mac doesn't
+// deliver made-up clicks (no Accessibility permission for the helper), and
+// the check says so instead of passing or failing. Then him walking.
+async function realClicks15() {
+  const helper = process.env.PILOT_REAL_CLICK;
+  if (process.platform !== "darwin" || !helper) return null;
+  const run = (...a) => execFileSync(helper, a.map(String), { encoding: "utf8" }).trim();
+  const robot = await pageFor("robot.html");
+  const area = await app.evaluate(() => global.__pilotTest.workArea());
+  const centre = async () => {
+    const n = await robotNow(robot);
+    return { x: Math.round(area.x + (n.rect.left + n.rect.right) / 2), y: Math.round(area.y + n.rect.top + (n.rect.bottom - n.rect.top) * 0.45), busy: n.busy, pose: n.pose };
+  };
+  const chatOpen = () => app.evaluate(() => global.__pilotTest.chat().isVisible());
+  console.log(`     (real clicks: the helper is ${run("trusted")})`);
+  await app.evaluate(() => global.__pilotTest.pretendCursor(null));
+  // The control: him standing still.
+  await settle(robot);
+  await wait(500);
+  let c = await centre();
+  run("move", c.x, c.y);
+  await wait(300);
+  const moved = run("where");
+  run("click", c.x, c.y);
+  await wait(900);
+  const control = await chatOpen();
+  if (control) { await app.evaluate(() => global.__pilotTest.hideChat()); await wait(400); }
+  run("move", 5, 300);
+  await wait(300);
+  if (!control) {
+    console.log(`SKIP a real system click on him standing still didn't open the chat (pointer at ${moved} after moving it to ${c.x} ${c.y}): this Mac doesn't deliver made-up clicks, so the click mid-walk can't be checked here. See RELEASE_NOTES.md for the 30-second check by hand.`);
+    return { control: false };
+  }
+  check(true, "a real system click on him standing still opens the chat (macOS's own mouse events, through the overlay)");
+  const results = [];
+  for (const [what, cmd, test] of [["mid-walk", { move: "walk", user: true }, (p) => /^walk/.test(p)], ["mid-run", { move: "run", user: true }, (p) => /^run/.test(p)]]) {
+    await settle(robot);
+    await app.evaluate((_e, m) => global.__pilotTest.move(m), cmd);
+    const n = await untilPose(robot, test, 15000);
+    await wait(400);
+    // The pointer comes onto him (as a hand would), rests a moment, and clicks where he is then.
+    c = await centre();
+    run("move", c.x, c.y);
+    await wait(250);
+    c = await centre();
+    const busy = c.busy && Boolean(n);
+    run("click", c.x, c.y);
+    await wait(900);
+    const open = await chatOpen();
+    results.push({ what, busy, pose: c.pose, open });
+    check(busy && open, `a real system click on him ${what} opens the chat${busy ? ` (${c.pose} showing)` : " (he wasn't moving)"}`);
+    if (open) { await app.evaluate(() => global.__pilotTest.hideChat()); await wait(400); }
+    run("move", 5, 300);
+    await wait(300);
+  }
+  return { control: true, results };
+}
+
 try {
   // Which edition this is, and where its AI runs at first (once the app has started).
   for (let i = 0; i < 100 && !(await app.evaluate(() => Boolean(global.__pilotTest))); i += 1) await wait(100);
@@ -350,6 +550,9 @@ try {
 
   // Pilot for Mac 1.5: he can be clicked while he moves, and he moves like a person.
   await motion15();
+  // Pilot for Mac 1.5.1: frame logs of real moves (not held-still frames).
+  await frameLogs15();
+  await realClicks15();
   // Calm mode: the timer sends nothing.
   await app.evaluate(() => global.__pilotTest.setCalm(true));
   check(await app.evaluate(() => global.__pilotTest.life().tick()) === null, "calm mode: no wandering");

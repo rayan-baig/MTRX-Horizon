@@ -965,7 +965,7 @@ async function lifeCheck(c) {
   return { typing: typing || Date.now() < typingUntil, fullscreen };
 }
 
-// 20 times a second: is the cursor over the robot? This is what lets a
+// 20 times a second (5 at rest, 1.5.1): is the cursor over the robot? This is what lets a
 // click land on him whatever macOS does with mouse moves for a window that
 // lets clicks through (and a file dragged from Finder sends none at all).
 // Pilot for Mac 1.5: while he moves, the robot window sends his place 20
@@ -989,6 +989,16 @@ function watchCursor() {
     restSince = Infinity; // once, until the pointer moves again
     life.nudge();
   }
+}
+
+// The cursor check's own timer. 1.5.1: 20 times a second while he moves,
+// the pointer is on him or he's dragged; 5 times a second otherwise
+// (overlay.cursorEvery). 1.5.0 checked 20 times a second all the time.
+let cursorTimer = null;
+function cursorLoop() {
+  clearTimeout(cursorTimer);
+  try { watchCursor(); } catch (_) { /* next time */ }
+  cursorTimer = setTimeout(cursorLoop, overlay.cursorEvery({ moving, near: Boolean(gate && gate.near), over: Boolean(gate && gate.over), dragging: Boolean(gate && gate.dragging) }));
 }
 
 // Every 10 seconds (in the main process only; the robot window sleeps):
@@ -1143,6 +1153,8 @@ function registerIpc() {
     robotAt = { x: n(p.x), y: n(p.y), rect: r ? { left: n(r.left), top: n(r.top), right: n(r.right), bottom: n(r.bottom) } : null };
     const was = moving;
     moving = Boolean(p.moving);
+    // He set off: back to checking the cursor 20 times a second straight away.
+    if (moving && !was) cursorLoop();
     if (was && !moving) {
       // He stopped where the chat just opened: the chat goes next to him there.
       if (chatOpen() && Date.now() - chatOpenedAt < 4000) chatWin.setBounds(chatBounds());
@@ -1528,7 +1540,7 @@ app.whenReady().then(async () => {
     const due = chatOpen() ? 5000 : 60000;
     if (Date.now() - freeState.checkedAt >= due) refreshFree().catch(() => {});
   }, 5000);
-  setInterval(watchCursor, 50);
+  cursorLoop();
   if (powerMonitor) {
     powerMonitor.on("lock-screen", () => { locked = true; pushRobot(); });
     powerMonitor.on("unlock-screen", () => { locked = false; pushRobot(); });
