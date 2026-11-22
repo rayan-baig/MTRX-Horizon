@@ -4,6 +4,14 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.16.1 (22 November 2026)
+
+- **Pilot stays put if you click him straight away (Pilot core 1.2.1).** On the first page of a
+  visit, Pilot shows himself fully for a few seconds. If you opened his window in those seconds,
+  he could slip out of place and the window looked a little off until they were up. That first
+  look now has its own name inside Pilot, so it can't clash with the window's greeting. Pilot for
+  Mac gets the same shared files (nothing changes in how it looks or works).
+
 ## 1.16.0 (21 November 2026)
 
 Fixes from the next strict review of Home, Genesis and Orbyt, and Pilot core 1.2.0. Prices and the

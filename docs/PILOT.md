@@ -2,7 +2,7 @@
 
 Pilot is the AI assistant in every MTRX Horizyn app. It runs on **the user's own AI key**, from
 their browser: MTRX Horizyn never sees the key, never sees the conversation, and pays nothing for
-the AI. This file describes the shared core (**Pilot core 1.2.0**) and how it is used on the
+the AI. This file describes the shared core (**Pilot core 1.2.1**) and how it is used on the
 MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
 
 ## What the user sees
