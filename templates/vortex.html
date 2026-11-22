@@ -80,11 +80,22 @@
   {#- Orbyt Pitch Review (horizon/orbyt_review.py), only while it is on. The
       same promise as the terms: nothing more. -#}
   <details class="v-faq-item" id="faq-review"><summary>What's a Pitch Review?</summary>
+    {%- if review.ai %}
+    {#- AI mode (horizon/orbyt_review_ai.py): it says plainly that AI writes
+        it, what goes to the AI service, and that the grown-up agrees. -#}
+    <p>An optional extra you can add after sending your pitch: an AI-written review of your idea, sent within
+      about an hour. It says what's strong, what to fix, your next 3 steps, and whether it might fit Orbyt. To
+      write it, the idea you sent (not your name or email) goes to an AI service, and the grown-up who pays agrees
+      to that at checkout. It's one payment of {{ review.price }} (not a subscription). If it isn't with you within
+      {{ review.days }} day{{ 's' if review.days != 1 }}, or we can't review your idea, you get a full refund.
+      Pitching is free, and every pitch gets a reply with or without one.</p></details>
+    {%- else %}
     <p>An optional extra you can add after sending your pitch. A real person at MTRX Horizyn writes you a
       personal review of your idea: what's strong, what to fix, your next 3 steps, and whether it might fit
       Orbyt. It's emailed within {{ review.days }} day{{ 's' if review.days != 1 }}, for one payment of
       {{ review.price }} (not a subscription), paid by a grown-up. If it's late, or we can't review your idea,
       you get a full refund. Pitching is free, and every pitch gets a reply with or without one.</p></details>
+    {%- endif %}
   {%- endif %}
 </div>
 {%- endif %}
@@ -316,6 +327,17 @@
         pitch. Pitching stays free; this is an optional extra. -#}
     <div class="v-review" id="v-review" hidden>
       <p class="v-review-head">Optional extra: a Pitch Review</p>
+      {%- if review.ai %}
+      <p class="v-review-line">Your pitch is sent and gets a reply either way. If you'd also like a review of your
+        idea now, get an AI-written review: what's strong, what to fix, and your next 3 steps (and whether it
+        might fit Orbyt), sent within about an hour. One payment of {{ review.price }}, not a subscription.</p>
+      <p class="v-review-adult"><b>A grown-up pays.</b> If you're under 18, ask a parent or guardian: checkout is
+        theirs, and the review goes to the email they use there.</p>
+      <p class="v-review-adult"><b>Written by AI.</b> To write it, the idea you sent (its name, pitch and details,
+        never your name or email) goes to an AI service.</p>
+      <label class="v-review-tick"><input type="checkbox" id="v-review-adult"> I'm 18 or over, and I'm the one paying</label>
+      <label class="v-review-tick"><input type="checkbox" id="v-review-ai"> I agree the idea is sent to an AI service to write the review</label>
+      {%- else %}
       <p class="v-review-line">Your pitch is sent and gets a reply either way. If you'd also like a personal review
         of your idea, a real person at MTRX Horizyn writes one: what's strong, what to fix, and your next 3 steps
         (and whether it might fit Orbyt). Emailed within {{ review.days }} day{{ 's' if review.days != 1 }}.
@@ -323,10 +345,17 @@
       <p class="v-review-adult"><b>A grown-up pays.</b> If you're under 18, ask a parent or guardian: checkout is
         theirs, and the review goes to the email they use there.</p>
       <label class="v-review-tick"><input type="checkbox" id="v-review-adult"> I'm 18 or over, and I'm the one paying</label>
+      {%- endif %}
       <button class="btn btn-vortex v-review-buy" type="button" id="v-review-buy">Get a Pitch Review ({{ review.price }})</button>
       <p class="v-error" id="v-review-error" role="alert"></p>
+      {%- if review.ai %}
+      <p class="v-review-small">Full refund if it isn't with you within {{ review.days }} day{{ 's' if review.days != 1 }},
+        or we can't review it. You'll see the exact price before paying. <a href="/terms#pitch-review">Terms</a> ·
+        <a href="/privacy#pitch-review">Privacy</a></p>
+      {%- else %}
       <p class="v-review-small">Full refund if it's late or we can't review it. You'll see the exact price before
         paying. <a href="/terms#pitch-review">Terms</a></p>
+      {%- endif %}
     </div>
     {%- endif %}
     <div class="v-next" id="v-next">

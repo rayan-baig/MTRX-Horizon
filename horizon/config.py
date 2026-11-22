@@ -88,6 +88,11 @@ class Settings:
     orbyt_review_price_text: str
     orbyt_review_days: int
     orbyt_review_email_from: str
+    orbyt_review_mode: str
+    orbyt_review_ai_url: str
+    orbyt_review_ai_key: str
+    orbyt_review_ai_model: str
+    orbyt_review_ai_per_day: int
     early_access_enabled: bool
     founder_codes: dict
     founder_percent_off: int
@@ -204,6 +209,30 @@ def _web_address(raw: str | None) -> str:
 # part after it. Nothing that means something in a mailto: link ("?" starts
 # extra headers, such as a hidden copy to someone else).
 _EMAIL = re.compile(r"[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+")
+
+
+def _ai_url(raw: str | None) -> str:
+    """An OpenAI-compatible service's address, as its docs give it (such as
+    https://api.example.com/v1, or the same ending in /chat/completions):
+    always https, except a service on this same machine. Anything else is
+    treated as not set, so a typo can't send a pitch somewhere unexpected."""
+    value = (raw or "").strip()
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        return ""
+    if parts.query or parts.fragment or parts.username or parts.password or not parts.hostname:
+        return ""
+    local = parts.hostname in ("localhost", "127.0.0.1", "::1")
+    if parts.scheme != "https" and not (parts.scheme == "http" and local):
+        return ""
+    return value
+
+
+def _model_name(raw: str | None) -> str:
+    """A model's name as the AI service lists it: one word, no spaces."""
+    value = (raw or "").strip()
+    return value if len(value) <= 200 and re.fullmatch(r"[A-Za-z0-9._:/@+-]+", value) else ""
 
 
 def _email(raw: str | None) -> str:
@@ -324,6 +353,18 @@ def get() -> Settings:
         orbyt_review_price_text=_price_text(env.get("ORBYT_REVIEW_PRICE_TEXT"), "$19"),
         orbyt_review_days=_days(env.get("ORBYT_REVIEW_DAYS"), 5, 30),
         orbyt_review_email_from=_email(env.get("ORBYT_REVIEW_EMAIL_FROM")),
+        # Who writes each review (orbyt_review_ai.py): "ai" or "person".
+        # Empty means AI whenever the three AI settings are all there, else
+        # a person. The AI is any service that speaks the common
+        # OpenAI-compatible "chat completions" way, many with a free tier;
+        # the model's name comes only from this setting. Each day (UTC) at
+        # most ORBYT_REVIEW_AI_PER_DAY calls are made, so a free tier's
+        # limits aren't blown; past that, reviews wait for the next day.
+        orbyt_review_mode=env.get("ORBYT_REVIEW_MODE", "").strip().lower(),
+        orbyt_review_ai_url=_ai_url(env.get("ORBYT_REVIEW_AI_URL")),
+        orbyt_review_ai_key=env.get("ORBYT_REVIEW_AI_KEY", "").strip(),
+        orbyt_review_ai_model=_model_name(env.get("ORBYT_REVIEW_AI_MODEL")),
+        orbyt_review_ai_per_day=_whole_number(env.get("ORBYT_REVIEW_AI_PER_DAY"), 20),
         # The early access list (early_access.py). Off, and nothing about it
         # shown, until EARLY_ACCESS_ENABLED=1. Each app's founder code is a
         # Stripe promotion code the owner makes in Stripe; the percent it

@@ -140,10 +140,12 @@ def test_the_vortex_scripts_send_only_the_form():
     page = (ROOT / "static/js/vortex.js").read_text()
     rules = (ROOT / "static/js/vortex-form.js").read_text()
     # The form, and (only while Pitch Review is on and a pitch was just sent)
-    # its checkout, which sends the one-time ticket and the 18+ tick only.
+    # its checkout, which sends the one-time ticket and the 18+ tick only
+    # (and, in AI mode, the tick agreeing the idea goes to an AI service).
     assert page.count("fetch(") == 2 and 'fetch("/api/vortex/send"' in page
     assert 'fetch("/api/orbyt/review/checkout"' in page
-    assert "body: JSON.stringify({ ticket: reviewTicket, adult: true })" in page
+    assert ("body: JSON.stringify(aiOk ? { ticket: reviewTicket, adult: true, ai: true } "
+            ": { ticket: reviewTicket, adult: true })") in page
     assert page.count('credentials: "omit"') == 2
     assert "fetch(" not in rules
     for script in (page, rules):

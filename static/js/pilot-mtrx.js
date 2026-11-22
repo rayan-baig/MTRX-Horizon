@@ -116,7 +116,17 @@
   // settings. Nothing beyond what the terms promise.
   const review = d.review === "on";
   const reviewDays = Number(d.reviewDays) || 0;
-  const REVIEW = review
+  // "ai": the review is written by AI and sent within about an hour; the
+  // idea goes to an AI service, which the grown-up agrees to at checkout.
+  const reviewAi = review && d.reviewMode === "ai";
+  const REVIEW = reviewAi
+    ? "A **Pitch Review** is an optional extra you can add after sending a pitch in Orbyt: an **AI-written review** of your idea, "
+      + "sent within about an hour. It says what's strong, what to fix, your next 3 steps, and whether it might fit Orbyt. "
+      + "To write it, the idea you sent (not your name or email) goes to an AI service, and the grown-up (18+) who pays agrees to that at checkout. "
+      + `It's one payment of ${words(d.reviewPrice)} (not a subscription), through Stripe. `
+      + `If it isn't with you within ${reviewDays} day${reviewDays === 1 ? "" : "s"}, or we can't review your idea, you get a full refund.\n\n`
+      + "Pitching is free, and every pitch gets a reply with or without one. [Pitch an idea](/orbyt#pitch)"
+    : review
     ? `A **Pitch Review** is an optional extra you can add after sending a pitch in Orbyt. A real person at MTRX Horizyn `
       + `writes you a personal review of your idea: what's strong, what to fix, your next 3 steps, and whether it might fit Orbyt. `
       + `It's emailed within ${reviewDays} day${reviewDays === 1 ? "" : "s"}, for one payment of ${words(d.reviewPrice)} (not a subscription). `
@@ -257,7 +267,7 @@
     facts: {
       ai: d.ai === "on", freeDay: Number(d.freeDay) || 0, freeHour: Number(d.freeHour) || 0,
       pro: d.pro === "on", proPrice: d.proPrice || "", early: d.early === "on", creators: d.makers === "on",
-      review, reviewPrice: review ? d.reviewPrice || "" : "", reviewDays,
+      review, reviewPrice: review ? d.reviewPrice || "" : "", reviewDays, reviewAi,
     },
   });
 })();

@@ -500,6 +500,16 @@ and a test-mode run-through.
 | `ORBYT_REVIEW_PRICE_TEXT` | `$19` | the price as the page writes it (keep it the same as Stripe's) |
 | `ORBYT_REVIEW_DAYS` | 5 | the promise: emailed within this many days of paying (1 to 30) |
 | `ORBYT_REVIEW_EMAIL_FROM` | `MTRX_ALERT_FROM` | where confirmations come from (through `MTRX_SMTP_*`) |
+| `ORBYT_REVIEW_MODE` | empty | who writes the reviews: `ai` or `person`; empty means AI once the three AI settings below are set |
+| `ORBYT_REVIEW_AI_URL` | empty | an OpenAI-compatible AI service's address (`https://` only), for AI mode |
+| `ORBYT_REVIEW_AI_KEY` | empty | that service's key (a free tier works). Never commit it |
+| `ORBYT_REVIEW_AI_MODEL` | empty | the name of the service's model that writes the reviews |
+| `ORBYT_REVIEW_AI_PER_DAY` | 20 | the most AI calls in a UTC day, to stay inside a free tier |
+
+**Make it automatic (free):** in AI mode (1.23.0) each paid review is written by AI and emailed by
+itself within minutes, with honest "written by AI" wording everywhere it's offered and the
+grown-up agreeing at checkout. The doc's "Make it automatic (free)" has the steps for a free-tier
+key from Google AI Studio, Groq or OpenRouter.
 
 ## Partners and the Kitchen Safety Bundle
 

@@ -4,6 +4,39 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.23.0 (22 November 2026)
+
+- **Orbyt Pitch Review can write itself, with AI, free for you.** In the new AI mode, when a
+  grown-up pays for a Pitch Review, the server writes it with AI and emails it to them by itself,
+  usually within minutes: what's strong, what to fix, the next 3 steps, and whether it might fit
+  Orbyt, kind and in plain words a child can follow. Stripe's message is never kept waiting: the
+  review is written in the background, tried again if the AI service is busy, and picked up again
+  after a restart.
+- **Free for you:** it works with any AI service that speaks the common "OpenAI-compatible" way,
+  and several have a free tier (Google AI Studio, Groq, OpenRouter). Four settings:
+  `ORBYT_REVIEW_AI_URL`, `ORBYT_REVIEW_AI_KEY`, `ORBYT_REVIEW_AI_MODEL` (the model's name comes
+  only from this setting) and `ORBYT_REVIEW_AI_PER_DAY` (20 AI calls a day by default, so a free
+  tier's limits aren't blown). AI mode is on once the first three are set; `ORBYT_REVIEW_MODE=person`
+  keeps writing them yourself. docs/ORBYT-PITCH-REVIEW.md, "Make it automatic (free)", has the steps.
+- **Checked before it's sent.** Every AI review is checked: the four parts and exactly 3 steps,
+  about 250 to 400 words, no email addresses, phone numbers or links (except mtrxhorizyn.com
+  pages), no promise of money, investment, a partnership or building the idea, and no asking for
+  personal details. A bad one is written once more. If it's still not right, or the AI declines
+  the idea, or it couldn't be written in time (the service down, or the day's calls used up), the
+  order comes back to you with an email saying why, in good time to write it yourself.
+- **You still see every review.** The console's Pitch Reviews section shows each AI review's
+  words and when it was sent, or "Needs you" and why, with **Resend** (email it again) and
+  **Refund** (a full refund through Stripe; your Stripe key needs Refunds: write for that button).
+- **Honest words in AI mode.** The Sent screen, the FAQ, Pilot's answer, the terms, the privacy
+  page, the thanks page and the confirmation email all say it's "an AI-written review of your
+  idea, sent within about an hour", that the idea is sent to an AI service to write it, and that
+  the refund promise is still the days. The grown-up ticks a second box at checkout to agree.
+  The idea's words go to the AI service only for a paid review whose grown-up agreed, never the
+  pitcher's name or email, with email addresses, phone numbers and links taken out first. The
+  privacy page says which kind of service and which address, what's sent, and how long the
+  review is kept (with the buyer's email: 90 days after it's sent or refunded). Person mode keeps
+  today's words.
+
 ## 1.22.0 (22 November 2026)
 
 - **Home: Pilot answers "What's ready today?" and "Which app fits me?" straight away.** "What's

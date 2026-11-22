@@ -79,6 +79,8 @@ def worth_a_look() -> list:
         out.append(_knock_problem())
     out += [f"Genesis Pro is switched on but stays off until this is done: {p}" for p in genesis_pro.problems()]
     out += [f"Pitch Review is switched on but stays off until this is done: {p}" for p in orbyt_review.problems()]
+    if orbyt_review.enabled():
+        out += [f"Pitch Review: {n}" for n in orbyt_review.orbyt_review_ai.notes()]
     out += [f"Early access is switched on but stays hidden until this is done: {p}"
             for p in early_access.setup_problems()]
     if bool(s.genesis_ai_key) != bool(s.genesis_ai_model):

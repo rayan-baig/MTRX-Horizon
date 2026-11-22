@@ -37,6 +37,24 @@
 
 {% if review -%}
 <h2 id="pitch-review">Orbyt Pitch Review</h2>
+{%- if review.ai %}
+<p>Pitching in Orbyt is free, and every pitch gets a reply with or without a review. A Pitch Review is an
+  optional extra for a pitch you've sent: for one payment of {{ review.price }} (not a subscription; Stripe's
+  checkout shows the exact amount before you pay), you get an AI-written review of your idea, saying what's
+  strong, what to fix, your next 3 steps and whether it might fit Orbyt, emailed to the address used at checkout,
+  usually within about an hour. Our promise is that it reaches you within {{ review.days }}
+  day{{ 's' if review.days != 1 }} of the payment.</p>
+<p>The review is written by an AI service, following our instructions, and checked by our automatic rules
+  before it is sent, not written by a person. If the AI can't write it well, a person at MTRX Horizyn writes it
+  instead, within the same {{ review.days }} day{{ 's' if review.days != 1 }}. To write it, the idea you sent
+  (its name, pitch and details, never your name or email address) is sent to the AI service; the privacy page
+  says more.</p>
+<p>It has to be bought by an adult (18 or over), through Stripe's checkout. If you're under 18, ask a parent
+  or guardian to buy it for you. Before paying, the adult ticks to agree that the idea is sent to an AI service
+  to write the review.</p>
+<p>If the review isn't with you within {{ review.days }} day{{ 's' if review.days != 1 }}, or we can't review your
+  idea, you get a full refund.
+{%- else %}
 <p>Pitching in Orbyt is free, and every pitch gets a reply with or without a review. A Pitch Review is an
   optional extra for a pitch you've sent: for one payment of {{ review.price }} (not a subscription; Stripe's
   checkout shows the exact amount before you pay), a real person at MTRX Horizyn writes a personal review of
@@ -44,7 +62,8 @@
   to the address used at checkout within {{ review.days }} day{{ 's' if review.days != 1 }} of the payment.</p>
 <p>It has to be bought by an adult (18 or over), through Stripe's checkout. If you're under 18, ask a parent
   or guardian to buy it for you.</p>
-<p>If the review is late, or we can't review your idea, you get a full refund. Refunds are made by hand
+<p>If the review is late, or we can't review your idea, you get a full refund.
+{%- endif %} Refunds are made by hand
   through Stripe, back to the card that paid: reply to the confirmation email to ask{% if contact %}, or write
   to the address below{% endif %}. Nothing here takes away any right you have by law.</p>
 <p>A review is our honest opinion and nothing more: it isn't legal, financial or professional advice, and it
