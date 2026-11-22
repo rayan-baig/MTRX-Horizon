@@ -9,7 +9,7 @@
 <body class="legal-page genesis-page">
 <div class="sky" aria-hidden="true"></div>
 <header class="topbar">
-  <a class="brand" href="/" aria-label="MTRX Horizyn home">
+  <a class="brand" href="{{ site_url('/') }}" aria-label="MTRX Horizyn home">
     <span class="brand-mark" aria-hidden="true"></span>
     <span class="brand-text">
       <span class="wordmark">MTRX <b>HORIZYN</b></span>
@@ -17,14 +17,14 @@
     </span>
   </a>
   <nav class="mainnav" aria-label="Main">
-    <a href="/">Home</a>
-    <a href="/genesis" class="active">Genesis</a>
-    <a href="/orbyt">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>
-    <a href="/privacy">Privacy</a>
-    <a href="/terms">Terms</a>
-    <a href="/brand">Brand</a>
+    <a href="{{ site_url('/') }}">Home</a>
+    <a href="{{ app_url('genesis') }}" class="active">Genesis</a>
+    <a href="{{ app_url('orbyt') }}">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>
+    <a href="{{ site_url('/privacy') }}">Privacy</a>
+    <a href="{{ site_url('/terms') }}">Terms</a>
+    <a href="{{ site_url('/brand') }}">Brand</a>
   </nav>
-  <a class="g-home" href="/genesis">Genesis</a>
+  <a class="g-home" href="{{ app_url('genesis') }}">Genesis</a>
 </header>
 
 {#- Where Stripe sends a buyer after paying. static/js/genesis-pro-welcome.js
@@ -54,12 +54,12 @@
         <li><b>Cloud backup</b><span>Your projects back up by themselves while you work.</span></li>
         <li><b>Download plan</b><span>Open a project and press Download plan.</span></li>
       </ul>
-      <div class="cta-row"><a class="btn btn-genesis" href="/genesis">Back to Genesis <span aria-hidden="true">→</span></a></div>
+      <div class="cta-row"><a class="btn btn-genesis" href="{{ app_url('genesis') }}">Back to Genesis <span aria-hidden="true">→</span></a></div>
     </div>
 
     <div id="w-error" hidden>
       <p class="g-pro-error" id="w-error-text"></p>
-      <div class="cta-row"><a class="btn btn-ghost" href="/genesis#pro">Back to Genesis</a></div>
+      <div class="cta-row"><a class="btn btn-ghost" href="{{ app_url('genesis', '#pro') }}">Back to Genesis</a></div>
     </div>
   </section>
 </main>
@@ -68,7 +68,7 @@
   <span class="foot-brand">MTRX HORIZYN</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
   <nav class="foot-links" aria-label="About this site">
-    <a href="/genesis">Genesis</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a>
+    <a href="{{ app_url('genesis') }}">Genesis</a><a href="{{ site_url('/privacy') }}">Privacy</a><a href="{{ site_url('/terms') }}">Terms</a>
     {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
   </nav>
 </footer>

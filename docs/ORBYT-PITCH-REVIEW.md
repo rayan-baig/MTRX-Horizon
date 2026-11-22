@@ -55,7 +55,9 @@ live mode.
    key** with Checkout Sessions *write* and everything else *none*. It goes in
    `STRIPE_SECRET_KEY` (never in the code or a commit).
 3. **Webhook.** Developers → Webhooks → **Add endpoint**:
-   `https://mtrxhorizyn.com/api/orbyt/review/stripe` (use your site's own address), with these
+   `https://orbyt.mtrxhorizyn.com/api/orbyt/review/stripe` once Orbyt has its own address (README,
+   "Genesis and Orbyt on their own addresses"), or `https://mtrxhorizyn.com/api/orbyt/review/stripe`
+   before that; both keep working, so an endpoint made earlier needn't change. With these
    events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
    `charge.refunded`. Copy its **signing secret** (`whsec_...`). This is a separate endpoint
    from Genesis Pro's, with its own secret.

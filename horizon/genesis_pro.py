@@ -47,7 +47,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from . import config, db, health, outbound, stats
+from . import config, db, health, hosts, outbound, stats
 
 LOG = logging.getLogger("horizon")
 
@@ -300,8 +300,11 @@ def offer() -> dict | None:
             "ai": ai_ready()}
 
 
-def checkout(who: str, plan, base: str) -> tuple[int, dict]:
-    """A Stripe Checkout page for the chosen plan. Returns (status, JSON)."""
+def checkout(who: str, plan, page: str) -> tuple[int, dict]:
+    """A Stripe Checkout page for the chosen plan. Returns (status, JSON).
+    `page` is the Genesis page's address, with no slash at the end
+    (hosts.root): https://genesis.mtrxhorizyn.com, or the main site's
+    address and /genesis."""
     s = config.get()
     if plan not in PLANS:
         return 400, {"error": "Choose monthly or yearly."}
@@ -314,8 +317,8 @@ def checkout(who: str, plan, base: str) -> tuple[int, dict]:
         "mode": "subscription",
         "line_items[0][price]": price,
         "line_items[0][quantity]": "1",
-        "success_url": f"{base}/genesis/pro/welcome?session_id={{CHECKOUT_SESSION_ID}}",
-        "cancel_url": f"{base}/genesis#pro",
+        "success_url": f"{page}/pro/welcome?session_id={{CHECKOUT_SESSION_ID}}",
+        "cancel_url": f"{page}#pro",
         "metadata[product]": PRODUCT,
         "metadata[interval]": plan,
         "subscription_data[metadata][product]": PRODUCT,
@@ -803,12 +806,22 @@ def _disputed(conn, obj: dict, created: int, customer: str, closed: bool) -> str
 
 # ---------------------------------------------------------------- email
 
+def genesis_address() -> str:
+    """ " at https://genesis.mtrxhorizyn.com" (Genesis's own address once
+    moved, hosts.py; else the site's address and /genesis), or " on the MTRX
+    Horizyn website" while the site's address isn't set."""
+    public = config.get().public_url
+    if hosts.on() or public.startswith("https://"):
+        return f" at {hosts.root('genesis', public)}"
+    return " on the MTRX Horizyn website"
+
+
 def _key_email(key: str) -> tuple[str, str]:
     subject = "Your Genesis Pro key"
     body = (f"Thank you for getting Genesis Pro.\n\n"
             f"Your Pro key:\n\n    {key}\n\n"
             f"Pro is already on in the browser you bought it from. To turn it on somewhere else,\n"
-            f"open Genesis on the MTRX Horizyn website, choose \"I have a Pro key\" and paste it in.\n\n"
+            f"open Genesis{genesis_address()}, choose \"I have a Pro key\" and paste it in.\n\n"
             f"Keep it private, like a password: anyone with it can use your Pro.\n"
             f"To cancel, or change how you pay, choose \"Manage subscription\" in Genesis.\n\n"
             f"- MTRX Horizyn\n")
@@ -929,8 +942,9 @@ def _member_or_refusal(who: str, raw) -> dict | tuple[int, dict]:
     return member
 
 
-def portal(who: str, raw, base: str) -> tuple[int, dict]:
-    """Stripe's own page for cancelling or changing how to pay."""
+def portal(who: str, raw, page: str) -> tuple[int, dict]:
+    """Stripe's own page for cancelling or changing how to pay. `page` is
+    the Genesis page's address, as for checkout."""
     member = member_for_key(raw) if _under("pro_bad_key", who) else None
     if member is None:
         allow("pro_bad_key", who)
@@ -941,7 +955,7 @@ def portal(who: str, raw, base: str) -> tuple[int, dict]:
         return 429, {"error": BUSY}
     try:
         url = _stripe("billing_portal/sessions", {"customer": member["customer"],
-                                                  "return_url": f"{base}/genesis#pro"}).get("url")
+                                                  "return_url": f"{page}#pro"}).get("url")
     except StripeError as e:
         LOG.warning("Genesis Pro: the subscription page couldn't open (%s)", e)
         return 502, {"error": "That page couldn't open just now. Please try again in a minute."}

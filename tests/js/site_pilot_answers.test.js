@@ -100,6 +100,21 @@ test("Genesis: \"Show my projects\" and \"What's my next step?\" come from this 
   // An odd id never becomes a link.
   const odd = mount("/genesis", {}, { mine: () => [{ ...projects[0], id: "../x y" }], nextOf: () => null });
   assert.doesNotMatch(answer(odd, "Show my projects"), /\[Open/);
-  // "Help with today's spark" can stay an AI prompt.
-  assert.equal(chip(g, "Help with today's spark").prompt, "Help me think of an answer for today's spark.");
+});
+
+test("genesis: \"Help with today's spark\" gives a tip and a jump to the spark box, with no key (1.25.0)", () => {
+  const today = { prompt: "Design a way to help local artists sell their work.", answer: "", streak: 0, limit: 140 };
+  const g = mount("/genesis", {}, { mine: () => [], nextOf: () => null, spark: () => today });
+  const text = answer(g, "Help with today's spark");
+  assert.match(text, /^Today's spark: \*\*Design a way to help local artists sell their work\.\*\*/);
+  assert.match(text, /Write it in one line/);
+  assert.match(text, /\[Write my spark\]\(\/genesis#spark\)/);
+  assert.match(text, /nothing was sent anywhere/);
+  // Answered already: says so, and offers to change it.
+  const done = mount("/genesis", {}, { mine: () => [], nextOf: () => null, spark: () => ({ ...today, answer: "Market *stalls* [x](y)" }) });
+  const again = answer(done, "Help with today's spark");
+  assert.match(again, /You've answered it already: “Market stalls x\(y\)”/);
+  assert.match(again, /\[Open your spark\]\(\/genesis#spark\)/);
+  // No page bridge (another page): still an answer with the way there.
+  assert.match(answer(mount("/genesis", {}), "Help with today's spark"), /\[Genesis page\]\(\/genesis#spark\)/);
 });

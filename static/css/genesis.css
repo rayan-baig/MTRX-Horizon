@@ -837,3 +837,35 @@
   .g-hero:not(.g-hero-small) .cta-row .btn > span[aria-hidden] { display: none; }
   .g-hero-small .g-continue .cta-row .btn { padding: 0 10px; font-size: 14px; }
 }
+
+/* ---------- 1.25.0 ---------- */
+/* "Welcome back" always on one line. */
+.g-continue-title { white-space: nowrap; }
+@media (min-width: 901px) {
+  /* A returning visitor with one project, on a computer: the project and
+     today's spark side by side, the same height, with no empty patch under
+     the project's card. */
+  #g-list-view.g-one > .g-mine, #g-list-view.g-one > .g-daily { align-self: stretch; }
+  #g-list-view.g-one > .g-mine { grid-template-rows: auto minmax(0, 1fr); }
+  #g-list-view.g-one .g-cards, #g-list-view.g-one .g-card { height: 100%; }
+  #g-list-view.g-one .g-card a { align-content: space-between; }
+}
+@media (max-width: 360px) {
+  /* The smallest phones (320px): today's date stays on the label's line,
+     and the three steps of a first visit become one compact row, so the
+     spark's line is on the first screen. */
+  .g-daily-eyebrow { letter-spacing: 0.1em; font-size: 11.5px; white-space: nowrap; }
+  .g-daily-eyebrow span { display: inline; margin-top: 0; letter-spacing: 0.02em; }
+  .g-how { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .g-how li { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: start; gap: 4px; padding: 7px 4px; text-align: center; }
+  .g-how b { width: 22px; height: 22px; font-size: 12px; }
+  .g-how span { font-size: 0; line-height: 0; }
+  .g-how strong { display: block; margin: 0; font-size: 12.5px; line-height: 1.25; }
+}
+
+/* ---------- 1.26.0: the old address's one page, while Genesis moves ---------- */
+.g-move { max-width: 640px; margin: 0 auto; }
+.g-move-panel { display: grid; gap: 12px; padding: 26px 24px; }
+.g-move-title { font-size: clamp(26px, 6vw, 36px); }
+.g-move-big ol { display: grid; gap: 12px; margin: 0; padding-left: 22px; }
+.g-move-small { margin-top: 8px; color: var(--muted); font-size: 13.5px; }

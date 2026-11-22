@@ -27,6 +27,10 @@ Never put any of these in `render.yaml`:
   `MTRX_PUBLIC_URL`, or a test inbox's `MTRX_SMTP_*` settings. Secrets are
   typed into the service's Environment page, never committed.
 
+Staging also leaves `MTRX_APP_SUBDOMAINS` unset, so Genesis and Orbyt stay at `/genesis` and
+`/orbyt` there, instead of sending visitors to the live genesis.mtrxhorizyn.com and
+orbyt.mtrxhorizyn.com.
+
 `render.yaml` does set the live addresses (`MTRX_PUBLIC_URL`, the apps'
 `*_URL`, `*_HEALTH_URL` and `*_STATS_URL`). A service made by hand does not
 read it, so staging gets none of them: set staging's own, as in section 3.

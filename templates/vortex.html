@@ -9,9 +9,9 @@
 <meta property="og:description" content="Partner with us, pitch an idea, get in touch as an investor, or ask about buying the company or an app.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MTRX Horizyn">
-<meta property="og:url" content="{{ base }}/orbyt">
+<meta property="og:url" content="{{ canonical }}">
 <meta property="og:image" content="{{ base }}/static/img/logo-512.png">
-<link rel="canonical" href="{{ base }}/orbyt">
+<link rel="canonical" href="{{ canonical }}">
 </head>
 <body class="legal-page vortex-page">
 {#- Orbyt keeps what a visitor chooses to send here, so the owner can
@@ -104,12 +104,12 @@
   <button class="btn btn-vortex" type="submit">Send <span aria-hidden="true">→</span></button>
   {#- The same line under every form, Pitch too (1.22.0). -#}
   <p class="v-private">We keep what you send here only to reply to you, for up to {{ keep_days }} days, and
-    never pass it on. <a href="/privacy">Privacy</a></p>
+    never pass it on. <a href="{{ site_url('/privacy') }}">Privacy</a></p>
 </div>
 {%- endmacro -%}
 <div class="sky" aria-hidden="true"></div>
 <header class="topbar">
-  <a class="brand" href="/" aria-label="MTRX Horizyn home">
+  <a class="brand" href="{{ site_url('/') }}" aria-label="MTRX Horizyn home">
     <span class="brand-mark" aria-hidden="true"></span>
     <span class="brand-text">
       <span class="wordmark">MTRX <b>HORIZYN</b></span>
@@ -117,17 +117,17 @@
     </span>
   </a>
   <nav class="mainnav" aria-label="Main">
-    <a href="/">Home</a>
-    <a href="/genesis">Genesis</a>
-    <a href="/orbyt" class="active" aria-current="page">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>
-    <a href="/privacy">Privacy</a>
-    <a href="/terms">Terms</a>
-    <a href="/brand">Brand</a>
+    <a href="{{ site_url('/') }}">Home</a>
+    <a href="{{ app_url('genesis') }}">Genesis</a>
+    <a href="{{ app_url('orbyt') }}" class="active" aria-current="page">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>
+    <a href="{{ site_url('/privacy') }}">Privacy</a>
+    <a href="{{ site_url('/terms') }}">Terms</a>
+    <a href="{{ site_url('/brand') }}">Brand</a>
   </nav>
-  <a class="v-home" href="/">Home</a>
+  <a class="v-home" href="{{ site_url('/') }}">Home</a>
 </header>
 
-<main class="vortex" id="vortex">
+<main class="vortex" id="vortex" data-genesis="{{ app_url('genesis') }}">
   <noscript><p class="panel v-noscript">The forms on this page need JavaScript turned on to send.
     {% if contact %}You can also write to <a href="mailto:{{ contact }}">{{ contact }}</a>.{% endif %}</p></noscript>
 
@@ -171,7 +171,7 @@
     {#- Early access sits beside Pitch while the list is open: it is a
         separate page (/early-access), not one of Orbyt's forms. -#}
     {%- if early %}
-    <a class="v-path path-early" href="/early-access">
+    <a class="v-path path-early" href="{{ site_url('/early-access') }}">
       <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="3.5"/></svg></span>
       <span class="v-path-text"><small class="v-who">I want to try the apps</small><b>Early access</b>
         <span>Be first to try RankUp, CyberLogix AI or OmniArmor.ai. We email you the day one opens.</span></span>
@@ -217,7 +217,7 @@
       apps. Tell us who you are and what you have in mind; if it's a fit, we'll email you to talk it
       through.</p>
     <p class="v-more">Repair fridges, advise kitchens on food safety or sell kitchen equipment?
-      <a href="/partners">See how partners earn with CyberLogix AI</a>.</p>
+      <a href="{{ site_url('/partners') }}">See how partners earn with CyberLogix AI</a>.</p>
     {{ young() }}
     <form class="v-form" data-kind="partner" novalidate>
       <div class="v-grid">
@@ -323,9 +323,9 @@
       reply, for up to {{ keep_days }} days.</p>
     <div class="v-next" id="v-next">
       <p class="v-next-head">While you wait</p>
-      <a class="v-next-link path-pitch" data-next="pitch" href="/genesis" hidden>
+      <a class="v-next-link path-pitch" data-next="pitch" href="{{ app_url('genesis') }}" hidden>
         <b>Keep building your idea in Genesis</b><span>Tick off small steps from Spark to Launch, free.</span></a>
-      <a class="v-next-link path-partner" data-next="partner" href="/partners" hidden>
+      <a class="v-next-link path-partner" data-next="partner" href="{{ site_url('/partners') }}" hidden>
         <b>See how partners earn with CyberLogix AI</b><span>For repair firms, food safety advisers and kitchen suppliers.</span></a>
       <a class="v-next-link path-invest path-buy" data-next="invest buy" href="#our-apps" hidden>
         <b>Look around our apps</b><span>What each one does, and who it's for.</span></a>
@@ -362,17 +362,17 @@
       <p class="v-error" id="v-review-error" role="alert"></p>
       {%- if review.ai %}
       <p class="v-review-small">Full refund if it isn't with you within {{ review.days }} day{{ 's' if review.days != 1 }},
-        or we can't review it. You'll see the exact price before paying. <a href="/terms#pitch-review">Terms</a> ·
-        <a href="/privacy#pitch-review">Privacy</a></p>
+        or we can't review it. You'll see the exact price before paying. <a href="{{ site_url('/terms#pitch-review') }}">Terms</a> ·
+        <a href="{{ site_url('/privacy#pitch-review') }}">Privacy</a></p>
       {%- else %}
       <p class="v-review-small">Full refund if it's late or we can't review it. You'll see the exact price before
-        paying. <a href="/terms#pitch-review">Terms</a></p>
+        paying. <a href="{{ site_url('/terms#pitch-review') }}">Terms</a></p>
       {%- endif %}
     </div>
     {%- endif %}
     <div class="cta-row">
       <a class="btn btn-ghost btn-small" href="#" id="v-again">Send another</a>
-      <a class="btn btn-ghost btn-small" href="/">Back to MTRX Horizyn</a>
+      <a class="btn btn-ghost btn-small" href="{{ site_url('/') }}">Back to MTRX Horizyn</a>
     </div>
   </section>
 
@@ -393,7 +393,7 @@
         a computer and whenever something points here. -#}
     <details class="v-apps-fold" id="v-apps-fold">
     <summary class="v-apps-summary">See our {{ apps | length }} apps and the Kitchen Safety Bundle</summary>
-    <a class="v-bundle" href="/bundle">
+    <a class="v-bundle" href="{{ site_url('/bundle') }}">
       <span class="v-bundle-icons" aria-hidden="true"><img src="/static/img/cyberlogix-icon.svg" alt="" width="34" height="34"><img src="/static/img/omniarmor-icon.svg" alt="" width="34" height="34"></span>
       <span class="v-bundle-text"><b>Kitchen Safety Bundle</b>
         <span>CyberLogix AI's fridge alarms and OmniArmor.ai's checklists, working together.</span></span>
@@ -414,7 +414,7 @@
           {%- if not a.open and a.key in early_apps %}
           {#- Early access for this app: the list's own page, with it ticked
               (only while the list is open). -#}
-          <a class="btn btn-small v-app-early" href="/early-access?app={{ a.key }}">Get early access <span aria-hidden="true">→</span></a>
+          <a class="btn btn-small v-app-early" href="{{ site_url('/early-access?app=' ~ a.key) }}">Get early access <span aria-hidden="true">→</span></a>
           {%- endif %}
           <a class="btn btn-ghost btn-small v-app-pick path-partner" href="#partner" data-pick="{{ a.key }}">Partner on this</a>
         </div>

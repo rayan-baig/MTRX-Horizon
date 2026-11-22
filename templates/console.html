@@ -25,7 +25,7 @@
     <a href="#projects">Projects</a>
     <a href="#vortex">Orbyt</a>
     <a href="#devices">Devices</a>
-    <a href="/genesis" target="_blank" rel="noopener">Genesis</a>
+    <a href="{{ app_url('genesis') }}" target="_blank" rel="noopener">Genesis</a>
   </nav>
   <div class="who">
     <span class="who-mark" aria-hidden="true"></span>
@@ -123,7 +123,7 @@
         <li><a href="#catalog"><span class="ico ico-apps"></span>Add or release an app<span aria-hidden="true">→</span></a></li>
         <li><a href="#devices"><span class="ico ico-devices"></span>Manage devices<span aria-hidden="true">→</span></a></li>
         <li><a href="/" target="_blank" rel="noopener"><span class="ico ico-globe"></span>Open the public site<span aria-hidden="true">→</span></a></li>
-        <li><a href="/genesis" target="_blank" rel="noopener"><span class="ico ico-projects"></span>Open Genesis<span aria-hidden="true">→</span></a></li>
+        <li><a href="{{ app_url('genesis') }}" target="_blank" rel="noopener"><span class="ico ico-projects"></span>Open Genesis<span aria-hidden="true">→</span></a></li>
         <li><a href="#vortex"><span class="ico ico-vortex"></span>Read Orbyt<span aria-hidden="true">→</span></a></li>
       </ul>
     </section>
@@ -163,7 +163,7 @@
         <h2 id="ca-title"><span class="ico ico-apps"></span>Manage apps</h2>
         <button class="btn btn-primary btn-small" type="button" id="ca-new">Add an app</button>
       </div>
-      <p class="ca-note">An app <b>released to the public</b> appears on <a href="/orbyt#our-apps" target="_blank" rel="noopener">Orbyt</a>
+      <p class="ca-note">An app <b>released to the public</b> appears on <a href="{{ app_url('orbyt', '#our-apps') }}" target="_blank" rel="noopener">Orbyt</a>
         at once: in Our apps, and as a choice in the Partner and Buy forms. An app in development is shown nowhere.
         An app that has been released can't be deleted; take it back into development to hide it.
         The public site says a released app is "opening soon", with no Open button, until its key is in the
@@ -205,7 +205,7 @@
           <button type="button" data-box="archived">Archived <span id="vx-count-archived"></span></button>
         </div>
       </div>
-      <p class="vx-note">Partners, ideas, investors and buyers, from <a href="/orbyt" target="_blank" rel="noopener">Orbyt</a>.
+      <p class="vx-note">Partners, ideas, investors and buyers, from <a href="{{ app_url('orbyt') }}" target="_blank" rel="noopener">Orbyt</a>.
         Open a message to read it. Each one is deleted <span id="vx-keep">365</span> days after it arrived.</p>
       <ul class="vx-list" id="vx-list"></ul>
     </section>
@@ -217,7 +217,7 @@
     <section class="panel reviews" id="reviews" aria-labelledby="rv-title">
       <div class="panel-head">
         <h2 id="rv-title"><span class="ico ico-vortex"></span>Pitch Reviews</h2>
-        <a class="hint" href="/orbyt#pitch" target="_blank" rel="noopener">Open the pitch form</a>
+        <a class="hint" href="{{ app_url('orbyt', '#pitch') }}" target="_blank" rel="noopener">Open the pitch form</a>
       </div>
       <p class="ca-note" id="rv-note">Paid reviews of pitches sent in Orbyt. Read the pitch, email your review to the
         buyer, then press <b>Mark sent</b>. A late review, or one you can't write, gets a full refund: do it by hand in

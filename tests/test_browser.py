@@ -32,9 +32,9 @@ def site(tmp_path_factory):
     yield from _serve(tmp_path_factory, {})
 
 
-def _serve(tmp_path_factory, extra: dict):
+def _serve(tmp_path_factory, extra: dict, port: int | None = None):
     tmp = tmp_path_factory.mktemp("browser")
-    port = _free_port()
+    port = port or _free_port()
     env = {k: v for k, v in os.environ.items() if not k.startswith(("MTRX_", "ORBYT_REVIEW_")) and not k.endswith("_URL")}
     env.update(MTRX_DB_PATH=str(tmp / "horizon.db"), MTRX_KNOCK="logo logo omniarmor rankup", MTRX_DEV="1",
                MTRX_SETUP_TOKEN="a-browser-test-setup-code-123456", **extra)

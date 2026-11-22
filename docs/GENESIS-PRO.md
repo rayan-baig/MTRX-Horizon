@@ -163,7 +163,9 @@ page shows the amounts it reads from Stripe (once an hour).
    subscription ids, the state, the price, and SHA-256 fingerprints of the email address and of
    the checkout's id. No email address is kept.
 3. **The key.** At once a Pro key (`GP-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`, 120 random bits) is
-   emailed to the buyer. Stripe sends them back to `/genesis/pro/welcome?session_id=...`; that
+   emailed to the buyer. Stripe sends them back to `/genesis/pro/welcome?session_id=...` (or
+   `https://genesis.mtrxhorizyn.com/pro/welcome?session_id=...` once Genesis has its own address:
+   README, "Genesis and Orbyt on their own addresses"; the site tells Stripe each time); that
    page asks `POST /api/genesis/pro/claim` (until the webhook has arrived) and gets a key once,
    which it keeps in the browser's storage, so Pro is on there straight away. The page takes
    the checkout's id out of the address, and the server log leaves that address out. Only the
@@ -231,7 +233,8 @@ Do it all in **test mode** first, on staging (`docs/STAGING.md`), then again in 
    everything else *none*. Put it in
    `STRIPE_SECRET_KEY` (never in the code or a commit).
 3. **Webhook.** Developers → Webhooks → **Add endpoint**:
-   `https://mtrxhorizyn.com/api/genesis/pro/stripe`, with these events:
+   `https://mtrxhorizyn.com/api/genesis/pro/stripe` (once Genesis has its own address,
+   `https://genesis.mtrxhorizyn.com/api/genesis/pro/stripe`; the old one keeps working), with these events:
    `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
    `customer.subscription.created`,
    `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`,

@@ -10,6 +10,8 @@ much older than the newest CHANGELOG entry, so a stale line can't linger.
 
 from datetime import date
 
+from . import hosts
+
 # Newest first. dot: the colour of the app it is about (see .dot in site.css).
 # href: a page of this site, or the app's Learn more card on the home page.
 NEWS = [
@@ -76,6 +78,8 @@ def items(on_home: bool = True, open_urls: dict | None = None, demo_urls: dict |
         href = item["href"]
         if on_home and href.startswith("/#"):
             href = href[1:]
+        # Genesis and Orbyt at their own addresses once moved (hosts.py).
+        href = hosts.page_link(href)
         out.append({**item, "href": href, "shown": _shown(item["date"]),
                     "label": label(item, open_urls, demo_urls)})
     return out

@@ -1145,3 +1145,77 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 }
 /* The Projects tile's line breaks only at its dots. */
 .page .fact-part { white-space: nowrap; }
+
+/* ---------- 1.25.0: what's ready first, the picture edge to edge, a screen viewer ---------- */
+/* "Ready today": Genesis and Orbyt, on a phone's first screen, above the
+   three apps in development. A computer's one-screen page has them in its
+   bottom row already. */
+.ready-today, .apps-k { display: none; }
+.project-sum { color: var(--muted); margin: 0 0 14px; font-size: 14.5px; }
+/* The screen viewer: the two screens as big as the window allows, side by
+   side on a computer, one at a time (swipe) on a phone. */
+.shot-viewer.green { --accent: #2ee59d; }
+.shot-viewer.blue { --accent: #3b8bff; }
+.shot-viewer.violet { --accent: #a66bff; }
+.shot-viewer .eyebrow { padding-right: 36px; }
+.shot-viewer .sheet-card { width: auto; max-width: min(820px, 100%); padding: 20px 20px 18px; }
+.viewer-shots { margin: 0 0 14px; display: grid; gap: 10px; }
+.viewer-row { display: flex; justify-content: center; gap: 14px; }
+.viewer-row img {
+  display: block; width: auto; height: min(calc(100dvh - 200px), 620px); max-width: calc(50% - 7px); object-fit: contain; border-radius: 12px;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 60%, transparent); box-shadow: 0 10px 28px rgba(0, 0, 0, .55);
+}
+.viewer-shots figcaption { color: var(--faint); font-size: 12.5px; line-height: 1.4; }
+.viewer-swipe { display: none; }
+.viewer-more { justify-self: start; }
+@media (max-width: 720px) {
+  /* The picture runs edge to edge and fades into the page at the bottom,
+     so there is no hard-edged band with dark strips beside it. */
+  .page { overflow-x: clip; }
+  .page .hero { justify-content: flex-start; padding-top: 0; }
+  .page .hero-art {
+    width: 100vw; margin-inline: calc(50% - 50vw); background-size: cover; background-position: center;
+    -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent);
+    mask-image: linear-gradient(to bottom, #000 72%, transparent);
+  }
+  .ready-today { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin: 2px 0 12px; }
+  .ready-k, .apps-k {
+    display: block; grid-column: 1 / -1; margin: 0; font: 600 11px/1.2 var(--head); letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--cyan);
+  }
+  .apps-k { margin: 4px 0 -2px; color: var(--muted); }
+  .ready-tile {
+    position: relative; display: grid; gap: 2px; min-height: 58px; padding: 9px 26px 9px 12px; border-radius: 14px;
+    text-decoration: none; color: var(--text); background: rgba(8, 14, 36, .82);
+    border: 1px solid color-mix(in srgb, var(--rc) 60%, transparent);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--rc) 18%, transparent);
+  }
+  .ready-genesis { --rc: #fbbf24; }
+  .ready-orbyt { --rc: #a78bfa; }
+  .ready-tile b { font: 700 16px/1.2 var(--head); color: var(--rc); }
+  .ready-tile span { font-size: 12.5px; line-height: 1.3; color: var(--muted); }
+  .ready-tile i { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-style: normal; color: var(--rc); }
+  /* Genesis and Orbyt are once each on a phone: in "Ready today". */
+  .page .hero-copy .btn-genesis { display: none; }
+  .page .cta-row:has(.btn-genesis) { grid-template-columns: minmax(0, 1fr); }
+  .page .facts > li:has(> .fact-genesis), .page .facts > li:has(> .fact-orbyt) { display: none; }
+  .shot-viewer .sheet-card { padding: 18px 0 16px; max-height: calc(100dvh - 24px); }
+  .shot-viewer .sheet { padding: 12px; }
+  .shot-viewer .eyebrow, .shot-viewer figcaption, .shot-viewer .viewer-more { margin-inline: 18px; }
+  .viewer-row {
+    display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 0 18px 4px;
+    scrollbar-width: none; overscroll-behavior-x: contain;
+  }
+  .viewer-row::-webkit-scrollbar { display: none; }
+  .viewer-row { justify-content: flex-start; }
+  .viewer-row img { flex: 0 0 auto; width: auto; height: min(calc(100dvh - 210px), 132vw); max-width: none; scroll-snap-align: center; }
+  .shot-viewer .sheet-card { width: 100%; }
+  .viewer-swipe { display: inline; }
+  .shot-viewer .eyebrow { letter-spacing: 0.16em; padding-right: 40px; }
+}
+@media (max-width: 360px) {
+  .ready-tile { padding: 8px 26px 8px 10px; }
+  .ready-tile i { right: 9px; }
+  .ready-tile b { font-size: 15px; }
+  .ready-tile span { font-size: 12px; }
+}

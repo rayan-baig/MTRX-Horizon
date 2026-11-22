@@ -11,6 +11,11 @@
   const S = window.GenesisStore;
   const $ = (id) => document.getElementById(id);
   const store = S.open((() => { try { return window.localStorage; } catch (_) { return null; } })());
+  // Genesis on its own address (1.26.0): once, before anything is drawn,
+  // what the old address saved comes over (moveIn), or the page first asks
+  // the old address for it (askOldAddress, which leaves the page).
+  const moved = moveIn();
+  if (moved === "asking") return;
   let projects = store.load();
   let current = null;
   let addressEdited = false;
@@ -40,6 +45,8 @@
   const isPro = () => Boolean(Pro && Pro.active());
   const proOffered = Boolean(document.getElementById("pro")); // Pro is switched on here
   const base = $("genesis").dataset.base || "";
+  // Genesis's own address once it has one (genesis.mtrxhorizyn.com), for the idea card.
+  const where = $("genesis").dataset.where || "";
   const local = (() => { try { return window.localStorage; } catch (_) { return null; } })();
   const daily = S.openDaily(local);
   const extras = S.openExtras(local);
@@ -184,7 +191,11 @@
       return;
     }
     const pr = S.progress(p);
-    const go = el("a", { class: "btn btn-genesis", href: `#p/${p.id}` }, `Continue ${p.name} →`);
+    // On a phone just "Continue →" (1.25.0): the name is right above it, and
+    // "Continue Paw Board →" broke onto two lines.
+    const go = el("a", { class: "btn btn-genesis", href: `#p/${p.id}`, "aria-label": `Continue ${p.name}` },
+      el("span", { class: "say-long", text: `Continue ${p.name}` }), el("span", { class: "say-short", text: "Continue" }),
+      el("span", { "aria-hidden": "true", text: " →" }));
     // 1.19.0: the heading is a greeting. 1.22.0: the project's name under it
     // is plain words (the Continue button is the one way in, not a second
     // link beside it), and its next three steps can be ticked right here:
@@ -211,8 +222,12 @@
 
   // A returning visitor's next three steps, each ticked with one tap
   // (1.22.0), through the same update() the project's checklist uses.
+  // The smallest phones (320px) show one next step, so today's spark still
+  // shows on the first screen (1.25.0); the rest are a tap away in the project.
+  const narrow = window.matchMedia ? window.matchMedia("(max-width: 360px)") : null;
+  if (narrow && narrow.addEventListener) narrow.addEventListener("change", () => { if (!$("g-list-view").hidden) drawList(); });
   function nextSteps(p) {
-    const steps = openSteps(p, 3);
+    const steps = openSteps(p, narrow && narrow.matches ? 1 : 3);
     const box = el("div", { class: "g-continue-next" },
       el("p", { class: "g-continue-label", text: steps.length === 1 ? "Your next step" : "Your next steps" }));
     if (!steps.length) {
@@ -897,11 +912,11 @@
     const pct = `${pr.percent}% of the way to launch`;
     ctx.fillText(pct, pad, barY - 26);
 
-    // Where it was made.
-    const home = (/^https?:\/\/[^\s/]+$/.test(base) ? base.replace(/^https?:\/\//, "") : window.location.host) || "mtrxhorizyn.com";
+    // Where it was made: Genesis's own address once it has one (1.26.0).
+    const home = /^https?:\/\/[^\s/]+$/.test(base) ? base : `https://${window.location.host || "mtrxhorizyn.com"}`;
     ctx.fillStyle = "#a9b6d8";
     ctx.font = '400 28px "Inter", system-ui, sans-serif';
-    ctx.fillText(`Made with Genesis · ${home}/genesis`, pad, H - pad + 10);
+    ctx.fillText(`Made with Genesis · ${S.madeAt(home, where)}`, pad, H - pad + 10);
   }
 
   function cardBlob(canvas) {
@@ -951,7 +966,7 @@
 
   $("g-share-native").addEventListener("click", async () => {
     if (!sharing) return;
-    const text = S.shareText(sharing, base);
+    const text = S.shareText(sharing, base, where);
     const blob = await cardBlob($("g-share-canvas"));
     const data = { title: sharing.name, text };
     if (blob) {
@@ -964,7 +979,7 @@
   $("g-share-copy").addEventListener("click", async () => {
     if (!sharing) return;
     try {
-      await navigator.clipboard.writeText(S.shareText(sharing, base));
+      await navigator.clipboard.writeText(S.shareText(sharing, base, where));
       $("g-share-msg").textContent = "Copied. Paste it anywhere.";
     } catch (_) {
       $("g-share-msg").textContent = "Your browser wouldn't copy. Save the picture instead.";
@@ -976,17 +991,43 @@
   // over, through this tab's sessionStorage (GenesisStore.offerToVortex),
   // so the idea never goes into the address. Nothing is sent from here.
 
+  // Orbyt's address ("/orbyt", or its own once moved, hosts.py).
+  const orbyt = $("genesis").dataset.orbyt || "/orbyt";
+  const orbytAt = (() => { try { return new URL(`${orbyt}#pitch`, window.location.href); } catch (_) { return null; } })();
+  const orbytElsewhere = Boolean(orbytAt) && orbytAt.origin !== window.location.origin;
+
   function vortexLink(p) {
-    const link = el("a", { class: "g-vortex", href: "/orbyt#pitch" },
+    const link = el("a", { class: "g-vortex", href: orbytAt ? orbytAt.href : "/orbyt#pitch" },
       el("span", { class: "g-vortex-swirl", "aria-hidden": "true" }),
       el("span", { text: "Pitch this in Orbyt" }), el("span", { "aria-hidden": "true", text: " →" }));
-    link.addEventListener("click", () => {
+    link.addEventListener("click", (event) => {
       flushNotes();
       let session = null;
       try { session = window.sessionStorage; } catch (_) { session = null; }
       S.offerToVortex(session, p.id);
+      if (orbytElsewhere) handOver(event, p);
     });
     return link;
+  }
+
+  // Orbyt on its own address (1.26.0) can't read this address's projects.
+  // So Orbyt opens in a new tab, says it's ready, and this page hands it the
+  // three idea fields by message, only to Orbyt's own address: never in an
+  // address, never the notes or ticks, and nothing is sent until Send is
+  // pressed there. A blocked new tab just opens Orbyt here, empty.
+  function handOver(event, p) {
+    event.preventDefault();
+    const q = (store.usable ? store.load() : projects).find((r) => r.id === p.id) || p;
+    const fields = { name: q.name, pitch: q.pitch, audience: q.audience };
+    const tab = window.open(orbytAt.href, "_blank");
+    if (!tab) { window.location.assign(orbytAt.href); return; }
+    const listen = (e) => {
+      if (e.origin !== orbytAt.origin || e.source !== tab || !e.data || e.data.type !== "orbyt-ready") return;
+      tab.postMessage({ type: "genesis-pitch", project: fields }, orbytAt.origin);
+      window.removeEventListener("message", listen);
+    };
+    window.addEventListener("message", listen);
+    setTimeout(() => window.removeEventListener("message", listen), 120000);
   }
 
   // ---------------------------------------------------------------- Download plan (Pro)
@@ -1351,7 +1392,19 @@
     drawPro();
     const pro = hash === "#pro" && document.getElementById("pro");
     if (pro) pro.scrollIntoView();
+    else if (hash === "#spark") showSpark();
     else window.scrollTo(0, 0);
+  }
+
+  // #spark (1.25.0: Pilot's "Help with today's spark" links here): today's
+  // spark box in view, its line ready to type in (or its saved answer).
+  function showSpark() {
+    const box = $("g-daily");
+    box.scrollIntoView({ block: "start", behavior: "instant" });
+    const input = $("g-daily-input");
+    if (!$("g-daily-form").hidden) { try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); } }
+    // The address goes back to plain, so the same link works again.
+    history.replaceState(null, "", window.location.pathname);
   }
 
   window.addEventListener("hashchange", route);
@@ -1465,6 +1518,58 @@
   if (window.Pilot && window.Pilot.store) withPilot();
   else window.addEventListener("pilot-ready", withPilot, { once: true });
 
+  // ---------------------------------------------------------------- moving to genesis.* (1.26.0)
+  // Only on genesis.*, where the page has data-move (the old address's
+  // /genesis-move page). A browser keeps each address's saved data apart,
+  // so once (MOVED_KEY), the old address is asked for what Genesis saved
+  // there; it answers in this address's #part, which is never sent to any
+  // server. The answer must carry the one-time code this tab made (in this
+  // tab's own sessionStorage), so a link someone made up can't put
+  // projects into a browser. The #part is taken out of the address at once.
+
+  function moveIn() {
+    const from = $("genesis").dataset.move || "";
+    const MOVED_KEY = "mtrx-genesis-moved";
+    const ASK_KEY = "mtrx-genesis-move-ask";
+    const THEN = /^(?:p\/[A-Za-z0-9-]{1,64}|new|example|pro|spark)$/;
+    let local = null;
+    let tab = null;
+    try { local = window.localStorage; } catch (_) { local = null; }
+    try { tab = window.sessionStorage; } catch (_) { tab = null; }
+    const hash = window.location.hash;
+    if (hash.startsWith("#move=")) {
+      const q = new URLSearchParams(hash.slice(1));
+      let asked = null;
+      try { asked = JSON.parse((tab && tab.getItem(ASK_KEY)) || "null"); tab.removeItem(ASK_KEY); } catch (_) { asked = null; }
+      const then = THEN.test(q.get("then") || "") ? `#${q.get("then")}` : "";
+      history.replaceState(null, "", window.location.pathname + then);
+      if (!asked || typeof asked.n !== "string" || asked.n !== q.get("n")) return "";
+      try { local.setItem(MOVED_KEY, String(Date.now())); } catch (_) { /* asked again next time */ }
+      const what = q.get("move") || "";
+      if (what === "file") return "file";
+      if (what === "none") return "";
+      const result = S.applyMove(local, S.unpackMove(what));
+      return result.projects || result.sparks ? "moved" : "";
+    }
+    if (!from || !store.usable || !local || !tab) return "";
+    try {
+      if (local.getItem(MOVED_KEY)) return "";
+      // Asked in the last minute and no answer came: don't go round again.
+      const before = JSON.parse(tab.getItem(ASK_KEY) || "null");
+      if (before && Date.now() - before.at < 60000) return "";
+      const n = Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => b.toString(16).padStart(2, "0")).join("");
+      tab.setItem(ASK_KEY, JSON.stringify({ n, at: Date.now() }));
+      // Where the visitor was going (#new, #p/<id>...): checked, and plain characters only.
+      const then = THEN.test(hash.slice(1)) ? `&then=${hash.slice(1)}` : "";
+      window.location.replace(`${from}#n=${n}${then}`);
+      return "asking";
+    } catch (_) {
+      return "";
+    }
+  }
+
   drawStorageNote();
   route();
+  if (moved === "moved") toast("Your projects moved here, to Genesis's own address. They stay in this browser.");
+  else if (moved === "file") toast("Now press Import and choose the Genesis file you just downloaded.");
 })();

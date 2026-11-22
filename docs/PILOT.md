@@ -106,7 +106,8 @@ and the note under them). Now:
 
 On the MTRX site: the tagline is "Help with ideas and MTRX apps"; the pills are **Help with my idea**
 (since 1.4.0 a link to Genesis's start form, `/genesis#new`: free, and Genesis has its own free AI
-help), **What is Orbyt?** and **What apps are coming?** (since 1.4.0 answered at once with no key:
+help; once Genesis has its own address, genesis.mtrxhorizyn.com, it is that page's answer with the
+link instead, from the other addresses, since a `link` pill only goes to this address's pages), **What is Orbyt?** and **What apps are coming?** (since 1.4.0 answered at once with no key:
 see **Pill actions**), **Explain this page** (`explain-screen`) and **Add my AI key** (`settings`);
 the image and video key sections are hidden (the site has no use for pictures or videos);
 `keepInViewport` is on (below); and the welcome's one-line note is "AI keys are for grown-ups
@@ -124,6 +125,14 @@ has one of:
 | `link: "/demo"` | goes to that page. **This site only**: a path (`/demo`, `pricing`, `#faq`) or a full address on the same site; anything else (another site, `//elsewhere`, `javascript:`) is left out. Pilot closes first, so the page shows. |
 | `answer: "text"` | Pilot shows the text at once as its own chat message, under the pill's words as the visitor's message. **No key, and no network call.** |
 | `answer: (ctx) => text` | the same, from a function (it may return a promise; Pilot waits up to 8 seconds). `ctx` is `{ screen, facts, ready, label }`: this screen (`screen()`), the config's `facts`, whether a key is set, and the pill's words. A function that throws or returns nothing shows "Pilot couldn't find that answer just now." |
+
+**Genesis and Orbyt on their own addresses (MTRX site 1.26.0).** The site's config
+(`static/js/pilot-mtrx.js`) writes its answers with main-site paths (`/genesis#new`, `/orbyt#pitch`,
+`/privacy`) and sends each to its right address from the facts on Pilot's script tag
+(`data-genesis`, `data-orbyt`, `data-site`). A link to another of the three addresses opens in a
+new tab, as any link to another site does, and a `link` pill can't point there at all: the core
+only allows this address. A core change that let an app name its sibling addresses (for same-tab
+links and `link` pills) would smooth that; until then the config uses an answer with the link.
 
 An answer is markdown, rendered by the same safe renderer as every AI answer (`pilot-render.js`:
 elements and text nodes only, never HTML), so `<b>` in an answer shows as those letters. The one

@@ -257,13 +257,26 @@
       `Filled in from your Genesis project “${project.name}”. Check it over: nothing is sent until you press Send.`;
   }
 
+  // Genesis's address ("/genesis", or its own once moved, hosts.py). On
+  // another address its saved projects can't be read from here: the
+  // visitor brings one with its "Pitch this in Orbyt" button instead.
+  const genesis = $("vortex").dataset.genesis || "/genesis";
+  const genesisElsewhere = (() => { try { return new URL(genesis, window.location.href).origin !== window.location.origin; } catch (_) { return false; } })();
+
   function drawPicker() {
     const list = $("v-genesis-list");
+    if (genesisElsewhere) {
+      list.replaceChildren(el("p", { class: "v-genesis-empty" },
+        el("span", { text: "Your Genesis projects are kept on Genesis's own address. Open one there and press " }),
+        el("b", { text: "Pitch this in Orbyt" }), el("span", { text: ": it arrives here filled in. " }),
+        el("a", { href: genesis, text: "Open Genesis" }), el("span", { text: "." })));
+      return;
+    }
     const projects = S.open(storage("localStorage")).load().sort((a, b) => b.updated - a.updated);
     if (!projects.length) {
       list.replaceChildren(el("p", { class: "v-genesis-empty" },
         el("span", { text: "No Genesis projects in this browser yet. " }),
-        el("a", { href: "/genesis", text: "Start one in Genesis" }), el("span", { text: "." })));
+        el("a", { href: genesis, text: "Start one in Genesis" }), el("span", { text: "." })));
       return;
     }
     list.replaceChildren(el("p", { class: "v-genesis-head", text: "Your Genesis projects, from this browser:" }),
@@ -372,9 +385,26 @@
     route(true);
   });
 
-  // Arrived from Genesis with a project ready to pitch.
+  // Arrived from Genesis with a project ready to pitch, from this browser's
+  // own Genesis storage.
   const offered = V.handedOver(S, storage("sessionStorage"), storage("localStorage"));
   if (offered && window.location.hash !== "#pitch") history.replaceState(null, "", "#pitch");
+  // Genesis on its own address (1.26.0): its "Pitch this in Orbyt" opens
+  // this page in a new tab, which says it's ready, and Genesis answers with
+  // the project's three idea fields by message. Only from Genesis's own
+  // address, and only from the tab that opened this one.
+  if (genesisElsewhere && window.opener && window.location.hash === "#pitch") {
+    const from = new URL(genesis, window.location.href).origin;
+    const take = (e) => {
+      if (e.origin !== from || e.source !== window.opener || !e.data || e.data.type !== "genesis-pitch") return;
+      const p = e.data.project || {};
+      const text = (v) => (typeof v === "string" ? v : "");
+      if (text(p.name) || text(p.pitch)) useProject({ name: text(p.name), pitch: text(p.pitch), audience: text(p.audience) });
+      window.removeEventListener("message", take);
+    };
+    window.addEventListener("message", take);
+    try { window.opener.postMessage({ type: "orbyt-ready" }, from); } catch (_) { /* Genesis closed */ }
+  }
   route(false);
   if (offered) useProject(offered);
 

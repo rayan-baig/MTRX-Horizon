@@ -9,14 +9,14 @@
 <meta property="og:description" content="Turn your idea into a launch. Your projects stay in your own browser.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MTRX Horizyn">
-<meta property="og:url" content="{{ base }}/genesis">
+<meta property="og:url" content="{{ canonical }}">
 <meta property="og:image" content="{{ base }}/static/img/logo-512.png">
-<link rel="canonical" href="{{ base }}/genesis">
+<link rel="canonical" href="{{ canonical }}">
 </head>
 <body class="legal-page genesis-page">
 <div class="sky" aria-hidden="true"></div>
 <header class="topbar">
-  <a class="brand" href="/" aria-label="MTRX Horizyn home">
+  <a class="brand" href="{{ site_url('/') }}" aria-label="MTRX Horizyn home">
     <span class="brand-mark" aria-hidden="true"></span>
     <span class="brand-text">
       <span class="wordmark">MTRX <b>HORIZYN</b></span>
@@ -24,17 +24,17 @@
     </span>
   </a>
   <nav class="mainnav" aria-label="Main">
-    <a href="/">Home</a>
-    <a href="/genesis" class="active" aria-current="page">Genesis</a>
-    <a href="/orbyt">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>
-    <a href="/privacy">Privacy</a>
-    <a href="/terms">Terms</a>
-    <a href="/brand">Brand</a>
+    <a href="{{ site_url('/') }}">Home</a>
+    <a href="{{ app_url('genesis') }}" class="active" aria-current="page">Genesis</a>
+    <a href="{{ app_url('orbyt') }}">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>
+    <a href="{{ site_url('/privacy') }}">Privacy</a>
+    <a href="{{ site_url('/terms') }}">Terms</a>
+    <a href="{{ site_url('/brand') }}">Brand</a>
   </nav>
-  <a class="g-home" href="/">Home</a>
+  <a class="g-home" href="{{ site_url('/') }}">Home</a>
 </header>
 
-<main class="genesis" id="genesis" data-ai="{{ 'on' if ai else 'off' }}" data-base="{{ base }}" data-ask="{{ asset('js/genesis-ask.js') }}" data-free-day="{{ free_day }}" data-free-hour="{{ free_hour }}">
+<main class="genesis" id="genesis" data-ai="{{ 'on' if ai else 'off' }}" data-base="{{ base }}" data-where="{{ where }}" data-move="{{ move }}" data-orbyt="{{ app_url('orbyt') }}" data-ask="{{ asset('js/genesis-ask.js') }}" data-free-day="{{ free_day }}" data-free-hour="{{ free_hour }}">
   <noscript><p class="panel g-noscript">Genesis runs in your browser, so it needs JavaScript turned on.</p></noscript>
 
   <div id="g-list-view">

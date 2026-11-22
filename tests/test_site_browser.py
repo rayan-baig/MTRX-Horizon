@@ -2,6 +2,8 @@
 show. The server and browser come from tests/test_browser.py (skipped there
 too where Playwright or its Chromium isn't installed; CI has both)."""
 
+import pytest
+
 from tests.test_browser import _phone, browser, site, sync_api  # noqa: F401
 
 SEED = """() => {
@@ -128,4 +130,271 @@ def test_home_new_strip_and_tags_are_never_cut_or_wrapped(site, browser):
         const img = a.querySelector('img').getBoundingClientRect(), cue = a.querySelector('.app-shot-cue');
         return [cue.textContent, getComputedStyle(cue).display, Math.round(cue.getBoundingClientRect().top - img.bottom)]; })""")
     assert all(c[0] == "Tap to see" and c[1] != "none" and 0 <= c[2] <= 8 for c in cues), cues
+    context.close()
+
+
+# ---------------------------------------------------------------- 1.25.0 (round 9)
+
+def _box(page, selector):
+    return page.eval_on_selector(selector, "e => e.getBoundingClientRect().toJSON()")
+
+
+def test_home_phone_leads_with_what_is_ready_and_the_picture_runs_edge_to_edge(site, browser):
+    """375x667, 375x812 and 320x568: "Ready today" (Genesis and Orbyt) is
+    whole on the first screen, above the apps in development; the hero
+    picture is the full width of the screen (no hard-edged band); nothing
+    scrolls sideways."""
+    for width, height in ((375, 667), (375, 812), (320, 568)):
+        context = browser.new_context(viewport={"width": width, "height": height}, is_mobile=True, has_touch=True)
+        page = context.new_page()
+        page.goto(f"{site}/", wait_until="load")
+        ready = _box(page, ".ready-today")
+        assert ready["bottom"] <= height, (width, height, ready)
+        assert ready["bottom"] < _box(page, ".app-card")["top"], (width, height)
+        art = _box(page, ".hero-art")
+        assert abs(art["left"]) < 1 and abs(art["width"] - width) < 1, (width, art)
+        assert page.eval_on_selector(".btn-genesis", "e => getComputedStyle(e).display") == "none"
+        assert page.evaluate("() => document.documentElement.scrollWidth") <= width
+        context.close()
+    context = _computer(browser)
+    page = context.new_page()
+    page.goto(f"{site}/", wait_until="load")
+    assert page.eval_on_selector(".ready-today", "e => getComputedStyle(e).display") == "none"
+    assert page.is_visible(".fact-genesis") and page.is_visible(".btn-genesis")
+    context.close()
+
+
+def test_tap_to_see_opens_the_screens_big(site, browser):
+    """A phone: tapping a card's small screen opens the viewer with the
+    screen nearly the window's width, not the Learn more card; Learn more
+    still opens the card, and × closes the viewer."""
+    context = _phone(browser)
+    page = context.new_page()
+    page.goto(f"{site}/", wait_until="load")
+    page.click('.app-card[data-app="rankup"] .app-shot')
+    page.wait_for_selector("#shot-rankup:target")
+    page.wait_for_function("() => document.querySelector('#shot-rankup img').complete")
+    img = _box(page, "#shot-rankup .viewer-row img")
+    assert img["width"] >= 220 and img["height"] >= 400, img
+    assert page.is_hidden("#learn-rankup")
+    page.click("#shot-rankup .viewer-more")
+    page.wait_for_selector("#learn-rankup:target")
+    page.goto(f"{site}/#shot-cyberlogix")
+    page.click("#shot-cyberlogix .sheet-x")
+    page.wait_for_function("() => !document.querySelector('.sheet:target')")
+    context.close()
+
+
+def test_genesis_at_320_keeps_the_spark_on_the_first_screen_and_words_whole(site, browser):
+    """320x568, first visit and coming back: today's spark's line is on the
+    first screen; "TODAY'S SPARK · <date>" is one line; "Welcome back" is one
+    line; and the Continue button is one line ("Continue →", the project's
+    name is just above it)."""
+    context = browser.new_context(viewport={"width": 320, "height": 568}, is_mobile=True, has_touch=True)
+    page = context.new_page()
+    for returning in (False, True):
+        page.goto(f"{site}/genesis", wait_until="load")
+        if returning:
+            page.evaluate(SEED)
+            page.reload(wait_until="load")
+            page.wait_for_selector(".g-continue-tick")
+        page.wait_for_selector("#g-daily-title:not(:empty)")
+        assert _box(page, "#g-daily-input")["bottom"] <= 568, returning
+        eyebrow = page.eval_on_selector(".g-daily-eyebrow", "e => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight || 14)")
+        assert page.eval_on_selector(".g-daily-eyebrow", "e => e.getClientRects().length") == 1
+        assert _box(page, ".g-daily-eyebrow")["height"] < 22, eyebrow
+        assert page.evaluate("() => document.documentElement.scrollWidth") <= 320
+        if returning:
+            title = page.eval_on_selector(".g-continue-title", "e => [e.getBoundingClientRect().height, parseFloat(getComputedStyle(e).fontSize), e.scrollWidth <= e.clientWidth + 1]")
+            assert title[0] < title[1] * 1.6 and title[2], title
+            go = page.eval_on_selector(".g-continue .btn-genesis", "e => [e.innerText.trim(), e.getBoundingClientRect().height]")
+            assert " ".join(go[0].split()) == "Continue →" and go[1] <= 50, go
+            assert page.eval_on_selector_all(".g-continue-tick", "t => t.length") == 1
+    context.close()
+
+
+def test_genesis_one_project_on_a_computer_has_no_empty_patch(site, browser):
+    """A returning visitor with one project, on a computer: the project's
+    column ends level with today's spark beside it."""
+    context = _computer(browser)
+    page = context.new_page()
+    page.goto(f"{site}/genesis", wait_until="load")
+    page.evaluate(SEED)
+    page.reload(wait_until="load")
+    page.wait_for_selector(".g-card")
+    card, spark = _box(page, ".g-card a"), _box(page, "#g-daily")
+    assert abs(card["bottom"] - spark["bottom"]) <= 2, (card, spark)
+    context.close()
+
+
+def test_pilot_helps_with_todays_spark_with_no_key_and_jumps_to_it(site, browser):
+    """"Help with today's spark" answers at once (a tip and today's
+    prompt), with no key wall and nothing sent anywhere; its link puts the
+    spark box in view with its line ready to type in."""
+    context = _phone(browser)
+    page = context.new_page()
+    away = []
+    page.on("request", lambda r: away.append(r.url) if not r.url.startswith(site) else None)
+    page.goto(f"{site}/genesis", wait_until="load")
+    page.evaluate(SEED)
+    page.reload(wait_until="networkidle")
+    page.wait_for_selector(".pilot-launcher", timeout=10000)
+    page.click(".pilot-launcher")
+    page.click('.pilot-chip:has-text("Help with today\'s spark")')
+    page.wait_for_selector(".pilot-from-pilot .pilot-md")
+    assert page.is_hidden(".pilot-settings-view"), "no key wall"
+    text = page.inner_text(".pilot-from-pilot .pilot-md")
+    prompt = page.inner_text("#g-daily-title")
+    assert prompt in text and "Write it in one line" in text, text
+    page.click('.pilot-from-pilot a:has-text("Write my spark")')
+    page.wait_for_function("() => document.activeElement && document.activeElement.id === 'g-daily-input'")
+    box = _box(page, "#g-daily")
+    assert -2 <= box["top"] <= 200, box
+    assert page.evaluate("() => location.hash") == ""
+    assert away == [], away
+    context.close()
+
+
+# ---------------------------------------------------------------- 1.26.0: Genesis and Orbyt on their own addresses
+
+@pytest.fixture(scope="module")
+def moved_site(tmp_path_factory):
+    """The site with Genesis and Orbyt on their own addresses. Chromium sends
+    any name ending in .localhost to this computer, so genesis.localhost and
+    orbyt.localhost stand in for genesis.mtrxhorizyn.com and orbyt.*."""
+    from tests.test_browser import _free_port, _serve
+    port = _free_port()
+    main = f"http://localhost:{port}"
+    extra = {"MTRX_APP_SUBDOMAINS": "1", "MTRX_PUBLIC_URL": main,
+             "MTRX_GENESIS_HOST": f"genesis.localhost:{port}", "MTRX_ORBYT_HOST": f"orbyt.localhost:{port}"}
+    for _ in _serve(tmp_path_factory, extra, port):
+        yield {"main": main, "genesis": f"http://genesis.localhost:{port}", "orbyt": f"http://orbyt.localhost:{port}"}
+
+
+SEED_OLD = """async () => {
+  await new Promise((done) => { const s = document.createElement('script'); s.src = '/static/js/genesis-store.js'; s.onload = done; document.head.append(s); });
+  const S = window.GenesisStore;
+  const a = S.create({ name: "Paw Board", pitch: "A noticeboard app for lost pets on my street", audience: "Neighbours with pets" }).project;
+  const b = S.create({ name: "Bike Club", pitch: "Saturday rides for beginners", audience: "New riders" }).project;
+  S.open(localStorage).save([a, b]);
+  S.openDaily(localStorage).save({ "2026-11-20": "Market stalls" });
+}"""
+
+
+def test_genesis_moves_a_visitors_projects_to_its_own_address_once(moved_site, browser):
+    """A visitor with projects saved at the old address opens the old link:
+    it lands on genesis.*, which asks the old address once, gets the
+    projects in the #part (never sent to a server), says "Your projects
+    moved here" and takes the #part out of the address. Reloading doesn't
+    ask again, and nothing leaves this computer."""
+    context = _phone(browser)
+    page = context.new_page()
+    asked, away = [], []
+    page.on("request", lambda r: asked.append(r.url) if r.resource_type == "document" and "/genesis-move" in r.url else None)
+    page.on("request", lambda r: away.append(r.url) if "localhost" not in r.url else None)
+    page.goto(f"{moved_site['main']}/privacy", wait_until="load")
+    page.evaluate(SEED_OLD)
+    page.goto(f"{moved_site['main']}/genesis", wait_until="load")
+    page.wait_for_selector(".g-continue-tick")
+    assert page.url == f"{moved_site['genesis']}/", page.url
+    assert "Your projects moved here" in page.inner_text("#g-toast")
+    names = page.evaluate("() => window.GenesisStore.open(localStorage).load().map(p => p.name).sort()")
+    assert names == ["Bike Club", "Paw Board"]
+    assert page.evaluate("() => window.GenesisStore.openDaily(localStorage).load()['2026-11-20']") == "Market stalls"
+    assert page.evaluate("() => localStorage.getItem('mtrx-genesis-moved')")
+    assert len(asked) == 1, asked
+    page.reload(wait_until="load")
+    page.wait_for_selector(".g-continue-tick")
+    assert len(asked) == 1 and page.url == f"{moved_site['genesis']}/"
+    assert away == [], away
+    context.close()
+
+
+def test_a_new_visitor_lands_where_they_were_going_and_a_made_up_link_moves_nothing(moved_site, browser):
+    context = _phone(browser)
+    page = context.new_page()
+    # Nothing saved at the old address: one quick look, then the start form they asked for.
+    page.goto(f"{moved_site['genesis']}/#new", wait_until="load")
+    page.wait_for_function("() => location.hash === '#new' && !document.getElementById('g-new').hidden")
+    assert page.url.startswith(moved_site["genesis"])
+    # A link someone made up, with projects in it but not this tab's one-time code.
+    packed = page.evaluate("""() => {
+      const m = new Map(), st = { getItem: k => m.has(k) ? m.get(k) : null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) };
+      const S = window.GenesisStore;
+      S.open(st).save([S.create({ name: "Planted", pitch: "Not mine", audience: "Nobody" }).project]);
+      return S.packMove(st);
+    }""")
+    page.goto(f"{moved_site['genesis']}/#move={packed}&n=00112233445566778899", wait_until="load")
+    page.reload(wait_until="load")
+    page.wait_for_selector("#g-daily-title:not(:empty)")
+    assert page.evaluate("() => window.GenesisStore.open(localStorage).load().length") == 0
+    assert "move=" not in page.url
+    context.close()
+
+
+def test_pitch_this_in_orbyt_brings_the_idea_to_orbyts_own_address(moved_site, browser):
+    """Orbyt on its own address can't read Genesis's projects: "Pitch this in
+    Orbyt" opens it in a new tab and hands it the idea by message, never in
+    an address. The Pitch Review's cancelled-checkout return works there."""
+    context = _computer(browser)
+    page = context.new_page()
+    page.goto(f"{moved_site['genesis']}/", wait_until="load")
+    page.evaluate(SEED)
+    pid = page.evaluate("() => window.GenesisStore.open(localStorage).load()[0].id")
+    page.goto(f"{moved_site['genesis']}/#p/{pid}", wait_until="load")
+    page.reload(wait_until="load")
+    page.wait_for_selector(".g-vortex")
+    with context.expect_page() as opened:
+        page.click(".g-vortex")
+    orbyt = opened.value
+    orbyt.wait_for_load_state("load")
+    assert orbyt.url == f"{moved_site['orbyt']}/#pitch"
+    orbyt.wait_for_function("() => document.querySelector('form[data-kind=pitch] [name=idea]').value === 'Paw Board'")
+    assert "Paw Board" in orbyt.inner_text("#v-genesis-note")
+    assert "Paw" not in orbyt.url
+    orbyt.goto(f"{moved_site['orbyt']}/#review-cancelled", wait_until="load")
+    orbyt.reload(wait_until="load")
+    orbyt.wait_for_selector("#v-sent:not([hidden])")
+    assert "Checkout was cancelled, and nothing was charged" in orbyt.inner_text("#v-sent-line")
+    context.close()
+
+
+def test_pilot_on_genesis_own_address_links_there(moved_site, browser):
+    """Pilot knows genesis.*'s "/" is Genesis: its suggestions are Genesis's,
+    and "Show my projects" links to the project on this address."""
+    context = _phone(browser)
+    page = context.new_page()
+    page.goto(f"{moved_site['genesis']}/", wait_until="load")
+    page.evaluate(SEED)
+    page.reload(wait_until="networkidle")
+    page.wait_for_selector(".pilot-launcher", timeout=10000)
+    page.click(".pilot-launcher")
+    page.click('.pilot-chip:has-text("Show my projects")')
+    page.wait_for_selector(".pilot-from-pilot .pilot-md a")
+    href = page.eval_on_selector('.pilot-from-pilot a[href*="#p/"]', "a => [a.href, a.target]")
+    assert href[0].startswith(f"{moved_site['genesis']}/#p/") and href[1] == "", href
+    context.close()
+
+
+def test_too_much_to_move_in_an_address_becomes_a_file_to_import(moved_site, browser):
+    """Too big for an address: the old address's page offers the projects as
+    a file (Download), and "Open Genesis" says to import it there."""
+    context = browser.new_context(viewport={"width": 375, "height": 812}, is_mobile=True, has_touch=True, accept_downloads=True)
+    page = context.new_page()
+    page.goto(f"{moved_site['main']}/privacy", wait_until="load")
+    page.evaluate(SEED_OLD)
+    page.evaluate("""() => {
+      const S = window.GenesisStore;
+      const many = Array.from({ length: 40 }, (_, i) => ({ ...S.create({ name: `Idea ${i}`, pitch: "A big plan", audience: "Everyone" }).project, notes: "n".repeat(4000) }));
+      S.open(localStorage).save(many);
+    }""")
+    page.goto(f"{moved_site['main']}/genesis", wait_until="load")
+    page.wait_for_selector("#g-move-big:not([hidden])")
+    assert page.url.startswith(f"{moved_site['main']}/genesis-move#n=")
+    with page.expect_download() as got:
+        page.click("#g-move-download")
+    assert got.value.suggested_filename.startswith("genesis-projects-")
+    page.click("#g-move-go")
+    page.wait_for_function("() => document.getElementById('g-toast') && /press Import/.test(document.getElementById('g-toast').textContent)")
+    assert page.url == f"{moved_site['genesis']}/"
     context.close()

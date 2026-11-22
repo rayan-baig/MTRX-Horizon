@@ -10,6 +10,9 @@
   // pop-up. Built from the page itself, so it never lists anything the
   // page does not have.
   const items = [];
+  // Genesis and Orbyt, as the top links have them (absent in the demo).
+  const genesisLink = document.querySelector("a.nav-genesis");
+  const orbytLink = document.querySelector("a.nav-vortex");
   document.querySelectorAll(".app-card").forEach((card) => {
     const name = card.querySelector("h2").textContent.trim();
     const full = card.querySelector(".app-icon img").alt;
@@ -34,9 +37,10 @@
   ]).concat(document.querySelector('a[href="/privacy"]') ? [
     ["Privacy", "What this site keeps, and what it doesn't", "/privacy", "privacy data cookies logs"],
     ["Terms", "The terms of using this site", "/terms", "terms legal rules"],
-  ] : []).concat(document.querySelector('a[href="/orbyt"]') ? [
-    ["Genesis", "Turn your idea into a launch", "/genesis", "genesis idea start project launch"],
-    ["Orbyt", "Work with MTRX Horizyn: pitch an idea, partner with us, or talk to us", "/orbyt",
+  ] : []).concat(orbytLink ? [
+    // Their addresses as the page links them ("/genesis", or their own once moved).
+    ["Genesis", "Turn your idea into a launch", genesisLink ? genesisLink.getAttribute("href") : "/genesis", "genesis idea start project launch"],
+    ["Orbyt", "Work with MTRX Horizyn: pitch an idea, partner with us, or talk to us", orbytLink.getAttribute("href"),
       "vortex partner partnership business resell integrate pitch idea investor invest contact buy acquire purchase"],
     ["Kitchen Safety Bundle", "CyberLogix AI and OmniArmor.ai together for kitchens", "/bundle",
       "bundle kitchen safety restaurant cafe pharmacy school fridge freezer alarm checklist inspection temperature"],
