@@ -1,14 +1,14 @@
 {
   "note": "These files are copied unchanged from the web Pilot core in static/pilot/. To update them, copy the new files over, run npm test, and update this record. The desktop layers (providers.js, media.js) and the desktop engine (engine.js) build on the first three; the robot window plays its moves with pilot-motion.js and pilot-actor.js.",
-  "coreVersion": "1.4.2",
+  "coreVersion": "1.4.3",
   "copiedFrom": "static/pilot/",
-  "copiedAt": "Pilot core 1.4.2 (website 1.24.0)",
+  "copiedAt": "Pilot core 1.4.3 (website 1.26.1)",
   "files": {
-    "pilot-providers.js": "2ec1a989f9ec833d83bbf8585178fa57d86a8d12acf33f6272ee14aec1dae9da",
-    "pilot-media.js": "ff6d67924334ca6889d4f6546c2f52b2dd31871968b05cee75465435c35c18a2",
-    "pilot-render.js": "d4f6fcd3d64a63f669cfbe55dcfa50aa6f3e89dde171515d82724b4c767369ad",
-    "pilot-motion.js": "8f120150bcec155b30bc5be6584f9db399c6d17a5dbe1a6aa55f9f3d1bcf4299",
-    "pilot-actor.js": "b5615a34ab14badf1afbfe6a49762f633e6ce5fb1bea355310110d1e686d43bd",
-    "pilot-actor.css": "2af8e3b6eb5c56021931c4136ca08cb7dd0984f2e899f335cca67e82c23e25a5"
+    "pilot-providers.js": "aa9b3eea5f1ea4472d7a74ab2dda75a876ad1c00d4f5cfae1920f76a8c21c3cc",
+    "pilot-media.js": "83d0736833050b9daf0d2e0ced6b3280c05a1db2d8c1a517b6108b061fef53a6",
+    "pilot-render.js": "ba06dd770948b38cae555a26270b395a631be43d423935047f6f71a1ff2e1e81",
+    "pilot-motion.js": "ab67ffb8472c8399976dd776d8f77af0b5dcd3f7b9f4eb75c9103af82189a6f8",
+    "pilot-actor.js": "cc21acae5f4b18e4aa94d6c6f1512e80c25916f32bd8427757c491aa84e4f340",
+    "pilot-actor.css": "cd0523dd7bff7fca6bed37f9fdc7e3fbc72b277070ec2236e72f25720c743baa"
   }
 }

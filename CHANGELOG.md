@@ -4,6 +4,30 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.26.1 (22 November 2026)
+
+Pilot core 1.4.3, a small patch to the helper on every page:
+
+- **Typed questions with no AI key: "does" and "this" no longer count as real words.** Pilot tidied
+  each word before checking whether it was a filler word, so "does" became "doe" and "this" became
+  "thi" and both counted. "What does this check mean?" now gets the "Explain this check" answer, and
+  "Does this work with my sensor?" no longer gets an unrelated answer just because both say "does
+  this". "How much does it cost?" still gets "What does it cost?".
+- **The same answer is offered once.** Two buttons that give the same answer or open the same page
+  (or say the same words) count as one: Pilot no longer gives up because they "tie", and only one
+  shows in the row under an answer.
+- **After a typed question, the button it matched isn't offered again** right under its own answer
+  (also on the next page).
+- **No key, and Pilot can't answer what you typed: it says so in the chat** instead of jumping
+  straight to key settings. "I need an AI key to answer that one. Here's what I can help with right
+  now:", with the answers that work without a key and an "Add my AI key" button under it. What you
+  typed stays in the box and sends as soon as you add a key.
+- **Phones: a little more room at the sides (34 px, was 30 px)**, so the tucked-away robot no longer
+  sits 3 px over the edge of full-width cards at 320-390 px. It is still a 44 px tap target and looks
+  the same.
+- Pilot for Mac's six shared core files are re-copied (version line only), and its README now says
+  which core they come from (1.4.3).
+
 ## 1.26.0 (22 November 2026)
 
 - **Genesis and Orbyt can have their own addresses: genesis.mtrxhorizyn.com and
