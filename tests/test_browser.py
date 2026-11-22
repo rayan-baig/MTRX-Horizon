@@ -496,6 +496,14 @@ def test_pilot_hides_rather_than_covers_when_every_corner_is_taken(site, browser
     page.wait_for_timeout(900)
     r = page.evaluate(_ROBOT)
     assert r["hidden"] and r["away"] and not r["under"], r
+    # Core 1.4.2: the handle, once the page has been still about 2 s: never on the gift page (a Pay button at
+    # every edge), and on the console only between the avoided bars, covering nothing.
+    page.wait_for_timeout(2300)
+    h = page.evaluate(_HANDLE)
+    if kind == "gift":
+        assert h is None, h
+    else:
+        assert h and not h["under"] and 56 <= h["top"] and h["top"] + h["height"] <= size[1] - 52, h
     page.evaluate("Pilot.open()")
     page.wait_for_selector(".pilot-panel:not([hidden])")
     assert page.is_visible(".pilot-panel")
@@ -545,4 +553,215 @@ def test_pilot_keeps_the_welcome_pills_under_its_own_answers_and_opens_long_ones
     assert page.inner_text(".pilot-foot-note-words").startswith("Pilot uses a grown-up's AI key")
     assert page.inner_text(".pilot-note-more") == "Less"
     assert one_line < 24, one_line
+    context.close()
+
+
+# ---------------------------------------------------------------- core 1.4.2
+
+# The handle (1.4.2): where it is (null while it isn't showing), and the
+# links, buttons, boxes and avoided things under its whole 44 px square.
+_HANDLE = """() => {
+  const root = document.querySelector(".pilot-root");
+  const h = root.querySelector(".pilot-handle");
+  if (!h || getComputedStyle(h).display === "none" || getComputedStyle(root).visibility === "hidden") return null;
+  const r = h.getBoundingClientRect();
+  const hit = (b) => Math.min(b.right, r.right) - Math.max(b.left, r.left) > 0 && Math.min(b.bottom, r.bottom) - Math.max(b.top, r.top) > 0;
+  const under = [];
+  for (const e of document.querySelectorAll("a[href], button, input, textarea, select, summary, label, [role=button], [role=link], [role=tab]")) {
+    if (root.contains(e)) continue;
+    if ([...e.getClientRects()].some(hit)) under.push((e.innerText || e.getAttribute("aria-label") || e.tagName).trim().slice(0, 40));
+  }
+  for (const sel of [...(Pilot.config.avoid || []), ...(Pilot.config.yieldTo || [])]) {
+    for (const e of document.querySelectorAll(sel)) if (!root.contains(e) && [...e.getClientRects()].some(hit)) under.push(sel);
+  }
+  return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height),
+    label: h.getAttribute("aria-label"), under };
+}"""
+
+
+@pytest.mark.parametrize("path", ["/", "/genesis", "/orbyt"])
+@pytest.mark.parametrize("size", [(320, 640), (375, 667), (375, 812), (390, 844)])
+def test_pilot_hidden_at_rest_shows_a_handle_that_covers_nothing(site, browser, path, size):
+    """Core 1.4.2: 1.4.1 kept the robot out of sight wherever every spot
+    would cover a link (the top of Orbyt on a small phone, part of Home), so
+    a visitor might never find Pilot. Now, about 2 s after it hides with the
+    page still, a handle shows at the screen's left or right edge: a 44 px
+    square that covers no link, button, box or avoided thing, and opens
+    Pilot. Never while the robot shows, never while the page scrolls."""
+    context = _phone_size(browser, *size)
+    page = _pilot_page(context, f"{site}{path}")
+    tapped = False
+    for y in (0, 350, 700):
+        if y:
+            page.evaluate(f"window.scrollTo(0, {y})")
+            page.wait_for_timeout(700)
+            r = page.evaluate(_ROBOT)
+            assert r["hidden"] or page.evaluate(_HANDLE) is None, (y, r)
+            if r["away"]:
+                assert page.evaluate(_HANDLE) is None, "not at once: about 2 s after the page stops"
+                page.wait_for_timeout(2300)
+        r = page.evaluate(_ROBOT)
+        h = page.evaluate(_HANDLE)
+        if not r["hidden"]:
+            assert h is None, (y, r, h)
+            continue
+        assert h, (y, r, "hidden at rest with free room at the edges, so the handle shows")
+        assert h["width"] >= 44 and h["height"] >= 44, h
+        assert h["left"] == 0 or h["left"] + h["width"] == size[0], h
+        assert 0 <= h["top"] and h["top"] + h["height"] <= size[1], h
+        assert not h["under"], (y, h)
+        assert h["label"] == "Open Pilot, your AI helper"
+        if not tapped:
+            page.tap(".pilot-handle")
+            page.wait_for_selector(".pilot-panel:not([hidden])")
+            assert page.evaluate(_HANDLE) is None
+            page.evaluate("Pilot.close()")
+            tapped = True
+            page.wait_for_timeout(300)
+    context.close()
+
+
+# OmniArmor's signed-in phone pages (made for the test): a fixed tab bar
+# along the bottom, 64 px, with four links, and the robot's corners raised
+# above it by the app's own CSS (--pilot-gap: 76px), as OmniArmor 1.18.0
+# does; a long page of words. `links`: a row of buttons right above the
+# tab bar, edge to edge, so every bottom corner would cover one.
+TAB_PAGE = """(links) => {
+  for (const n of [...document.body.children]) if (!n.classList.contains("pilot-root")) n.remove();
+  const main = document.createElement("main");
+  main.className = "t-main";
+  for (let i = 0; i < 40; i++) { const p = document.createElement("p"); p.textContent = "Words of the page. ".repeat(8); main.append(p); }
+  const bar = document.createElement("nav"); bar.className = "t-tabbar";
+  for (const w of ["Home", "Checks", "Codes", "More"]) { const a = document.createElement("a"); a.href = "/"; a.textContent = w; bar.append(a); }
+  document.body.append(main, bar);
+  if (links) {
+    const row = document.createElement("div"); row.className = "t-over";
+    for (const w of ["Save", "Print"]) { const b = document.createElement("button"); b.textContent = w; row.append(b); }
+    document.body.append(row);
+  }
+  const s = new CSSStyleSheet();
+  s.replaceSync(`.t-main{padding:0 30px 160px} .t-tabbar{position:fixed;left:0;right:0;bottom:0;height:64px;display:flex;background:#222}
+    .t-tabbar a{flex:1;line-height:64px;text-align:center} .t-over{position:fixed;left:0;right:0;bottom:66px;height:60px;display:flex}
+    .t-over button{flex:1} body .pilot-root{--pilot-gap:76px}`);
+  document.adoptedStyleSheets = [s];
+  window.scrollTo(0, 0);
+}"""
+
+
+@pytest.mark.parametrize("size", [(320, 640), (375, 812), (390, 844)])
+def test_pilot_raised_above_a_tab_bar_stays_tucked_above_it_once_scrolled(site, browser, size):
+    """Core 1.4.2: an app that raises the robot's corners above its tab bar
+    (OmniArmor) had the robot hidden on every scrolled phone page under core
+    1.4.1, which measured the tucked robot at the screen's edge, over the
+    tab bar. Now it is measured, and drawn, in its raised corner: tucked
+    there above the bar while words pass under it."""
+    context = _phone_size(browser, *size)
+    page = _pilot_page(context, f"{site}/privacy")
+    page.evaluate(TAB_PAGE, False)
+    for y in (300, 900, 1500):
+        page.evaluate(f"window.scrollTo(0, {y})")
+        page.wait_for_timeout(900)
+        r = page.evaluate(_ROBOT)
+        assert not r["hidden"] and r["peek"] and r["corner"][0] == "b" and not r["under"], (y, r)
+        drawn = page.evaluate("""() => { const b = document.querySelector('.pilot-launcher').getBoundingClientRect();
+          return { bottom: innerHeight - b.bottom, right: innerWidth - b.right, left: b.left }; }""")
+        assert drawn["bottom"] >= 64, (y, drawn, "never over the tab bar")
+        # Where placement measures it is where it is drawn.
+        measured = page.evaluate("""() => { const root = document.querySelector('.pilot-root'); const css = getComputedStyle(root);
+          const n = (k) => parseFloat(css.getPropertyValue(k));
+          const c = (root.className.match(/pilot-at-(\\w\\w)/) || [])[1];
+          const room = PilotMascot.edgeRoom(root, css, n('--pilot-gap'), c);
+          const b = PilotMascot.peekBox(c, { width: innerWidth, height: innerHeight }, { width: 56, height: 54 }, room, 20,
+            { scale: n('--pilot-peek-scale'), margin: n('--pilot-keep-margin'), pull: Math.min(n('--pilot-gap'), n('--pilot-keep-room')) - n('--pilot-keep-margin') });
+          return { bottom: innerHeight - b.bottom, right: innerWidth - b.right, left: b.left }; }""")
+        assert abs(drawn["bottom"] - measured["bottom"]) <= 1, (drawn, measured)
+        assert abs(drawn["right"] - measured["right"]) <= 1 or abs(drawn["left"] - measured["left"]) <= 1, (drawn, measured)
+    context.close()
+
+
+def test_pilot_handle_on_a_tab_bar_page_sits_above_the_bar_and_leaves_while_scrolling(site, browser):
+    """Core 1.4.2: buttons right above the tab bar in both bottom corners
+    hide the robot; the handle then shows at an edge above them (never on the
+    bar or a button), goes at once while the page scrolls, and comes back
+    about 2 s after it stops."""
+    context = _phone_size(browser, 375, 812)
+    page = _pilot_page(context, f"{site}/privacy")
+    page.evaluate(TAB_PAGE, True)
+    page.evaluate("window.scrollTo(0, 400)")
+    page.wait_for_timeout(900)
+    assert page.evaluate(_ROBOT)["away"]
+    page.wait_for_timeout(2300)
+    h = page.evaluate(_HANDLE)
+    assert h and not h["under"] and h["top"] + h["height"] <= 812 - 126, h
+    page.evaluate("window.scrollBy(0, 200)")
+    # Gone while the page moves (at the next look, a frame or so later).
+    page.wait_for_function("() => { const h = document.querySelector('.pilot-handle'); return !h || getComputedStyle(h).display === 'none'; }", timeout=1000)
+    page.wait_for_timeout(1000)
+    assert page.evaluate(_HANDLE) is None, "not back until about 2 s after it stops"
+    page.wait_for_timeout(2000)
+    assert page.evaluate(_HANDLE), "back"
+    context.close()
+
+
+def test_pilot_suggestions_leave_out_summarise_this_without_a_key(site, browser):
+    """Core 1.4.2: "Summarise this" needs the AI; 1.4.1 added it after every
+    page's own suggestions even with no key, and pressing it asked for one.
+    Now it shows only once a key is set."""
+    context = _phone(browser)
+    page = context.new_page()
+    page.goto(f"{site}/", wait_until="networkidle")
+    page.wait_for_selector(".pilot-launcher", state="attached", timeout=10000)
+    page.evaluate("Pilot.open()")
+    page.click('.pilot-pill:has-text("What is Orbyt?")')
+    page.wait_for_selector(".pilot-from-pilot .pilot-md")
+    page.wait_for_timeout(200)
+    # The suggestions shown once a chat has started (the page's own: Home has some).
+    chips = page.eval_on_selector_all(".pilot-chip", "cs => cs.filter(c => c.offsetParent).map(c => c.innerText.trim())")
+    assert chips and "Summarise this" not in chips, chips
+    context.close()
+
+
+@pytest.mark.parametrize("path", ["/", "/orbyt"])
+@pytest.mark.parametrize("size", [(320, 640), (375, 667), (375, 812), (390, 844)])
+def test_pilot_is_findable_on_the_first_phone_screen_without_scrolling(site, browser, path, size):
+    """Core 1.4.2 (round-8 review: the robot hidden on Home's first phone
+    screen and on Orbyt at every phone size): within about 2 s of the page
+    loading, with no scroll, either the robot shows or the handle does."""
+    context = _phone_size(browser, *size)
+    page = context.new_page()
+    page.goto(f"{site}{path}", wait_until="load")
+    page.wait_for_selector(".pilot-root", state="attached", timeout=10000)
+    page.wait_for_timeout(2600)
+    r = page.evaluate(_ROBOT)
+    h = page.evaluate(_HANDLE)
+    assert (not r["hidden"] and not r["under"]) or (h and not h["under"]), (r, h)
+    assert page.evaluate("scrollY") == 0
+    context.close()
+
+
+@pytest.mark.parametrize("width,path", [(1024, "/orbyt"), (1024, "/genesis"), (1180, "/genesis")])
+def test_pilot_on_a_computer_never_touches_a_link_or_parks_over_the_header(site, browser, width, path):
+    """Core 1.4.2 (round-8 review): at 1024 px it tucked top right over
+    Orbyt's header links and stayed; on Genesis at 1024-1180 px it touched
+    "Save my spark" by 7 px. Links and buttons now count within 8 px, a top
+    corner with the header's links is never used, and with every corner
+    touching one it hides (the handle shows instead)."""
+    context = browser.new_context(viewport={"width": width, "height": 800})
+    page = context.new_page()
+    page.goto(f"{site}{path}", wait_until="networkidle")
+    page.wait_for_selector(".pilot-launcher", state="attached", timeout=10000)
+    page.wait_for_timeout(5000)
+    r = page.evaluate(_ROBOT)
+    near = page.evaluate("""() => { const root = document.querySelector('.pilot-root'); const r = root.querySelector('.pilot-launcher').getBoundingClientRect();
+      let best = 1e9;
+      for (const e of document.querySelectorAll('a[href],button,input,textarea,select,summary,[role=button]')) { if (root.contains(e)) continue;
+        for (const b of e.getClientRects()) { if (!b.width) continue;
+          best = Math.min(best, Math.max(b.left - r.right, r.left - b.right, b.top - r.bottom, r.top - b.bottom)); } }
+      return best; }""")
+    if not r["hidden"]:
+        assert r["corner"][0] == "b", r
+        assert near >= 8, (r, near)
+    else:
+        h = page.evaluate(_HANDLE)
+        assert h and not h["under"], h
     context.close()
