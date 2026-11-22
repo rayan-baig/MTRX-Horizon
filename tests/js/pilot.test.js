@@ -809,7 +809,7 @@ test("placement 1.1.1: placeNow keeps off a focused box, and mid-scroll only tuc
 const vm = require("node:vm");
 // The chat window's file, run with a bare window: its pure helpers only.
 function panelHelpers() {
-  const sandbox = { window: {}, document: {} };
+  const sandbox = { window: {}, document: {}, URL };
   vm.runInNewContext(fs.readFileSync(core("pilot-panel.js"), "utf8"), sandbox);
   const P = sandbox.window.PilotPanel;
   // Plain values from this realm, so deepEqual compares them fairly.
@@ -819,7 +819,7 @@ function panelHelpers() {
 
 test("welcome 1.2.0: the design's five pills and tagline unless the app gives its own", () => {
   const P = panelHelpers();
-  assert.equal(P.VERSION, "1.3.0");
+  assert.equal(P.VERSION, "1.4.0");
   assert.equal(P.DEFAULT_TAGLINE, "Your AI copilot. Powered by you.");
   const five = P.welcomePills(undefined);
   assert.deepEqual(five.map((p) => p.label), ["Ask anything…", "Get things done…", "Help with code…", "Analyze & explain…", "Customize with your API key"]);
@@ -852,7 +852,7 @@ test("welcome 1.2.0: an app's pills are cleaned: words only, a known icon, built
 
 test("welcome 1.2.0: the window uses them, shows this page's suggestions on the welcome, and hides the key sections asked", () => {
   const panel = fs.readFileSync(core("pilot-panel.js"), "utf8");
-  assert.ok(panel.includes("const pills = welcomePills(config.welcomePills);"));
+  assert.ok(panel.includes("const pills = welcomePills(config.welcomePills, location.href);"));
   assert.ok(panel.includes('el("div", { class: "pilot-pills" }, ...pills.map((p) => pill(p.icon, p.label, () => runPill(p))))'));
   assert.ok(panel.includes('(typeof config.tagline === "string" && config.tagline.trim()) || DEFAULT_TAGLINE'));
   // This page's suggestions are on the welcome too (before any chat, before a key).
@@ -962,7 +962,7 @@ test("placement 1.2.0: a row of dots with tooltips counts, and line ends just be
   const dot = { nodeType: 1, tagName: "SPAN", childNodes: [], getBoundingClientRect: () => rect(336, 760, 22, 22),
     closest: (sel) => (sel === Mascot.MEANS ? day : null) };
   const doc = { createRange: () => ({ selectNodeContents() {}, getClientRects: () => [] }) };
-  assert.deepEqual(Mascot.contentBox(dot, rect(320, 740, 56, 54), null, doc), { left: 330, top: 760, right: 364, bottom: 800 });
+  assert.deepEqual(Mascot.contentBox(dot, rect(320, 740, 56, 54), null, doc), { left: 330, top: 760, right: 364, bottom: 800, kind: "mark" });
   assert.ok(Mascot.MEANS.includes("[title]") && Mascot.MEANS.includes("[data-pilot-clear]"));
   // A line ending 8px left of the robot's box: busy (its hand reaches there).
   const line = { nodeType: 1, tagName: "P", closest: () => null, getBoundingClientRect: () => rect(30, 740, 269, 20) };
@@ -987,23 +987,27 @@ test("the MTRX site's own welcome: its tagline and five pills, no picture or vid
   assert.ok(mtrx.includes('modals: [".sheet:target"],'));
   assert.ok(mtrx.includes('"#g-week"'));
   // The config's pills come through the core's cleaning as the five given.
-  const sandbox = { window: {}, document: {} };
+  const sandbox = { window: {}, document: {}, URL };
   vm.runInNewContext(fs.readFileSync(core("pilot-panel.js"), "utf8"), sandbox);
   let given = null;
   vm.runInNewContext(mtrx, { window: { Pilot: { mount: (c) => { given = c; } }, location: { pathname: "/" } },
     document: { getElementById: () => ({ dataset: {} }), title: "" } });
-  const pills = JSON.parse(JSON.stringify(sandbox.window.PilotPanel.welcomePills(given.welcomePills)));
-  assert.deepEqual(pills.map((p) => [p.label, p.builtin]), [["Help with my idea", false], ["What is Orbyt?", false],
+  const pills = sandbox.window.PilotPanel.welcomePills(given.welcomePills, "https://mtrx.example/");
+  assert.deepEqual(JSON.parse(JSON.stringify(pills.map((p) => [p.label, p.builtin]))), [["Help with my idea", false], ["What is Orbyt?", false],
     ["Explain this page", true], ["What apps are coming?", false], ["Add my AI key", true]]);
 });
 
 // ---------------------------------------------------------------- core 1.3.0: the first look, one key ask, room for the welcome, tap targets
 
-test("core 1.3.0: every core file says 1.3.0", () => {
-  for (const f of fs.readdirSync(path.join(__dirname, "..", "..", "static", "pilot")).filter((n) => /\.(js|css)$/.test(n))) {
-    assert.match(fs.readFileSync(core(f), "utf8").split("\n")[0], /Pilot core 1\.3\.0 · /, f);
+test("core 1.4.0: every core file says 1.4.0", () => {
+  const files = fs.readdirSync(path.join(__dirname, "..", "..", "static", "pilot")).filter((n) => /\.(js|css)$/.test(n));
+  assert.equal(files.length, 13);
+  for (const f of files) {
+    assert.match(fs.readFileSync(core(f), "utf8").split("\n")[0], /Pilot core 1\.4\.0 · /, f);
+    const v = fs.readFileSync(core(f), "utf8").match(/const VERSION = "([\d.]+)"/);
+    if (v) assert.equal(v[1], "1.4.0", f);
   }
-  assert.equal(Mascot.VERSION, "1.3.0");
+  for (const m of [Mascot, Render, Store, Engine, Providers, Media]) assert.equal(m.VERSION, "1.4.0");
 });
 
 test("first look 1.3.0: it uses the same free-corner check as normal placement, and never sits on content", () => {
@@ -1113,4 +1117,279 @@ test("first look 1.3.0: with no corner free, it tucks where it covers least, not
   const field = { left: 0, top: 700, right: 375, bottom: 800 };
   assert.equal(Mascot.choosePlace({ corner: "br", view, size, gap: 12, busy: () => true, cost, keep, hard: [field] }).corner[0], "t");
   assert.equal(Mascot.areaOf({ left: 0, top: 0, right: 10, bottom: 10 }, { left: 5, top: 5, right: 20, bottom: 20 }), 25);
+});
+
+// ---------------------------------------------------------------- core 1.4.0: useful before a key, and phones' top corners last
+
+// A phone page for placeNow: a header that stays put (sticky) with a small
+// "Home" link at the top right, words along the bottom, and (optionally) a
+// big card link across the bottom corners. Elements are plain objects.
+function phonePage({ cardAtBottom = false, logo = false, width = 375, height = 812 } = {}) {
+  const rect = (l, t, w, h) => ({ left: l, top: t, right: l + w, bottom: t + h, width: w, height: h });
+  const header = { nodeType: 1, tagName: "HEADER", childNodes: [], parentElement: null, style: { position: "sticky" },
+    getBoundingClientRect: () => rect(0, 0, width, 53), closest: () => null };
+  const home = { nodeType: 1, tagName: "A", childNodes: [], parentElement: header, style: { position: "static" },
+    getBoundingClientRect: () => rect(width - 49, 7, 47, 40) };
+  home.closest = (sel) => (sel === Mascot.INTERACTIVE ? home : null);
+  // The site's logo, a link home, at the top left (optional).
+  const brand = { nodeType: 1, tagName: "A", childNodes: [], parentElement: header, style: { position: "static" },
+    getBoundingClientRect: () => rect(12, 6, 200, 42) };
+  brand.closest = (sel) => (sel === Mascot.INTERACTIVE ? brand : null);
+  const lines = [];
+  for (let y = height - 120; y < height; y += 22) lines.push(rect(16, y, width - 32, 18));
+  const para = { nodeType: 1, tagName: "P", parentElement: null, style: { position: "static" }, closest: () => null,
+    getBoundingClientRect: () => rect(16, height - 120, width - 32, 120), childNodes: [{ nodeType: 3, nodeValue: "words", rects: lines }] };
+  const card = { nodeType: 1, tagName: "A", childNodes: [], parentElement: null, style: { position: "static" },
+    getBoundingClientRect: () => rect(30, height - 110, width - 60, 220) };
+  card.closest = (sel) => (sel === Mascot.INTERACTIVE ? card : null);
+  const win = { innerWidth: width, innerHeight: height,
+    getComputedStyle: (el) => ({ getPropertyValue: () => "", position: (el && el.style && el.style.position) || "static" }) };
+  const doc = { body: {}, defaultView: win, querySelectorAll: () => [],
+    createRange: () => ({ selectNodeContents(n) { this.n = n; }, getClientRects() { return (this.n && this.n.rects) || []; } }),
+    elementsFromPoint: (x, y) => {
+      if (y < 53 && logo && x > 12 && x < 212 && y > 6 && y < 48) return [brand, header];
+      if (y < 53) return x > width - 49 && y > 7 && y < 47 ? [home, header] : [header];
+      // The card's words are spans inside the link: a different element at each point.
+      if (cardAtBottom && y > height - 110 && x > 30 && x < width - 30) {
+        const words = { nodeType: 1, tagName: "SPAN", childNodes: [], parentElement: card, style: { position: "static" }, getBoundingClientRect: card.getBoundingClientRect };
+        words.closest = (sel) => (sel === Mascot.INTERACTIVE ? card : null);
+        return [words, card];
+      }
+      if (y > height - 120) return [para];
+      return [];
+    } };
+  doc.activeElement = doc.body;
+  const launcher = { offsetWidth: 56, offsetHeight: 54, getBoundingClientRect: () => rect(width - 68, height - 66, 56, 54) };
+  return { doc, win, own: { contains: () => false }, launcher, avoid: [], corner: "br", shown: "br", full: true, text: true, keepIn: true };
+}
+
+test("placement 1.4.0: on a phone it never parks top-left over the header (CyberLogix's 3,3), it tucks at the bottom", () => {
+  const place = Mascot.placeNow(phonePage());
+  // Core 1.3.0 put it top-left: the header's empty corner looked free.
+  assert.equal(place.corner[0], "b", JSON.stringify(place));
+  assert.equal(place.peek, true);
+  // The header that stays put counts as busy: it is a "pinned" thing.
+  const p = phonePage();
+  const hits = Mascot.contentIn(p.doc, { left: 3, top: 3, right: 49, bottom: 48 }, p.own);
+  assert.deepEqual(hits.map((h) => h.kind), ["pinned"]);
+});
+
+test("placement 1.4.0: it never tucks over a small 'Home' link while a corner avoids one; the corner of a big card costs less", () => {
+  const place = Mascot.placeNow(phonePage({ cardAtBottom: true, logo: true }));
+  // Core 1.3.0 chose the top right (the Home link covered less area than the card's corner).
+  assert.equal(place.corner[0], "b", JSON.stringify(place));
+  const small = { left: 326, top: 7, right: 373, bottom: 47, kind: "control" };
+  const big = { left: 30, top: 702, right: 345, bottom: 922, kind: "control" };
+  const slice = { left: 326, top: 764, right: 372, bottom: 809 };
+  const topSlice = { left: 326, top: 3, right: 372, bottom: 48 };
+  assert.ok(Mascot.costOf([small], topSlice) > Mascot.costOf([big], slice) * 3);
+  // Any link or button costs more than a corner's worth of words.
+  const words = { left: 0, top: 700, right: 375, bottom: 812, kind: "text" };
+  assert.ok(Mascot.costOf([big], slice) > Mascot.costOf([words], slice) * 10);
+  // The same thing found at several points of the grid counts once.
+  const p = phonePage({ cardAtBottom: true });
+  assert.equal(Mascot.contentIn(p.doc, slice, p.own).filter((h) => h.kind === "control").length, 1);
+});
+
+test("placement 1.4.0: phones try the bottom corners first, whole and tucked, before any top corner; computers as before", () => {
+  const view = { width: 375, height: 812 };
+  const size = { width: 56, height: 54 };
+  const keep = { scale: 0.82, margin: 3 };
+  assert.equal(Mascot.isNarrow(view), true);
+  assert.equal(Mascot.isNarrow({ width: 1366, height: 900 }), false);
+  assert.deepEqual(Mascot.cornerPasses("br", true), [["br", "bl"], ["tr", "tl"]]);
+  assert.deepEqual(Mascot.cornerPasses("tl", true), [["tl", "tr", "bl", "br"]], "a corner the visitor chose stays first");
+  assert.deepEqual(Mascot.cornerPasses("br", false), [["br", "bl", "tr", "tl"]]);
+  // Whole bottom corners busy, the top right free whole: on a phone a tucked bottom corner comes first.
+  const wholeBusyBottom = (b, c, small) => c[0] === "b" && !small;
+  assert.deepEqual(Mascot.choosePlace({ corner: "br", view, size, gap: 12, busy: wholeBusyBottom, keep, narrow: true }), { corner: "br", peek: true });
+  // Core 1.3.0's order (and a computer's): the free top corner, whole.
+  assert.deepEqual(Mascot.choosePlace({ corner: "br", view, size, gap: 12, busy: wholeBusyBottom, keep }), { corner: "tr", peek: false });
+  // Bottom corners over a few words, a top corner over nothing: still the bottom, on a phone.
+  const wordsBelow = (b, c) => c[0] === "b";
+  const cost = (b, c) => (c[0] === "b" ? 900 : 0);
+  assert.deepEqual(Mascot.choosePlace({ corner: "br", view, size, gap: 12, busy: wordsBelow, cost, keep, narrow: true }), { corner: "br", peek: true });
+  // ...but not over a link or button: then the clear top corner.
+  const linkBelow = (b, c) => (c[0] === "b" ? 1e5 : 0);
+  assert.equal(Mascot.choosePlace({ corner: "br", view, size, gap: 12, busy: wordsBelow, cost: linkBelow, keep, narrow: true }).corner[0], "t");
+  // Everything busy, the top cheaper: a phone still tucks at the bottom; a computer takes the cheaper top.
+  const topCheaper = (b, c) => (c[0] === "t" ? 100 : 2000);
+  assert.equal(Mascot.choosePlace({ corner: "br", view, size, gap: 12, busy: () => true, cost: topCheaper, keep, narrow: true }).corner[0], "b");
+  assert.equal(Mascot.choosePlace({ corner: "br", view: { width: 1366, height: 900 }, size, gap: 12, busy: () => true, cost: topCheaper, keep }).corner[0], "t");
+  // A box being typed in along the bottom still sends it to the top, on a phone too.
+  const field = { left: 0, top: 700, right: 375, bottom: 812 };
+  assert.equal(Mascot.choosePlace({ corner: "br", view, size, gap: 12, busy: () => true, cost: topCheaper, keep, hard: [field], narrow: true }).corner[0], "t");
+});
+
+test("placement 1.4.0: a header or bar that stays put is busy; a whole-screen fixed layer is not a bar", () => {
+  const W = { innerWidth: 375, innerHeight: 812, getComputedStyle: (el) => ({ position: el.style.position }) };
+  const bar = { nodeType: 1, tagName: "NAV", style: { position: "fixed" }, getBoundingClientRect: () => box(0, 762, 375, 50), parentElement: null };
+  const tab = { nodeType: 1, tagName: "SPAN", style: { position: "static" }, parentElement: bar };
+  assert.equal(Mascot.pinnedBar(tab, null, W, new Map()), bar);
+  const frame = { nodeType: 1, tagName: "DIV", style: { position: "fixed" }, getBoundingClientRect: () => box(0, 0, 375, 812), parentElement: null };
+  const inFrame = { nodeType: 1, tagName: "DIV", style: { position: "static" }, parentElement: frame };
+  assert.equal(Mascot.pinnedBar(inFrame, null, W, new Map()), null);
+  const plain = { nodeType: 1, tagName: "DIV", style: { position: "static" }, parentElement: null };
+  assert.equal(Mascot.pinnedBar(plain, null, W), null);
+  // Pilot's own root is never a bar.
+  assert.equal(Mascot.pinnedBar(tab, { contains: (n) => n === bar || n === tab }, W), null);
+});
+
+test("first look 1.4.0: on a small screen it plays tucked away, and stays tucked until the visitor scrolls", () => {
+  assert.equal(Mascot.isCompact({ width: 320, height: 640 }), true);
+  assert.equal(Mascot.isCompact({ width: 375, height: 667 }), true);
+  assert.equal(Mascot.isCompact({ width: 375, height: 812 }), false);
+  assert.equal(Mascot.isCompact({ width: 1440, height: 900 }), false);
+  const view = { width: 320, height: 640 };
+  const size = { width: 56, height: 54 };
+  const keep = { scale: 0.82, margin: 3 };
+  // A free corner: whole normally, tucked with `tuck`.
+  assert.deepEqual(Mascot.choosePlace({ corner: "br", view, size, gap: 12, keep, narrow: true }), { corner: "br", peek: false });
+  assert.deepEqual(Mascot.choosePlace({ corner: "br", view, size, gap: 12, keep, narrow: true, tuck: true }), { corner: "br", peek: true });
+  const p = phonePage({ width: 320, height: 640 });
+  p.doc.elementsFromPoint = () => [];
+  assert.equal(Mascot.placeNow(p).peek, false);
+  assert.equal(Mascot.placeNow({ ...p, tuck: true }).peek, true);
+  assert.equal(Mascot.placeNow({ ...p, tuck: true, full: false }).peek, true);
+  const loader = fs.readFileSync(core("pilot.js"), "utf8");
+  assert.ok(loader.includes("keepIn: Boolean(config.keepInViewport), tuck: quiet });"));
+  assert.ok(loader.includes("quiet = M().isCompact({ width: window.innerWidth, height: window.innerHeight });"));
+  assert.ok(loader.includes("scrolling = setTimeout(() => { scrolling = 0; quiet = false; queueFit(true); }, 160);"));
+});
+
+test("pills 1.4.0: a link to a page of this site, or the app's own answer; other sites and empty answers are left out", () => {
+  const P = panelHelpers();
+  const base = "https://mtrx.example/genesis";
+  const pills = JSON.parse(JSON.stringify(P.ownPills([
+    { icon: "spark", label: "See it live", link: "/demo" },
+    { icon: "chat", label: "Elsewhere", link: "https://evil.example/demo" },
+    { icon: "chat", label: "Sneaky", link: "//evil.example/x" },
+    { icon: "chat", label: "Script", link: "javascript:alert(1)" },
+    { icon: "bolt", label: "What does it cost?", answer: "From **$9** a month. [Pricing](/pricing)" },
+    { icon: "bolt", label: "Empty", answer: "   " },
+    { icon: "key", label: "Add my AI key", action: "settings" },
+  ], base)));
+  assert.deepEqual(pills.map((p) => p.label), ["See it live", "What does it cost?", "Add my AI key"]);
+  assert.equal(pills[0].link, "https://mtrx.example/demo");
+  assert.equal(pills[0].builtin, false);
+  assert.equal(pills[1].answer, "From **$9** a month. [Pricing](/pricing)");
+  // A function answer is kept as given (called when pressed).
+  const fn = () => "hi";
+  const raw = P.ownPills([{ label: "Apps", answer: fn }], base);
+  assert.equal(raw[0].answer, fn);
+  assert.equal(P.siteLink("#faq", base), "https://mtrx.example/genesis#faq");
+  assert.equal(P.siteLink("https://mtrx.example/orbyt", base), "https://mtrx.example/orbyt");
+  assert.equal(P.siteLink("http://mtrx.example/orbyt", base), "");
+  // Suggestions take them too, and keep plain prompts as before.
+  const chips = JSON.parse(JSON.stringify(P.cleanChips([{ label: "Live", link: "/demo" }, { label: "Away", link: "https://x.example" },
+    { label: "Ask", prompt: "Explain" }, { label: "Cost", answer: "Free." }, { label: "Fourth", prompt: "x" }], base)));
+  assert.deepEqual(chips, [{ label: "Live", link: "https://mtrx.example/demo" }, { label: "Ask", prompt: "Explain" },
+    { label: "Cost", answer: "Free." }]);
+  // The design's five are unchanged, and a key pill still means one key ask.
+  assert.equal(P.welcomePills(undefined).length, 5);
+  assert.equal(P.keyPillGiven([{ label: "Live", link: "/demo" }, { label: "Key", action: "settings" }]), true);
+});
+
+test("pills 1.4.0: pressing one that needs no AI never asks for a key and sends nothing; the waiting-message flow is for AI only", () => {
+  const panel = fs.readFileSync(core("pilot-panel.js"), "utf8");
+  // A no-AI pill or suggestion is handled before anything that could hold for a key.
+  assert.match(panel, /function runPill\(p\) \{\s*const s = screen\(\);\s*if \(plainRun\(p, p\.label\)\) return;/);
+  assert.ok(panel.includes("const runChip = (c) => { if (!plainRun(c, c.label)) ask(c.prompt || c.label); };"));
+  const answerFn = panel.slice(panel.indexOf("async function answerWith"), panel.indexOf("// A suggestion or pill that needs no AI"));
+  assert.ok(answerFn.length > 200);
+  for (const never of ["hold(", "engine.send", "fetch", "show(\"settings\")", "ask("]) assert.ok(!answerFn.includes(never), never);
+  // It is shown through the chat (safe renderer), marked as the app's own, with the key offered under it.
+  assert.ok(answerFn.includes('{ role: "assistant", text, local: true }'));
+  assert.ok(answerFn.includes('{ role: "note", kind: "more", text: more }'));
+  assert.ok(answerFn.includes("!store.ready()"));
+  assert.ok(panel.includes("const opts = m.local ? { local: location.href } : undefined;"));
+  assert.ok(panel.includes("body.append(R.render(m.text, document, opts));"));
+  assert.equal(panelHelpers().DEFAULT_MORE, "Want more? Add your AI key to ask anything.");
+  // Nothing in the window is ever set as HTML.
+  assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML/.test(panel));
+});
+
+test("render 1.4.0: an app's own answer may link to this site's pages (same tab); AI answers can't, and stay as before", () => {
+  const base = "https://mtrx.example/genesis";
+  const text = "Read [Orbyt](/orbyt), [our docs](https://docs.example/x), [sneaky](//evil.example) and [bad](javascript:alert(1)).";
+  // An AI answer: a path is just words; an outside link opens in a new tab.
+  const ai = Render.parse(text);
+  const aiLinks = ai[0].c.filter((p) => p.t === "a");
+  assert.deepEqual(aiLinks.map((a) => a.href), ["https://docs.example/x"]);
+  // The app's own answer: the path is a link too; "//elsewhere" and javascript: never.
+  const own = Render.parse(text, { local: true });
+  assert.deepEqual(own[0].c.filter((p) => p.t === "a").map((a) => a.href), ["/orbyt", "https://docs.example/x"]);
+  assert.equal(Render.safeHref("/orbyt", base), "https://mtrx.example/orbyt");
+  assert.equal(Render.safeHref("javascript:alert(1)", base), null);
+  assert.equal(Render.sameSite("https://mtrx.example/orbyt", base), true);
+  assert.equal(Render.sameSite("https://docs.example/x", base), false);
+  assert.equal(Render.sameSite("https://mtrx.example/orbyt", ""), false);
+  // Rendered: this site's link stays in this tab, the outside one opens a new tab without the page's address.
+  const links = walk(Render.render(text, fakeDocument(), { local: base })).filter((n) => n.tagName === "a");
+  assert.equal(links.length, 2);
+  assert.equal(links[0].attrs.href, "https://mtrx.example/orbyt");
+  assert.equal(links[0].attrs.target, undefined);
+  assert.equal(links[1].attrs.target, "_blank");
+  assert.match(links[1].attrs.rel, /noopener noreferrer/);
+  // Without `local` (every AI answer), exactly as before: no path links.
+  assert.equal(walk(Render.render(text, fakeDocument())).filter((n) => n.tagName === "a").length, 1);
+  assert.equal(Render.plain("See [Orbyt](/orbyt).", { local: true }), "See Orbyt.");
+});
+
+test("store 1.4.0: an app's own answer and the key offer under it survive the trip through storage", () => {
+  assert.deepEqual(Store.cleanMessage({ role: "assistant", text: "Hi", local: true }), { role: "assistant", text: "Hi", local: true });
+  assert.deepEqual(Store.cleanMessage({ role: "assistant", text: "Hi", local: "yes" }), { role: "assistant", text: "Hi" });
+  assert.deepEqual(Store.cleanMessage({ role: "note", kind: "more", text: "Want more?" }), { role: "note", kind: "more", text: "Want more?" });
+  assert.equal(Store.cleanMessage({ role: "note", kind: "html", text: "x" }).kind, "info");
+});
+
+test("the MTRX site 1.4.0: its pills work with no key: Genesis's start form, and answers from the site's own facts", () => {
+  const mtrx = fs.readFileSync(site("pilot-mtrx.js"), "utf8");
+  const sandbox = { window: {}, document: {}, URL };
+  vm.runInNewContext(fs.readFileSync(core("pilot-panel.js"), "utf8"), sandbox);
+  const apps = JSON.stringify([{ name: "RankUp", line: "A chores game for families.", open: false, url: "" },
+    { name: "CyberLogix AI", line: "Fridge alarms that call you.", open: true, url: "https://cyberlogix.example" }]);
+  const run = (pathname, data) => {
+    let given = null;
+    vm.runInNewContext(mtrx, { window: { Pilot: { mount: (c) => { given = c; } }, location: { pathname } },
+      document: { getElementById: () => ({ dataset: data }), title: "" } });
+    return given;
+  };
+  const given = run("/", { apps, early: "on" });
+  const pills = sandbox.window.PilotPanel.welcomePills(given.welcomePills, "https://mtrx.example/");
+  assert.equal(pills[0].link, "https://mtrx.example/genesis#new");
+  assert.equal(typeof pills[1].answer, "string");
+  assert.match(pills[1].answer, /\[Open Orbyt\]\(\/orbyt\)/);
+  assert.match(pills[1].answer, /7 days/);
+  assert.equal(pills[2].action, "explain-screen");
+  const coming = pills[3].answer({ facts: given.facts });
+  assert.match(coming, /2 apps: 1 open, 1 in development/);
+  assert.match(coming, /\*\*RankUp\*\*: A chores game for families\. \(in development\)/);
+  assert.match(coming, /\[Open CyberLogix AI\]\(https:\/\/cyberlogix\.example\)/);
+  assert.match(coming, /\[join early access\]\(\/early-access\)/);
+  assert.equal(pills[4].action, "settings");
+  assert.equal(given.answerMore, "Want more? Add your AI key to ask anything.");
+  // No early access: hear about it through Orbyt instead; no apps listed: point at the home page.
+  assert.match(run("/", { apps, early: "off" }).welcomePills[3].answer({}), /\[write to us in Orbyt\]\(\/orbyt\)/);
+  assert.match(run("/", { apps: "not json" }).welcomePills[3].answer({}), /\[home page\]\(\/\)/);
+  // Some page suggestions are answered at once too; the rest stay AI prompts.
+  const chips = run("/orbyt", { apps }).chips();
+  assert.equal(typeof chips[0].answer, "string");
+  assert.match(chips[1].answer, /7 days/);
+  assert.equal(chips[2].prompt, "How do I pitch a project from Genesis in Orbyt?");
+  // Words from the catalog can't add markdown of their own.
+  const odd = JSON.stringify([{ name: "**Big** [x](//e)", line: "_a_", open: false, url: "" }]);
+  assert.match(run("/", { apps: odd }).welcomePills[3].answer({}), /\*\*Big x\(\/\/e\)\*\*: a/);
+});
+
+test("wandering 1.4.0: something to avoid holds the robot still only where it strolls, not anywhere on the page", () => {
+  const W = { innerWidth: 375, innerHeight: 812 };
+  const launcher = { offsetHeight: 54 };
+  // A badge far up the page (or off screen) no longer keeps it still for good.
+  assert.equal(Mascot.inStroll([box(20, 120, 60, 20), box(20, 2400, 60, 20)], W, launcher), false);
+  // One along the bottom of the screen does.
+  assert.equal(Mascot.inStroll([box(20, 760, 60, 20)], W, launcher), true);
+  assert.equal(Mascot.inStroll([], W, launcher), false);
+  const loader = fs.readFileSync(core("pilot.js"), "utf8");
+  assert.ok(loader.includes("M().inStroll(M().boxesOf(document, [...list(config.avoid), ...list(config.yieldTo)], rootEl, window), window, launcher)"));
 });

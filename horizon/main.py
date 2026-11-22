@@ -156,7 +156,22 @@ def pilot_facts() -> dict:
         "early": early_access.ready(),
         "creators": creators.enabled(),
         "hosts": " ".join(PILOT_COMPATIBLE_HOSTS + PILOT_LOCAL_HOSTS),
+        # The apps, exactly as Orbyt's "Our apps" lists them (catalog.public:
+        # an address only once an app is open), so Pilot's own answer to
+        # "What apps are coming?" needs no AI and can't disagree with the site.
+        "apps": json.dumps([{k: a[k] for k in ("name", "line", "open", "url")} for a in pilot_apps()],
+                           separators=(",", ":")),
     }
+
+
+def pilot_apps() -> list:
+    """The released apps as a page may show them; [] if the catalog can't be
+    read (Pilot then says less, the page still works)."""
+    try:
+        return [catalog.public(a) for a in catalog.released()]
+    except Exception:  # noqa: BLE001 - a page never fails over Pilot's facts
+        logging.getLogger("horizon").exception("Pilot: couldn't read the app catalog")
+        return []
 
 
 templates.env.globals["pilot_facts"] = pilot_facts

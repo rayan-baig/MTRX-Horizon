@@ -4,6 +4,30 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.18.0 (22 November 2026)
+
+- **Pilot is useful before you add an AI key (Pilot core 1.4.0).** Before, every button in
+  Pilot's welcome led to "add your AI key". Now the ones that don't need the AI just work:
+  "What is Orbyt?" and "What apps are coming?" are answered straight away, from the site's own
+  facts (the app list is the same one Orbyt shows), with links to the right pages; "Help with my
+  idea" opens Genesis's start form. A few page suggestions work the same way ("What's ready
+  today?", "How do I start an idea?", and on Orbyt "Which form is for me?" and "What happens after
+  I send?"). Nothing is sent anywhere for these. Under such an answer a small line says "Want more?
+  Add your AI key to ask anything." The key is still needed for typed questions and "Explain this
+  page", and those still wait in the box until a key is added.
+- **Pilot's robot keeps off the phone header.** On a phone it sometimes tucked itself into a top
+  corner: over the "Home" link on Genesis and Orbyt (so tapping Home opened Pilot instead), or
+  over another app's logo. Now on phones it uses the bottom corners first, never tucks over a link
+  or button while another corner is free of them, and treats a header that stays at the top as
+  busy. On small phones its first glow plays tucked into the corner until you scroll, so it never
+  lands on a card as the page opens. Something an app asks it to keep clear of now only stops its
+  little strolls when that thing is along the bottom of the screen (before, one anywhere on the page
+  kept it still all the time).
+- **For the other apps (core 1.4.0):** a Pilot button or suggestion can now be a link to a page of
+  the same site, or a ready answer the app writes itself, shown safely as Pilot's message (see
+  "Pill actions" in docs/PILOT.md). Pilot for Mac's six shared core files are re-copied; the Mac
+  app looks and works the same.
+
 ## 1.17.0 (22 November 2026)
 
 - **Pilot core 1.3.0: the robot never sits on the page to be noticed.** On the first page of a

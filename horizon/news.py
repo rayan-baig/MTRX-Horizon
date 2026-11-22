@@ -13,6 +13,9 @@ from datetime import date
 # Newest first. dot: the colour of the app it is about (see .dot in site.css).
 # href: a page of this site, or the app's Learn more card on the home page.
 NEWS = [
+    {"date": "2026-11-22", "who": "Pilot", "dot": "blue", "source": "MTRX Horizyn 1.18.0",
+     "text": "No AI key yet? Pilot still answers \"What is Orbyt?\" and \"What apps are coming?\" straight away.",
+     "href": "/orbyt"},
     {"date": "2026-11-22", "who": "Genesis", "dot": "violet", "source": "MTRX Horizyn 1.17.0",
      "text": "Coming back? Genesis opens on your project's next step, and cheers when you tick one.",
      "href": "/genesis"},

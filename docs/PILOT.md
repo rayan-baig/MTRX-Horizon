@@ -2,7 +2,7 @@
 
 Pilot is the AI assistant in every MTRX Horizyn app. It runs on **the user's own AI key**, from
 their browser: MTRX Horizyn never sees the key, never sees the conversation, and pays nothing for
-the AI. This file describes the shared core (**Pilot core 1.3.0**) and how it is used on the
+the AI. This file describes the shared core (**Pilot core 1.4.0**) and how it is used on the
 MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
 
 ## What the user sees
@@ -26,7 +26,9 @@ MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
   That is the design, and Pilot for Mac keeps it exactly. Since core 1.2.0 a website can set its
   own tagline and pills (`tagline`, `welcomePills`, see **Each app's own welcome** below); the
   MTRX site does. Since core 1.3.0 a website whose pills include the key pill asks for the key
-  once: no "Bring Your Own API Key" card as well (see **Asking for the key once** below).
+  once: no "Bring Your Own API Key" card as well (see **Asking for the key once** below). Since
+  core 1.4.0 a pill or suggestion can work with no key at all: a link to a page, or the app's own
+  answer (see **Pill actions** below).
 - **Suggestions** are on the welcome too (before a key is added), and come first once a chat has
   started (the greeting and its pills are for starting, and fold away), and fit the page (on Genesis: "Show my projects", "What's my
   next step?"), plus **Summarise this**. **Analyze & explain…** explains the screen.
@@ -49,7 +51,7 @@ config fields:
 | Field | What it does | Default |
 |---|---|---|
 | `tagline` | the line under "Pilot" in the window's header | "Your AI copilot. Powered by you." |
-| `welcomePills` | up to 5 `{icon, label, action, send}` pills (below) | the design's five |
+| `welcomePills` | up to 5 `{icon, label, action, send}` pills (below; since 1.4.0 also `link` or `answer`, see **Pill actions**) | the design's five |
 | `hideKeySections` | key settings to leave out: `["image", "video"]`, either or both | none hidden |
 | `chips(screen)` | (already there) this page's suggestions: now also on the welcome, under the pills | none |
 
@@ -99,12 +101,84 @@ and the note under them). Now:
   Suggestions are slightly smaller on phones and short computer screens, so two fit on a row.
 
 On the MTRX site: the tagline is "Help with ideas and MTRX apps"; the pills are **Help with my idea**
-(a prompt to finish), **What is Orbyt?** and **What apps are coming?** (sent at once), **Explain this
-page** (`explain-screen`) and **Add my AI key** (`settings`); the image and video key sections are
-hidden (the site has no use for pictures or videos); `keepInViewport` is on (below); and the
-welcome's one-line note is "AI keys are for grown-ups (18+)." (`keyNoteShort`).
+(since 1.4.0 a link to Genesis's start form, `/genesis#new`: free, and Genesis has its own free AI
+help), **What is Orbyt?** and **What apps are coming?** (since 1.4.0 answered at once with no key:
+see **Pill actions**), **Explain this page** (`explain-screen`) and **Add my AI key** (`settings`);
+the image and video key sections are hidden (the site has no use for pictures or videos);
+`keepInViewport` is on (below); and the welcome's one-line note is "AI keys are for grown-ups
+(18+)." (`keyNoteShort`).
 
-### Moving an app to core 1.3.0
+### Pill actions (core 1.4.0)
+
+Reviewers pressed "See it live" or "What does it cost?" and got "add an AI key": every welcome
+button led to the key, and the key felt like a wall. Since 1.4.0 a pill (in `welcomePills`) or a
+page suggestion (from `chips(screen)`) can need no AI at all. Instead of `action` (or `prompt`), it
+has one of:
+
+| Field | What it does |
+|---|---|
+| `link: "/demo"` | goes to that page. **This site only**: a path (`/demo`, `pricing`, `#faq`) or a full address on the same site; anything else (another site, `//elsewhere`, `javascript:`) is left out. Pilot closes first, so the page shows. |
+| `answer: "text"` | Pilot shows the text at once as its own chat message, under the pill's words as the visitor's message. **No key, and no network call.** |
+| `answer: (ctx) => text` | the same, from a function (it may return a promise; Pilot waits up to 8 seconds). `ctx` is `{ screen, facts, ready, label }`: this screen (`screen()`), the config's `facts`, whether a key is set, and the pill's words. A function that throws or returns nothing shows "Pilot couldn't find that answer just now." |
+
+An answer is markdown, rendered by the same safe renderer as every AI answer (`pilot-render.js`:
+elements and text nodes only, never HTML), so `<b>` in an answer shows as those letters. The one
+difference: an app's own answer may link to **this site's pages**, `[Orbyt](/orbyt)`, and those links
+open in the same tab (Pilot closes first). Links elsewhere open in a new tab without the page's
+address, as in AI answers. AI answers never get path links. An answer is kept as part of the chat
+(page to page, tab to tab, marked `local` in storage) and, once a key is added, is part of what the AI
+sees, like any earlier message.
+
+While there is no key, a line under an answer offers it: **"Want more? Add your AI key to ask
+anything."** with a **Key settings** button. `answerMore` (optional) changes the words; `answerMore:
+false` leaves the line out. The line goes once a key is added.
+
+The existing pills are unchanged: a prompt (`action` words, `send`), and the built-ins (`ask`,
+`task`, `code`, `explain-screen`, `summarise-screen`, `settings`, `help`). **The no-key "message
+waiting" flow is only for AI**: an AI prompt, a typed question, or "Explain this page" pressed with no
+key stays waiting and is sent once a key is added; a link or an answer just works.
+
+```js
+welcomePills: [
+  { icon: "spark", label: "See it live", link: "/demo" },
+  { icon: "bars", label: "What does it cost?", answer: "From $X a month per location. [See prices](/pricing)" },
+  { icon: "chat", label: "What's due today?", answer: (ctx) => dueTodayText(ctx.facts) },
+  { icon: "bolt", label: "Explain this page", action: "explain-screen" },
+  { icon: "key", label: "Add my AI key", action: "settings" },
+],
+chips: (screen) => [{ label: "How do sensors connect?", link: "/help/sensors" }, { label: "Ask about my fridges", prompt: "…" }],
+```
+
+An answer function runs in the visitor's browser with what the page already has: it must not call
+the network (use facts the server put on the page) and must never put another person's details in
+the chat.
+
+On the MTRX site: **What is Orbyt?** answers with Orbyt's paths (each a link to its form), the 2
+minutes, the real person and the 7-day reply, and **Open Orbyt**; **What apps are coming?** is built
+from the site's own app list (the catalog, as Orbyt's "Our apps" lists it, passed on Pilot's script
+tag as `data-apps` by `main.pilot_facts`), says which are open, and links to early access (or Orbyt
+when early access is off). The home page's "What's ready today?" and "How do I start an idea?", and
+Orbyt's "Which form is for me?" and "What happens after I send?", are answers too; the other
+suggestions are AI prompts.
+
+### Moving an app to core 1.4.0
+
+1. Copy the thirteen core files from `static/pilot/` over the app's copies (they all say `Pilot core
+   1.4.0` on their first line). Pictures, layers and poses are unchanged.
+2. Nothing else is required: with no new fields the welcome, pills and suggestions work as before.
+   Placement changes for everyone (below): on phones the robot no longer tucks into a top corner over
+   the header, and never tucks over a link or button while another corner is free of them.
+3. Give the welcome buttons that need no AI a `link` or an `answer` (**Pill actions** above): "See it
+   live" → `{ link: "/demo" }`, "What does it cost?" → a short answer with a link to the prices page,
+   "What sensors do I need?" → `{ link: "/help/sensors" }` or an answer. Keep `action` for what really
+   needs the AI. Page suggestions (`chips`) take `link` and `answer` too.
+4. Optional: `answerMore` (the line under an answer while there is no key).
+5. If the app's `avoid` list names a big area (a whole card), the robot may now tuck over its edge
+   rather than over a header button: list the small things inside it instead where that matters.
+6. Copy the new `tests/js/pilot.test.js` core tests, and Pilot for Mac's six shared files if the app
+   ships them (`pilot-render.js` changed: an optional third argument; Pilot for Mac doesn't use it).
+
+### Moving an app to core 1.3.0 (from 1.2.x)
 
 1. Copy the thirteen core files from `static/pilot/` over the app's copies (they all say `Pilot core
    1.3.0` on their first line). Pictures, layers and poses are unchanged.
@@ -234,7 +308,7 @@ doesn't count) it steps back: hidden, and taps go through. An app lists in its c
 must keep clear of: `avoid` (things it mustn't cover) and `yieldTo` (another helper character, like
 OmniArmor's Armo). When one of those is showing where the robot sits, it moves to the first free
 corner (the other side, then the other edge); if none is free it tucks half away at the edge until
-tapped. It doesn't wander while it's yielding. The visitor's own chosen corner is kept. While Pilot is
+tapped. It doesn't wander while it's yielding (since core 1.4.0, only while one of those is along the bottom of the screen, where it strolls: before, anything to avoid anywhere on the page kept it still). The visitor's own chosen corner is kept. While Pilot is
 on a page, `<html>` has the class `pilot-on` and the CSS variable `--pilot-gutter` (the room the robot
 needs at the bottom); a page can keep its last lines clear with `padding-bottom: var(--pilot-gutter)`
 or the `.pilot-gutter` class.
@@ -254,6 +328,33 @@ address changes too, for `:target` pop-ups. It keeps a little room from the page
 (`--pilot-clear-x`, 12 px across, where its hand reaches, and `--pilot-clear-y`, 4 px), and small
 things that mean something without words count as content: anything with a tooltip (`title`), a
 picture role, a progress bar or meter, or `data-pilot-clear` (Genesis's row of streak dots).
+
+**Phones: top corners last, never over a link (core 1.4.0).** Core 1.3.0 on a phone could tuck the
+robot into a top corner: CyberLogix's console on a brand-new account (top left, 3 px from the screen's
+corner, over the logo), its `/help/sensors` page after a long scroll, and the MTRX site's Orbyt and
+Genesis pages (top right, over the header's small **Home** link, so a tap on Home opened Pilot). The
+cause was in `pilot-mascot.js`: (1) a header that stays put (sticky or fixed) had no words exactly
+under the tucked robot's small box, so a top corner looked free and won the tucked-away pass, which
+tried the top corners before giving up on the bottom ones; (2) with no corner free, "covers least"
+counted only square pixels, and the same link found at several points of the grid counted again each
+time, so most of a small "Home" link (or a logo) looked cheaper than the corner of a big card or a few
+words; (3) on a phone nothing made a top corner the last choice. Now:
+
+- **Phones** (up to 720 px wide, `isNarrow`) try the bottom corners first, whole and then tucked
+  away, before any top corner (`cornerPasses`); a bottom corner tucked over a few words or a small
+  picture still beats every top corner. A top corner the visitor dragged it to stays first.
+- **A header or bar that stays put** (`position: fixed` or `sticky`, under 40% of the screen; never a
+  whole-screen layer) counts as busy (`pinnedBar`, kind `pinned`), so its empty end is never "free".
+- **What it would cover is weighed** (`costOf`, `WEIGHT`): a link, a button or a box costs
+  1,000,000 times the share of it covered (at least a tenth), so it never tucks over one while another
+  corner avoids one, and a big card's corner costs less than most of a small "Home" link; a bar that
+  stays put 50,000; something the app asked it to avoid 100,000 plus its area; a busy top corner on a
+  phone 10,000,000 more (only a box being typed in along the bottom sends it up); words and small
+  pictures their area. Each thing found counts once.
+- **The first look on a small screen** (360 px wide or less, or 700 px tall or less: `isCompact`)
+  plays tucked away, and it stays tucked until the visitor scrolls (`tuck` in `placeNow`), so the
+  whole robot never lands on a card the moment the page opens.
+- Computers keep their order (the chosen corner, the other side, then the other edge).
 
 **`keepInViewport` (an app's choice).** Tucked away, the robot doesn't hang off the edge: it shrinks
 to `--pilot-peek-scale` (0.82 on phones, 0.52 on computers) in its corner, `--pilot-keep-margin` from
@@ -435,7 +536,7 @@ Genesis Pro members keep Pro's own answers either way.
 
 ## The files
 
-The core is the same in every app. Each file starts with `Pilot core 1.3.0 · <file name>`, so
+The core is the same in every app. Each file starts with `Pilot core 1.4.0 · <file name>`, so
 copies in different repos can be compared.
 
 | File | What it is | DOM |
@@ -507,7 +608,8 @@ Per app (on the MTRX site):
    |---|---|
    | `appName` | the app's name, used in Pilot's rules ("the assistant built into …") |
    | `name`, `tagline` | the window's title and tagline (default "Pilot", "Your AI copilot. Powered by you.") |
-   | `welcomePills` | up to 5 `{icon, label, action, send}` pills for the welcome (default: the design's five; see **Each app's own welcome**) |
+   | `welcomePills` | up to 5 `{icon, label, action, send}` pills for the welcome (default: the design's five; see **Each app's own welcome**); 1.4.0: `link` or `answer` instead of `action` (**Pill actions**) |
+   | `answerMore` | (1.4.0) the line under an answer given with no key ("Want more? Add your AI key to ask anything."); `false` for none |
    | `hideKeySections` | `["image", "video"]` (either or both) to leave those key settings out |
    | `keepInViewport` | `true`: tucked away, the robot shrinks into its corner instead of hanging off the screen's edge |
    | `modals` | CSS selectors of the app's own pop-ups that aren't marked as dialogs; the robot steps back while one shows |
@@ -517,7 +619,7 @@ Per app (on the MTRX site):
    | `compatibleHosts` | the OpenAI-compatible hosts the app's policy allows, plus `localhost`, `127.0.0.1` |
    | `kidView()` | true on a child's view: Pilot isn't shown at all, and no tools are ever offered |
    | `screen()` | `{name, facts}`: the screen the user is on, and any short facts about it |
-   | `chips(screen)` | up to 3 `{label, prompt}` suggestions for this screen (on the welcome too) |
+   | `chips(screen)` | up to 3 `{label, prompt}` suggestions for this screen (on the welcome too); 1.4.0: `{label, link}` or `{label, answer}` too |
    | `taskPrompt(screen)` | what "Get things done…" puts in the box on this screen |
    | `keyNote` | the note above the message box (until a key is added) and beside key settings (e.g. the 18+ line) |
    | `keyNoteShort` | (1.3.0) a one-line version of `keyNote` for the welcome, so the pills and suggestions keep their room |
@@ -548,9 +650,9 @@ Per app (on the MTRX site):
 
 ### Apps still on an older core
 
-CyberLogix, OmniArmor and RankUp carried core 1.2.1 when 1.3.0 came out. They keep working as they
-are; each moves to 1.3.0 in its own repo by the steps in **Moving an app to core 1.3.0** (core files
-are only ever changed here and copied byte for byte). This repo doesn't change them.
+CyberLogix, OmniArmor and RankUp carried core 1.3.0 (or older) when 1.4.0 came out. They keep working
+as they are; each moves to 1.4.0 in its own repo by the steps in **Moving an app to core 1.4.0** (core
+files are only ever changed here and copied byte for byte). This repo doesn't change them.
 
 ### Server-side AI in an app
 

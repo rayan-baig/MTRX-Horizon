@@ -26,13 +26,55 @@
   };
   const path = (window.location.pathname.replace(/\/+$/, "") || "/");
 
+  // The apps, as Orbyt's "Our apps" lists them (main.pilot_facts: from the
+  // catalog, an address only once an app is open).
+  let APPS = [];
+  try { APPS = JSON.parse(d.apps || "[]").filter((a) => a && typeof a.name === "string"); } catch (_) { APPS = []; }
+  const early = d.early === "on";
+  // Words from the catalog, kept as plain words in Pilot's markdown.
+  const words = (t) => String(t || "").replace(/[*_`[\]#<>]/g, "").replace(/\s+/g, " ").trim();
+
+  // Core 1.4.0: answers Pilot gives at once, with no AI key and nothing sent
+  // anywhere. Only facts the site itself shows (the catalog, templates/vortex.html).
+  function appsAnswer() {
+    if (!APPS.length) return "MTRX Horizyn's apps are listed on the [home page](/).";
+    const open = APPS.filter((a) => a.open);
+    const head = open.length === 0
+      ? `MTRX Horizyn makes ${APPS.length} app${APPS.length === 1 ? "" : "s"}, all in development. None is open yet:`
+      : open.length === APPS.length ? `MTRX Horizyn makes ${APPS.length} app${APPS.length === 1 ? "" : "s"}, all open now:`
+        : `MTRX Horizyn makes ${APPS.length} apps: ${open.length} open, ${APPS.length - open.length} in development.`;
+    const list = APPS.map((a) => {
+      const link = a.open && /^https?:\/\//.test(a.url || "") ? ` [Open ${words(a.name)}](${a.url})` : a.open ? " (open)" : " (in development)";
+      return `- **${words(a.name)}**: ${words(a.line)}${link}`;
+    });
+    const hear = open.length === APPS.length ? ""
+      : early ? "\n\nTo hear the day one opens, [join early access](/early-access)."
+        : "\n\nTo hear when one opens, [write to us in Orbyt](/orbyt).";
+    return `${head}\n\n${list.join("\n")}${hear}`;
+  }
+
+  const ORBYT = "**Orbyt** is the official place to work with MTRX Horizyn. Pick the path that fits you:\n\n"
+    + "- [Pitch an idea](/orbyt#pitch): a business or app idea, or one from Genesis\n"
+    + (early ? "- [Early access](/early-access): be first to try the apps\n" : "")
+    + "- [Partner with us](/orbyt#partner): for businesses\n"
+    + "- [Investors](/orbyt#invest) and [buying the company or an app](/orbyt#buy): these only start a conversation\n\n"
+    + "It takes about 2 minutes, a real person reads every message, and we reply by email within 7 days, even if the answer is no. "
+    + "[Open Orbyt](/orbyt)";
+
+  const AFTER_SEND = "A real person reads your message and emails you back within 7 days, even if the answer is no. "
+    + "If we'd like to hear more, we'll ask in that email. We keep your message only to reply.";
+
+  const START_IDEA = "**Genesis** turns an idea into a plan, one small step at a time. It's free, needs no account, and your ideas stay in "
+    + "this browser.\n\n1. Write it in three lines: a name, one line about it, and who it's for.\n2. Tick off easy steps from Spark to Launch.\n\n"
+    + "[Start my idea](/genesis#new) or [try an example](/genesis#example).";
+
   const CHIPS = {
     "/": [["Which app fits me?", "Which MTRX Horizyn app would fit me? Ask me one or two questions first."],
-      ["What's ready today?", "Which MTRX Horizyn apps and features can I use today, and which are still in development?"],
-      ["How do I start an idea?", "I have an idea. How can Genesis help me start it?"]],
+      ["What's ready today?", { answer: appsAnswer }],
+      ["How do I start an idea?", { answer: START_IDEA }]],
     "/genesis": [["Show my projects", "Show my projects."], ["What's my next step?", "What's my next step?"],
       ["Help with today's spark", "Help me think of an answer for today's spark."]],
-    "/orbyt": [["Which form is for me?", "Which Orbyt form should I use?"], ["What happens after I send?", "What happens after I send a message in Orbyt?"],
+    "/orbyt": [["Which form is for me?", { answer: ORBYT }], ["What happens after I send?", { answer: AFTER_SEND }],
       ["Bring a Genesis idea", "How do I pitch a project from Genesis in Orbyt?"]],
     "/partners": [["How do partners earn?", "How do CyberLogix AI partners earn?"], ["What can partners see?", "What can a partner see in the partner portal?"],
       ["How do I apply?", "How do I apply to be a partner?"]],
@@ -67,13 +109,19 @@
     // Core 1.2.0: the welcome is this site's own (docs/PILOT.md). The Mac app
     // keeps the design's.
     tagline: "Help with ideas and MTRX apps",
+    // Core 1.4.0: the pills that can work with no AI key do. "Help with my
+    // idea" goes to Genesis's start form (free, and Genesis has its own free
+    // AI help), "What is Orbyt?" and "What apps are coming?" are answered at
+    // once from the site's own facts; "Explain this page" needs the AI.
     welcomePills: [
-      { icon: "spark", label: "Help with my idea", action: "Help me with my idea. Ask me one question at a time. My idea: " },
-      { icon: "chat", label: "What is Orbyt?", action: "What is Orbyt, and which of its forms fits me?", send: true },
+      { icon: "spark", label: "Help with my idea", link: "/genesis#new" },
+      { icon: "chat", label: "What is Orbyt?", answer: ORBYT },
       { icon: "bars", label: "Explain this page", action: "explain-screen" },
-      { icon: "bolt", label: "What apps are coming?", action: "Which MTRX Horizyn apps are coming, what does each one do, and how do I hear when one opens?", send: true },
+      { icon: "bolt", label: "What apps are coming?", answer: appsAnswer },
       { icon: "key", label: "Add my AI key", action: "settings" },
     ],
+    // Under an answer Pilot gives without a key.
+    answerMore: "Want more? Add your AI key to ask anything.",
     // This site has no use for making pictures or videos.
     hideKeySections: ["image", "video"],
     // Tucked away, the robot shrinks into its corner instead of hanging off
@@ -109,7 +157,8 @@
     avoid: [".g-track", "#g-address", ".g-head .g-address", ".g-item-row", ".g-group-head", ".g-hidden-steps > summary",
       ".g-add-form", ".g-moves", "#g-week"],
     screen,
-    chips: () => (CHIPS[path] || []).map(([label, prompt]) => ({ label, prompt })),
+    // A suggestion is an AI prompt (words), or an answer given at once (core 1.4.0).
+    chips: () => (CHIPS[path] || []).map(([label, what]) => (typeof what === "string" ? { label, prompt: what } : { label, ...what })),
     taskPrompt: () => TASKS[path] || "Help me get started on this page.",
     facts: {
       ai: d.ai === "on", freeDay: Number(d.freeDay) || 0, freeHour: Number(d.freeHour) || 0,
