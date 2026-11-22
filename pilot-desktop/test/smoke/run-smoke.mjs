@@ -283,6 +283,11 @@ async function motion15() {
     await wait(400);
     await settle(robot);
   }
+  // The pointer goes away from him again (on him, he'd hold still for the click).
+  await robot.mouse.move(4, 4);
+  await wait(300);
+  check(await robot.evaluate(() => window.__pilotRobot.over()) === false && await app.evaluate(() => global.__pilotTest.gate().ignoring) === true,
+    "the pointer moved off him: clicks go through again");
 
   // Frames to look at (with --shots): the walk cycle both ways, a run, a climb on each side, a flight.
   const T = (d, k) => Array.from({ length: k }, (_v, i) => Math.round((d * (i + 0.5)) / k));
@@ -359,7 +364,8 @@ try {
   await app.evaluate(() => global.__pilotTest.startLife());
   const spots = [];
   for (let i = 0; i < 24; i += 1) { await wait(500); spots.push(await robot.evaluate(() => Math.round(window.__pilotRobot.actor.rect().left))); }
-  check(Math.max(...spots) - Math.min(...spots) > 40, "Always moving: he sets off on his own within seconds");
+  const held = await app.evaluate(() => global.__pilotTest.hold());
+  check(Math.max(...spots) - Math.min(...spots) > 40, `Always moving: he sets off on his own within seconds${held ? ` (held: ${held})` : ""}`);
   check(await robot.evaluate(() => [...document.querySelectorAll(".pa-pose.pa-on")].length <= 2), "one pose picture at a time (two only while they cross-fade)");
   // The rest is checked one tick at a time, from standing still (so it isn't
   // "mid-move" that holds him).
