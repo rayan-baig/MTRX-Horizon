@@ -134,8 +134,16 @@
     document.querySelectorAll("[data-next]").forEach((link) => {
       link.hidden = !link.dataset.next.split(" ").includes(kind);
     });
+    showPanel();
+  }
+
+  // The Sent panel, its top just under the bar (its scroll-margin-top), so
+  // "Sent." and where the reply goes are the first thing seen. It used to be
+  // centred, and with the Pitch Review offer it is taller than a phone's
+  // screen, so "Sent." ended up above the top (1.23.0).
+  function showPanel() {
     $("v-sent").hidden = false;
-    $("v-sent").scrollIntoView({ block: "center" });
+    $("v-sent").scrollIntoView({ block: "start", behavior: "instant" });
   }
 
   // ---------------------------------------------------------------- Pitch Review
@@ -146,10 +154,37 @@
 
   const review = $("v-review");
   let reviewTicket = "";
+  // The ticket is also kept in this tab's sessionStorage (with when the
+  // pitch was sent), so cancelling at Stripe's checkout and coming back
+  // (/orbyt#review-cancelled) can say the pitch was sent and offer the review
+  // again. It goes when the tab is closed, or after two days (as on the server).
+  const TICKET_KEY = "orbyt-review-ticket";
+  const TICKET_MS = 2 * 86400 * 1000;
+  // The Sent screen's first line then: the pitch went before checkout, and
+  // cancelling took no money.
+  const CANCELLED = "Your pitch was sent. Checkout was cancelled, and nothing was charged.";
+
+  function keepTicket(ticket) {
+    try {
+      const tab = storage("sessionStorage");
+      if (tab && ticket) tab.setItem(TICKET_KEY, JSON.stringify({ ticket, at: Date.now() }));
+    } catch (_) { /* storage off: only the offer on return is lost */ }
+  }
+
+  function keptTicket() {
+    try {
+      const tab = storage("sessionStorage");
+      const kept = JSON.parse((tab && tab.getItem(TICKET_KEY)) || "null");
+      if (kept && typeof kept.ticket === "string" && /^[A-Za-z0-9_-]{20,64}$/.test(kept.ticket)
+          && typeof kept.at === "number" && Date.now() - kept.at < TICKET_MS) return kept;
+    } catch (_) { /* nothing kept */ }
+    return null;
+  }
 
   function offerReview(ticket) {
     if (!review) return;
     reviewTicket = ticket || "";
+    keepTicket(reviewTicket);
     review.hidden = !reviewTicket;
     $("v-review-adult").checked = false;
     if ($("v-review-ai")) $("v-review-ai").checked = false;
@@ -342,6 +377,31 @@
   if (offered && window.location.hash !== "#pitch") history.replaceState(null, "", "#pitch");
   route(false);
   if (offered) useProject(offered);
+
+  // Back from cancelling Stripe's checkout for a Pitch Review: the pitch was
+  // sent before checkout, so say so, and that nothing was charged, then offer
+  // the review again (when this tab still has its ticket). Not an empty form.
+  if (window.location.hash === "#review-cancelled") {
+    const kept = keptTicket();
+    sentKind = "pitch";
+    offerReview(kept ? kept.ticket : "");
+    for (const k of V.KINDS) $(`v-${k}`).hidden = true;
+    $("v-sent-line").textContent = CANCELLED;
+    $("v-next-step").textContent = kept ? V.nextLine(new Date(kept.at)) : "";
+    document.querySelectorAll("[data-next]").forEach((link) => {
+      link.hidden = !link.dataset.next.split(" ").includes("pitch");
+    });
+    showPanel();
+    // Once more when the page has loaded (fonts can move it), unless the
+    // visitor has scrolled or tapped since.
+    let moved = false;
+    ["wheel", "touchstart", "keydown", "mousedown"].forEach((type) =>
+      window.addEventListener(type, () => { moved = true; }, { passive: true, once: true }));
+    const again = () => { if (!moved && !$("v-sent").hidden) showPanel(); };
+    if (document.readyState === "complete") requestAnimationFrame(again);
+    else window.addEventListener("load", () => requestAnimationFrame(again), { once: true });
+  }
+
   // Arrived straight at a form: keep it in view while the page settles.
   // The first jump runs as soon as this script does, often before the fonts
   // have arrived; when they swap in, the text above the form reflows and the

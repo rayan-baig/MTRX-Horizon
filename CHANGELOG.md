@@ -36,6 +36,17 @@ which version is live.
   privacy page says which kind of service and which address, what's sent, and how long the
   review is kept (with the buyer's email: 90 days after it's sent or refunded). Person mode keeps
   today's words.
+- **Orbyt on a phone: after sending a pitch, "Sent." comes first.** The Sent screen now opens at
+  its top, just under the bar, so "Sent." and "We'll reply to ..." are the first thing you see (on a
+  small phone they used to be scrolled off the top, leaving the paid offer first, and on a computer
+  the top of the swirl was under the bar). The Pitch Review offer now comes after the confirmation
+  and "While you wait".
+- **Cancelling at Stripe's checkout no longer loses your place.** It used to bring you back to an
+  empty pitch form, with nothing saying the pitch had gone. Now the page says "Your pitch was sent.
+  Checkout was cancelled, and nothing was charged.", with the review offer again (its one-time code
+  is kept in this tab only, and goes when the tab is closed; the privacy page says so).
+- **Early access says what it keeps, like Orbyt's forms do:** "We keep only your email and the
+  apps you picked, until you unsubscribe (one click, any time), and never pass them on."
 
 ## 1.22.0 (22 November 2026)
 

@@ -242,7 +242,7 @@ def test_checkout_makes_a_one_time_stripe_payment_for_that_pitch(client, review)
     assert form["metadata[product]"] == "orbyt_review" and form["metadata[message]"] == str(message_id)
     assert form["payment_intent_data[metadata][product]"] == "orbyt_review"
     assert form["success_url"] == "https://testserver/orbyt/review/thanks"
-    assert form["cancel_url"] == "https://testserver/orbyt#pitch"
+    assert form["cancel_url"] == "https://testserver/orbyt#review-cancelled"
     assert "grown-ups (18+)" in form["custom_text[submit][message]"]
     # The pitcher may be young: the grown-up gives their own email at checkout.
     assert "customer_email" not in form and "subscription_data[metadata][product]" not in form

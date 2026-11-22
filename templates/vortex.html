@@ -321,10 +321,22 @@
     <p class="v-next-step" id="v-next-step"></p>
     <p class="v-sent-small">Check your spam folder if you don't hear from us. We keep your message only to
       reply, for up to {{ keep_days }} days.</p>
+    <div class="v-next" id="v-next">
+      <p class="v-next-head">While you wait</p>
+      <a class="v-next-link path-pitch" data-next="pitch" href="/genesis" hidden>
+        <b>Keep building your idea in Genesis</b><span>Tick off small steps from Spark to Launch, free.</span></a>
+      <a class="v-next-link path-partner" data-next="partner" href="/partners" hidden>
+        <b>See how partners earn with CyberLogix AI</b><span>For repair firms, food safety advisers and kitchen suppliers.</span></a>
+      <a class="v-next-link path-invest path-buy" data-next="invest buy" href="#our-apps" hidden>
+        <b>Look around our apps</b><span>What each one does, and who it's for.</span></a>
+    </div>
     {%- if review %}
     {#- Orbyt Pitch Review, offered only after a pitch is sent, and only while
         it is on: vortex.js shows it when the server sent a ticket for this
-        pitch. Pitching stays free; this is an optional extra. -#}
+        pitch. Pitching stays free; this is an optional extra, so it comes
+        after the confirmation and "While you wait" (1.23.0), never first.
+        Coming back from cancelling Stripe's checkout shows it again, under
+        "Your pitch was sent. Checkout was cancelled, and nothing was charged." -#}
     <div class="v-review" id="v-review" hidden>
       <p class="v-review-head">Optional extra: a Pitch Review</p>
       {%- if review.ai %}
@@ -358,15 +370,6 @@
       {%- endif %}
     </div>
     {%- endif %}
-    <div class="v-next" id="v-next">
-      <p class="v-next-head">While you wait</p>
-      <a class="v-next-link path-pitch" data-next="pitch" href="/genesis" hidden>
-        <b>Keep building your idea in Genesis</b><span>Tick off small steps from Spark to Launch, free.</span></a>
-      <a class="v-next-link path-partner" data-next="partner" href="/partners" hidden>
-        <b>See how partners earn with CyberLogix AI</b><span>For repair firms, food safety advisers and kitchen suppliers.</span></a>
-      <a class="v-next-link path-invest path-buy" data-next="invest buy" href="#our-apps" hidden>
-        <b>Look around our apps</b><span>What each one does, and who it's for.</span></a>
-    </div>
     <div class="cta-row">
       <a class="btn btn-ghost btn-small" href="#" id="v-again">Send another</a>
       <a class="btn btn-ghost btn-small" href="/">Back to MTRX Horizyn</a>
