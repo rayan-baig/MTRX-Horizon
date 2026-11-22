@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#050816">
+<link rel="icon" href="/static/img/logo-64.png" sizes="64x64">
+<link rel="stylesheet" href="{{ asset('css/site.css') }}">
+<link rel="stylesheet" href="{{ asset('css/genesis.css') }}">
+<title>Genesis is moving · MTRX Horizyn</title>
+<meta name="robots" content="noindex">
+</head>
+<body class="legal-page genesis-page">
+<div class="sky" aria-hidden="true"></div>
+{#- Genesis moved to its own address (horizon/hosts.py). Only genesis.* sends
+    a visitor here, once, with a one-time code: static/js/genesis-move.js
+    reads what Genesis saved in this browser at this address and goes
+    straight back with it in the new address's #part (never sent to any
+    server). Too much for an address, this page offers it as a file. -#}
+<main class="genesis g-move" id="g-move" data-genesis="{{ genesis }}">
+  <section class="panel g-move-panel">
+    <p class="eyebrow g-eyebrow">Genesis</p>
+    <h1 class="g-title g-move-title">Genesis has its own address now</h1>
+    <p class="g-move-wait" id="g-move-wait">Bringing your projects to <b>{{ genesis | replace('https://', '') | replace('http://', '') }}</b>…</p>
+    <div class="g-move-big" id="g-move-big" hidden>
+      <p>You have a lot saved in Genesis: too much to carry over in one go. Two quick steps keep all of it:</p>
+      <ol>
+        <li><button class="btn btn-genesis" type="button" id="g-move-download">Download my projects</button></li>
+        <li><a class="btn btn-ghost" id="g-move-go" href="{{ genesis }}/">Open Genesis</a>, then press <b>Import</b> and choose the file.</li>
+      </ol>
+      <p class="g-move-small">Your projects stay in this browser. Nothing is sent to MTRX Horizyn.</p>
+    </div>
+    <noscript><p><a href="{{ genesis }}/">Open Genesis</a></p></noscript>
+  </section>
+</main>
+<script src="{{ asset('js/genesis-store.js') }}" defer></script>
+<script src="{{ asset('js/genesis-move.js') }}" defer></script>
+</body>
+</html>

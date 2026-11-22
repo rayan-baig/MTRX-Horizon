@@ -4,6 +4,32 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.25.0 (22 November 2026)
+
+- **Genesis and Orbyt can have their own addresses: genesis.mtrxhorizyn.com and
+  orbyt.mtrxhorizyn.com,** like RankUp, CyberLogix and OmniArmor. The same site answers all three
+  and shows Genesis or Orbyt at the top of its own address. It's off until you add the two
+  addresses in Render and at your DNS provider and set `MTRX_APP_SUBDOMAINS=1`: the README's
+  "Genesis and Orbyt on their own addresses" has the steps in plain words.
+- **Once on, old links keep working.** `mtrxhorizyn.com/genesis` and `/orbyt` (and anything after
+  them, such as `/orbyt#pitch`) send visitors to the new addresses. Every link on the site, Pilot's
+  answers, the sitemap, link previews, the Genesis Pro key email and the addresses Stripe sends
+  buyers back to (Genesis Pro, and Pitch Review's thanks page and cancelled-checkout return) use
+  the new ones. The Pitch Review's AI is told Genesis's new address too.
+- **Nobody loses their Genesis projects.** A browser keeps each address's saved data separate, so
+  the first time someone opens Genesis at its new address it asks the old address, once, for
+  everything Genesis saved there (projects, sparks, a Pro key) and brings it over in the browser
+  ("Your projects moved here"). It travels in the part of the address after `#`, which is never
+  sent to any server, is checked like an imported file, and needs a one-time code made in that
+  tab, so a made-up link can't add anything. Too much for one address: a file to download and
+  import.
+- **"Pitch this in Orbyt" still brings the idea along** when Orbyt is on its own address: Orbyt
+  opens in a new tab and Genesis hands it the idea's name, pitch and who it's for by message, never
+  in an address.
+- **Safe by design:** Genesis and Orbyt set no cookies, can't open the console or any API but
+  their own, every change must come from a page on the exact same address, and every address sends
+  the same strict security headers.
+
 ## 1.24.0 (22 November 2026)
 
 - **Home: the Projects count adds up.** The tile said "4 · Genesis & Orbyt live · 3 apps in

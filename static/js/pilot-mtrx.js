@@ -24,7 +24,35 @@
     "/early-access": "Early access",
     "/creators": "Creators",
   };
-  const path = (window.location.pathname.replace(/\/+$/, "") || "/");
+  // Genesis and Orbyt on their own addresses (1.25.0, horizon/hosts.py):
+  // where each is ("/genesis", or https://genesis.mtrxhorizyn.com once
+  // moved), and the main site's address once they have.
+  const GENESIS = d.genesis || "/genesis";
+  const ORBYT = d.orbyt || "/orbyt";
+  const SITE = d.site || "";
+  const whole = (u) => /^https?:\/\//.test(u);
+  const originOf = (u) => { try { return new URL(u).origin; } catch (_) { return ""; } };
+  const here = (u) => whole(u) && originOf(u) === window.location.origin;
+  // A link into Genesis or Orbyt: a path where the page is on that address.
+  const into = (base, rest) => {
+    if (!whole(base)) return base + rest;
+    const tail = rest.startsWith("/") ? rest : `/${rest}`;
+    return here(base) ? tail : base + tail;
+  };
+  const onApp = here(GENESIS) || here(ORBYT);
+  // This page, named as it is on the main site ("/genesis" on genesis.*'s "/").
+  let path = (window.location.pathname.replace(/\/+$/, "") || "/");
+  if (here(GENESIS)) path = path === "/" ? "/genesis" : `/genesis${path}`;
+  else if (here(ORBYT)) path = path === "/" ? "/orbyt" : `/orbyt${path}`;
+  // The answers below are written with main-site paths ("/genesis#new",
+  // "/orbyt#pitch", "/privacy"); each is sent to its right address here.
+  function addressOf(target) {
+    if (target === "/genesis" || /^\/genesis[#/?]/.test(target)) return into(GENESIS, target.slice(8));
+    if (target === "/orbyt" || /^\/orbyt[#/?]/.test(target)) return into(ORBYT, target.slice(6));
+    return onApp && SITE ? SITE + target : target;
+  }
+  const links = (text) => String(text).replace(/\]\((\/(?![/\\])[^\s)]*)\)/g, (_, target) => `](${addressOf(target)})`);
+  const answered = (answer) => (typeof answer === "function" ? (...a) => links(answer(...a)) : links(answer));
 
   // The apps, as Orbyt's "Our apps" lists them (main.pilot_facts: from the
   // catalog, an address only once an app is open).
@@ -55,7 +83,7 @@
 
   // On Orbyt itself there's no "Open Orbyt" (1.22.0): the visitor is there.
   const onOrbyt = path === "/orbyt";
-  const ORBYT = "**Orbyt** is the official place to work with MTRX Horizyn. Pick the path that fits you:\n\n"
+  const ORBYT_TEXT = "**Orbyt** is the official place to work with MTRX Horizyn. Pick the path that fits you:\n\n"
     + "- [Pitch an idea](/orbyt#pitch): a business or app idea, or one from Genesis\n"
     + (early ? "- [Early access](/early-access): be first to try the apps\n" : "")
     + "- [Partner with us](/orbyt#partner): for businesses\n"
@@ -225,6 +253,13 @@
     return { name };
   }
 
+  // "Help with my idea": straight to Genesis's start form where Pilot may
+  // link there (the same address); from another address, its answer with
+  // the link, since Pilot's link pills only open this address's pages.
+  const startPill = whole(into(GENESIS, "#new"))
+    ? { icon: "spark", label: "Help with my idea", answer: answered(START_IDEA) }
+    : { icon: "spark", label: "Help with my idea", link: into(GENESIS, "#new") };
+
   window.Pilot.mount({
     appName: "MTRX Horizyn",
     name: "Pilot",
@@ -236,10 +271,10 @@
     // AI help), "What is Orbyt?" and "What apps are coming?" are answered at
     // once from the site's own facts; "Explain this page" needs the AI.
     welcomePills: [
-      { icon: "spark", label: "Help with my idea", link: "/genesis#new" },
-      { icon: "chat", label: "What is Orbyt?", answer: ORBYT },
+      startPill,
+      { icon: "chat", label: "What is Orbyt?", answer: answered(ORBYT_TEXT) },
       { icon: "bars", label: "Explain this page", action: "explain-screen" },
-      { icon: "bolt", label: "What apps are coming?", answer: appsAnswer },
+      { icon: "bolt", label: "What apps are coming?", answer: answered(appsAnswer) },
       { icon: "key", label: "Add my AI key", action: "settings" },
     ],
     // Under an answer Pilot gives without a key.
@@ -258,7 +293,7 @@
     // an OpenAI-compatible API (main.PILOT_COMPATIBLE_HOSTS and the visitor's
     // own computer).
     compatibleHosts: (d.hosts || "").split(/\s+/).filter(Boolean),
-    privacyUrl: "/privacy",
+    privacyUrl: addressOf("/privacy"),
     // Visitors may be young: said once, plainly, with no nagging. It sits
     // just above the message box until a key is added.
     keyNote: "Pilot uses a grown-up's AI key (the AI companies require 18+).",
@@ -281,7 +316,8 @@
       ".g-add-form", ".g-moves", "#g-week", ".v-path-go"],
     screen,
     // A suggestion is an AI prompt (words), or an answer given at once (core 1.4.0).
-    chips: () => (CHIPS[path] || []).map(([label, what]) => (typeof what === "string" ? { label, prompt: what } : { label, ...what })),
+    chips: () => (CHIPS[path] || []).map(([label, what]) => (typeof what === "string" ? { label, prompt: what }
+      : { label, ...what, ...(what.answer ? { answer: answered(what.answer) } : {}) })),
     taskPrompt: () => TASKS[path] || "Help me get started on this page.",
     facts: {
       ai: d.ai === "on", freeDay: Number(d.freeDay) || 0, freeHour: Number(d.freeHour) || 0,

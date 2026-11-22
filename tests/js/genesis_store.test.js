@@ -537,3 +537,74 @@ test("1.16.0: saved extras are cleaned: real days and ids only, answers capped, 
   b.edit((e) => { e.links["2026-11-21"] = "p-9"; });
   assert.deepEqual(b.load().links, { "2026-11-21": "p-9" });
 });
+
+// ---------------------------------------------------------------- moving to genesis.* (1.25.0)
+
+test("the idea card names Genesis's own address once it has one", () => {
+  const project = S.create(idea).project;
+  assert.match(S.shareText(project, "https://mtrxhorizyn.com", "genesis.mtrxhorizyn.com"), /Made with Genesis · genesis\.mtrxhorizyn\.com$/);
+  // Anything that isn't a plain host name is left out.
+  assert.match(S.shareText(project, "https://mtrxhorizyn.com", "evil.example/x y"), /mtrxhorizyn\.com\/genesis$/);
+  assert.equal(S.madeAt("https://mtrxhorizyn.com", ""), "mtrxhorizyn.com/genesis");
+});
+
+test("everything Genesis saved moves to the new address, and nothing there is lost", () => {
+  const old = memoryStorage();
+  const a = S.create(idea).project;
+  const b = S.create({ ...idea, name: "Paw Board" }).project;
+  S.open(old).save([a, b]);
+  S.openDaily(old).save({ "2026-11-20": "Market stalls", "2026-11-21": "A bike club" });
+  const proKey = "GP-AAAA-BBBB-CCCC-DDDD-EEEE-FFFF";
+  S.keepProKey(old, proKey);
+  const packed = S.packMove(old);
+  assert.match(packed, /^[A-Za-z0-9_-]+$/);
+  // The new address already has a project and a spark of its own.
+  const now = memoryStorage();
+  const mine = S.create({ ...idea, name: "Mine" }).project;
+  S.open(now).save([mine]);
+  S.openDaily(now).save({ "2026-11-21": "My own answer" });
+  const result = S.applyMove(now, S.unpackMove(packed));
+  assert.deepEqual(result, { projects: 2, sparks: 1 });
+  assert.deepEqual(S.open(now).load().map((p) => p.name).sort(), ["Mine", "Nova", "Paw Board"]);
+  const days = S.openDaily(now).load();
+  assert.equal(days["2026-11-21"], "My own answer");
+  assert.equal(days["2026-11-20"], "Market stalls");
+  assert.equal(S.readProKey(now), proKey);
+  // Moving twice adds nothing new; the old address keeps its copy.
+  S.applyMove(now, S.unpackMove(packed));
+  assert.equal(S.open(now).load().length, 3);
+  assert.equal(S.open(old).load().length, 2);
+});
+
+test("a Pro key already at the new address is never replaced", () => {
+  const old = memoryStorage();
+  S.keepProKey(old, "GP-AAAA-BBBB-CCCC-DDDD-EEEE-FFFF");
+  const now = memoryStorage();
+  S.keepProKey(now, "GP-ZZZZ-YYYY-XXXX-WWWW-VVVV-UUUU");
+  S.applyMove(now, S.unpackMove(S.packMove(old)));
+  assert.equal(S.readProKey(now), "GP-ZZZZ-YYYY-XXXX-WWWW-VVVV-UUUU");
+});
+
+test("nothing saved packs to nothing, and bad or foreign data is refused", () => {
+  assert.equal(S.packMove(memoryStorage()), "");
+  assert.equal(S.packMove(blocked), "");
+  assert.equal(S.packMove(null), "");
+  for (const bad of ["", "not base64!", "e30", Buffer.from('{"v":2,"data":{}}').toString("base64url"), "x".repeat(S.MOVE_MOST * 2 + 1)]) {
+    assert.equal(S.unpackMove(bad), null, bad.slice(0, 20));
+  }
+  // Only Genesis's own keys come over, whatever else is packed.
+  const sneaky = Buffer.from(JSON.stringify({ v: 1, data: { "mtrx-pilot-keys": "secret", "mtrx-genesis": "[]" } })).toString("base64url");
+  assert.deepEqual(Object.keys(S.unpackMove(sneaky)), ["mtrx-genesis"]);
+  // A project that isn't one is checked like an imported file: it never arrives.
+  const junk = Buffer.from(JSON.stringify({ v: 1, data: { "mtrx-genesis": JSON.stringify({ projects: [{ name: "<img>" }] }) } })).toString("base64url");
+  const now = memoryStorage();
+  S.applyMove(now, S.unpackMove(junk));
+  assert.equal(S.open(now).load().length, 0);
+});
+
+test("a full browser's worth of projects is too big for an address, so it goes as a file", () => {
+  const old = memoryStorage();
+  const many = Array.from({ length: 40 }, (_, i) => ({ ...S.create({ ...idea, name: `Idea ${i}` }).project, notes: "n".repeat(4000) + i }));
+  S.open(old).save(many);
+  assert.ok(S.packMove(old).length > S.MOVE_MOST);
+});

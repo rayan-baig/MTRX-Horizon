@@ -24,8 +24,10 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
+from jinja2 import pass_context
+
 from . import (catalog, config, costs, creators, db, early_access, errors, genesis_ai, genesis_pro, growth,
-               health, lock, news, numbers, offers, orbyt_review, ready, stats, upkeep, vortex)
+               health, hosts, lock, news, numbers, offers, orbyt_review, ready, stats, upkeep, vortex)
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -110,7 +112,8 @@ class _HideSecretLinks(logging.Filter):
         # The early access links in an email confirm or unsubscribe someone.
         message = record.getMessage()
         return not any(secret in message for secret in (
-            "/console/add/", "/genesis/pro/welcome", "/early-access/confirm/", "/early-access/unsubscribe/"))
+            "/console/add/", "/genesis/pro/welcome", "/pro/welcome", "/early-access/confirm/",
+            "/early-access/unsubscribe/"))
 
 
 logging.getLogger("uvicorn.access").addFilter(_HideSecretLinks())
@@ -168,6 +171,12 @@ def pilot_facts() -> dict:
         "early": early_access.ready(),
         "creators": creators.enabled(),
         "hosts": " ".join(PILOT_COMPATIBLE_HOSTS + PILOT_LOCAL_HOSTS),
+        # Where Genesis and Orbyt are ("/genesis", or their own addresses once
+        # moved), and the main site's address once they have (hosts.py), so
+        # Pilot's own answers link to the right place from any of the three.
+        "genesis": hosts.link("genesis").rstrip("/"),
+        "orbyt": hosts.link("orbyt").rstrip("/"),
+        "site": settings.public_url if hosts.on() else "",
         # The apps, exactly as Orbyt's "Our apps" lists them (catalog.public:
         # an address only once an app is open), so Pilot's own answer to
         # "What apps are coming?" needs no AI and can't disagree with the site.
@@ -189,6 +198,27 @@ def pilot_apps() -> list:
 
 
 templates.env.globals["pilot_facts"] = pilot_facts
+
+
+# Links between the main site and Genesis and Orbyt (hosts.py): the same
+# words on every page, whichever address the page is on.
+def app_url(app: str, rest: str = "") -> str:
+    """Genesis or Orbyt: "/genesis#new", or its own address once moved."""
+    return hosts.link(app, rest)
+
+
+@pass_context
+def site_url(context, path: str) -> str:
+    """A main-site page ("/privacy", "/#company"): as it is on the main
+    site, and the main site's whole address on genesis.* and orbyt.*, where
+    "/" is Genesis or Orbyt itself."""
+    request = context.get("request")
+    netloc = request.url.netloc if request is not None else ""
+    return hosts.main_url(netloc) + path if hosts.which(netloc) else path
+
+
+templates.env.globals["app_url"] = app_url
+templates.env.globals["site_url"] = site_url
 
 # Pilot's pose pictures (docs/PILOT.md): every <pose>.webp or .png in
 # static/pilot/poses/ whose name is one of these is used by the moving robot,
@@ -406,6 +436,54 @@ async def guard(request: Request, call_next):
     return response
 
 
+class _AppHosts:
+    """Genesis and Orbyt on their own addresses (hosts.py), before anything
+    else sees the request: on genesis.* and orbyt.* the path is the app's
+    own (the router sees /genesis for genesis.*/), and the main site's old
+    addresses answer 301 with the new ones. Does nothing while off."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or not hosts.on():
+            await self.app(scope, receive, send)
+            return
+        netloc = dict(scope.get("headers") or []).get(b"host", b"").decode("latin-1").strip().lower()
+        path = scope.get("path", "")
+        query = scope.get("query_string", b"").decode("latin-1")
+        app_name = hosts.which(netloc)
+        target = None
+        if app_name:
+            inner = hosts.inside(app_name, path)
+            if inner is not None:
+                scope = dict(scope, path=inner, raw_path=inner.encode())
+            elif path == f"/{app_name}" or path.startswith(f"/{app_name}/"):
+                # genesis.*/genesis (an old link with the new address): the page itself.
+                target = hosts.link(app_name, path[len(app_name) + 1:] or "/")
+            elif path.startswith(("/api/", "/console")) or path == hosts.MOVE_PATH:
+                # Never the console or another API on an app's address.
+                scope = dict(scope, path="/.not-here", raw_path=b"/.not-here")
+            else:
+                target = hosts.main_url(netloc) + path
+        else:
+            moved = hosts.outside(path)
+            if moved:
+                target = hosts.link(*moved)
+        if target is None:
+            await self.app(scope, receive, send)
+            return
+        response = RedirectResponse(target + (f"?{query}" if query else ""), status_code=301)
+        # A day, not forever: if the move were ever undone, browsers would
+        # follow the new addresses again within a day.
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        _lock_down(response)
+        await response(scope, receive, send)
+
+
+app.add_middleware(_AppHosts)
+
+
 @app.exception_handler(404)
 async def _404(request: Request, exc):
     return not_found(request)
@@ -552,10 +630,18 @@ def brand(request: Request):
 # the visitor presses its button (genesis_ai.py).
 @app.api_route("/genesis", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def genesis(request: Request):
+    base = base_url(request)
     return templates.TemplateResponse(request, "genesis.html", {
         "page": "genesis",
         "contact": config.get().contact_email,
-        "base": base_url(request),
+        "base": base,
+        # Its own address, for search engines, link previews and the idea
+        # card's "Made with Genesis" line (hosts.py).
+        "canonical": hosts.canonical("genesis", base),
+        "where": hosts.host("genesis") if hosts.on() else "",
+        # On genesis.*: where it asks, once, for projects saved at the old
+        # address (hosts.MOVE_PATH, static/js/genesis-move.js).
+        "move": hosts.main_url(request.url.netloc) + hosts.MOVE_PATH if hosts.which(request.url.netloc) else "",
         "ai": genesis_ai.enabled(),
         # The free Ask Genesis limits, so the page can say them plainly.
         "free_day": config.get().genesis_ai_per_day,
@@ -579,6 +665,19 @@ def genesis_pro_welcome(request: Request):
     return response
 
 
+# Genesis's one page that stays on the main site once it has its own address
+# (hosts.py): it hands whatever Genesis saved in this browser at the old
+# address to genesis.*, in the address's #part, which is never sent to any
+# server (static/js/genesis-move.js). Only genesis.* sends visitors here.
+@app.get(hosts.MOVE_PATH, response_class=HTMLResponse)
+def genesis_move(request: Request):
+    if not hosts.on() or hosts.which(request.url.netloc):
+        return not_found(request)
+    return _quiet(templates.TemplateResponse(request, "genesis_move.html", {
+        "page": "genesis", "contact": config.get().contact_email, "genesis": hosts.root("genesis"),
+    }))
+
+
 # Orbyt: the official place to partner with MTRX Horizyn, pitch an
 # idea, reach the company as an investor or ask about buying it or an app
 # (vortex.py). It keeps what the visitor chooses to send, for the owner to
@@ -587,10 +686,12 @@ def genesis_pro_welcome(request: Request):
 @app.api_route("/orbyt", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def vortex_page(request: Request):
     apps = [catalog.public(a) for a in catalog.released()]
+    base = base_url(request)
     return templates.TemplateResponse(request, "vortex.html", {
         "page": "vortex",
         "contact": config.get().contact_email,
-        "base": base_url(request),
+        "base": base,
+        "canonical": hosts.canonical("orbyt", base),
         "apps": apps,
         # "Our apps (opening soon)" until one of them is open (catalog.opening).
         "opening": catalog.opening(apps),
@@ -616,8 +717,9 @@ async def orbyt_review_checkout(request: Request):
     if not orbyt_review.ready():
         return not_found(request)
     body = await _json(request)
+    # Stripe sends the buyer back to Orbyt's own address (hosts.py).
     status, answer = await run_in_threadpool(orbyt_review.checkout, client_ip(request), body.get("ticket"),
-                                             body.get("adult"), base_url(request), body.get("ai"))
+                                             body.get("adult"), hosts.root("orbyt", base_url(request)), body.get("ai"))
     return JSONResponse(answer, status_code=status)
 
 
@@ -677,7 +779,7 @@ def bundle_page(request: Request):
 @app.api_route("/vortex", methods=["GET", "HEAD"])
 @app.api_route("/chroma-vortex", methods=["GET", "HEAD"])
 def chroma_vortex():
-    return RedirectResponse("/orbyt", status_code=301)
+    return RedirectResponse(hosts.link("orbyt"), status_code=301)
 
 
 # Is the server answering at all? Never touches the database, so the host's
@@ -721,9 +823,12 @@ def robots(request: Request):
 def sitemap(request: Request):
     # Set MTRX_PUBLIC_URL on the live site: without it the address comes
     # from the request, and is escaped since the visitor chose it.
-    base = xml_escape(base_url(request))
+    base = base_url(request)
     pages = () if config.get().noindex else public_pages()
-    urls = "".join(f"  <url><loc>{base}{page}</loc></url>\n" for page in pages)
+    # Genesis and Orbyt at their own addresses once moved (hosts.py); each
+    # one's robots.txt names this sitemap, which lets it list them.
+    where = {f"/{a}": hosts.canonical(a, base) for a in hosts.APPS}
+    urls = "".join(f"  <url><loc>{xml_escape(where.get(page, base + page))}</loc></url>\n" for page in pages)
     body = ('<?xml version="1.0" encoding="UTF-8"?>\n'
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
             f"{urls}</urlset>\n")
@@ -806,7 +911,9 @@ async def genesis_pro_checkout(request: Request):
     if not genesis_pro.ready():
         return not_found(request)
     plan = (await _json(request)).get("plan")
-    status, answer = await run_in_threadpool(genesis_pro.checkout, client_ip(request), plan, base_url(request))
+    # Stripe sends the buyer back to Genesis's own address (hosts.py).
+    status, answer = await run_in_threadpool(genesis_pro.checkout, client_ip(request), plan,
+                                             hosts.root("genesis", base_url(request)))
     return JSONResponse(answer, status_code=status)
 
 
@@ -838,7 +945,7 @@ async def genesis_pro_portal(request: Request):
     if not genesis_pro.ready():
         return not_found(request)
     status, answer = await run_in_threadpool(genesis_pro.portal, client_ip(request), _pro_key(request),
-                                             base_url(request))
+                                             hosts.root("genesis", base_url(request)))
     return JSONResponse(answer, status_code=status)
 
 

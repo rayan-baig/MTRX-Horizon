@@ -9,7 +9,7 @@
 <body class="legal-page vortex-page">
 <div class="sky" aria-hidden="true"></div>
 <header class="topbar">
-  <a class="brand" href="/" aria-label="MTRX Horizyn home">
+  <a class="brand" href="{{ site_url('/') }}" aria-label="MTRX Horizyn home">
     <span class="brand-mark" aria-hidden="true"></span>
     <span class="brand-text">
       <span class="wordmark">MTRX <b>HORIZYN</b></span>
@@ -17,14 +17,14 @@
     </span>
   </a>
   <nav class="mainnav" aria-label="Main">
-    <a href="/">Home</a>
-    <a href="/genesis">Genesis</a>
-    <a href="/orbyt" class="active">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>
-    <a href="/privacy">Privacy</a>
-    <a href="/terms">Terms</a>
-    <a href="/brand">Brand</a>
+    <a href="{{ site_url('/') }}">Home</a>
+    <a href="{{ app_url('genesis') }}">Genesis</a>
+    <a href="{{ app_url('orbyt') }}" class="active">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>
+    <a href="{{ site_url('/privacy') }}">Privacy</a>
+    <a href="{{ site_url('/terms') }}">Terms</a>
+    <a href="{{ site_url('/brand') }}">Brand</a>
   </nav>
-  <a class="v-home" href="/">Home</a>
+  <a class="v-home" href="{{ site_url('/') }}">Home</a>
 </header>
 
 {#- Where Stripe sends a Pitch Review buyer after paying (horizon/orbyt_review.py).
@@ -56,8 +56,8 @@
     <p class="v-sent-small">No confirmation after a few minutes? Check the spam folder{% if contact %}, or write to
       <a href="mailto:{{ contact }}">{{ contact }}</a>{% endif %}.</p>
     <div class="cta-row">
-      <a class="btn btn-ghost btn-small" href="/genesis">Keep building in Genesis</a>
-      <a class="btn btn-ghost btn-small" href="/">Back to MTRX Horizyn</a>
+      <a class="btn btn-ghost btn-small" href="{{ app_url('genesis') }}">Keep building in Genesis</a>
+      <a class="btn btn-ghost btn-small" href="{{ site_url('/') }}">Back to MTRX Horizyn</a>
     </div>
   </section>
 </main>

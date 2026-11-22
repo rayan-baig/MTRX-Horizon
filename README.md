@@ -5,8 +5,11 @@ The website for MTRX Horizyn, the parent company of **RankUp**, **CyberLogix AI*
 
 - **The home page** (`/`) shows the three apps, what each one does, and what the company
   stands for. Every number on it is true.
-- **Genesis** (`/genesis`) is where anyone can turn an idea into a project and take it
-  from Spark to Launch. See [Genesis](#genesis).
+- **Genesis** (`/genesis`, or `genesis.mtrxhorizyn.com` once
+  [moved](#genesis-and-orbyt-on-their-own-addresses)) is where anyone can turn an idea into a
+  project and take it from Spark to Launch. See [Genesis](#genesis).
+- **Orbyt** (`/orbyt`, or `orbyt.mtrxhorizyn.com` once moved) is where people pitch an idea,
+  partner with the company, or write as an investor or buyer.
 - **Pilot** is the AI assistant on every public page: a small robot in the corner that runs on
   the visitor's own AI key, from their browser. See [docs/PILOT.md](docs/PILOT.md).
 - **The control console** (`/console`) shows how the apps and this server are doing. It has
@@ -87,6 +90,8 @@ subdomain of MTRX Horizyn's: **mtrxhorizyn.com**.
 | Address | What is there |
 |---|---|
 | `mtrxhorizyn.com` and `www.mtrxhorizyn.com` | This site: the home page and the console |
+| `genesis.mtrxhorizyn.com` | Genesis (this same app; see [below](#genesis-and-orbyt-on-their-own-addresses)) |
+| `orbyt.mtrxhorizyn.com` | Orbyt (this same app) |
 | `rankup.mtrxhorizyn.com` | RankUp |
 | `cyberlogix.mtrxhorizyn.com` | CyberLogix |
 | `omniarmor.mtrxhorizyn.com` | OmniArmor |
@@ -129,6 +134,73 @@ app never reaches another, and none of them reaches the console. To keep it that
    | `RANKUP_STATS_URL` | `https://rankup.mtrxhorizyn.com/api/stats` |
    | `CYBERLOGIX_STATS_URL` | `https://cyberlogix.mtrxhorizyn.com/api/stats` |
    | `OMNIARMOR_STATS_URL` | `https://omniarmor.mtrxhorizyn.com/api/stats` |
+
+### Genesis and Orbyt on their own addresses
+
+Genesis and Orbyt are part of this site, but each can have its own address, like the apps:
+**genesis.mtrxhorizyn.com** and **orbyt.mtrxhorizyn.com**. The same service answers all three;
+it looks at the address a visitor used and shows Genesis or Orbyt at the top (`/`). Until you
+switch it on they stay at `mtrxhorizyn.com/genesis` and `mtrxhorizyn.com/orbyt`.
+
+**To switch it on, in plain words** (about 15 minutes, plus waiting for DNS):
+
+1. **Tell Render about the two addresses.** In Render, open the MTRX Horizyn service, then
+   **Settings**, then **Custom Domains**. Press **Add Custom Domain**, type
+   `genesis.mtrxhorizyn.com`, and save. Do the same for `orbyt.mtrxhorizyn.com`. Render then shows,
+   for each one, the address it should point at (the service's own `...onrender.com` address).
+2. **Add two DNS records** where you manage the domain's DNS (the company you bought
+   mtrxhorizyn.com from, or Cloudflare if you moved it there). Add a record for each:
+
+   | Type | Name (or Host) | Value (or Target / Points to) |
+   |---|---|---|
+   | `CNAME` | `genesis` | the `...onrender.com` address Render showed |
+   | `CNAME` | `orbyt` | the same `...onrender.com` address |
+
+   Leave TTL as it is ("Auto" or 1 hour). If you use Cloudflare, set the little cloud to grey
+   ("DNS only") so Render can make the certificate. Don't touch the records that are already
+   there (the main domain, `www`, `rankup`, `cyberlogix`, `omniarmor`, and the email ones).
+3. **Wait for both to say "Verified" and "Certificate issued"** in Render's Custom Domains list.
+   That's usually a few minutes, sometimes an hour or two. Check by opening
+   `https://genesis.mtrxhorizyn.com/healthz` and `https://orbyt.mtrxhorizyn.com/healthz`: each
+   should answer `"ok": true` with a padlock.
+4. **Switch it on.** In Render, the service's **Environment**, add `MTRX_APP_SUBDOMAINS` with the
+   value `1`, and save (the site restarts by itself in a minute or so).
+5. **Point Stripe's webhooks at the new addresses** (optional, the old ones keep working): Genesis
+   Pro's at `https://genesis.mtrxhorizyn.com/api/genesis/pro/stripe` and Pitch Review's at
+   `https://orbyt.mtrxhorizyn.com/api/orbyt/review/stripe`. Nothing else in Stripe changes: the
+   site tells Stripe where to send buyers back each time.
+
+That's all. From then on:
+
+- `mtrxhorizyn.com/genesis` and `mtrxhorizyn.com/orbyt` (and anything after them, such as
+  `/orbyt#pitch`) send visitors to the new addresses, so old links and bookmarks still work.
+- Every link on the site, Pilot's answers, the sitemap, link previews, the Pro key email and
+  Stripe's "back to the site" addresses use the new ones.
+- **Nobody loses their Genesis projects.** Genesis keeps projects in the visitor's own browser,
+  and a browser keeps each address's saved data separate. So the first time someone opens
+  Genesis at its new address, it quietly asks the old address (once) for anything Genesis saved
+  there and brings it over, saying "Your projects moved here". The projects travel inside the
+  browser, in the part of the address after `#`, which browsers never send to any server; a
+  one-time code made in that tab means a link someone made up can't put projects into anyone's
+  browser. If someone has saved a very large amount, the old address offers it as a file to
+  download, and they press **Import** on Genesis. Pilot's own settings (such as an AI key a
+  visitor added) are not moved: they add it again at the new address.
+
+To undo it, delete `MTRX_APP_SUBDOMAINS` (or set it to `0`). The redirects are only kept by
+browsers for a day, so within a day everything is back at `/genesis` and `/orbyt`. Projects made
+at the new address stay there; visitors can move them with **Download** and **Import**.
+
+Two more settings, only if the addresses are ever different: `MTRX_GENESIS_HOST` and
+`MTRX_ORBYT_HOST` (default `genesis.mtrxhorizyn.com` and `orbyt.mtrxhorizyn.com`). A staging copy
+leaves `MTRX_APP_SUBDOMAINS` unset. On your own computer it stays off too, so `/genesis` and
+`/orbyt` work as before.
+
+**How it stays safe:** each address is its own site to a browser. Genesis and Orbyt set no
+cookies, and the console's cookies belong to `mtrxhorizyn.com` alone. Neither address can open
+the console or any API but its own (they answer "page not found"), no address lets another read
+its answers, every change must come from a page on the exact same address, every address sends
+the same strict security headers (including HTTPS-only), and nothing is shared between them
+except what a visitor chooses to bring.
 
 **Email.** Everything is sent from the one domain, so the records that keep mail out of
 spam are set up once, on `mtrxhorizyn.com`, at whoever manages its DNS, using the values the

@@ -862,3 +862,10 @@
   .g-how span { font-size: 0; line-height: 0; }
   .g-how strong { display: block; margin: 0; font-size: 12.5px; line-height: 1.25; }
 }
+
+/* ---------- 1.25.0: the old address's one page, while Genesis moves ---------- */
+.g-move { max-width: 640px; margin: 0 auto; }
+.g-move-panel { display: grid; gap: 12px; padding: 26px 24px; }
+.g-move-title { font-size: clamp(26px, 6vw, 36px); }
+.g-move-big ol { display: grid; gap: 12px; margin: 0; padding-left: 22px; }
+.g-move-small { margin-top: 8px; color: var(--muted); font-size: 13.5px; }

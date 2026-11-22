@@ -105,8 +105,8 @@
     <a href="#projects">Projects</a>
     {% if live %}<a href="#activity">Analytics</a>{% endif %}
     <a href="#company">About</a>
-    {% if not demo %}<a href="/genesis" class="nav-genesis">Genesis</a>
-    <a href="/orbyt" class="nav-vortex">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>{% endif %}
+    {% if not demo %}<a href="{{ app_url('genesis') }}" class="nav-genesis">Genesis</a>
+    <a href="{{ app_url('orbyt') }}" class="nav-vortex">Orbyt <small class="orbyt-sub">· Work with MTRX Horizyn</small></a>{% endif %}
   </nav>
   <div class="tools">
     <form class="search" role="search" id="search">
@@ -140,8 +140,8 @@
           Genesis and Orbyt, then the three apps in development below. -#}
       {% if not demo %}<div class="ready-today" aria-label="Ready today">
         <p class="ready-k">Ready today</p>
-        <a class="ready-tile ready-genesis" href="/genesis"><b>Genesis</b><span>Plan your idea, free</span><i aria-hidden="true">→</i></a>
-        <a class="ready-tile ready-orbyt" href="/orbyt"><b>Orbyt</b><span>Pitch it, or work with us</span><i aria-hidden="true">→</i></a>
+        <a class="ready-tile ready-genesis" href="{{ app_url('genesis') }}"><b>Genesis</b><span>Plan your idea, free</span><i aria-hidden="true">→</i></a>
+        <a class="ready-tile ready-orbyt" href="{{ app_url('orbyt') }}"><b>Orbyt</b><span>Pitch it, or work with us</span><i aria-hidden="true">→</i></a>
       </div>{% endif %}
       <p class="lede">MTRX Horizyn is the parent company of {{ how_many }} apps, {{ apps_words }}{% if more %}, including{% else %}:{% endif %}
         <a href="#learn-rankup">RankUp</a>, a chores game for families;
@@ -152,7 +152,7 @@
         {% if early %}<a class="btn btn-primary" href="#early-access">Get early access <span aria-hidden="true">→</span></a>
         {% else %}<a class="btn btn-primary" href="#apps">Explore Our Apps <span aria-hidden="true">→</span></a>{% endif %}
         {#- "Try Genesis free" where the button is narrow (phones). -#}
-        {% if not demo %}<a class="btn btn-ghost btn-genesis" href="/genesis"><span class="say-long">Try Genesis now (free)</span><span class="say-short">Try Genesis free</span></a>{% endif %}
+        {% if not demo %}<a class="btn btn-ghost btn-genesis" href="{{ app_url('genesis') }}"><span class="say-long">Try Genesis now (free)</span><span class="say-short">Try Genesis free</span></a>{% endif %}
         <a class="btn btn-ghost btn-tour" href="#tour">
           <svg class="play" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg>
           Quick tour</a>
@@ -223,10 +223,10 @@
       {%- set live_now = plist | selectattr("status", "in", ["Live", "Open"]) | list | length %}
       <ul class="facts" aria-label="Where to go next">
         {%- if not demo %}
-        <li><a class="fact fact-genesis" href="/genesis">
+        <li><a class="fact fact-genesis" href="{{ app_url('genesis') }}">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.2 6.6 6.8 2.4-6.8 2.4L12 20.5l-2.2-6.6L3 11.5l6.8-2.4Z"/></svg>
           <span class="fact-k">Genesis</span><b class="fact-v">Free</b><span class="fact-s">Turn your idea into a plan</span></a></li>
-        <li><a class="fact fact-orbyt" href="/orbyt">
+        <li><a class="fact fact-orbyt" href="{{ app_url('orbyt') }}">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M3.5 15.5c-1.6-3 3-8.2 9.3-10.5 4.6-1.6 7.2-.9 7.7 1"/><path d="M20.5 8.5c1.6 3-3 8.2-9.3 10.5-4.6 1.6-7.2.9-7.7-1"/></svg>
           <span class="fact-k">Orbyt</span><b class="fact-v">Pitch</b><span class="fact-s">Your idea, or work with us</span></a></li>
         {%- endif %}
@@ -458,8 +458,8 @@
   <a class="sheet-shut" href="#" aria-label="Close"></a>
   <nav class="sheet-card menu" aria-label="MTRX Horizyn menu">
     <a href="#apps">Our apps</a>
-    {% if not demo %}<a href="/genesis">Genesis: start your own idea</a>
-    <a href="/orbyt">Orbyt: work with us</a>
+    {% if not demo %}<a href="{{ app_url('genesis') }}">Genesis: start your own idea</a>
+    <a href="{{ app_url('orbyt') }}">Orbyt: work with us</a>
     <a href="/bundle">Kitchen Safety Bundle: alarms and checklists together</a>
     <a href="/partners">Partners: recommend CyberLogix AI and earn</a>
     {% if early %}<a href="#early-access">Early access: be first in line</a>{% endif %}

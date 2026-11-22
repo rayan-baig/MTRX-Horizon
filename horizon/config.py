@@ -102,6 +102,9 @@ class Settings:
     creators_enabled: bool
     creator_percent: int
     creator_months: int
+    app_subdomains: bool
+    genesis_host: str
+    orbyt_host: str
 
 
 def parse_knock(raw: str) -> tuple[str, ...]:
@@ -264,6 +267,16 @@ def _admin_urls(env, app_urls: dict) -> dict:
     return urls
 
 
+# A host name, with a port only where one is needed (genesis.localhost:8000
+# on a computer): nothing that could change where a link goes.
+_HOST_NAME = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)+(?::\d{1,5})?")
+
+
+def _host(raw: str | None, default: str) -> str:
+    value = (raw or "").strip().lower()
+    return value if len(value) <= 253 and _HOST_NAME.fullmatch(value) else default
+
+
 def get() -> Settings:
     env = os.environ
     app_urls = {k: _web_address(env.get(f"{k.upper()}_URL")) for k in APP_KEYS}
@@ -384,4 +397,12 @@ def get() -> Settings:
         creators_enabled=env.get("CREATORS_ENABLED", "") == "1",
         creator_percent=_percent(env.get("CREATOR_PERCENT"), 20),
         creator_months=_whole_number(env.get("CREATOR_MONTHS"), 12),
+        # Genesis and Orbyt on their own addresses (hosts.py): off until
+        # MTRX_APP_SUBDOMAINS=1, once the two addresses are set up at the host
+        # and in DNS (README, "Genesis and Orbyt on their own addresses").
+        # Off, they stay at /genesis and /orbyt, as on a computer running the
+        # site by hand and in the tests.
+        app_subdomains=env.get("MTRX_APP_SUBDOMAINS", "") == "1",
+        genesis_host=_host(env.get("MTRX_GENESIS_HOST"), "genesis.mtrxhorizyn.com"),
+        orbyt_host=_host(env.get("MTRX_ORBYT_HOST"), "orbyt.mtrxhorizyn.com"),
     )

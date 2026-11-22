@@ -764,14 +764,22 @@
   // A project as a few lines of words to paste anywhere. Only what the card
   // shows: never the notes, the ticks or anything about the visitor.
 
-  function shareText(project, base) {
+  // `where`: Genesis's own address once it has one (genesis.mtrxhorizyn.com).
+  function shareText(project, base, where) {
     const p = clean(project);
     if (!p) return "";
     const pr = progress(p);
     const stage = pr.launched ? "Launched" : (STAGES.find((s) => s.key === p.stage) || STAGES[0]).name;
-    const home = typeof base === "string" && /^https?:\/\/[^\s/]+$/.test(base) ? base.replace(/^https?:\/\//, "") : "mtrxhorizyn.com";
     return [`${p.name}: ${p.pitch}`, `For ${p.audience}`, `${stage} · ${pr.percent}% of the way to launch`,
-      `Made with Genesis · ${home}/genesis`].join("\n");
+      `Made with Genesis · ${madeAt(base, where)}`].join("\n");
+  }
+
+  // Where Genesis is, as words for the idea card: its own address, or the
+  // site's address and /genesis.
+  function madeAt(base, where) {
+    if (typeof where === "string" && /^[a-z0-9.-]{1,253}(:\d{1,5})?$/.test(where)) return where;
+    const home = typeof base === "string" && /^https?:\/\/[^\s/]+$/.test(base) ? base.replace(/^https?:\/\//, "") : "mtrxhorizyn.com";
+    return `${home}/genesis`;
   }
 
   // A file name for the card picture: "nova-notes-card.png".
@@ -834,6 +842,97 @@
     return `${today} (up to ${hour} an hour).`;
   }
 
+  // ---------------------------------------------------------------- moving to genesis.* (1.25.0)
+  // Genesis moved to its own address (genesis.mtrxhorizyn.com), and a
+  // browser keeps each address's saved data apart. So, once, the old
+  // address's page (/genesis-move, static/js/genesis-move.js) packs what
+  // Genesis saved there into the new address's #part, which a browser never
+  // sends to any server, and the new page unpacks it here. Too big for an
+  // address: a file to download and import instead.
+
+  const MOVE_KEYS = [KEY, DAILY_KEY, EXTRAS_KEY, PRO_KEY];
+  // Characters in the packed #part: well inside what every browser takes.
+  const MOVE_MOST = 60000;
+
+  function toBase64Url(text) {
+    const bytes = new TextEncoder().encode(text);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  function fromBase64Url(text) {
+    if (typeof text !== "string" || !/^[A-Za-z0-9_-]+$/.test(text)) return null;
+    try {
+      const binary = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Everything Genesis saved in `storage`, packed for an address's #part,
+  // or "" when there is nothing.
+  function packMove(storage) {
+    const out = {};
+    for (const key of MOVE_KEYS) {
+      let raw = null;
+      try { raw = storage ? storage.getItem(key) : null; } catch (_) { raw = null; }
+      if (typeof raw === "string" && raw) out[key] = raw;
+    }
+    return Object.keys(out).length ? toBase64Url(JSON.stringify({ v: 1, data: out })) : "";
+  }
+
+  // The packed data back as { key: saved text }, only Genesis's own keys, or null.
+  function unpackMove(packed) {
+    if (typeof packed !== "string" || packed.length > MOVE_MOST * 2) return null;
+    const text = fromBase64Url(packed);
+    let parsed;
+    try { parsed = JSON.parse(text); } catch (_) { return null; }
+    if (!parsed || parsed.v !== 1 || !parsed.data || typeof parsed.data !== "object") return null;
+    const out = {};
+    for (const key of MOVE_KEYS) if (typeof parsed.data[key] === "string") out[key] = parsed.data[key];
+    return out;
+  }
+
+  // Put moved data into this address's storage, without losing anything
+  // already here: projects are merged as an import is, today's sparks fill
+  // in days not answered here, and the extras and a Pro key only arrive
+  // where there are none. Everything is checked as a downloaded file is.
+  // Returns how many projects and sparks arrived.
+  function applyMove(storage, data) {
+    const result = { projects: 0, sparks: 0 };
+    if (!data) return result;
+    const json = (raw) => { try { return JSON.parse(raw); } catch (_) { return null; } };
+    if (data[KEY]) {
+      const store = open(storage);
+      const moved = importText(data[KEY], store.load());
+      if (!moved.error) {
+        const before = store.load().length;
+        store.save(moved.projects);
+        result.projects = Math.max(0, moved.projects.length - before) + (moved.replaced || 0);
+      }
+    }
+    if (data[DAILY_KEY]) {
+      const daily = openDaily(storage);
+      const mine = daily.load();
+      const theirs = cleanDays((json(data[DAILY_KEY]) || {}).days);
+      for (const [day, answer] of Object.entries(theirs)) {
+        if (!(day in mine)) { mine[day] = answer; result.sparks += 1; }
+      }
+      if (result.sparks) daily.save(mine);
+    }
+    if (data[EXTRAS_KEY]) {
+      const extras = openExtras(storage);
+      const here = extras.load();
+      if (!Object.keys(here.links).length && !Object.keys(here.answers).length) extras.save(cleanExtras(json(data[EXTRAS_KEY])));
+    }
+    if (data[PRO_KEY] && !readProKey(storage)) keepProKey(storage, data[PRO_KEY]);
+    return result;
+  }
+
   const api = {
     freeLine, freeBlocked, waitWords,
     KEY, LIMITS, STAGES, CHECKLIST, line, block, addressProblem, suggestAddress, nameWarning,
@@ -843,8 +942,9 @@
     PRO_KEY, proKey, readProKey, keepProKey, forgetProKey, planText, planFileName,
     EXAMPLES, example, nextStep,
     DAILY_KEY, DAILY_LIMIT, FREEZE_EARN, PROMPTS, dayKey, dayNumber, promptFor, cleanDays, streak, lastDays, openDaily,
-    shareText, cardFileName,
+    shareText, madeAt, cardFileName,
     EXTRAS_KEY, ANSWER_LIMIT, cleanExtras, openExtras,
+    MOVE_KEYS, MOVE_MOST, packMove, unpackMove, applyMove,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.GenesisStore = api;

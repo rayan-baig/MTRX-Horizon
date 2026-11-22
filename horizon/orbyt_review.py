@@ -185,8 +185,11 @@ def _has_review(conn, message_id: int) -> bool:
 
 # ---------------------------------------------------------------- checkout
 
-def checkout(who: str, ticket, adult, base: str, ai_ok=None) -> tuple[int, dict]:
+def checkout(who: str, ticket, adult, page: str, ai_ok=None) -> tuple[int, dict]:
     """A Stripe Checkout page for one Pitch Review. Returns (status, JSON).
+    `page` is the Orbyt page's address, with no slash at the end
+    (hosts.root): https://orbyt.mtrxhorizyn.com, or the main site's address
+    and /orbyt.
     In AI mode the grown-up must also agree that the idea is sent to an AI
     service to write it; the checkout is marked so (metadata ai=1), and only
     a checkout marked so is ever written by AI."""
@@ -209,10 +212,10 @@ def checkout(who: str, ticket, adult, base: str, ai_ok=None) -> tuple[int, dict]
         "mode": "payment",
         "line_items[0][price]": s.orbyt_review_price,
         "line_items[0][quantity]": "1",
-        "success_url": f"{base}/orbyt/review/thanks",
+        "success_url": f"{page}/review/thanks",
         # Back from cancelling: the page says the pitch was sent and nothing
         # was charged, and offers the review again (static/js/vortex.js).
-        "cancel_url": f"{base}/orbyt#review-cancelled",
+        "cancel_url": f"{page}#review-cancelled",
         "metadata[product]": PRODUCT,
         "metadata[message]": str(pitch["id"]),
         "payment_intent_data[metadata][product]": PRODUCT,

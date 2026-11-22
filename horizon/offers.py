@@ -17,7 +17,7 @@ What the pages say about money is only what the apps' code does:
   together. Set it to None and the page says "Ask about bundle pricing".
 """
 
-from . import catalog, vortex
+from . import catalog, hosts, vortex
 
 PARTNER_APP = "cyberlogix"
 BUNDLE_APPS = ("cyberlogix", "omniarmor")
@@ -43,7 +43,7 @@ def partner_context() -> dict:
     # Apply opens the Partner form with CyberLogix AI picked and this kind
     # chosen (static/js/vortex-form.js, fromHash). If CyberLogix AI is not
     # public right now, the form opens with nothing picked.
-    apply = f"/orbyt#partner/{PARTNER_APP}/{PARTNER_KIND}" if app else "/orbyt#partner"
+    apply = hosts.link("orbyt", f"#partner/{PARTNER_APP}/{PARTNER_KIND}" if app else "#partner")
     return {
         "app": app,
         "apply": apply,
@@ -58,7 +58,7 @@ def bundle_context() -> dict:
     trial = _signup(base["url"]) if base else ""
     # With no address to send a visitor to, ask in Orbyt, with the
     # bundle's apps already picked.
-    ask = "/orbyt#partner/" + ",".join(a["key"] for a in picked) if picked else "/orbyt#partner"
+    ask = hosts.link("orbyt", "#partner/" + ",".join(a["key"] for a in picked) if picked else "#partner")
     return {
         "apps": picked,
         "complete": len(picked) == len(BUNDLE_APPS),
