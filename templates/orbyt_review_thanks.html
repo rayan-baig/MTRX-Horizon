@@ -35,12 +35,22 @@
     <span class="v-swirl v-swirl-small" aria-hidden="true"><i class="v-ring r1"></i><i class="v-ring r2"></i><i class="v-core"></i></span>
     <p class="eyebrow v-kicker">Pitch Review</p>
     <h1 class="v-sent-title">Thank you.</h1>
+    {%- if review.ai %}
+    <p class="v-sent-line">Once Stripe confirms the payment (usually within a minute), we email a confirmation to the
+      address used at checkout, and then your AI-written review, usually within an hour.</p>
+    <ul class="v-thanks-list">
+      <li>An AI service writes the review from the idea you sent: what's strong, what to fix, and your next 3
+        steps. Our automatic rules check it before it's sent.</li>
+      <li>If it isn't with you within {{ review.days }} day{{ 's' if review.days != 1 }}, or we can't review your
+        idea, you get a full refund.</li>
+    {%- else %}
     <p class="v-sent-line">Once Stripe confirms the payment (usually within a minute), we email a confirmation to the
       address used at checkout, with the date your review is due.</p>
     <ul class="v-thanks-list">
       <li>A real person at MTRX Horizyn reads your pitch and emails a personal review within {{ review.days }}
         day{{ 's' if review.days != 1 }}: what's strong, what to fix, and your next 3 steps.</li>
       <li>If it's late, or we can't review your idea, you get a full refund.</li>
+    {%- endif %}
       <li>It's a one-time payment, not a subscription.</li>
     </ul>
     <p class="v-sent-small">No confirmation after a few minutes? Check the spam folder{% if contact %}, or write to

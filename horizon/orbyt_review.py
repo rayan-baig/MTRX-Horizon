@@ -23,6 +23,13 @@ How it is bought, without accounts:
    the owner is emailed a short notice. The console lists open reviews with
    their due dates and a Mark sent button.
 
+Who writes it (1.23.0): in AI mode (orbyt_review_ai.py; the default once
+its three AI settings are there) the review is written by AI and emailed by
+itself, usually within minutes, after the grown-up agreed at checkout that
+the idea is sent to an AI service. The days are still the promise. If the
+AI can't write it in time, the order is handed to the owner as in person
+mode. The console shows every review, with Resend and Refund.
+
 Genesis Pro's Stripe plumbing is reused (genesis_pro: the API call, the
 signature check, the limits table), but this has its own webhook endpoint,
 signing secret and event table: Genesis Pro's endpoint answers "page not
@@ -45,7 +52,7 @@ import secrets
 import threading
 import time
 
-from . import config, db, genesis_pro, health
+from . import config, db, genesis_pro, health, orbyt_review_ai
 
 LOG = logging.getLogger("horizon")
 
@@ -75,6 +82,7 @@ ADULT = "Please tick to say you're 18 or over. If you're not, ask a parent or gu
 EXPIRED = ("This Pitch Review offer has run out. Your pitch is still sent, and we'll reply as usual. "
            "To add a review, send your pitch again.")
 ALREADY = "This pitch already has a Pitch Review."
+AI_OK = "Please tick to agree that the idea is sent to an AI service to write the review."
 
 _TICKET = re.compile(r"[A-Za-z0-9_-]{20,64}")
 _SESSION = re.compile(r"cs_[A-Za-z0-9_]{1,250}")
@@ -134,7 +142,10 @@ def offer() -> dict | None:
     if not ready():
         return None
     s = config.get()
-    return {"price": s.orbyt_review_price_text, "days": s.orbyt_review_days}
+    # ai: the review is written by AI (orbyt_review_ai.py) and sent within
+    # about an hour; the days are still the promise (and the refund line).
+    return {"price": s.orbyt_review_price_text, "days": s.orbyt_review_days,
+            "ai": orbyt_review_ai.mode() == "ai", "ai_host": orbyt_review_ai.service_host()}
 
 
 def due_text(at: float) -> str:
@@ -174,10 +185,16 @@ def _has_review(conn, message_id: int) -> bool:
 
 # ---------------------------------------------------------------- checkout
 
-def checkout(who: str, ticket, adult, base: str) -> tuple[int, dict]:
-    """A Stripe Checkout page for one Pitch Review. Returns (status, JSON)."""
+def checkout(who: str, ticket, adult, base: str, ai_ok=None) -> tuple[int, dict]:
+    """A Stripe Checkout page for one Pitch Review. Returns (status, JSON).
+    In AI mode the grown-up must also agree that the idea is sent to an AI
+    service to write it; the checkout is marked so (metadata ai=1), and only
+    a checkout marked so is ever written by AI."""
     if adult is not True:
         return 400, {"error": ADULT, "field": "adult"}
+    ai = orbyt_review_ai.mode() == "ai"
+    if ai and ai_ok is not True:
+        return 400, {"error": AI_OK, "field": "ai"}
     with db.connect() as conn:
         pitch = _pitch_for(conn, ticket)
         if pitch is None:
@@ -200,9 +217,15 @@ def checkout(who: str, ticket, adult, base: str) -> tuple[int, dict]:
         "payment_intent_data[metadata][message]": str(pitch["id"]),
         "payment_intent_data[description]": "Orbyt Pitch Review",
         "custom_text[submit][message]": (
+            f"Checkout is for grown-ups (18+). The review is written by AI from the idea and emailed to the "
+            f"address you give here, usually within an hour. If it isn't with you within {days} "
+            f"day{'s' if days != 1 else ''}, you get a full refund." if ai else
             f"Checkout is for grown-ups (18+). The review is emailed to the address you give here within "
             f"{days} day{'s' if days != 1 else ''}, or you get a full refund."),
     }
+    if ai:
+        fields["metadata[ai]"] = "1"
+        fields["payment_intent_data[metadata][ai]"] = "1"
     try:
         url = genesis_pro._stripe("checkout/sessions", fields).get("url")
     except genesis_pro.StripeError as e:
@@ -296,8 +319,13 @@ def _paid(conn, obj: dict, created: int):
         "due_at, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)",
         (message_id, session, genesis_pro._id(obj.get("payment_intent")), email, idea, cents, currency,
          paid_at, due_at, time.time()))
-    order = conn.execute("SELECT * FROM orbyt_reviews WHERE session = ?", (session,)).fetchone()
-    return ("order added" if found else "order added, pitch not found"), dict(order)
+    order = dict(conn.execute("SELECT * FROM orbyt_reviews WHERE session = ?", (session,)).fetchone())
+    # Written by AI only when the grown-up agreed at checkout and AI mode is
+    # still on now; otherwise a person writes it, as before.
+    order["ai"] = bool(found) and meta.get("ai") == "1" and orbyt_review_ai.mode() == "ai"
+    if order["ai"]:
+        orbyt_review_ai.queue(conn, order["id"])
+    return ("order added" if found else "order added, pitch not found"), order
 
 
 def _refunded(conn, obj: dict) -> str:
@@ -321,6 +349,22 @@ def buyer_email(order: dict) -> tuple[str, str]:
     """The confirmation: what was bought, by when, and the refund promise."""
     idea = f" for “{order['idea']}”" if order["idea"] else ""
     paid = genesis_pro.money(order["cents"], order["currency"]) if order["cents"] else ""
+    if order.get("ai"):
+        subject = "Your Orbyt Pitch Review is on its way"
+        body = (f"Thank you for buying a Pitch Review{idea}.\n\n"
+                f"Your review is written by AI from the pitch that was sent, and emailed to this address,\n"
+                f"usually within an hour: what's strong, what to fix, the next 3 steps, and whether the\n"
+                f"idea might fit Orbyt. To write it, the idea's words (never anyone's name or email\n"
+                f"address) are sent to an AI service, as agreed at checkout.\n\n"
+                + (f"Paid: {paid}, once. It is not a subscription.\n\n" if paid else
+                   "It is a one-time payment, not a subscription.\n\n")
+                + f"If the review isn't with you by {due_text(order['due_at'])}, or we can't review the idea,\n"
+                  "you get a full refund. Refunds are made by hand through Stripe, back to the card that\n"
+                  "paid; just reply to ask.\n\n"
+                  "A review is an opinion to help, not an offer to invest in, buy or partner on the idea.\n"
+                  "The idea stays yours.\n\n"
+                  "- MTRX Horizyn\n")
+        return subject, body
     subject = "Your Orbyt Pitch Review is booked"
     body = (f"Thank you for buying a Pitch Review{idea}.\n\n"
             f"A real person at MTRX Horizyn will read the pitch and email a personal review to this\n"
@@ -340,12 +384,34 @@ def owner_email(order: dict) -> tuple[str, str]:
     """The owner's short notice: the idea's name and the due date only.
     The buyer's address is read in the console, so no inbox keeps it."""
     idea = vortex_clean(order["idea"]) or "(the pitch is no longer there)"
+    if order.get("ai"):
+        subject = "MTRX Horizyn: a paid Pitch Review is being written by AI"
+        body = (f"Someone bought a Pitch Review.\n\n"
+                f"Idea:  {idea}\n"
+                f"Due:   {due_text(order['due_at'])}\n\n"
+                f"The AI writes it and emails it to the buyer by itself, usually within an hour. You can\n"
+                f"read it in the console's Pitch Reviews section. You'll get another email only if it\n"
+                f"needs you.\n\n- MTRX Horizyn\n")
+        return subject, body
     subject = f"MTRX Horizyn: a paid Pitch Review is due by {due_text(order['due_at'])}"
     body = (f"Someone bought a Pitch Review.\n\n"
             f"Idea:  {idea}\n"
             f"Due:   {due_text(order['due_at'])}\n\n"
             f"Read the pitch and write the review from the console's Pitch Reviews section,\n"
             f"then press Mark sent. If it can't be done in time, refund it in Stripe.\n\n- MTRX Horizyn\n")
+    return subject, body
+
+
+def handover_email(order: dict, why: str) -> tuple[str, str]:
+    """The AI couldn't do this one: the owner writes it (or refunds it), and why."""
+    idea = vortex_clean(order.get("idea") or "") or "(the idea's name is gone)"
+    subject = f"MTRX Horizyn: a Pitch Review needs you (due {due_text(order['due_at'])})"
+    body = (f"The AI couldn't write and send the Pitch Review for this idea, so it's yours to do.\n\n"
+            f"Idea:  {idea}\n"
+            f"Due:   {due_text(order['due_at'])}\n"
+            f"Why:   {why}\n\n"
+            f"Write it from the console's Pitch Reviews section and press Mark sent, or refund it,\n"
+            f"before it's due.\n\n- MTRX Horizyn\n")
     return subject, body
 
 
@@ -367,6 +433,9 @@ def _send_both(order: dict):
         health.send_email(subject, body)
     except Exception as exc:
         LOG.warning("Pitch Review notice not sent: %s", type(exc).__name__)
+    if order.get("ai"):
+        # After the confirmation, so the review never arrives before it.
+        orbyt_review_ai.kick()
 
 
 def send_emails(order: dict, wait: bool = False):
@@ -380,20 +449,39 @@ def send_emails(order: dict, wait: bool = False):
 
 # ---------------------------------------------------------------- the console
 
+# What the console says about an AI job, by its state.
+AI_STATES = {"queued": "The AI is writing it", "writing": "The AI is writing it",
+             "written": "Written by AI; the email is being sent", "sent": "Written by AI",
+             "person": "Needs you", "stopped": "The AI stopped: it was closed first"}
+
+
 def _public(r, now: float) -> dict:
+    ai = None
+    if r["job_state"]:
+        ai = {"state": r["job_state"], "said": AI_STATES.get(r["job_state"], r["job_state"]),
+              "note": r["job_note"] or "", "text": r["job_text"] or "", "tries": r["job_tries"] or 0,
+              "next_at": r["job_next"], "written_at": r["job_written"], "emailed_at": r["job_emailed"]}
     return {"id": r["id"], "message_id": r["message_id"], "idea": r["idea"], "email": r["email"],
             "pitch": r["pitch"] or "", "audience": r["audience"] or "", "name": r["name"] or "",
             "pitch_there": r["name"] is not None, "paid_at": r["paid_at"], "due_at": r["due_at"],
             "due": due_text(r["due_at"]), "late": r["status"] == "open" and r["due_at"] < now,
             "status": r["status"], "sent_at": r["sent_at"], "refunded_at": r["refunded_at"],
-            "paid": genesis_pro.money(r["cents"], r["currency"]) if r["cents"] else ""}
+            "paid": genesis_pro.money(r["cents"], r["currency"]) if r["cents"] else "",
+            # Who writes it: the AI (with where it is, and its words once
+            # written), or the owner.
+            "by": "ai" if ai and ai["state"] != "person" else "person", "ai": ai,
+            "can_resend": bool(ai and ai["text"] and r["email"] and r["status"] != "refunded"),
+            "can_refund": bool(r["payment_intent"] and r["status"] != "refunded")}
 
 
 def console(now: float | None = None) -> dict:
     """Open reviews, soonest due first, and the latest done or refunded."""
     now = time.time() if now is None else now
-    query = ("SELECT o.*, m.name, m.pitch, m.audience FROM orbyt_reviews o "
-             "LEFT JOIN vortex_messages m ON m.id = o.message_id AND m.kind = 'pitch' ")
+    query = ("SELECT o.*, m.name, m.pitch, m.audience, j.state AS job_state, j.note AS job_note, "
+             "j.text AS job_text, j.tries AS job_tries, j.next_at AS job_next, j.written_at AS job_written, "
+             "j.emailed_at AS job_emailed FROM orbyt_reviews o "
+             "LEFT JOIN vortex_messages m ON m.id = o.message_id AND m.kind = 'pitch' "
+             "LEFT JOIN orbyt_review_jobs j ON j.order_id = o.id ")
     with db.connect() as conn:
         open_rows = conn.execute(query + "WHERE o.status = 'open' ORDER BY o.due_at, o.id").fetchall()
         done_rows = conn.execute(query + "WHERE o.status != 'open' ORDER BY COALESCE(o.sent_at, o.refunded_at) "
@@ -401,6 +489,9 @@ def console(now: float | None = None) -> dict:
     s = config.get()
     return {"enabled": s.orbyt_review_enabled, "ready": ready(), "problems": problems(),
             "days": s.orbyt_review_days, "price": s.orbyt_review_price_text,
+            # Who writes new reviews, and the AI's day so far.
+            "mode": orbyt_review_ai.mode(), "ai_notes": orbyt_review_ai.notes(),
+            "ai_today": orbyt_review_ai.calls_today(), "ai_per_day": s.orbyt_review_ai_per_day,
             "open": [_public(r, now) for r in open_rows], "done": [_public(r, now) for r in done_rows],
             "late": sum(1 for r in open_rows if r["due_at"] < now)}
 
@@ -415,13 +506,65 @@ def shown_in_console() -> bool:
 
 
 def mark_sent(order_id: int) -> bool:
-    """The owner emailed the review. False if there is no open order."""
+    """The owner emailed the review. False if there is no open order. An AI
+    job still waiting stops."""
     with db.connect() as conn:
         done = conn.execute("UPDATE orbyt_reviews SET status = 'sent', sent_at = ? WHERE id = ? AND status = 'open'",
                             (time.time(), order_id)).rowcount > 0
+        if done:
+            conn.execute("UPDATE orbyt_review_jobs SET state = 'stopped' WHERE order_id = ? "
+                         "AND state IN ('queued', 'written')", (order_id,))
     if done:
         db.log("Pitch Review", "marked sent")
     return done
+
+
+NOTHING_TO_RESEND = "There's no review written by AI to send again for that one."
+NO_REFUND = "That one has no Stripe payment to refund, or is already refunded."
+REFUND_FAILED = ("Stripe didn't make the refund. Refund it in Stripe (Payments, then the payment, then Refund); "
+                 "for this button to work, your Stripe key needs Refunds: write.")
+
+
+def resend(order_id: int) -> tuple[int, dict]:
+    """Email an AI-written review to the buyer again (or for the first time,
+    if its email failed). Returns (status, JSON)."""
+    with db.connect() as conn:
+        order = conn.execute("SELECT * FROM orbyt_reviews WHERE id = ?", (order_id,)).fetchone()
+        job = conn.execute("SELECT * FROM orbyt_review_jobs WHERE order_id = ?", (order_id,)).fetchone()
+    if order is None or job is None or not job["text"] or not order["email"] or order["status"] == "refunded":
+        return 409, {"error": NOTHING_TO_RESEND}
+    if not orbyt_review_ai.send_review(dict(order), job["text"]):
+        return 502, {"error": "The email couldn't be sent just now. Check the mail settings, then try again."}
+    now = time.time()
+    with db.connect() as conn:
+        conn.execute("UPDATE orbyt_review_jobs SET state = 'sent', emailed_at = ?, claimed_at = NULL "
+                     "WHERE order_id = ?", (now, order_id))
+        conn.execute("UPDATE orbyt_reviews SET status = 'sent', sent_at = ? WHERE id = ? AND status = 'open'",
+                     (now, order_id))
+    db.log("Pitch Review", "review emailed again")
+    return 200, {"ok": True}
+
+
+def refund(order_id: int) -> tuple[int, dict]:
+    """Refund an order in full through Stripe, and close it. Stripe's own
+    charge.refunded event follows and changes nothing more."""
+    with db.connect() as conn:
+        order = conn.execute("SELECT * FROM orbyt_reviews WHERE id = ?", (order_id,)).fetchone()
+    if order is None or not order["payment_intent"] or order["status"] == "refunded":
+        return 409, {"error": NO_REFUND}
+    try:
+        genesis_pro._stripe("refunds", {"payment_intent": order["payment_intent"],
+                                        "metadata[product]": PRODUCT, "metadata[order]": str(order_id)})
+    except genesis_pro.StripeError as e:
+        LOG.warning("Pitch Review: refund not made (%s)", e)
+        return 502, {"error": REFUND_FAILED}
+    with db.connect() as conn:
+        conn.execute("UPDATE orbyt_reviews SET status = 'refunded', refunded_at = COALESCE(refunded_at, ?) "
+                     "WHERE id = ?", (time.time(), order_id))
+        conn.execute("UPDATE orbyt_review_jobs SET state = 'stopped' WHERE order_id = ? "
+                     "AND state IN ('queued', 'written', 'person')", (order_id,))
+    db.log("Pitch Review", "refunded from the console")
+    return 200, {"ok": True}
 
 
 def open_for(message_id: int) -> bool:
@@ -441,6 +584,12 @@ def forget_old():
     with db.connect() as conn:
         conn.execute("DELETE FROM orbyt_review_tickets WHERE created_at < ?", (now - TICKET_SECONDS,))
         conn.execute("DELETE FROM orbyt_review_events WHERE at < ?", (now - 60 * 86400,))
+        old = now - FORGET_EMAIL_DAYS * 86400
+        # The AI's review goes with the email address it was sent to.
+        conn.execute("UPDATE orbyt_review_jobs SET text = '', note = '' WHERE order_id IN (SELECT id FROM "
+                     "orbyt_reviews WHERE status != 'open' AND COALESCE(sent_at, refunded_at, paid_at) < ?)", (old,))
         conn.execute("UPDATE orbyt_reviews SET email = '', idea = '' WHERE status != 'open' "
-                     "AND COALESCE(sent_at, refunded_at, paid_at) < ?", (now - FORGET_EMAIL_DAYS * 86400,))
+                     "AND COALESCE(sent_at, refunded_at, paid_at) < ?", (old,))
         conn.execute("DELETE FROM orbyt_reviews WHERE status != 'open' AND paid_at < ?", (now - ORDER_DAYS * 86400,))
+        conn.execute("DELETE FROM orbyt_review_jobs WHERE order_id NOT IN (SELECT id FROM orbyt_reviews)")
+    orbyt_review_ai.forget_old()

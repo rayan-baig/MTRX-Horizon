@@ -651,3 +651,8 @@ dialog form .btn { width: 100%; justify-content: center; }
 /* Pitch Reviews (orbyt_review.py): a late one stands out. */
 .rv-item-late { border-color: rgba(244, 63, 94, 0.55); }
 .cr-main small.rv-late { color: #fda4af; font-weight: 600; }
+/* The review the AI wrote, folded away until asked for. */
+.rv-text { margin-top: 6px; }
+.rv-text summary { cursor: pointer; color: var(--muted, #9aa4c4); font-size: 13px; min-height: 32px; }
+.rv-text pre { white-space: pre-wrap; word-break: break-word; font: inherit; font-size: 13.5px; line-height: 1.5;
+  margin: 6px 0 0; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); max-height: 360px; overflow: auto; }

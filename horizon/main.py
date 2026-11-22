@@ -150,6 +150,7 @@ def pilot_facts() -> dict:
     from the same settings the pages use, so it can't say one thing while
     the site does another. Nothing here is secret or about a visitor."""
     settings = config.get()
+    review = orbyt_review.offer()
     return {
         "ai": genesis_ai.enabled(),
         "free_day": settings.genesis_ai_per_day,
@@ -161,6 +162,9 @@ def pilot_facts() -> dict:
         "review": orbyt_review.ready(),
         "review_price": settings.orbyt_review_price_text if orbyt_review.ready() else "",
         "review_days": settings.orbyt_review_days if orbyt_review.ready() else "",
+        # Who writes it: "ai" (an AI-written review, sent within about an
+        # hour) or "person", so Pilot says it the same way the page does.
+        "review_mode": ("ai" if review["ai"] else "person") if review else "",
         "early": early_access.ready(),
         "creators": creators.enabled(),
         "hosts": " ".join(PILOT_COMPATIBLE_HOSTS + PILOT_LOCAL_HOSTS),
@@ -613,7 +617,7 @@ async def orbyt_review_checkout(request: Request):
         return not_found(request)
     body = await _json(request)
     status, answer = await run_in_threadpool(orbyt_review.checkout, client_ip(request), body.get("ticket"),
-                                             body.get("adult"), base_url(request))
+                                             body.get("adult"), base_url(request), body.get("ai"))
     return JSONResponse(answer, status_code=status)
 
 
@@ -1361,6 +1365,22 @@ def orbyt_review_sent(request: Request, order_id: str):
     if not orbyt_review.mark_sent(int(order_id)):
         return JSONResponse({"error": "That review is already marked sent, or was refunded."}, status_code=409)
     return {"ok": True, **orbyt_review.console()}
+
+
+# An AI-written review emailed to the buyer again, and a full refund through
+# Stripe (orbyt_review.resend, orbyt_review.refund).
+@app.post("/api/console/orbyt-reviews/{order_id}/{action}")
+async def orbyt_review_act(request: Request, order_id: str, action: str):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    do = {"resend": orbyt_review.resend, "refund": orbyt_review.refund}.get(action)
+    if do is None or not order_id.isdigit() or len(order_id) > 12:
+        return JSONResponse({"error": "That review isn't there."}, status_code=409)
+    status, answer = await run_in_threadpool(do, int(order_id))
+    if status != 200:
+        return JSONResponse(answer, status_code=status)
+    return {"ok": True, **(await run_in_threadpool(orbyt_review.console))}
 
 
 # ---------------------------------------------------------------- the app catalog, for the owner

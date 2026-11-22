@@ -987,19 +987,61 @@
   const rvList = $("rv-open");
   const when = (seconds) => new Date(seconds * 1000).toLocaleDateString([], { dateStyle: "medium" });
 
+  // Resend (an AI-written review, emailed again) and Refund (in full,
+  // through Stripe), each after a check.
+  function rvAct(r, action, question, done) {
+    const button = el("button", { type: "button", class: action === "refund" ? "danger" : "go",
+      text: action === "refund" ? "Refund" : "Resend" });
+    button.addEventListener("click", async () => {
+      if (!confirm(question)) return;
+      button.disabled = true;
+      const result = await post(`/api/console/orbyt-reviews/${encodeURIComponent(r.id)}/${action}`)
+        .catch(() => ({ ok: false, data: { error: "No connection. Try again." } }));
+      if (!result.ok) { toast(result.data.error || "Couldn't do that.", true); loadReviews(); return; }
+      toast(done);
+      drawReviews(result.data);
+    });
+    return button;
+  }
+
+  // What the AI did (orbyt_review_ai.py): where it is, why it handed the
+  // review to you, and its words once written.
+  function rvAi(r) {
+    if (!r.ai) return [];
+    const out = [];
+    const state = r.ai.state;
+    if (state === "person") {
+      out.push(el("small", { class: "rv-late", text: `Needs you: ${r.ai.note || "the AI couldn't write it"}. Write it yourself, or refund it.` }));
+    } else if (state === "queued" || state === "writing") {
+      out.push(el("small", { text: r.ai.tries
+        ? `The AI is writing it (tried ${r.ai.tries} time${r.ai.tries === 1 ? "" : "s"}; it tries again by itself). Nothing to do.`
+        : "The AI is writing it. It's emailed by itself; nothing to do." }));
+    } else if (state === "written") {
+      out.push(el("small", { text: "Written by AI; the email is being sent (it tries again by itself)." }));
+    } else if (state === "sent" && r.ai.emailed_at) {
+      out.push(el("small", { text: `Written by AI and emailed ${when(r.ai.emailed_at)}, ${new Date(r.ai.emailed_at * 1000).toLocaleTimeString([], { timeStyle: "short" })}` }));
+    }
+    if (r.ai.text) {
+      out.push(el("details", { class: "rv-text" }, el("summary", { text: "Read the review it wrote" }),
+        el("pre", { text: r.ai.text })));
+    }
+    return out;
+  }
+
   function rvOpen(r) {
     const title = r.idea || "(the idea's name is gone)";
     const pitch = r.pitch_there
       ? el("p", { class: "cr-line", text: `Pitch #${r.message_id} from ${r.name}: ${r.pitch} · for ${r.audience}` })
-      : el("p", { class: "cr-line", text: `Pitch #${r.message_id} is no longer there. Refund it in Stripe.` });
+      : el("p", { class: "cr-line", text: `Pitch #${r.message_id} is no longer there. Refund it.` });
     const due = el("small", { class: r.late ? "rv-late" : "", text: r.late
-      ? `Late: was due ${r.due}. Send it now, or refund it in Stripe.` : `Due by ${r.due}` });
-    const send = r.email
+      ? `Late: was due ${r.due}. Send it now, or refund it.` : `Due by ${r.due}` });
+    const yours = r.by === "person";
+    const send = r.email && yours
       ? el("a", { class: "btn btn-primary btn-small", text: "Write the review",
         href: `mailto:${r.email}?subject=${encodeURIComponent(`Your Pitch Review: ${r.idea || "your idea"}`)}` })
       : null;
-    const sent = el("button", { type: "button", class: "go", text: "Mark sent" });
-    sent.addEventListener("click", async () => {
+    const sent = yours ? el("button", { type: "button", class: "go", text: "Mark sent" }) : null;
+    if (sent) sent.addEventListener("click", async () => {
       if (!confirm(`Mark the review of ${title} as sent?`)) return;
       const result = await post(`/api/console/orbyt-reviews/${encodeURIComponent(r.id)}/sent`)
         .catch(() => ({ ok: false, data: { error: "No connection. Try again." } }));
@@ -1007,28 +1049,42 @@
       toast("Marked sent.");
       drawReviews(result.data);
     });
+    const resend = r.can_resend ? rvAct(r, "resend", `Email the AI's review of ${title} to ${r.email}?`, "Review emailed.") : null;
+    const refund = r.can_refund ? rvAct(r, "refund", `Refund ${r.paid || "the payment"} for ${title} in full, through Stripe?`, "Refunded.") : null;
     return el("li", { class: `cr-item${r.late ? " rv-item-late" : ""}` },
       el("div", { class: "cr-main" },
         el("b", { text: title }), pitch,
         el("small", { text: `Send it to ${r.email || "(no email from Stripe: see the payment in Stripe)"}` }),
-        el("small", { text: `Paid ${r.paid ? `${r.paid} ` : ""}${ago(r.paid_at)}` }), due),
-      el("div", { class: "ca-actions" }, send, sent));
+        el("small", { text: `Paid ${r.paid ? `${r.paid} ` : ""}${ago(r.paid_at)}` }), due, ...rvAi(r)),
+      el("div", { class: "ca-actions" }, send, resend, sent, refund));
   }
 
   function rvDone(r) {
-    const what = r.status === "refunded" ? `Refunded ${when(r.refunded_at)}` : `Sent ${when(r.sent_at)}`;
+    const what = r.status === "refunded" ? `Refunded ${when(r.refunded_at)}`
+      : `Sent ${when(r.sent_at)}${r.by === "ai" && r.ai && r.ai.state === "sent" ? " by AI" : ""}`;
+    const resend = r.can_resend ? rvAct(r, "resend", `Email the AI's review of ${r.idea || "this idea"} to ${r.email} again?`, "Review emailed again.") : null;
+    const refund = r.can_refund ? rvAct(r, "refund", `Refund ${r.paid || "the payment"} for ${r.idea || "this review"} in full, through Stripe?`, "Refunded.") : null;
     return el("li", { class: "cr-item" },
       el("div", { class: "cr-main" }, el("b", { text: r.idea || `Pitch #${r.message_id}` }),
-        el("small", { text: `${what} · paid ${when(r.paid_at)}${r.paid ? `, ${r.paid}` : ""}` })));
+        el("small", { text: `${what} · paid ${when(r.paid_at)}${r.paid ? `, ${r.paid}` : ""}` }),
+        ...(r.ai && r.ai.text ? [el("details", { class: "rv-text" }, el("summary", { text: "Read the review it sent" }),
+          el("pre", { text: r.ai.text }))] : [])),
+      resend || refund ? el("div", { class: "ca-actions" }, resend, refund) : null);
   }
 
   function drawReviews(data) {
-    const notes = [...data.problems];
+    const notes = [...data.problems, ...(data.ai_notes || [])];
     if (!data.enabled) notes.push("Pitch Review is switched off (ORBYT_REVIEW_ENABLED), so Orbyt doesn't offer it. These are the orders still kept.");
     $("rv-warn").replaceChildren(...notes.map((n) => el("li", { text: n })));
-    $("rv-note").textContent = `Paid reviews of pitches sent in Orbyt (${data.price}, due within ${data.days} day${data.days === 1 ? "" : "s"} of payment). `
-      + "Read the pitch, email your review to the buyer, then press Mark sent. A late review, or one you can't write, "
-      + "gets a full refund: do it by hand in Stripe (Payments, then Refund).";
+    const days = `due within ${data.days} day${data.days === 1 ? "" : "s"} of payment`;
+    $("rv-note").textContent = data.mode === "ai"
+      ? `Paid reviews of pitches sent in Orbyt (${data.price}, ${days}). AI mode is on: each review is written by AI and `
+        + `emailed to the buyer by itself, usually within minutes (${data.ai_today} of ${data.ai_per_day} AI calls used today). `
+        + "Read every one here. If the AI can't write one in time, it's handed to you with an email saying why: write it, "
+        + "then press Mark sent. Refund gives the buyer their money back in full through Stripe."
+      : `Paid reviews of pitches sent in Orbyt (${data.price}, ${days}). `
+        + "Read the pitch, email your review to the buyer, then press Mark sent. A late review, or one you can't write, "
+        + "gets a full refund: press Refund, or do it in Stripe (Payments, then Refund).";
     rvList.replaceChildren(...data.open.map(rvOpen));
     if (!data.open.length) rvList.append(el("li", { class: "vx-empty", text: "No reviews to write." }));
     const done = $("rv-done");

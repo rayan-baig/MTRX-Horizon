@@ -15,8 +15,10 @@ import threading
 from contextlib import contextmanager
 
 # Places for each service. The site's shared pool has 40 workers, so even
-# with both services stuck, more than half are left for pages.
-AT_ONCE = {"ai": 8, "stripe": 8}
+# with every service stuck, more than half are left for pages. Pitch
+# Review's AI (orbyt_review_ai.py) is called from its own background
+# thread, one review at a time, so it needs only a couple.
+AT_ONCE = {"ai": 8, "stripe": 8, "review_ai": 2}
 
 _places = {name: threading.BoundedSemaphore(n) for name, n in AT_ONCE.items()}
 

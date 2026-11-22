@@ -206,7 +206,7 @@ def test_the_legal_pages_say_what_is_paid_what_you_get_and_the_refunds(client, r
                   "Your idea stays yours"):
         assert words in terms, words
     privacy = flat(client.get("/privacy").text)
-    assert "<h2>Orbyt Pitch Review</h2>" in privacy
+    assert '<h2 id="pitch-review">Orbyt Pitch Review</h2>' in privacy
     for words in ("Card details never reach us", "we keep only a fingerprint of the code, for 2 days",
                   "the email address used at checkout (to send the review to)",
                   "isn't deleted before the review is done", "deleted 90 days after the review is sent or refunded",

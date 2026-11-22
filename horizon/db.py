@@ -275,6 +275,33 @@ CREATE TABLE IF NOT EXISTS orbyt_review_events (
     id TEXT PRIMARY KEY,
     at REAL NOT NULL
 );
+-- A paid review the AI writes (orbyt_review_ai.py), one row per order whose
+-- grown-up agreed to that at checkout: where it is (queued, writing,
+-- written, sent; or person, handed to the owner, with why in `note`; or
+-- stopped, the order closed first), the tries, when to try next, and the
+-- review it wrote (cleared with the order's email, 90 days after it is sent
+-- or refunded). The pitch's words are read from vortex_messages when it is
+-- written, never copied here.
+CREATE TABLE IF NOT EXISTS orbyt_review_jobs (
+    order_id INTEGER PRIMARY KEY,
+    state TEXT NOT NULL DEFAULT 'queued',
+    tries INTEGER NOT NULL DEFAULT 0,
+    bad INTEGER NOT NULL DEFAULT 0,
+    email_tries INTEGER NOT NULL DEFAULT 0,
+    next_at REAL NOT NULL,
+    claimed_at REAL,
+    text TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    written_at REAL,
+    emailed_at REAL,
+    created_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS orbyt_review_jobs_next ON orbyt_review_jobs (state, next_at);
+-- When each call to the review AI was made, for its daily cap. Times only;
+-- kept two days.
+CREATE TABLE IF NOT EXISTS orbyt_review_ai_calls (
+    at REAL NOT NULL
+);
 -- Random keys this site makes for itself (growth.py): one that signs the
 -- links in early access emails, and one a day that turns a visitor's address
 -- into a mark that can't be turned back. A day's key is deleted two days on,

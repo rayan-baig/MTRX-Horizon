@@ -84,6 +84,17 @@ services:
         value: "$19"         # the price as the page writes it; keep it the same as Stripe's
       - key: ORBYT_REVIEW_DAYS
         value: "5"           # the review is emailed within this many days, or a full refund
+      # AI mode: each paid review written by AI and emailed by itself, once
+      # these three are typed into the dashboard (any OpenAI-compatible
+      # service; a free tier works). ORBYT_REVIEW_MODE=person turns it off.
+      - key: ORBYT_REVIEW_AI_URL
+        sync: false          # the service's OpenAI-compatible address (https://...)
+      - key: ORBYT_REVIEW_AI_KEY
+        sync: false          # the service's key
+      - key: ORBYT_REVIEW_AI_MODEL
+        sync: false          # the name of a chat model from the service's list
+      - key: ORBYT_REVIEW_AI_PER_DAY
+        value: "20"          # the most AI calls in a UTC day
       - key: VORTEX_PER_HOUR
         value: "5"           # Orbyt messages each visitor may send an hour
       - key: VORTEX_PER_DAY

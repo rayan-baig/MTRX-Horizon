@@ -152,18 +152,28 @@
     reviewTicket = ticket || "";
     review.hidden = !reviewTicket;
     $("v-review-adult").checked = false;
+    if ($("v-review-ai")) $("v-review-ai").checked = false;
     $("v-review-error").textContent = "";
     $("v-review-buy").disabled = false;
   }
 
   if (review) {
     $("v-review-adult").addEventListener("change", () => { $("v-review-error").textContent = ""; });
+    // AI mode only (the page has this box then): the grown-up agrees the
+    // idea is sent to an AI service to write the review.
+    const aiOk = $("v-review-ai");
+    if (aiOk) aiOk.addEventListener("change", () => { $("v-review-error").textContent = ""; });
     $("v-review-buy").addEventListener("click", async () => {
       const error = $("v-review-error");
       const adult = $("v-review-adult");
       if (!adult.checked) {
         error.textContent = "Please tick to say you're 18 or over. If you're not, ask a parent or guardian to buy it for you.";
         adult.focus();
+        return;
+      }
+      if (aiOk && !aiOk.checked) {
+        error.textContent = "Please tick to agree that the idea is sent to an AI service to write the review.";
+        aiOk.focus();
         return;
       }
       const button = $("v-review-buy");
@@ -175,7 +185,7 @@
         res = await fetch("/api/orbyt/review/checkout", {
           method: "POST", credentials: "omit",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticket: reviewTicket, adult: true }),
+          body: JSON.stringify(aiOk ? { ticket: reviewTicket, adult: true, ai: true } : { ticket: reviewTicket, adult: true }),
         });
         try { data = await res.json(); } catch (_) { /* not JSON */ }
       } catch (_) {

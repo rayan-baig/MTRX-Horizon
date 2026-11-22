@@ -21,7 +21,7 @@ import threading
 import time
 
 from . import (config, creators, db, early_access, errors, genesis_ai, genesis_pro, growth, health, lock,
-               orbyt_review, vortex)
+               orbyt_review, orbyt_review_ai, vortex)
 
 EVERY_SECONDS = 60
 # No finished round for this long, and the jobs count as stopped. A round
@@ -34,7 +34,8 @@ FAILS_TO_REPORT = 3
 def jobs() -> tuple:
     """Every job, looked up each round (so a test can swap one)."""
     return (lock.forget_old_tries, genesis_ai.forget_old_asks, vortex.forget_old,
-            genesis_pro.forget_old, genesis_pro.refresh_prices, orbyt_review.forget_old, early_access.forget_old,
+            genesis_pro.forget_old, genesis_pro.refresh_prices, orbyt_review.forget_old, orbyt_review_ai.kick,
+            early_access.forget_old,
             early_access.kick, creators.forget_old, growth.forget_old_keys, health.run_checks)
 
 

@@ -13,7 +13,7 @@
 <ul>
   {% if early or creators -%}
   <li>No accounts. Orbyt keeps only what you choose to send there, to reply to you, for up to
-    {{ vortex_days }} days. It is never shared.</li>
+    {{ vortex_days }} days. It is never shared{% if review and review.ai %}, except that a pitch's words go to an AI service to write a Pitch Review a grown-up has bought and agreed to (below){% endif %}.</li>
   <li>{% if early %}The early access list keeps only your email and the apps you picked, to tell you when they
     open: unconfirmed sign-ups are deleted after {{ early_days }} days, and every email has a one-click
     unsubscribe that deletes you from the list.{% endif %}{% if early and creators %} {% endif %}
@@ -23,7 +23,7 @@
     {%- if early and creators %}, and a creator code is kept with a sign-up only until it is confirmed{% endif %}.</li>
   {%- else -%}
   <li>No accounts and no sign-up. The one form is Orbyt, and it keeps only what you choose to
-    send there, to reply to you, for up to {{ vortex_days }} days. It is never shared.</li>
+    send there, to reply to you, for up to {{ vortex_days }} days. It is never shared{% if review and review.ai %}, except that a pitch's words go to an AI service to write a Pitch Review a grown-up has bought and agreed to (below){% endif %}.</li>
   {%- endif %}
   <li>No cookies for visitors.</li>
   <li>No tracking: no analytics, no ads, no "like" buttons, and nothing loaded from any other
@@ -39,7 +39,9 @@
   {%- endif %}
   {%- if review %}
   <li>Pitch Review, an optional extra a grown-up can buy after a pitch is sent in Orbyt, is paid through
-    Stripe. Card details never reach us; we keep the email used at checkout only to send the review.</li>
+    Stripe. Card details never reach us; we keep the email used at checkout only to send the review.{% if review.ai %}
+    The review is written by an AI service, so the pitch's words (never a name or an email address) are sent
+    to it, only for a paid review.{% endif %}</li>
   {%- endif %}
   <li>Like every website, the server notes each request it answers (see below).</li>
 </ul>
@@ -55,7 +57,9 @@
   the whole company or which apps. We also keep the time it arrived and which of the four paths you
   chose. We don't keep your network address with it, and no cookie is set.</p>
 <p>We use it only to read your message and reply to you. It is never shared, sold or used for
-  marketing, and only MTRX Horizyn's owner can read it, in the site's private console. When email
+  marketing{% if review and review.ai %} (the one exception: when a grown-up buys a Pitch Review and agrees, the
+  pitch's words are sent to an AI service to write it, as the Pitch Review section below says){% endif %}, and
+  only MTRX Horizyn's owner can read it, in the site's private console. When email
   alerts are set up, the owner gets a short note that a message arrived, saying only which path and
   the organisation or idea name (and, for buying, which apps or the company); your email address and
   message stay on the site. Each message is deleted {{ vortex_days }} days after it arrives, or sooner
@@ -139,7 +143,7 @@
   some browsers send the sound to their maker to turn it into words.</p>
 
 {% if review -%}
-<h2>Orbyt Pitch Review</h2>
+<h2 id="pitch-review">Orbyt Pitch Review</h2>
 <p>Pitch Review is an optional paid extra for a pitch sent in Orbyt, bought by a grown-up through Stripe, our
   payment provider. Stripe takes the payment and the email address on its own checkout page, under its own
   privacy policy. Card details never reach us.</p>
@@ -152,6 +156,21 @@
   isn't deleted before the review is done. The email address and the idea's name are deleted
   {{ review_forget_days }} days after the review is sent or refunded, and the rest of the order (the dates and
   the amount, for our accounts) after {{ review_order_days }} days.</p>
+{%- if review.ai %}
+<p><b>Written by AI.</b> Reviews are written by an AI service: an outside company whose AI writes text, which
+  we reach in the common "OpenAI-compatible" way{% if review.ai_host %} (right now, the service at
+  {{ review.ai_host }}){% endif %}. When, and only when, a review has been paid for, and the grown-up ticked to
+  agree at checkout, we send it the pitch's words: the idea's name, the one-line pitch, who it's for and any more
+  the pitch said, with email addresses, phone numbers and links taken out. We never send it the name or email
+  address of the person who pitched, the buyer's email address, or anything about the payment. Nothing is sent
+  to it for a pitch without a paid review.</p>
+<p>The AI service handles what it is sent under its own terms and privacy policy, and may keep it for a while
+  (for example, to stop misuse). Some services' free plans may use what they are sent to improve their
+  products, so please don't put anything private in a pitch. The review it writes is emailed to the buyer and
+  kept with the order, so we can see it and send it again if asked; it is deleted with the email address,
+  {{ review_forget_days }} days after the review is sent or refunded. We also keep the time of each call to the
+  AI service, for 2 days, to stay within its daily limits.</p>
+{%- endif %}
 <p>To stop misuse, starting a checkout is limited too: the address a request came from (for an IPv6 address,
   the block it belongs to) and the time are kept for 24 hours, then deleted.</p>
 

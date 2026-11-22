@@ -12,7 +12,17 @@ can't be reviewed, the buyer gets a **full refund**, which you make by hand in S
 It is **off by default**. Until it is switched on and set up, no page mentions it and every
 address it uses answers "page not found".
 
-The code is `horizon/orbyt_review.py`, with the offer in `templates/vortex.html` and
+**Two ways to write the reviews** (since 1.23.0):
+
+- **AI mode** (automatic): the review is written by an AI service and emailed to the buyer by
+  itself, usually within minutes. You don't have to do anything, and it can cost you nothing if
+  you use an AI service's free tier: see **Make it automatic (free)** below. You still see every
+  review in the console, and can resend or refund any of them.
+- **Person mode**: you write each review yourself, as described in **Each review: what you do**.
+
+AI mode is used as soon as its AI settings are there; until then, reviews are written by a person.
+
+The code is `horizon/orbyt_review.py` (and `horizon/orbyt_review_ai.py` for AI mode), with the offer in `templates/vortex.html` and
 `static/js/vortex.js`, the page Stripe sends buyers back to in
 `templates/orbyt_review_thanks.html`, and the console's **Pitch Reviews** section in
 `templates/console.html` and `horizon/private/console.js`.
@@ -80,7 +90,91 @@ live mode.
 To switch it off again, set `ORBYT_REVIEW_ENABLED=0` (or delete it). The offer disappears at
 once; reviews already paid for stay in the console until you mark them sent.
 
+## Make it automatic (free)
+
+In AI mode the server writes each paid review with AI and emails it within minutes. You need an
+account with an AI service that has a **free tier** and speaks the common
+**"OpenAI-compatible"** way. Any of these work (each has its own free limits, which change from
+time to time):
+
+- **Google AI Studio** (Google's Gemini API, with an OpenAI-compatible address)
+- **Groq**
+- **OpenRouter** (pick one of the models it marks as free)
+
+**Step by step**
+
+1. **Make an account** on one of the services above and sign in.
+2. **Make a key.** Find **API keys** (Google AI Studio: **Get API key**; Groq and OpenRouter:
+   **API Keys** or **Keys**) and press **Create**. Copy the key. Treat it like a password: never
+   put it in the code, a commit or a chat.
+3. **Copy the address** from the service's "OpenAI compatibility" page. At the time of writing:
+
+   | Service | `ORBYT_REVIEW_AI_URL` |
+   |---|---|
+   | Google AI Studio | `https://generativelanguage.googleapis.com/v1beta/openai/` |
+   | Groq | `https://api.groq.com/openai/v1` |
+   | OpenRouter | `https://openrouter.ai/api/v1` |
+
+   It must start with `https://`. You can give it with or without `/chat/completions` at the end.
+4. **Pick a model.** Open the service's list of models and copy the **name** of a general chat
+   (text) model that the free tier includes. On OpenRouter, choose one marked free. Not an image,
+   speech or "embedding" model. The name goes only in the setting below: the code never names a
+   model, so you can change it any time without a new version.
+5. **Put four settings on the host** (on Render: the service's **Environment** page):
+
+   | Setting | What to put | What it does |
+   |---|---|---|
+   | `ORBYT_REVIEW_AI_URL` | the address from step 3 | where the AI service is |
+   | `ORBYT_REVIEW_AI_KEY` | the key from step 2 | lets this site use your account. Secret |
+   | `ORBYT_REVIEW_AI_MODEL` | the model name from step 4 | which of the service's models writes the reviews |
+   | `ORBYT_REVIEW_AI_PER_DAY` | `20` (the default) | the most AI calls in a day (UTC). Keep it under your free tier's daily limit; each review takes 1 call, or 2 if it's written again |
+
+   With the first three set, AI mode is on (`ORBYT_REVIEW_MODE` empty means "AI when it's set
+   up"). To go back to writing them yourself without deleting anything, set
+   `ORBYT_REVIEW_MODE=person`.
+6. **Check it.** The console's **Pitch Reviews** section says "AI mode is on" and how many AI calls
+   were used today. If a setting is missing or wrong, it says which one. Then do a test-mode run
+   (step 7 above): after paying, the confirmation arrives, and a minute or so later the review.
+   Read it in the console.
+
+**What changes for visitors in AI mode.** Every place that offers it says plainly that it's an
+**AI-written review of your idea, sent within about an hour**, and that the idea is sent to an AI
+service to write it. The grown-up ticks a second box at checkout to agree to that. The days are
+still the promise: if the review isn't with them within `ORBYT_REVIEW_DAYS` days, they get a full
+refund. The privacy page names the kind of service and the address in use, what is sent and what
+is kept. Checkouts made before AI mode was on are still written by a person (that grown-up didn't
+agree to AI).
+
+**What is sent to the AI service, and when.** Only for a review that has been paid for, and whose
+grown-up ticked to agree: the idea's name, the one-line pitch, who it's for and any more the pitch
+said, with email addresses, phone numbers and links taken out. Never the pitcher's name or email,
+or the buyer's. Some free tiers may use what they're sent to improve their service; the privacy
+page says so. If that worries you, choose a service (or a paid plan) that doesn't.
+
+**How a review is written and checked.** A careful prompt asks for the same four parts as a
+person's review (what's strong, what to fix, the next 3 steps, and whether it might fit Orbyt),
+kind and encouraging, in plain words a child can follow, 250 to 400 words, never promising money,
+investment, a partnership or that MTRX Horizyn will build it, never asking for personal details,
+and with no links except mtrxhorizyn.com pages. Before it is emailed, the server checks the length,
+the four parts and the 3 steps, and that it has no email addresses, phone numbers, links to other
+sites, promises or questions about personal details. If it fails, it is written once more; if it
+fails again, it's handed to you.
+
+**When it needs you.** The order comes back to you, with an email saying why ("a Pitch Review needs
+you"), if the AI declines the idea, the review fails the checks twice, the service refuses the key
+or model, or it couldn't be written and emailed at least a day before it's due (half the time, for
+a 1-day promise) because the service was down or the day's calls were used up. Then you write it
+and press **Mark sent**, or refund it, as in person mode. Over the daily limit, reviews wait for
+the next day (a minute after midnight UTC) as long as that still leaves you time.
+
+**Each AI review in the console** shows where it is (being written, sent, or "Needs you" and why),
+the words it sent (under **Read the review it wrote**), and when it was emailed. **Resend** emails
+the same review to the buyer again. **Refund** refunds the payment in full through Stripe; for that
+button, your Stripe key also needs **Refunds: write** (otherwise refund it in Stripe as before).
+
 ## Each review: what you do
+
+In AI mode this is only for a review the AI handed back to you. In person mode, every review:
 
 1. You get an email: "MTRX Horizyn: a paid Pitch Review is due by <date>", with the idea's name
    only.
