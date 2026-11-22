@@ -418,7 +418,7 @@ Both show on the console's **Numbers** section.
 Horizyn, linked from the home page's menu and footer, the other pages and the sitemap. It has
 four paths, each a short form (four cards across, two by two on tablets, and one row each on
 phones). The top says in a line what it is for, with three promises (about 2 minutes, a real
-person reads every message, nobody pays or gets paid here), and three "how it works" steps sit
+person reads every message, pitching and enquiries are free), and three "how it works" steps sit
 under the paths. After sending, each path suggests one next step (Genesis for an idea, the
 partner page for a partner, the apps for investors and buyers).
 
@@ -441,8 +441,8 @@ partner page for a partner, the apps for investors and buyers).
   investment.
 - **Buy the company or an app**: name, organisation (optional), email, what they're interested in
   (MTRX Horizyn as a whole, one or more released apps, or both) and a message, under the notice
-  "This only starts a conversation. Nothing is for sale on this page and nobody can buy or pay for
-  anything here." Kept as the `buy` kind,
+  "This only starts a conversation. No shares, apps or companies are bought or sold here, and no deal
+  happens on this page." Kept as the `buy` kind,
   with the choices in the `apps` column (`company` for the whole company).
 
 Below the forms, **Our apps** has a card for each released app: its name, its one line, **Open**
@@ -463,10 +463,43 @@ is mostly links is refused.
 
 When alert email is set up (`MTRX_ALERT_EMAIL` and the SMTP settings), the owner gets a short
 notice from a background thread: the path and the organisation or idea name (and, for buying,
-which apps or the company), nothing else (no email address, no message), at most 30 a day. Everything is read in the console's **Chroma
-Vortex** section: an inbox and an archive, an unread count on the sidebar, each message's
+which apps or the company), nothing else (no email address, no message), at most 30 a day. Everything is read in the console's
+**Orbyt** section: an inbox and an archive, an unread count on the sidebar, each message's
 fields, the reply address to copy and a **Reply by email** link, and buttons to mark read or
 unread, archive and delete. Opening a message marks it read.
+
+### Orbyt Pitch Review: the optional paid extra
+
+**Orbyt stays free**: pitching, partnering and business enquiries never cost anything, and every
+pitch gets a reply. **Pitch Review** ([docs/ORBYT-PITCH-REVIEW.md](docs/ORBYT-PITCH-REVIEW.md)) is
+an optional extra offered on the Sent screen after a pitch: for one payment (default `$19`, not a
+subscription), a real person at MTRX Horizyn writes a personal review of the idea (what's strong,
+what to fix, the next 3 steps, and whether it might fit Orbyt) and emails it within 5 days, or the
+buyer gets a full refund (also if the idea can't be reviewed). A grown-up pays: an "I'm 18 or over"
+tick, then Stripe Checkout, where the grown-up gives their own email.
+
+It is **off until `ORBYT_REVIEW_ENABLED=1`**, its Stripe settings are set, email works and
+`MTRX_ALERT_EMAIL` is set; until then no page mentions it and its addresses are "page not found".
+Stripe's signed webhook (`/api/orbyt/review/stripe`, its own endpoint and secret) is the only thing
+that makes an order; the buyer gets a confirmation with the due date, you get a short notice, and
+the console's **Pitch Reviews** section lists open reviews, soonest due first, with **Mark sent**.
+Refunds are made by hand in Stripe.
+
+**How to switch it on, in short:** in Stripe, add a product "Orbyt Pitch Review" with a one-off
+price and copy its `price_...` id; add a webhook endpoint `https://mtrxhorizyn.com/api/orbyt/review/stripe`
+with `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `charge.refunded`,
+and copy its signing secret; then set these and `ORBYT_REVIEW_ENABLED=1`. The doc has every step,
+and a test-mode run-through.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `ORBYT_REVIEW_ENABLED` | `0` | `1` switches Pitch Review on, once the settings below are set, email works and `MTRX_ALERT_EMAIL` is set |
+| `STRIPE_SECRET_KEY` | empty | shared with Genesis Pro; Pitch Review needs only Checkout Sessions *write* |
+| `ORBYT_REVIEW_STRIPE_WEBHOOK_SECRET` | empty | the signing secret of `https://mtrxhorizyn.com/api/orbyt/review/stripe` |
+| `ORBYT_REVIEW_STRIPE_PRICE` | empty | the one-off price id; Stripe holds the amount |
+| `ORBYT_REVIEW_PRICE_TEXT` | `$19` | the price as the page writes it (keep it the same as Stripe's) |
+| `ORBYT_REVIEW_DAYS` | 5 | the promise: emailed within this many days of paying (1 to 30) |
+| `ORBYT_REVIEW_EMAIL_FROM` | `MTRX_ALERT_FROM` | where confirmations come from (through `MTRX_SMTP_*`) |
 
 ## Partners and the Kitchen Safety Bundle
 
@@ -660,6 +693,8 @@ needs changing. The line shows counts only, never anyone's address.
 - `templates/genesis.html`, `static/js/genesis*.js`, `static/css/genesis.css`: Genesis
 - `horizon/vortex.py`, `templates/vortex.html`, `static/js/vortex*.js`, `static/css/vortex.css`:
   Orbyt
+- `horizon/orbyt_review.py`, `templates/orbyt_review_thanks.html`: Orbyt Pitch Review, the optional
+  paid extra (`docs/ORBYT-PITCH-REVIEW.md`)
 - `horizon/catalog.py`: the app catalog, and which apps are released
 - `horizon/offers.py`, `templates/partners.html`, `templates/bundle.html`, `static/css/offers.css`:
   the partner page and the Kitchen Safety Bundle

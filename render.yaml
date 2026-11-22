@@ -71,6 +71,19 @@ services:
         sync: false          # the yearly price id (price_...), ten months' price
       - key: GENESIS_PRO_MONTHLY_AI_USD
         value: "1.5"
+      # Orbyt Pitch Review (docs/ORBYT-PITCH-REVIEW.md): off until switched on
+      # here and its Stripe settings are typed into the dashboard. It uses
+      # STRIPE_SECRET_KEY above, and needs MTRX_ALERT_EMAIL and email set up.
+      - key: ORBYT_REVIEW_ENABLED
+        value: "0"
+      - key: ORBYT_REVIEW_STRIPE_WEBHOOK_SECRET
+        sync: false          # the signing secret of the /api/orbyt/review/stripe endpoint (whsec_...)
+      - key: ORBYT_REVIEW_STRIPE_PRICE
+        sync: false          # the one-off price id (price_...)
+      - key: ORBYT_REVIEW_PRICE_TEXT
+        value: "$19"         # the price as the page writes it; keep it the same as Stripe's
+      - key: ORBYT_REVIEW_DAYS
+        value: "5"           # the review is emailed within this many days, or a full refund
       - key: VORTEX_PER_HOUR
         value: "5"           # Orbyt messages each visitor may send an hour
       - key: VORTEX_PER_DAY

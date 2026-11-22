@@ -76,6 +76,16 @@
   <details class="v-faq-item"><summary>Will you build it without me?</summary>
     <p class="v-open-ideas">No. We won't publish or pass on what you send. We may already be working on
       something similar; if we are, we'll tell you when we reply, so you know where you stand.</p></details>
+  {%- if review %}
+  {#- Orbyt Pitch Review (horizon/orbyt_review.py), only while it is on. The
+      same promise as the terms: nothing more. -#}
+  <details class="v-faq-item" id="faq-review"><summary>What's a Pitch Review?</summary>
+    <p>An optional extra you can add after sending your pitch. A real person at MTRX Horizyn writes you a
+      personal review of your idea: what's strong, what to fix, your next 3 steps, and whether it might fit
+      Orbyt. It's emailed within {{ review.days }} day{{ 's' if review.days != 1 }}, for one payment of
+      {{ review.price }} (not a subscription), paid by a grown-up. If it's late, or we can't review your idea,
+      you get a full refund. Pitching is free, and every pitch gets a reply with or without one.</p></details>
+  {%- endif %}
 </div>
 {%- endif %}
 <p class="v-reply">We reply within 7 days, even if the answer is no.</p>
@@ -180,7 +190,7 @@
       <span class="v-path-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg></span>
       <span class="v-path-text"><b>Business enquiries</b>
         <span>Investing in MTRX Horizyn, or buying the company or one of its apps? Start a conversation.
-          Nothing is bought or sold on this page.</span></span>
+          No shares, apps or companies are bought or sold here.</span></span>
       <span class="v-business-pick">
         <a class="v-pick path-invest" href="#invest" data-path="invest">I'm an investor <span aria-hidden="true">→</span></a>
         <a class="v-pick path-buy" href="#buy" data-path="buy">I'd like to buy <span aria-hidden="true">→</span></a>
@@ -270,8 +280,8 @@
   <section class="panel v-panel path-buy" id="v-buy" hidden>
     <p class="eyebrow v-kicker">Buy the company or an app</p>
     <h2 class="v-h">Ask about buying</h2>
-    <p class="v-notice v-notice-buy">This only starts a conversation. Nothing is for sale on this page and
-      nobody can buy or pay for anything here.</p>
+    <p class="v-notice v-notice-buy">This only starts a conversation. No shares, apps or companies are bought
+      or sold here, and no deal happens on this page.</p>
     <form class="v-form" data-kind="buy" novalidate>
       <div class="v-grid">
         {{ field("buy", "name", "Your name", limits.name, "name") }}
@@ -299,6 +309,25 @@
     <p class="v-next-step" id="v-next-step"></p>
     <p class="v-sent-small">Check your spam folder if you don't hear from us. We keep your message only to
       reply, for up to {{ keep_days }} days.</p>
+    {%- if review %}
+    {#- Orbyt Pitch Review, offered only after a pitch is sent, and only while
+        it is on: vortex.js shows it when the server sent a ticket for this
+        pitch. Pitching stays free; this is an optional extra. -#}
+    <div class="v-review" id="v-review" hidden>
+      <p class="v-review-head">Optional extra: a Pitch Review</p>
+      <p class="v-review-line">Your pitch is sent and gets a reply either way. If you'd also like a personal review
+        of your idea, a real person at MTRX Horizyn writes one: what's strong, what to fix, and your next 3 steps
+        (and whether it might fit Orbyt). Emailed within {{ review.days }} day{{ 's' if review.days != 1 }}.
+        One payment of {{ review.price }}, not a subscription.</p>
+      <p class="v-review-adult"><b>A grown-up pays.</b> If you're under 18, ask a parent or guardian: checkout is
+        theirs, and the review goes to the email they use there.</p>
+      <label class="v-review-tick"><input type="checkbox" id="v-review-adult"> I'm 18 or over, and I'm the one paying</label>
+      <button class="btn btn-vortex v-review-buy" type="button" id="v-review-buy">Get a Pitch Review ({{ review.price }})</button>
+      <p class="v-error" id="v-review-error" role="alert"></p>
+      <p class="v-review-small">Full refund if it's late or we can't review it. You'll see the exact price before
+        paying. <a href="/terms#pitch-review">Terms</a></p>
+    </div>
+    {%- endif %}
     <div class="v-next" id="v-next">
       <p class="v-next-head">While you wait</p>
       <a class="v-next-link path-pitch" data-next="pitch" href="/genesis" hidden>

@@ -647,3 +647,7 @@ dialog form .btn { width: 100%; justify-content: center; }
 .nu-creators { border-color: rgba(255, 79, 184, 0.45); background: linear-gradient(180deg, rgba(255, 79, 184, 0.1), rgba(8, 16, 42, 0.5) 50%); }
 .nu-creators .nu-pro-label { color: #ff8fd0; }
 .nu-creators .nu-pro-mark { background: radial-gradient(circle, #fff 0 12%, #ff4fb8 30%, #8b5cf6 70%); }
+
+/* Pitch Reviews (orbyt_review.py): a late one stands out. */
+.rv-item-late { border-color: rgba(244, 63, 94, 0.55); }
+.cr-main small.rv-late { color: #fda4af; font-weight: 600; }

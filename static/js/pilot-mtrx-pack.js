@@ -53,8 +53,8 @@ Free, with no account. Projects stay in the visitor's own browser (local storage
 - With the visitor's own AI key set in Pilot, Ask Genesis runs from their browser on their key, with no daily limit, and nothing goes to MTRX Horizyn.
 
 ## Orbyt (page: /orbyt)
-The official place to work with MTRX Horizyn. Four paths: Pitch an idea (a business or app idea, or bring one from Genesis), Partner with us (resell, integrate or build on, refer customers, or recommend CyberLogix AI), Investors (MTRX Horizyn is not selling shares or asking for money; nothing there is an investment), and Buy the company or an app (this only starts a conversation; nothing can be bought or paid for there).
-- It takes about 2 minutes, a real person reads every message, and MTRX Horizyn replies by email within 7 days, even if the answer is no. Nothing is bought or sold on that page.
+The official place to work with MTRX Horizyn. Four paths: Pitch an idea (a business or app idea, or bring one from Genesis), Partner with us (resell, integrate or build on, refer customers, or recommend CyberLogix AI), Investors (MTRX Horizyn is not selling shares or asking for money; nothing there is an investment), and Buy the company or an app (this only starts a conversation; no shares, apps or companies are bought or sold there).
+- It takes about 2 minutes, a real person reads every message, and MTRX Horizyn replies by email within 7 days, even if the answer is no. Pitching, partnering and business enquiries are always free.
 - Messages are kept only to reply, for up to 365 days. MTRX Horizyn won't publish or pass on what is sent. It may already be working on something similar; if so, it says so in its reply. Under-13s should ask a parent or guardian to send it.
 
 ## Privacy and terms (pages: /privacy, /terms)
@@ -75,7 +75,7 @@ Pilot runs on the visitor's own AI key from Anthropic, OpenAI, Google Gemini, or
     "Ask Genesis is made for first-time founders, many of them young: plain words, short answers, no personal details asked for, and unsafe requests refused. It's free each day, or unlimited with your own AI key.",
     "Your projects move with you as a file you own (Download and Import); nothing locks you in.",
     "The site sets no cookies for visitors, has no tracking, analytics or ads, and loads nothing from other companies.",
-    "Orbyt promises a reply from a real person within 7 days, even when the answer is no, and nobody pays or gets paid there.",
+    "Orbyt promises a reply from a real person within 7 days, even when the answer is no, and pitching there is always free.",
     "CyberLogix AI keeps calling, a text then a phone call then the next person, until someone answers, and its sensors work apart from the fridge's own controls.",
     "OmniArmor.ai names the rule behind every check and counts the deadlines for you.",
     "With the Kitchen Safety Bundle the daily temperature checks fill themselves in from real readings.",
@@ -93,6 +93,9 @@ Pilot runs on the visitor's own AI key from Anthropic, OpenAI, Google Gemini, or
     lines.push(f.pro
       ? `Genesis Pro is on. It's a subscription a grown-up buys through Stripe (from ${f.proPrice} a month; the exact price shows before paying; cancel any time with Manage subscription). It gives up to 100 Ask Genesis answers a day of its own, longer answers, a four-week plan, website words and price ideas, a private cloud backup and a tidy plan download. Genesis stays free without it.`
       : "Genesis Pro isn't offered right now: everything in Genesis is free.");
+    lines.push(f.review
+      ? `Orbyt Pitch Review is on: an optional extra after sending a pitch in Orbyt, one payment of ${f.reviewPrice} (not a subscription), bought by a grown-up (18+) through Stripe. A real person at MTRX Horizyn emails a personal review of the idea within ${f.reviewDays} days: what's strong, what to fix, the next 3 steps, and whether it might fit Orbyt. Full refund if it's late or the idea can't be reviewed. Pitching stays free and every pitch gets a reply either way. Never push it.`
+      : "Nothing in Orbyt costs anything: pitching, partnering and business enquiries are free.");
     if (f.early) lines.push("The early access list is open (page: /early-access): people can join to hear first about the apps; founding members get a launch discount.");
     if (f.creators) lines.push("The creator program is open (page: /creators): creators make videos about the apps and earn a share of what their viewers pay.");
     return lines.join("\n");

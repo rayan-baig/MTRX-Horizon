@@ -238,6 +238,43 @@ CREATE TABLE IF NOT EXISTS genesis_pro_backups (
     body TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS genesis_pro_backups_member ON genesis_pro_backups (member_id, at);
+-- Orbyt Pitch Review (orbyt_review.py), the optional paid review of a pitch.
+-- A ticket lets the browser that just sent a pitch start one checkout for it:
+-- only its SHA-256, kept two days.
+CREATE TABLE IF NOT EXISTS orbyt_review_tickets (
+    token_hash TEXT PRIMARY KEY,
+    message_id INTEGER NOT NULL,
+    created_at REAL NOT NULL
+);
+-- A paid review, made only by Stripe's signed webhook: which pitch, the
+-- buyer's email (to send the review to), the idea's name, the amount, when
+-- it was paid and is due, and whether it was sent or refunded. No card, no
+-- name. The email and idea name are cleared 90 days after it is sent or
+-- refunded, and the row goes after 400 days.
+CREATE TABLE IF NOT EXISTS orbyt_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_id INTEGER NOT NULL,
+    session TEXT NOT NULL UNIQUE,
+    payment_intent TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL DEFAULT '',
+    idea TEXT NOT NULL DEFAULT '',
+    cents INTEGER NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'usd',
+    paid_at REAL NOT NULL,
+    due_at REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open',
+    sent_at REAL,
+    refunded_at REAL,
+    created_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS orbyt_reviews_message ON orbyt_reviews (message_id);
+CREATE INDEX IF NOT EXISTS orbyt_reviews_intent ON orbyt_reviews (payment_intent);
+-- Its own Stripe event ids: Stripe sends one event, with one id, to every
+-- endpoint that asks for it, so Genesis Pro's list can't be shared.
+CREATE TABLE IF NOT EXISTS orbyt_review_events (
+    id TEXT PRIMARY KEY,
+    at REAL NOT NULL
+);
 -- Random keys this site makes for itself (growth.py): one that signs the
 -- links in early access emails, and one a day that turns a visitor's address
 -- into a mark that can't be turned back. A day's key is deleted two days on,

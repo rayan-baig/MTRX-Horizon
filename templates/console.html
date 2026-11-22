@@ -44,6 +44,7 @@
       <a href="#numbers"><span class="ico ico-numbers"></span>Numbers</a>
       <a href="#projects"><span class="ico ico-projects"></span>Projects</a>
       <a href="#vortex"><span class="ico ico-vortex"></span>Orbyt<span class="side-badge" id="vx-unread" hidden></span></a>
+      {% if reviews %}<a href="#reviews"><span class="ico ico-vortex"></span>Pitch Reviews<span class="side-badge" id="rv-badge" hidden></span></a>{% endif %}
       {% if early %}<a href="#early"><span class="ico ico-users"></span>Early access</a>{% endif %}
       {% if creators %}<a href="#creators"><span class="ico ico-key"></span>Creators<span class="side-badge" id="cr-waiting" hidden></span></a>{% endif %}
       <a href="#activity"><span class="ico ico-activity"></span>Activity</a>
@@ -208,6 +209,26 @@
         Open a message to read it. Each one is deleted <span id="vx-keep">365</span> days after it arrived.</p>
       <ul class="vx-list" id="vx-list"></ul>
     </section>
+
+    {% if reviews -%}
+    {#- Orbyt Pitch Review (horizon/orbyt_review.py): paid reviews to write,
+        soonest due first, and Mark sent. Shown while it is switched on, or
+        while any order is kept. Everything is placed with textContent. -#}
+    <section class="panel reviews" id="reviews" aria-labelledby="rv-title">
+      <div class="panel-head">
+        <h2 id="rv-title"><span class="ico ico-vortex"></span>Pitch Reviews</h2>
+        <a class="hint" href="/orbyt#pitch" target="_blank" rel="noopener">Open the pitch form</a>
+      </div>
+      <p class="ca-note" id="rv-note">Paid reviews of pitches sent in Orbyt. Read the pitch, email your review to the
+        buyer, then press <b>Mark sent</b>. A late review, or one you can't write, gets a full refund: do it by hand in
+        Stripe (Payments, then Refund).</p>
+      <ul class="ea-warn" id="rv-warn"></ul>
+      <h3 class="ea-sub">To write</h3>
+      <ul class="cr-list" id="rv-open"></ul>
+      <h3 class="ea-sub">Done</h3>
+      <ul class="cr-list" id="rv-done"></ul>
+    </section>
+    {%- endif %}
 
     {% if early -%}
     {#- The early access list (horizon/early_access.py): who is waiting for each

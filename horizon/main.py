@@ -25,7 +25,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
 from . import (catalog, config, costs, creators, db, early_access, errors, genesis_ai, genesis_pro, growth,
-               health, lock, news, numbers, offers, ready, stats, upkeep, vortex)
+               health, lock, news, numbers, offers, orbyt_review, ready, stats, upkeep, vortex)
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -35,6 +35,9 @@ SESSION_COOKIE = "mh_s"
 
 # Where Stripe sends Genesis Pro's events (genesis_pro.py).
 STRIPE_WEBHOOK = "/api/genesis/pro/stripe"
+# Where Stripe sends Orbyt Pitch Review's events (orbyt_review.py): its own
+# endpoint, with its own signing secret.
+REVIEW_WEBHOOK = "/api/orbyt/review/stripe"
 
 # Pilot, the assistant on every public page (static/pilot/, docs/PILOT.md),
 # calls the AI provider the visitor chose straight from their browser, with
@@ -153,6 +156,11 @@ def pilot_facts() -> dict:
         "free_hour": settings.genesis_ai_per_hour,
         "pro": genesis_pro.ready(),
         "pro_price": settings.genesis_pro_price_text,
+        # Orbyt Pitch Review: only while it is offered, so Pilot never
+        # mentions it otherwise.
+        "review": orbyt_review.ready(),
+        "review_price": settings.orbyt_review_price_text if orbyt_review.ready() else "",
+        "review_days": settings.orbyt_review_days if orbyt_review.ready() else "",
         "early": early_access.ready(),
         "creators": creators.enabled(),
         "hosts": " ".join(PILOT_COMPATIBLE_HOSTS + PILOT_LOCAL_HOSTS),
@@ -361,10 +369,11 @@ async def guard(request: Request, call_next):
     # (rankup., cyberlogix., omniarmor.): to a browser they are the "same
     # site" as this one, so SameSite lets their requests carry our cookies.
     # The exact host compared here does not.
-    # Stripe's webhook is the one exception: it comes from Stripe, not a
-    # page, and its signature is checked instead (genesis_pro.webhook).
+    # Stripe's webhooks are the one exception: they come from Stripe, not a
+    # page, and their signature is checked instead (genesis_pro.webhook,
+    # orbyt_review.webhook).
     if (request.method != "GET" and request.url.path.startswith("/api/")
-            and request.url.path != STRIPE_WEBHOOK):
+            and request.url.path not in (STRIPE_WEBHOOK, REVIEW_WEBHOOK)):
         origin = request.headers.get("origin", "")
         try:
             same_site = bool(origin) and urlsplit(origin).netloc == request.url.netloc
@@ -484,12 +493,16 @@ LEGAL_UPDATED = "20 November 2026"
 PRO_LEGAL_UPDATED = "20 November 2026"
 # The same, while the early access list or the creator program is on.
 GROWTH_LEGAL_UPDATED = "20 November 2026"
+# The same, while Orbyt Pitch Review is on.
+REVIEW_LEGAL_UPDATED = "22 November 2026"
 
 
 def _legal(request: Request, page: str) -> HTMLResponse:
     settings = config.get()
     early, makers = early_access.ready(), creators.enabled()
-    updated = GROWTH_LEGAL_UPDATED if early or makers else PRO_LEGAL_UPDATED if genesis_pro.ready() else LEGAL_UPDATED
+    review = orbyt_review.offer()
+    updated = (REVIEW_LEGAL_UPDATED if review else GROWTH_LEGAL_UPDATED if early or makers
+               else PRO_LEGAL_UPDATED if genesis_pro.ready() else LEGAL_UPDATED)
     return templates.TemplateResponse(request, f"{page}.html", {
         "page": page,
         "updated": updated,
@@ -502,6 +515,10 @@ def _legal(request: Request, page: str) -> HTMLResponse:
         "vortex_days": vortex.KEEP_DAYS,
         "pro": genesis_pro.ready(),
         "pro_backup_days": genesis_pro.BACKUP_KEEP_AFTER_END // 86400,
+        # Orbyt Pitch Review: None, and nothing about it on either page, while it is off.
+        "review": review,
+        "review_forget_days": orbyt_review.FORGET_EMAIL_DAYS,
+        "review_order_days": orbyt_review.ORDER_DAYS,
         "cookies": {"device_days": DEVICE_COOKIE_DAYS,
                     "door_minutes": settings.knock_minutes,
                     "session_hours": settings.session_hours},
@@ -579,7 +596,48 @@ def vortex_page(request: Request):
         # apps it covers, which get "Get early access" on their cards.
         "early": early_access.ready(),
         "early_apps": list(growth.APP_NAMES) if early_access.ready() else [],
+        # Orbyt Pitch Review: None, and nothing about it on the page, while it is off.
+        "review": orbyt_review.offer(),
     })
+
+
+# ---------------------------------------------------------------- Orbyt Pitch Review
+# The optional paid review of a pitch already sent (orbyt_review.py). Every
+# address here is "page not found" until it is switched on and set up.
+
+@app.post("/api/orbyt/review/checkout")
+async def orbyt_review_checkout(request: Request):
+    if not orbyt_review.ready():
+        return not_found(request)
+    body = await _json(request)
+    status, answer = await run_in_threadpool(orbyt_review.checkout, client_ip(request), body.get("ticket"),
+                                             body.get("adult"), base_url(request))
+    return JSONResponse(answer, status_code=status)
+
+
+@app.post(REVIEW_WEBHOOK)
+async def orbyt_review_stripe(request: Request):
+    """Stripe's signed events: the only thing that makes a paid review."""
+    if not orbyt_review.ready():
+        return not_found(request)
+    payload = await _raw(request, 512_000)
+    if payload is None:
+        return JSONResponse({"error": "Too big."}, status_code=413)
+    status, answer = await run_in_threadpool(orbyt_review.webhook, client_ip(request), payload,
+                                             request.headers.get("stripe-signature", ""))
+    return JSONResponse(answer, status_code=status)
+
+
+# Where Stripe sends a buyer after paying. It says what happens next; the
+# order itself is made only by the webhook, so nothing here depends on it.
+@app.get("/orbyt/review/thanks", response_class=HTMLResponse)
+def orbyt_review_thanks(request: Request):
+    review = orbyt_review.offer()
+    if review is None:
+        return not_found(request)
+    return _quiet(templates.TemplateResponse(request, "orbyt_review_thanks.html", {
+        "page": "vortex", "contact": config.get().contact_email, "review": review,
+    }))
 
 
 # The partner page: fridge and refrigeration repair firms, food safety
@@ -1013,7 +1071,8 @@ def _knock(device_id: str | None, taps) -> JSONResponse:
 def console(request: Request):
     if signed_in(request):
         return templates.TemplateResponse(request, "console.html", {
-            "early": early_access.enabled(), "creators": creators.enabled()})
+            "early": early_access.enabled(), "creators": creators.enabled(),
+            "reviews": orbyt_review.shown_in_console()})
     device_ok = lock.device(request.cookies.get(DEVICE_COOKIE)) is not None
     if device_ok and lock.door_open(request.cookies.get(DOOR_COOKIE)):
         return templates.TemplateResponse(request, "unlock.html")
@@ -1265,12 +1324,41 @@ def vortex_act(request: Request, message_id: str, action: str):
         return denied
     if action not in vortex.ACTIONS or not message_id.isdigit() or len(message_id) > 12:
         return JSONResponse({"error": "That isn't something the console can do."}, status_code=400)
+    if action == "delete" and orbyt_review.open_for(int(message_id)):
+        # Someone paid for a review of this pitch: it stays until that's done.
+        return JSONResponse({"error": "This pitch has a paid Pitch Review that isn't sent yet. "
+                                      "Mark the review sent (or refund it in Stripe) first."}, status_code=409)
     if not vortex.act(int(message_id), action):
         # Not 404: the console takes a 404 to mean "signed out" and leaves.
         return JSONResponse({"error": "That message is already gone."}, status_code=409)
     if action == "delete":
         db.log("Vortex message deleted", f"by {dev['name']}")
     return {"ok": True, "unread": vortex.unread()}
+
+
+# ---------------------------------------------------------------- Pitch Reviews, for the owner
+# Paid reviews still to write, soonest due first, and a Mark sent button
+# (orbyt_review.py). Never 404 to the owner: the console takes a 404 to mean
+# "signed out".
+
+@app.get("/api/console/orbyt-reviews")
+def orbyt_reviews_console(request: Request):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    return orbyt_review.console()
+
+
+@app.post("/api/console/orbyt-reviews/{order_id}/sent")
+def orbyt_review_sent(request: Request, order_id: str):
+    dev, denied = _owner_only(request)
+    if denied:
+        return denied
+    if not order_id.isdigit() or len(order_id) > 12:
+        return JSONResponse({"error": "That review isn't there."}, status_code=409)
+    if not orbyt_review.mark_sent(int(order_id)):
+        return JSONResponse({"error": "That review is already marked sent, or was refunded."}, status_code=409)
+    return {"ok": True, **orbyt_review.console()}
 
 
 # ---------------------------------------------------------------- the app catalog, for the owner

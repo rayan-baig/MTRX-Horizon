@@ -1387,6 +1387,43 @@ test("the MTRX site 1.4.0: its pills work with no key: Genesis's start form, and
   assert.match(run("/", { apps: odd }).welcomePills[3].answer({}), /\*\*Big x\(\/\/e\)\*\*: a/);
 });
 
+test("the MTRX site 1.20.0: Orbyt's \"What's a Pitch Review?\" answer is there only while it is offered", () => {
+  const mtrx = fs.readFileSync(site("pilot-mtrx.js"), "utf8");
+  const run = (pathname, data) => {
+    let given = null;
+    vm.runInNewContext(mtrx, { window: { Pilot: { mount: (c) => { given = c; } }, location: { pathname } },
+      document: { getElementById: () => ({ dataset: data }), title: "" } });
+    return given;
+  };
+  // Off: the three suggestions as before, and nothing about it in the facts.
+  const off = run("/orbyt", { review: "off", reviewPrice: "", reviewDays: "" });
+  assert.equal(off.chips().length, 3);
+  assert.equal(off.chips()[2].prompt, "How do I pitch a project from Genesis in Orbyt?");
+  assert.ok(!JSON.stringify(off.chips()).includes("Pitch Review"));
+  assert.equal(off.facts.review, false);
+  assert.equal(off.facts.reviewPrice, "");
+  // On: still three, the third answered at once with the price and days from the settings.
+  const on = run("/orbyt", { review: "on", reviewPrice: "$19", reviewDays: "5" });
+  const chips = on.chips();
+  assert.equal(chips.length, 3);
+  assert.equal(chips[2].label, "What's a Pitch Review?");
+  assert.equal(typeof chips[2].answer, "string");
+  assert.match(chips[2].answer, /within 5 days, for one payment of \$19 \(not a subscription\)/);
+  assert.match(chips[2].answer, /grown-up \(18\+\) pays through Stripe/);
+  assert.match(chips[2].answer, /If it's late, or we can't review your idea, you get a full refund\./);
+  assert.match(chips[2].answer, /Pitching is free, and every pitch gets a reply with or without one\./);
+  assert.deepEqual([on.facts.review, on.facts.reviewPrice, on.facts.reviewDays], [true, "$19", 5]);
+  // Other pages don't get it.
+  assert.ok(!JSON.stringify(run("/", { review: "on", reviewPrice: "$19", reviewDays: "5" }).chips()).includes("Pitch Review"));
+  // A price can't add markdown of its own.
+  assert.match(run("/orbyt", { review: "on", reviewPrice: "[$1](//x)", reviewDays: "5" }).chips()[2].answer, /payment of \$1\(\/\/x\)/);
+  // The knowledge pack says it only while the fact is on, and Orbyt's own words stay true either way.
+  const pack = fs.readFileSync(site("pilot-mtrx-pack.js"), "utf8");
+  assert.ok(pack.includes("lines.push(f.review"));
+  assert.ok(pack.includes("no shares, apps or companies are bought or sold there"));
+  assert.ok(!pack.includes("Nothing is bought or sold") && !pack.includes("nothing can be bought or paid for"));
+});
+
 test("wandering 1.4.0: something to avoid holds the robot still only where it strolls, not anywhere on the page", () => {
   const W = { innerWidth: 375, innerHeight: 812 };
   const launcher = { offsetHeight: 54 };

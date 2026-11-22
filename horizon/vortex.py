@@ -24,7 +24,7 @@ import threading
 import time
 import unicodedata
 
-from . import catalog, config, db, health
+from . import catalog, config, db, health, orbyt_review
 
 LOG = logging.getLogger("horizon")
 
@@ -294,10 +294,18 @@ def send(who: str, body: dict) -> tuple[int, dict]:
         return 400, {"error": str(why), "field": why.field}
     if not claim(who):
         return 429, {"error": BUSY}
-    store(row)
+    message_id = store(row)
     db.log("Vortex message", KINDS[row["kind"]])
     tell_owner(row)
-    return 200, {"ok": True, "message": SENT, "email": row["email"]}
+    answer = {"ok": True, "message": SENT, "email": row["email"]}
+    if row["kind"] == "pitch":
+        # While Pitch Review is on (orbyt_review.py): a one-time ticket the
+        # Sent screen can use to offer it for this pitch. The pitch is sent
+        # and answered either way.
+        ticket = orbyt_review.ticket_for(message_id)
+        if ticket:
+            answer["review"] = ticket
+    return 200, answer
 
 
 # ---------------------------------------------------------------- the console

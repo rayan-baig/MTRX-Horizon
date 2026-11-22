@@ -82,6 +82,12 @@ class Settings:
     genesis_pro_per_day: int
     genesis_pro_monthly_ai_usd: float
     genesis_pro_email_from: str
+    orbyt_review_enabled: bool
+    orbyt_review_webhook_secret: str
+    orbyt_review_price: str
+    orbyt_review_price_text: str
+    orbyt_review_days: int
+    orbyt_review_email_from: str
     early_access_enabled: bool
     founder_codes: dict
     founder_percent_off: int
@@ -156,6 +162,12 @@ _PROMO_CODE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,39}")
 def _promo_code(raw: str | None) -> str:
     value = (raw or "").strip()
     return value if _PROMO_CODE.fullmatch(value) else ""
+
+
+def _days(raw: str | None, default: int, most: int) -> int:
+    """A whole number of days from 1 to `most`, or `default`."""
+    value = _whole_number(raw, default)
+    return value if value <= most else default
 
 
 def _percent(raw: str | None, default: int) -> int:
@@ -299,6 +311,19 @@ def get() -> Settings:
         # (docs/GENESIS-PRO.md has the sums).
         genesis_pro_monthly_ai_usd=_money(env.get("GENESIS_PRO_MONTHLY_AI_USD"), 1.5),
         genesis_pro_email_from=_email(env.get("GENESIS_PRO_EMAIL_FROM")),
+        # Orbyt Pitch Review (orbyt_review.py): an optional, one-time paid
+        # review of a pitch already sent. Off, and nothing about it shown,
+        # until ORBYT_REVIEW_ENABLED=1 and its Stripe settings are all set.
+        # It shares STRIPE_SECRET_KEY with Genesis Pro but has its own
+        # webhook endpoint and signing secret. The price text is what the
+        # page says (Stripe's checkout shows the real amount); the days are
+        # the promise: the review is emailed within them, or a full refund.
+        orbyt_review_enabled=env.get("ORBYT_REVIEW_ENABLED", "") == "1",
+        orbyt_review_webhook_secret=env.get("ORBYT_REVIEW_STRIPE_WEBHOOK_SECRET", "").strip(),
+        orbyt_review_price=_price_id(env.get("ORBYT_REVIEW_STRIPE_PRICE")),
+        orbyt_review_price_text=_price_text(env.get("ORBYT_REVIEW_PRICE_TEXT"), "$19"),
+        orbyt_review_days=_days(env.get("ORBYT_REVIEW_DAYS"), 5, 30),
+        orbyt_review_email_from=_email(env.get("ORBYT_REVIEW_EMAIL_FROM")),
         # The early access list (early_access.py). Off, and nothing about it
         # shown, until EARLY_ACCESS_ENABLED=1. Each app's founder code is a
         # Stripe promotion code the owner makes in Stripe; the percent it

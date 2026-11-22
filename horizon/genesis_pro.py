@@ -182,9 +182,10 @@ def problems() -> list:
 _counting = threading.Lock()
 
 
-def allow(kind: str, who: str) -> bool:
-    """Count one use of `kind` by `who`, or say they have used it enough."""
-    limit, window = RATES[kind]
+def allow(kind: str, who: str, rates: dict | None = None) -> bool:
+    """Count one use of `kind` by `who`, or say they have used it enough.
+    `rates` is another product's own limits (orbyt_review.RATES)."""
+    limit, window = (rates or RATES)[kind]
     now = time.time()
     with _counting, db.connect() as conn:
         (count,) = conn.execute("SELECT COUNT(*) FROM attempts WHERE kind = ? AND who = ? AND at > ?",
@@ -195,9 +196,9 @@ def allow(kind: str, who: str) -> bool:
         return True
 
 
-def _under(kind: str, who: str) -> bool:
+def _under(kind: str, who: str, rates: dict | None = None) -> bool:
     """Whether `who` still has some of `kind` left, without using any."""
-    limit, window = RATES[kind]
+    limit, window = (rates or RATES)[kind]
     with db.connect() as conn:
         (count,) = conn.execute("SELECT COUNT(*) FROM attempts WHERE kind = ? AND who = ? AND at > ?",
                                 (kind, who, time.time() - window)).fetchone()
