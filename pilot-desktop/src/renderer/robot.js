@@ -11,6 +11,13 @@
 // (props.js), sound effects for some of them (sounds.js), every pose picture
 // fetched and decoded before it's first needed, and a gentle "talking" look
 // while Pilot reads a reply aloud.
+// Pilot for Mac 1.5: sharp and smooth (smooth.js: every move on the screen's
+// pixel grid, and pictures that dissolve one over the other instead of both
+// fading at once), and clickable while he moves: as long as a move plays,
+// every frame checks whether the pointer is on him, and his place goes to
+// the main process 20 times a second, so its own check of the cursor (which
+// works even when macOS sends this window no mouse moves) follows him
+// instead of the spot where the move began.
 "use strict";
 
 (function () {
@@ -18,6 +25,7 @@
   const M = window.PilotMotion;
   const R = window.PilotRoam;
   const T = window.PilotTricks;
+  const S = window.PilotSmooth;
   const sfx = window.PilotSounds.create({});
   const stage = document.getElementById("stage");
   const words = document.getElementById("status-words");
@@ -42,6 +50,10 @@
 
   // The drawn props and effects fill in as the actor adds them.
   window.PilotProps.attach(stage);
+  // Each change of picture dissolves (a step of a walk or climb is a clean cut).
+  const dissolve = S.dissolver(stage, { sameCycle: R.sameCycle, reduced: () => reduce.matches });
+  const dpr = () => window.devicePixelRatio || 1;
+  const snap = (v) => S.snap(v, dpr());
 
   function makeActor(poses) {
     actor = window.PilotActor.create({
@@ -77,8 +89,17 @@
     return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
   }
 
+  // Where he is drawn now: mid-move, the animated place (not where it began).
+  function liveAt() {
+    const m = /matrix(?:3d)?\(([^)]+)\)/.exec(getComputedStyle(actor.el).transform || "");
+    if (!m) return actor.at;
+    const v = m[1].split(",").map(Number);
+    const p = v.length === 16 ? { x: v[12], y: v[13] } : { x: v[4], y: v[5] };
+    return Number.isFinite(p.x) && Number.isFinite(p.y) ? p : actor.at;
+  }
+
   function report(moving) {
-    const at = actor.at;
+    const at = moving && actor.busy ? liveAt() : actor.at;
     P.at({ x: at.x, y: at.y, rect: rectOf(), moving: Boolean(moving) });
   }
 
@@ -89,7 +110,7 @@
     const h = window.innerHeight;
     return {
       u, pos: actor.at, home: state ? state.home : null, floor: h - 8, left: u * 0.62, right: w - u * 0.62, top: u * 1.7,
-      poses: actor.poses(), profile: "desktop", random: Math.random, pointer: extra && extra.at, sky: h * 0.6,
+      poses: actor.poses(), profile: "desktop", random: Math.random, pointer: extra && extra.at, sky: h * 0.6, wall: { left: 0, right: w },
     };
   }
 
@@ -107,7 +128,7 @@
       else if (roaming && cmd.move === "roam-trick" && T.has(cmd.trick)) plan = T.plan(cmd.trick, g, actor.pose);
       else if (roaming) plan = R.plan(cmd.move, g, actor.pose);
       else if (T.has(cmd.move)) plan = T.plan(cmd.move, g, actor.pose);
-      else plan = M.plan(cmd.move, g, { how: cmd.how, at: cmd.at, say: typeof cmd.say === "string" ? cmd.say.slice(0, 40) : undefined });
+      else plan = R.desktop(cmd.move, g, actor.pose) || M.plan(cmd.move, g, { how: cmd.how, at: cmd.at, say: typeof cmd.say === "string" ? cmd.say.slice(0, 40) : undefined });
       plan = R.fromPose(plan, actor.pose, g);
       if (!plan) {
         // Nothing to play: say so at once, so the main process's timer carries on.
@@ -148,18 +169,42 @@
     }, c.t));
   }
 
-  async function play(plan, roaming, user) {
+  async function play(raw, roaming, user) {
+    const plan = S.refine(raw, dpr());
     clearTimeout(settleTimer);
     report(true);
-    // Fewer glow effects while travelling (cheaper to draw every frame).
     document.documentElement.classList.toggle("travel", Boolean(roaming));
     const cues = scheduleSounds(plan, user);
-    const end = await actor.play(plan);
+    playing += 1;
+    follow();
+    let end;
+    try { end = await actor.play(plan); } finally { playing -= 1; }
     for (const t of cues) clearTimeout(t);
     if (end && end.stopped) sfx.stop();
     document.documentElement.classList.remove("travel");
     report(false);
+    checkOver(lastPoint);
     if (!(end && end.stopped)) settleLater();
+  }
+
+  // ------------------------------------------------------------ following a move
+
+  // While a move plays: every frame, is the pointer on him now (he may walk
+  // under a still pointer, or away from it)? And 20 times a second, where
+  // he is, for the main process's own check of the cursor.
+  let playing = 0;
+  let followRaf = 0;
+  let lastReport = 0;
+  function follow() {
+    if (followRaf) return;
+    const step = (now) => {
+      followRaf = 0;
+      if (!actor || (!playing && !actor.busy)) return;
+      checkOver(lastPoint);
+      if (now - lastReport >= S.REPORT_MS) { lastReport = now; report(true); }
+      followRaf = requestAnimationFrame(step);
+    };
+    followRaf = requestAnimationFrame(step);
   }
 
   function settleLater() {
@@ -176,15 +221,19 @@
 
   // ------------------------------------------------------------ click-through
 
+  // Pressed on him: the overlay keeps the mouse until the button is let go,
+  // even if he sits down to the (smaller) resting robot under the pointer.
+  // (In 1.4 the hover dropped right there, so the release went to the app
+  // underneath and the click never landed.)
   let lastPoint = null;
   function checkOver(point) {
-    if (!actor || !point) return;
-    const now = dragging || M.hit(actor.rect(), point, 2);
+    if (!actor) return;
+    const now = S.wantsMouse({ rect: point ? actor.rect() : null, point, down: Boolean(down), dragging, pad: 4 });
     if (now !== over) { over = now; P.hover(over); }
   }
   // Mouse moves arrive even while the window lets clicks through.
   window.addEventListener("mousemove", (ev) => { lastPoint = { x: ev.clientX, y: ev.clientY }; checkOver(lastPoint); });
-  document.addEventListener("mouseleave", () => { if (over && !dragging) { over = false; P.hover(false); } });
+  document.addEventListener("mouseleave", () => { lastPoint = null; if (over && !dragging && !down) { over = false; P.hover(false); } });
 
   // ------------------------------------------------------------ drag and click
 
@@ -195,6 +244,8 @@
     const at = actor.at;
     down = { x: ev.clientX, y: ev.clientY, ox: ev.clientX - at.x, oy: ev.clientY - at.y, id: ev.pointerId };
     dragging = false;
+    lastPoint = { x: ev.clientX, y: ev.clientY };
+    checkOver(lastPoint);
     try { stage.setPointerCapture(ev.pointerId); } catch (_) { /* fine */ }
   });
 
@@ -209,7 +260,7 @@
       const g = geometry();
       const x = Math.min(Math.max(ev.clientX - down.ox, g.left), g.right);
       const y = Math.min(Math.max(ev.clientY - down.oy, g.top), window.innerHeight - 4);
-      actor.place(x, y);
+      actor.place(snap(x), snap(y));
     }
   });
 
@@ -218,12 +269,16 @@
     try { stage.releasePointerCapture(down.id); } catch (_) { /* fine */ }
     const d = down;
     down = null;
-    if (!dragging) { if (ev.type === "pointerup") P.click(); return; }
+    if (!dragging) {
+      if (ev.type === "pointerup") P.click();
+      checkOver({ x: ev.clientX, y: ev.clientY });
+      return;
+    }
     dragging = false;
     document.body.classList.remove("dragging");
     const at = actor.at;
     const res = await P.drop({ x: at.x, y: at.y, ox: d.ox, oy: d.oy });
-    if (res && Number.isFinite(res.x)) actor.place(res.x, res.y);
+    if (res && Number.isFinite(res.x)) actor.place(snap(res.x), snap(res.y));
     report(false);
     settleLater();
     checkOver({ x: ev.clientX, y: ev.clientY });
@@ -240,7 +295,7 @@
     const files = ev.dataTransfer ? [...ev.dataTransfer.files] : [];
     if (!files.length) return;
     window.pilot.attach.show();
-    if (actor) actor.play(R.fromPose(M.plan("nod", geometry()), actor.pose, geometry())).catch(() => {});
+    if (actor) play(R.fromPose(M.plan("nod", geometry()), actor.pose, geometry()), false).catch(() => {});
     window.PilotAttach.takeFiles(files, window.pilot.attach, {}).catch(() => {});
   });
 
@@ -268,11 +323,13 @@
     if (idleOk !== idleWas) { idleWas = idleOk; actor.idle(idleOk); }
     // Only in the smoke test: a handle to hold a move still for pictures.
     if (s.test && !window.__pilotRobot) {
-      window.__pilotRobot = { actor, geometry, sounds: soundLog, warmed: () => warmed, perform, queue: () => queue, plan: (move, extra) => (move.startsWith("roam")
-        ? R.plan(move, geometry(extra), actor.pose) : T.has(move) ? T.plan(move, geometry(extra), actor.pose) : M.plan(move, geometry(extra), extra || {})) };
+      window.__pilotRobot = { actor, geometry, sounds: soundLog, warmed: () => warmed, perform, queue: () => queue, dissolve, refine: (p) => S.refine(p, dpr()),
+        over: () => over, plan: (move, extra) => (move.startsWith("roam")
+        ? R.plan(move, geometry(extra), actor.pose) : T.has(move) ? T.plan(move, geometry(extra), actor.pose)
+          : R.desktop(move, geometry(extra), actor.pose, extra) || M.plan(move, geometry(extra), extra || {})) };
     }
     if (first) {
-      actor.place(s.home.x, s.home.y);
+      actor.place(snap(s.home.x), snap(s.home.y));
       requestAnimationFrame(() => report(false));
     } else if (!actor.busy && !dragging) {
       // Keep the robot inside the window if the screen changed size.
@@ -280,7 +337,7 @@
       const at = actor.at;
       const x = Math.min(Math.max(at.x, g.left), g.right);
       const y = Math.min(Math.max(at.y, g.top), g.floor + 4);
-      if (x !== at.x || y !== at.y) { actor.place(x, y); report(false); }
+      if (x !== at.x || y !== at.y) { actor.place(snap(x), snap(y)); report(false); }
     }
   });
 

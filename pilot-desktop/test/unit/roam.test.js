@@ -268,7 +268,8 @@ test("journeys vary: walks, runs, flights with a landing, climbs, both ways, ran
     const last = fr[fr.length - 1];
     assert.deepEqual({ x: last.x, y: last.y }, plan.end, plan.name);
     for (const f of fr) {
-      assert.ok(f.x >= g.left - g.u * 0.1 && f.x <= g.right + g.u * 0.1, `${plan.name} x ${f.x}`);
+      // (Climbing, his hands and toes are right on the screen's edge: a little past left and right.)
+      assert.ok(f.x >= g.left - g.u * 0.25 && f.x <= g.right + g.u * 0.25, `${plan.name} x ${f.x}`);
       assert.ok(f.y <= g.floor + 1 && f.y >= g.top - g.u * 0.5, `${plan.name} y ${f.y}`);
     }
     assert.ok(plan.duration <= R.MOST_MS, `${plan.name} ${plan.duration}`);

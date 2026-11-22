@@ -1,6 +1,6 @@
 ## Pilot for Mac {{VERSION}}
 
-**Free mode: AI that runs on your Mac, with no keys. And now two editions.**
+**He walks like a person now, moves smoothly, climbs the screen's edge the right way, looks sharp, and you can always click him.**
 
 Pilot is the MTRX Horizyn AI assistant: a friendly robot that sits on top of everything on your Mac. Click it to chat, get help with writing and code, or have it look at your screen when you ask.
 
@@ -13,7 +13,15 @@ There are two apps. Both have the robot, all the moves and tricks, the voice and
 
 You can install both: they have different names and keep separate settings. Each file works on every Mac: Apple Silicon and Intel, macOS 12 or newer. Free mode runs best on Apple Silicon (M1 or newer).
 
-### What's new in 1.4.0
+### What's new in 1.5.0
+
+- **You can always click him.** Clicking the robot opens the chat again, even while he's walking, climbing or doing a trick. Before, Pilot only noticed where he was when a move started, so once he walked away from that spot a click on him went straight through to the app underneath (and a click on the empty spot he'd left did nothing). Now Pilot follows him as he moves, and a click that starts on him always lands on him.
+- **Sharp, no more flicker.** His pictures are drawn at exactly their own size on Retina screens, so they're crisp instead of slightly soft, and they don't shimmer when he stops. When he changes pose, the old picture fades away on top of the new one, so he never turns see-through or shows two poses at once. His glow stays the same while he moves.
+- **He walks like a person.** A steady rhythm of about two steps a second, his feet staying put on the ground instead of sliding, a gentle start and stop, a slight rise and dip with each step, and no more leaning or wobbling. He walks and runs facing the way he's going, both ways (before, going left he slid sideways facing you), and turns round standing up. Now and then he stops to look around before walking on.
+- **Smoother all round.** Every move eases in and out, with no sudden jerks or jumps. Flights glide with a gentle bob, and longer falls take longer, as they should.
+- **Climbing done right.** He climbs the side of the screen side-on, facing the edge, his hands and feet right on it, going up in reach-and-pull steps on either side. He gets off by climbing back down, pushing off to a landing, or flying away.
+
+### What was new in 1.4.0
 
 - **Free mode.** Pilot's brain can run on your Mac with the free Ollama app. Pilot shows you where to download it (it opens the page in your browser; Pilot never installs anything by itself), notices when it's running, and a **Download brain** button gets a brain that fits your Mac's memory, with a progress bar. Any brain you already have in Ollama is listed too. The window says **Free mode · on your Mac**.
 - **Pictures on your Mac** with the free Draw Things app: turn on its API Server and ask Pilot for a picture. It shows up in the chat with a Save button.

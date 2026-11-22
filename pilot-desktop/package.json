@@ -1,7 +1,7 @@
 {
   "name": "pilot-desktop",
   "productName": "Pilot",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Pilot for Mac: the MTRX Horizyn AI assistant, on your own AI key or free on your Mac.",
   "main": "src/main/main.js",
   "private": true,

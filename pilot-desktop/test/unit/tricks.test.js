@@ -70,7 +70,8 @@ test("every trick uses the poses it says it does (with the owner's pictures ther
   for (const m of T.LIST) {
     const used = new Set();
     for (let i = 1; i <= 6; i += 1) for (const p of T.plan(m.id, geo({ random: seeded(i * 13) }), "standing").poses) used.add(p.pose);
-    for (const p of m.poses) assert.ok(used.has(p), `${m.id} never shows ${p}`);
+    // (A climb shows climb1 on the right edge and its mirror image, climb1-left, on the left.)
+    for (const p of m.poses) assert.ok(used.has(p) || used.has(`${p}-left`), `${m.id} never shows ${p}`);
   }
 });
 
@@ -264,17 +265,20 @@ test("smoother: springs, anticipation, squash and stretch, arcs, and a walk whos
   assert.match(R.EASE.spring, /^linear\(0, .*, 1\)$/);
   const vals = R.EASE.spring.slice(7, -1).split(",").map(Number);
   assert.ok(Math.max(...vals) > 1.05 && Math.max(...vals) < 1.35, "a little overshoot");
-  // Walk: the step time follows the stride and speed (no sliding feet).
+  // Walk (1.5): a steady rhythm of 1.6 to 2 steps a second, one stride per
+  // step in the middle of the walk (no sliding feet), no lean or squash.
   for (const pace of [0.88, 1, 1.14]) {
-    const gt = R.gait({ u: 110, pace }, false, true);
+    const gt = R.gait({ u: 110, pace }, false);
+    assert.ok(gt.cadence >= 1.6 && gt.cadence <= 2, `cadence ${gt.cadence}`);
     const plan = R.walkTo({ ...geo(), pace }, 1100, "standing");
     const steps = plan.poses.filter((p) => p.pose === "walk1" || p.pose === "walk2");
     assert.ok(steps.length >= 4);
-    const each = steps[2].t - steps[1].t;
-    const dist = (1100 - 700) / Math.round(400 / gt.stride);
-    assert.ok(Math.abs(each - (dist / gt.speed) * 1000) < 2, `step ${each} ms`);
+    for (let i = 2; i < steps.length; i += 1) assert.ok(Math.abs(steps[i].t - steps[i - 1].t - gt.stepMs) < 1.5, `step ${steps[i].t - steps[i - 1].t} ms`);
+    const xAt = (t) => plan.frames.find((f) => Math.abs(f.t - t) < 0.01).x;
+    const mid = xAt(steps[3].t) - xAt(steps[2].t);
+    assert.ok(Math.abs(mid - gt.stride) < gt.stride * 0.2, `a step covers ${mid}, the stride is ${gt.stride}`);
     assert.ok(plan.poses.some((p) => p.pose === "walk2"), "a real second walk frame");
-    assert.ok(plan.frames.some((f) => f.r > 3), "a small forward lean");
+    assert.ok(plan.frames.every((f) => Math.abs(f.r) <= 1 && f.sx === 1 && f.sy === 1), "no lean or squash while walking");
   }
   // A jump: a crouch before it, a stretch going up, a squash on landing.
   const k = R.track({ x: 700, y: 892 }, POSES, "standing");

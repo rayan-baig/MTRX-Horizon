@@ -9,12 +9,15 @@
 // a sport about every couple of minutes. Destinations are random, in both
 // directions, and keep away from the mouse.
 //
-// Facing. The pictures are never mirrored (the P on the chest would come out
-// backwards). walk1 and run1 are drawn turned a little to the viewer's right
-// and the knee slide to the left; the rest face the camera. So he only shows
-// a pose that faces the way he's going, or the camera: going right he walks
-// and runs; going left he skips sideways facing the camera, flies, or ends a
-// dash in a knee slide. Landings come straight down, so they suit any way.
+// Facing. A picture is never flipped on screen (the P on the chest would come
+// out backwards). walk1 and run1 are drawn turned a little to the viewer's
+// right and the knee slide to the left; the rest face the camera. Pilot for
+// Mac 1.5 adds left-facing copies of the walk, run and climb pictures
+// (tools/mirror_poses.py: mirrored, with the P put back the right way round),
+// so he walks, runs and climbs facing the way he goes, either way. He only
+// shows a pose that faces the way he's going, or the camera; he turns round
+// standing (facing the camera), never mid-stride. Landings come straight
+// down, so they suit any way.
 //
 // The plans have the same shape as pilot-motion.js's (pilot-actor.js plays
 // them on the compositor, no script per frame); pose pictures change only at
@@ -23,9 +26,18 @@
 // Pilot for Mac 1.3: smoother. Spring easing with a little overshoot,
 // anticipation before every take-off, squash and stretch on take-offs and
 // landings, jumps and flights on real arcs (sampled, so the speed along
-// them is right), a gentle bob and sway while travelling, and a walk whose
-// step rhythm follows the travel speed so his feet don't slide. The plan
-// builder here (track, with props) is also what tricks.js builds on.
+// them is right). The plan builder here (track, with props) is also what
+// tricks.js builds on.
+//
+// Pilot for Mac 1.5: he walks like a person. A steady rhythm of about 1.8
+// steps a second (a run about 2.8), a stride that matches the gap between
+// his feet in the pictures so his feet stay planted, a gentle start and
+// stop (a short first and last step), a slight rise and dip over each step
+// and a very slight sway from foot to foot, and no lean or squash while he
+// walks, so the picture stays sharp. Flights are eased with a gentle bob.
+// He climbs a side edge side-on, facing the wall, his hands and toes on the
+// screen's edge, in reach-and-pull steps, and comes off it by climbing
+// down, pushing off to a landing, or flying.
 //
 // Also here, with no DOM: the Energy levels (Calm, Relaxed, Always moving),
 // which one applies, why the robot must hold still, and what comes next, for
@@ -48,6 +60,11 @@
   const HOLD_MS = 2000; // how often a hold is checked again
   const MOST_MS = 30000; // a move never takes longer; the timer carries on after this
   const MAX_FADE = 160; // cross-fades between pose pictures, at most
+  const CADENCE = { walk: 1.8, run: 2.8 }; // steps a second
+  const STRIDE = { walk: 0.3, run: 0.5 }; // robot widths a step (the gap between his feet in the pictures)
+  // climb1's front edge (its hand and knee, measured on the picture) is this
+  // many robot widths in front of the point between its feet.
+  const CLIMB_REACH = 0.4;
 
   // The level that applies: the user's explicit choice wins; otherwise
   // "reduce motion" means Calm, and else the saved level (Always moving).
@@ -97,7 +114,14 @@
   // ---------------------------------------------------------------- facing
 
   // Which way each picture faces: 1 the viewer's right, -1 the left, 0 the camera.
-  const FACING = { walk1: 1, walk2: 1, run1: 1, run2: 1, dash: 1, kick: 1, tennis: 1, slide: -1, surf: 1, ski: 1, snowboard: 1, kite: 1, sled: 1 };
+  const FACING = { walk1: 1, walk2: 1, run1: 1, run2: 1, dash: 1, kick: 1, tennis: 1, slide: -1, surf: 1, ski: 1, snowboard: 1, kite: 1, sled: 1,
+    climb1: 1, climb2: 1, "walk1-left": -1, "walk2-left": -1, "run1-left": -1, "run2-left": -1, "climb1-left": -1, "climb2-left": -1 };
+  // The pictures of one walk, run or climb: a change between two of them is
+  // a step, shown as a clean cut (like any drawn walk cycle); robot.js
+  // dissolves every other change of picture.
+  const CYCLES = [["walk1", "walk2", "run1", "run2", "dash"], ["walk1-left", "walk2-left", "run1-left", "run2-left"],
+    ["climb1", "climb2"], ["climb1-left", "climb2-left"]];
+  const sameCycle = (a, b) => a !== b && CYCLES.some((c) => c.includes(a) && c.includes(b));
 
   // ---------------------------------------------------------------- the Mac's extra poses
 
@@ -113,6 +137,9 @@
     trampoline: ["standing"], ski: ["land"], sled: ["sitting"], sneeze: ["standing"], snowball: ["land"], snowboard: ["ski", "land"],
     snowman: ["standing"], sparklers: ["celebrate"], spin: ["flip"], surf: ["standing"], teleport: ["power"], umbrella: ["standing"],
     yawn: ["standing"],
+    // Pilot for Mac 1.5: facing left (until a picture is there, the old way: facing the camera).
+    "walk1-left": ["standing"], "walk2-left": ["walk1-left", "standing"], "run1-left": ["walk1-left", "standing"],
+    "run2-left": ["run1-left", "walk2-left", "standing"], "climb1-left": ["climb1"], "climb2-left": ["climb1-left", "climb1"],
   };
   const ALL_POSES = M.POSES.concat(Object.keys(EXTRA));
   function poseSet(have) {
@@ -199,6 +226,7 @@
       get now() { return { ...s }; },
       get pose() { return pose; },
       get dir() { return dir; },
+      get frames() { return plan.frames; },
       has: (name) => resolvePose(name, have) === name,
       shows: (name) => resolvePose(name, have),
       heading(d) { dir = Math.sign(d || 0); return k; },
@@ -336,64 +364,92 @@
     return k.done("settle");
   }
 
-  // How he walks, skips or runs: a stride (in robot widths) and a speed
-  // (widths a second). The step rhythm comes from the two, so the faster he
-  // goes the quicker his steps, and his feet don't slide.
-  function gait(g, run, right) {
-    const pace = g.pace || 1; // > 1 is slower (as in Pilot 1.2)
-    const stride = run ? (right ? 0.44 : 0.36) : (right ? 0.27 : 0.23);
-    const speed = (run ? (right ? 2.3 : 1.9) : (right ? 0.92 : 0.8)) / pace;
-    return { stride: stride * Math.sqrt(1 / pace) * g.u, speed: speed * g.u };
+  // How he walks or runs: a steady step rhythm (cadence, steps a second)
+  // and a stride (pixels a step) that matches the pictures, so in each step
+  // he covers one stride and his feet stay planted. pace > 1 is slower.
+  function gait(g, run) {
+    const pace = g.pace || 1;
+    const cadence = (run ? CADENCE.run : CADENCE.walk) / Math.sqrt(pace);
+    const stride = ((run ? STRIDE.run : STRIDE.walk) / Math.sqrt(pace)) * g.u;
+    return { cadence, stride, speed: stride * cadence, stepMs: 1000 / cadence };
   }
 
-  // Along the floor to x. Going right: walk1 and standing in turn (or run1
-  // strides), with a little forward lean; going left: a sideways skip facing
-  // the camera. Each step is a smooth bob (up mid-step, a soft squash as
-  // the foot lands), with a gentle sway of the head and halo, and the
-  // pictures cross-fade at the footfall. Dust every other step.
-  function steps(k, g, toX, run) {
+  // The pictures for walking or running toward dir (1 right, -1 left).
+  const strideNames = (run, dir) => {
+    const l = dir < 0 ? "-left" : "";
+    return run ? [`run1${l}`, `run2${l}`] : [`walk1${l}`, `walk2${l}`];
+  };
+
+  // Along the floor to x, the way a person walks (or runs): he sets off
+  // gently (a short first step, speeding up), keeps a steady rhythm, and
+  // slows into a short last step before standing still facing the camera.
+  // The picture changes at each footfall, walk1 and walk2 in turn (a clean
+  // cut, like any drawn walk), facing the way he goes. Over each step his
+  // body rises a little and dips as the foot lands, moves a touch slower at
+  // the top and quicker as the weight drops onto the front foot, and sways
+  // very slightly from one foot to the other. The step time is fixed by the
+  // rhythm and the distance per step is one stride, so his feet don't slide.
+  // opts.carry: no slowing down at the end (the run goes straight into a
+  // knee slide); he's still moving at full speed when this ends.
+  function steps(k, g, toX, run, opts) {
     const dist = toX - k.now.x;
     if (Math.abs(dist) < 1) return k;
+    const carry = Boolean(opts && opts.carry);
     const dir = Math.sign(dist);
     k.heading(dir);
-    const right = dir > 0;
-    const { stride, speed } = gait(g, run, right);
-    const n = Math.max(1, Math.round(Math.abs(dist) / stride));
-    const each = dist / n;
-    const ms = (Math.abs(each) / speed) * 1000; // matches the speed, step by step
-    const hop = g.u * (run ? 0.11 : right ? 0.055 : 0.085);
-    const lean = dir * (run ? 8 : right ? 4 : 2.5);
-    const sway = run ? 1 : 1.6;
-    const fade = Math.min(80, Math.round(ms * 0.25)); // a quick cross-fade at the footfall: no pop, and cheap
-    // Anticipation: a small push-off the other way first.
-    k.to(run ? 110 : 90, { r: -dir * 1.5, sy: 0.95, sx: 1.03 }, "out");
-    const sub = run ? 3 : 4;
+    const { stride: nominal, stepMs } = gait(g, run);
+    const n = Math.max(2, Math.round(Math.abs(dist) / nominal) + 1);
+    const total = carry ? n - 0.5 : n - 1; // the first (and last) steps are half ones
+    const stride = Math.abs(dist) / total;
+    const [a, b] = strideNames(run, dir);
+    const hop = g.u * (run ? 0.075 : 0.032);
+    const sway = run ? 0.5 : 0.9; // degrees, from foot to foot
+    const surge = run ? 0 : 0.06;
+    const sub = 8;
+    const x0 = k.now.x;
+    const y0 = k.now.y;
+    // Strides covered by step-time s (0..n): speeding up over the first
+    // step from standing still (½ a stride), steady, slowing over the last.
+    const ramp = (s) => s * s * s - (s * s * s * s) / 2;
+    const along = (s) => {
+      let d;
+      if (s <= 1) d = n === 2 && !carry ? Math.min(ramp(s), 1 - ramp(2 - s)) : ramp(s);
+      else if (!carry && s >= n - 1) d = total - ramp(n - s);
+      else d = 0.5 + (s - 1);
+      const w = Math.min(1, s, carry ? 1 : n - s); // the surge only once he's under way
+      return d + (surge * w * Math.sin(2 * Math.PI * s)) / (2 * Math.PI);
+    };
+    const edgeStep = (i) => i === 0 || (!carry && i === n - 1);
     for (let i = 0; i < n; i += 1) {
-      const a = i % 2 === 0;
-      if (right) k.show(run ? (i === 0 ? "dash" : a ? "run1" : "run2") : (a ? "walk1" : "walk2"), i === 0 ? 90 : fade);
-      else k.show("standing", 90);
-      const x0 = k.now.x;
-      const side = a ? 1 : -1;
+      k.show(i % 2 === 0 ? a : b, 0);
+      const amp = edgeStep(i) ? 0.55 : 1;
+      const side = i % 2 ? -1 : 1;
       for (let j = 1; j <= sub; j += 1) {
-        const u = j / sub;
-        const up = Math.sin(Math.PI * u);
-        const st = 0.965 + 0.06 * up;
-        k.to(ms / sub, { x: x0 + each * u, y: g.floor - hop * up, r: lean + side * sway * up, sy: st, sx: 1.02 - 0.035 * up }, "linear");
+        const f = j / sub;
+        const up = run ? Math.sin(Math.PI * f) : (1 - Math.cos(2 * Math.PI * f)) / 2;
+        k.to(stepMs / sub, { x: x0 + dir * stride * along(i + f), y: y0 - hop * amp * up, r: side * sway * amp * Math.sin(Math.PI * f), sx: 1, sy: 1 }, "linear");
       }
-      if (i % 2 === 1 || i === n - 1) k.fx("dust", -dir * g.u * 0.12, 0, { dir });
+      if (run && i % 2 === 1) k.fx("dust", -dir * g.u * 0.12, 0, { dir });
     }
-    // Follow-through: the lean swings a touch past upright and settles.
-    k.heading(0).show("standing", 120).to(300, { r: 0, sx: 1, sy: 1 }, "spring");
+    if (carry) return k;
+    // Standing, facing the camera: the weight settles.
+    k.heading(0).show("standing", 120).to(run ? 220 : 160, { r: 0, sx: 1, sy: 1 }, "soft");
     return k;
   }
 
   // A dash to the left that ends in a knee slide (the slide picture faces left).
+  // He runs straight into it (no stopping first), and the slide starts at
+  // his running speed and slows to a stop.
   function slideLeft(k, g, toX) {
-    const slide = Math.min(g.u * 1.4, Math.abs(toX - k.now.x) * 0.45);
-    steps(k, g, toX + slide, true);
-    if (!k.has("slide")) return steps(k, g, toX, false);
-    k.heading(-1).to(70, { sy: 0.92, sx: 1.05 }, "out").show("slide", 70).to(500, { x: toX, y: g.floor, r: 0, sx: 1, sy: 1 }, "out")
-      .fx("dust", g.u * 0.25, 0, { dir: 1 }).fx("dust", g.u * 0.05, 0, { dir: 1 });
+    if (!k.has("slide")) return steps(k, g, toX, true);
+    const { speed } = gait(g, true);
+    const slide = Math.min(g.u * 0.7, Math.abs(toX - k.now.x) * 0.45);
+    const ms = clamp((2 * slide / speed) * 1000, 380, 900); // starts at the running speed
+    steps(k, g, toX + slide, true, { carry: true });
+    const x1 = k.now.x;
+    k.heading(-1).show("slide", 60);
+    path(k, ms, (u) => ({ x: x1 + (toX - x1) * u, y: g.floor }), 8, () => ({ r: 0, sx: 1, sy: 1 }), (u) => 1 - (1 - u) * (1 - u));
+    k.fx("dust", g.u * 0.25, 0, { dir: 1 }).fx("dust", g.u * 0.05, 0, { dir: 1 });
     k.heading(0).wait(240).fx("sparkle", 0, -g.u * 1.2).show("standing", 120).to(90, { sy: 0.94, sx: 1.04 }, "out").to(300, { r: 0, sy: 1, sx: 1 }, "spring");
     return k;
   }
@@ -404,7 +460,9 @@
   function touchDown(k, g, x) {
     k.heading(0);
     const a = k.now;
-    path(k, 320, (u) => ({ x: a.x + (x - a.x) * u, y: a.y + (g.floor - a.y) * u * u }), 5,
+    // (1.5: a longer fall takes longer, as it would: no dropping like a stone from high up.)
+    const fall = clamp(200 + (g.floor - a.y) * 0.6, 320, 800);
+    path(k, fall, (u) => ({ x: a.x + (x - a.x) * u, y: a.y + (g.floor - a.y) * u * u }), Math.max(5, Math.round(fall / 60)),
       (u) => ({ r: a.r * (1 - u), sy: 1 + 0.07 * u, sx: 1 - 0.04 * u }), (u) => u);
     if (k.has("land")) {
       k.show("land", 60).to(80, { sy: 0.8, sx: 1.14 }, "out").fx("dust", 0, 0, { dir: 1 }).fx("dust", -g.u * 0.3, 0, { dir: -1 })
@@ -434,18 +492,31 @@
     const cx = (a.x + b.x) / 2;
     const cy = Math.max(g.top, Math.min(a.y, b.y) - lift);
     const total = clamp(dist * 2.6, 900, 3000);
-    const n = clamp(Math.round(total / 85), 10, 30);
+    const n = clamp(Math.round(total / 45), 16, 64);
     const dir = Math.sign(dx) || 1;
     k.heading(dir);
     let puffs = 0;
+    // (1.5: a gentle bob along the way, about one a second, and a smaller
+    // bank into the curve. g.bob: its height in robot widths, 0.05 unless set.)
+    const bob = g.u * (Number.isFinite(g.bob) ? g.bob : 0.05);
     path(k, total, (u) => ({
       x: (1 - u) * (1 - u) * a.x + 2 * (1 - u) * u * cx + u * u * b.x,
       y: (1 - u) * (1 - u) * a.y + 2 * (1 - u) * u * cy + u * u * b.y,
     }), n, (u, tt) => {
       if (Math.floor(tt * 3) > puffs) { puffs += 1; k.fx("trail", 0, -g.u * 0.1); }
       const st = 1 + 0.06 * (1 - Math.min(1, tt * 4)); // the take-off stretch eases out
-      return { r: dir * 7 * Math.sin(u * Math.PI) + 1.5 * Math.sin(tt * total / 80), sy: st, sx: 1 / Math.sqrt(st) };
+      return { r: dir * 4 * Math.sin(u * Math.PI), sy: st, sx: 1 / Math.sqrt(st) };
     });
+    // The bob, added on top of the curve (none at either end).
+    {
+      const fr = k.frames;
+      const from0 = fr.length - n;
+      const t0 = fr[from0 - 1].t;
+      for (let i = from0; i < fr.length; i += 1) {
+        const tt = (fr[i].t - t0) / total;
+        fr[i].y = Math.max(g.top, fr[i].y - bob * Math.sin(Math.PI * tt) * Math.sin((2 * Math.PI * (fr[i].t - t0)) / 1100));
+      }
+    }
     k.heading(0).to(220, { r: 0, sx: 1, sy: 1 }, "springSoft");
     if (hover) {
       // A gentle bob in the air.
@@ -455,49 +526,89 @@
     return touchDown(k, g, dest.x);
   }
 
-  // Up a side edge in small steps, a look around, then drop down or fly off
-  // to somewhere else on the floor.
+  // The screen's side edges (robot.js passes them; else from left and right).
+  function wallOf(g) { return g.wall || { left: g.left - g.u * 0.62, right: g.right + g.u * 0.62 }; }
+  // Where he is while climbing a side edge (left: side -1): his hands and
+  // toes right on the screen's edge.
+  function wallX(g, side) {
+    const w = wallOf(g);
+    return side < 0 ? w.left + g.u * CLIMB_REACH : w.right - g.u * CLIMB_REACH;
+  }
+  // The climbing picture for that side, facing the wall (climb2 for the
+  // other hand and foot when its picture is there, else climb1 again).
+  const climbPose = (side, i) => (side < 0 ? (i % 2 ? "climb2-left" : "climb1-left") : (i % 2 ? "climb2" : "climb1"));
+  const CLIMB_STEP = 0.22; // robot widths a climbing step
+
+  // Up a side edge, a pause at the top, then down again: climbing back
+  // down, pushing off to a landing, or flying off to somewhere on the floor.
   function climbEdge(k, g, side, then, flyX) {
-    const edge = side < 0 ? g.left : g.right;
     const room = g.floor - g.top - g.u * 1.6;
     const height = clamp((0.3 + 0.35 * rnd(g)) * (g.floor - g.top), g.u * 1.2, Math.max(g.u * 1.2, room));
     climbUp(k, g, side, height);
     if (then === "fly") return flyTo(k, g, { x: flyX, y: g.floor }, false);
+    if (then === "down") return climbDown(k, g, side);
     return dropOff(k, g, side);
   }
 
-  // Up the side edge (left: side -1) by height, rung by rung: a reach (out),
-  // a pull (soft), a little sway, and a look around at the top.
+  // Up the side edge (left: side -1) by height, the way a person climbs a
+  // wall: side-on, facing it, hands and toes on the edge. He walks to the
+  // foot of the wall, crouches, reaches up and steps on; then each step is
+  // a reach (a little way up, quick) and a pull (the rest, slower), with a
+  // short grip between and a slight shift of weight from one hand to the
+  // other. He stays on the edge the whole way: no sliding sideways, no
+  // floating off it.
   function climbUp(k, g, side, height) {
-    const edge = side < 0 ? g.left : g.right;
-    const stepH = g.u * 0.24;
-    const n = Math.max(3, Math.round(height / stepH));
-    if (Math.abs(edge - k.now.x) > g.u * 0.3) { getUp(k); steps(k, g, edge, Math.abs(edge - k.now.x) > (g.right - g.left) * 0.35); }
+    const foot = side < 0 ? g.left : g.right;
+    if (Math.abs(foot - k.now.x) > 2) { getUp(k); steps(k, g, foot, Math.abs(foot - k.now.x) > (g.right - g.left) * 0.35); }
     getUp(k);
+    const x = wallX(g, side);
+    const stepH = g.u * CLIMB_STEP;
+    const n = Math.max(3, Math.round(height / stepH));
+    // Onto the wall.
+    k.heading(0).to(120, { sy: 0.95, sx: 1.02, r: 0 }, "out");
+    k.heading(side).show(climbPose(side, 0), 110).to(300, { x, y: k.now.y - stepH * 0.6, sy: 1, sx: 1 }, "out");
     k.heading(0);
-    if (k.has("climb1")) {
-      k.to(110, { sy: 0.9, sx: 1.05 }, "anticipate").show("climb1", 110).to(220, { x: edge + side * g.u * 0.05, y: k.now.y - stepH * 0.4, sy: 1.04, sx: 0.98 }, "rise");
-      for (let i = 0; i < n; i += 1) {
-        k.show(i % 2 ? "climb2" : "climb1");
-        k.to(170, { y: k.now.y - stepH * 0.7, r: side * 3, sy: 1.04 }, "out");
-        k.to(190, { y: k.now.y - stepH * 0.3, r: -side * 2, sy: 1 }, "soft");
-      }
-      k.wait(300).to(260, { r: side * -6 }, "springSoft").wait(280).to(260, { r: 0 }, "springSoft");
-    } else {
-      for (let i = 0; i < n; i += 1) {
-        k.to(160, { y: k.now.y - stepH * 0.6, sy: 1.06, sx: 0.95 }, "out").to(190, { y: k.now.y - stepH * 0.4, sy: 0.96, sx: 1.03 }, "soft");
-      }
-      k.to(200, { sy: 1, sx: 1 }, "springSoft").wait(500);
+    for (let i = 1; i <= n; i += 1) {
+      k.show(climbPose(side, i));
+      const y = k.now.y;
+      k.to(200, { x, y: y - stepH * 0.32, r: side * (i % 2 ? 0.8 : -0.8) }, "out"); // reach
+      k.to(300, { x, y: y - stepH, r: 0 }, "soft"); // pull
+      k.wait(70); // grip
     }
+    k.wait(380);
     return k;
   }
 
-  // Push off the wall a little and fall straight down to a landing.
+  // Back down the way he went up, a little quicker (lower a hand, the feet
+  // find the next hold), the last bit down to the floor, and a step back
+  // from the wall, facing the camera again.
+  function climbDown(k, g, side) {
+    const x = k.now.x;
+    const stepH = g.u * CLIMB_STEP;
+    const low = g.floor - stepH * 0.6;
+    const n = Math.max(1, Math.round((low - k.now.y) / stepH));
+    const each = (low - k.now.y) / n;
+    k.heading(0);
+    for (let i = 1; i <= n; i += 1) {
+      k.show(climbPose(side, i + 1));
+      const y = k.now.y;
+      k.to(170, { x, y: y + each * 0.6, r: side * (i % 2 ? -0.8 : 0.8) }, "in");
+      k.to(230, { x, y: y + each, r: 0 }, "soft");
+      k.wait(50);
+    }
+    k.to(220, { x, y: g.floor, sy: 0.96, sx: 1.02 }, "fall").show("standing", 120).to(260, { sy: 1, sx: 1 }, "springSoft");
+    const foot = side < 0 ? g.left : g.right;
+    return steps(k, g, foot - side * g.u * 0.2, false);
+  }
+
+  // A push against the wall, turned from it, and a fall to a landing.
   function dropOff(k, g, side) {
-    const edge = side < 0 ? g.left : g.right;
-    k.show("standing", 100).to(110, { sy: 0.92, sx: 1.04 }, "anticipate")
-      .to(200, { x: edge - side * g.u * 0.3, y: k.now.y - g.u * 0.14, r: -side * 4, sy: 1.06, sx: 0.96 }, "rise");
-    return touchDown(k, g, edge - side * g.u * 0.3);
+    const x0 = k.now.x;
+    const out = clamp(x0 - side * g.u * 0.6, g.left, g.right);
+    k.heading(0).to(120, { sy: 0.94, sx: 1.03, r: 0 }, "anticipate");
+    k.heading(-side).show("standing", 90)
+      .to(220, { x: x0 - side * g.u * 0.4, y: k.now.y - g.u * 0.12, r: -side * 3, sy: 1.04, sx: 0.98 }, "rise");
+    return touchDown(k, g, out);
   }
 
   // ---------------------------------------------------------------- choosing where
@@ -527,14 +638,22 @@
     return g.pos.x - g.left > g.right - g.pos.x ? g.left + rnd(g) * span * 0.3 : g.right - rnd(g) * span * 0.3;
   }
 
-  // Walk, skip or run to x (the way that suits the pictures).
+  // Walk or run to x (now and then, going left, a dash into a knee slide).
   function travelTo(k, g, x) {
     const dist = x - k.now.x;
     const span = g.right - g.left;
     getUp(k);
-    if (dist > 0) return steps(k, g, x, dist > span * 0.3 && rnd(g) < 0.6);
-    if (-dist > g.u * 2.5 && rnd(g) < 0.35) return slideLeft(k, g, x);
-    return steps(k, g, x, -dist > span * 0.3 && rnd(g) < 0.5);
+    if (dist < -g.u * 2.5 && rnd(g) < 0.2) return slideLeft(k, g, x);
+    return steps(k, g, x, Math.abs(dist) > span * 0.3 && rnd(g) < 0.55);
+  }
+
+  // A pause to look around, standing: a slow shift of weight to one side
+  // (toward the mouse, if it's about) and back, without tipping over.
+  function lookAround(k, g, ms) {
+    const d = g.pointer ? Math.sign(g.pointer.x - k.now.x) || 1 : rnd(g) < 0.5 ? -1 : 1;
+    const x = k.now.x;
+    k.heading(0).to(ms * 0.3, { x: x + d * 2, r: d * 1.2 }, "soft").wait(ms * 0.25).to(ms * 0.3, { x, r: 0 }, "soft").wait(ms * 0.15);
+    return k;
   }
 
   // One leg of the journey from wherever it is now.
@@ -551,8 +670,12 @@
     const roll = rnd(g);
     if (roll < 0.36) {
       // Walk somewhere near-ish, either way.
+      // Sometimes he stops on the way to look around, then walks on.
       travelTo(k, g, floorSpot(g, 0.08, 0.45));
-      if (rnd(g) < 0.3) { k.wait(250 + 400 * rnd(g)); travelTo(k, g, floorSpot({ ...g, pos: k.now }, 0.06, 0.3)); }
+      if (rnd(g) < 0.4) {
+        if (rnd(g) < 0.6) lookAround(k, g, 900 + 900 * rnd(g)); else k.wait(400 + 600 * rnd(g));
+        travelTo(k, g, floorSpot({ ...g, pos: k.now }, 0.06, 0.3));
+      }
     } else if (roll < 0.52) {
       // A longer run (right), or a dash and knee slide (left), or a flight.
       const x = floorSpot(g, 0.3, 0.9);
@@ -568,12 +691,12 @@
         flyTo(k, g, { x: floorSpot({ ...g, pos: { x: hx, y: g.floor } }, 0.1, 0.6), y: g.floor }, false);
       } else flyTo(k, g, { x: floorSpot(g, 0.25, 0.95), y: g.floor }, false);
     } else {
-      // Climb a side edge (either one), then drop or fly back down.
+      // Climb a side edge (either one), then climb down, drop or fly back down.
       const side = rnd(g) < 0.5 ? -1 : 1;
-      const fly = rnd(g) < 0.5;
+      const r = rnd(g);
       const edge = side < 0 ? g.left : g.right;
       const flyX = floorSpot({ ...g, pos: { x: edge, y: g.floor } }, 0.2, 0.8);
-      climbEdge(k, g, side, fly ? "fly" : "drop", flyX);
+      climbEdge(k, g, side, r < 0.3 ? "fly" : r < 0.65 ? "down" : "drop", flyX);
     }
     return k.done("roam");
   }
@@ -586,14 +709,14 @@
     return k.done(run ? "run" : "walk");
   }
 
-  // A quick look toward the mouse: a lean and a little bounce that way.
+  // A quick look toward the mouse: a small lean and a little bounce that way.
   function glance(g, pose) {
     const k = track(g.pos, g.poses, pose);
     getUp(k);
     const at = g.pointer;
     const d = at ? Math.sign(at.x - g.pos.x) || 1 : 1;
-    k.to(260, { r: d * 5, sy: 0.96 }, "out").to(160, { y: g.floor - g.u * 0.06, sy: 1.03 }, "rise").to(160, { y: g.floor, sy: 0.97 }, "fall")
-      .to(240, { sy: 1 }, "springSoft").wait(420).to(320, { r: 0 }, "springSoft");
+    k.to(300, { r: d * 2.5, sy: 0.97 }, "soft").to(170, { y: g.floor - g.u * 0.05, sy: 1.02 }, "rise").to(170, { y: g.floor, sy: 0.98 }, "fall")
+      .to(240, { sy: 1 }, "springSoft").wait(420).to(340, { r: 0 }, "soft");
     return k.done("look");
   }
 
@@ -603,8 +726,8 @@
     getUp(k);
     const y = g.pos.y;
     k.show("wave", 100).fx("bubble", 0, -g.u * 1.65, { text: "👋" });
-    for (let i = 0; i < 2; i += 1) k.to(220, { r: 5, y: y - g.u * 0.05 }, "soft").to(220, { r: -4, y }, "soft");
-    k.to(300, { r: 0 }, "springSoft").show("standing", 130).wait(80);
+    for (let i = 0; i < 2; i += 1) k.to(240, { r: 3, y: y - g.u * 0.04 }, "soft").to(240, { r: -2.5, y }, "soft");
+    k.to(300, { r: 0 }, "soft").show("standing", 130).wait(80);
     return k.done("wave");
   }
 
@@ -665,6 +788,61 @@
     return down ? concat(down, plan) : plan;
   }
 
+  // Pilot for Mac 1.5: the shared core's travelling moves (walk, run,
+  // stroll, fly, climb, home, land: Relaxed mode picks them, and the menus
+  // and Pilot's own actions can ask for them) are played the Mac's way too,
+  // with the walk, flights and climbing here, so he moves the same in every
+  // Energy level. null for any other move (pilot-motion.js plays it).
+  function desktop(name, g, pose, o) {
+    const opt = o || {};
+    const k = track(g.pos, g.poses, pose);
+    const span = g.right - g.left;
+    g.pace = g.pace || 0.88 + 0.26 * rnd(g);
+    const onFloor = atFloor(g);
+    switch (name) {
+      case "walk": case "run": {
+        if (!onFloor) return null;
+        getUp(k);
+        steps(k, g, floorSpot(g, name === "run" ? 0.25 : 0.12, name === "run" ? 0.55 : 0.26), name === "run");
+        return k.done(name);
+      }
+      case "stroll": {
+        if (!onFloor) return null;
+        const start = g.pos.x;
+        const inward = g.pos.x - g.left > g.right - g.pos.x ? -1 : 1;
+        getUp(k);
+        steps(k, g, clamp(start + inward * (0.18 + 0.22 * rnd(g)) * span, g.left, g.right), false);
+        lookAround(k, g, 900);
+        steps(k, g, start, false);
+        return k.done("stroll");
+      }
+      case "fly": {
+        flyTo(k, g, { x: floorSpot(g, 0.2, 0.9), y: g.floor }, false);
+        return k.done("fly");
+      }
+      case "land": {
+        const x = clamp(g.pos.x + (g.pos.x - g.left > g.right - g.pos.x ? -1 : 1) * g.u * 3, g.left, g.right);
+        flyTo(k, g, { x, y: g.floor }, false);
+        return k.done("land");
+      }
+      case "climb": {
+        if (!onFloor) return null;
+        const side = opt.side || (g.pos.x - g.left < g.right - g.pos.x ? -1 : 1);
+        climbEdge(k, g, side, rnd(g) < 0.5 ? "down" : "drop");
+        return k.done("climb");
+      }
+      case "home": {
+        const h = g.home;
+        if (!h || Math.hypot(h.x - g.pos.x, h.y - g.pos.y) < g.u * 0.3) return null;
+        getUp(k);
+        if (onFloor && atFloor(g, h.y)) steps(k, g, clamp(h.x, g.left, g.right), Math.abs(h.x - g.pos.x) > span * 0.4);
+        else flyTo(k, g, { x: clamp(h.x, g.left, g.right), y: h.y }, !atFloor(g, h.y));
+        return k.done("home");
+      }
+      default: return null;
+    }
+  }
+
   // A move for Always moving: "roam" (travel), "roam-look", "roam-wave" or
   // "roam-trick". g: pilot-motion.js's geometry (pos, floor, left, right,
   // top, u, poses, pointer, random); pose: the picture showing now.
@@ -683,6 +861,8 @@
     level, holdReason, pause, trickGap, pick, facing, suits, plan, walkTo, sit, fromPose, concat,
     // The builder and the moves, for tricks.js.
     EXTRA, ALL_POSES, resolvePose, posesFromFiles, EASE, spring, track, path, arc, jump, squash, gait, getUp, steps, slideLeft, touchDown, flyTo, climbUp, dropOff, travelTo,
+    // Pilot for Mac 1.5: the walk's rhythm, the climbing spot and pictures, the cycles.
+    CADENCE, STRIDE, CLIMB_REACH, CYCLES, sameCycle, strideNames, wallOf, wallX, climbPose, climbDown, climbEdge, lookAround, desktop,
     floorSpot, atFloor, rnd,
   };
   if (typeof module === "object" && module.exports) module.exports = api;
