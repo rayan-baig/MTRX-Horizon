@@ -92,6 +92,10 @@
     // Visitors may be young: said once, plainly, with no nagging. It sits
     // just above the message box until a key is added.
     keyNote: "Pilot uses a grown-up's AI key (the AI companies require 18+).",
+    // Core 1.3.0: on the welcome, one short line, so the pills and this
+    // page's suggestions keep their room (the full note is its tooltip and
+    // sits beside the key settings).
+    keyNoteShort: "AI keys are for grown-ups (18+).",
     audienceNote: "Visitors to this site may be young people starting their first idea. Keep answers safe, kind and simple. For money, contracts, sign-ups or anything needing an adult, suggest asking a trusted adult.",
     // The MTRX site has no child accounts; RankUp's config says when a view is a child's.
     kidView: () => false,

@@ -4,6 +4,23 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.17.0 (22 November 2026)
+
+- **Pilot core 1.3.0: the robot never sits on the page to be noticed.** On the first page of a
+  visit the robot glows for a few seconds so people see it. Before, it also showed itself whole for
+  those seconds wherever it was, so it could cover a "Learn more" button, the last word of a
+  heading or a form's box. Now it follows the same rules as the rest of the visit: a free corner if
+  there is one, otherwise it glows where it is tucked away, in the corner where it covers least.
+- **Pilot asks for your AI key once.** On this site the welcome already has an "Add my AI key"
+  button, so the big "Bring Your Own API Key" card under it is gone, and the grown-ups note above
+  the box is one short line on the welcome: "AI keys are for grown-ups (18+)." Website wording
+  says "AI key", not "API key". The design's own welcome (and Pilot for Mac) is unchanged.
+- **Pilot's buttons and suggestions all show.** On shorter screens (computers 700 to 900 pixels
+  tall, phones 667 to 812) the welcome is a little tighter, so every button and suggestion is in
+  full view above the message box instead of half hidden.
+- **The tucked-away robot is easy to tap.** It never shrinks below 44 pixels (it was about 24 on
+  phones).
+
 ## 1.16.1 (22 November 2026)
 
 - **Pilot stays put if you click him straight away (Pilot core 1.2.1).** On the first page of a

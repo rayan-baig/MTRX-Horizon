@@ -2,7 +2,7 @@
 
 Pilot is the AI assistant in every MTRX Horizyn app. It runs on **the user's own AI key**, from
 their browser: MTRX Horizyn never sees the key, never sees the conversation, and pays nothing for
-the AI. This file describes the shared core (**Pilot core 1.2.1**) and how it is used on the
+the AI. This file describes the shared core (**Pilot core 1.3.0**) and how it is used on the
 MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
 
 ## What the user sees
@@ -25,7 +25,8 @@ MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
   Stop while it runs, and Clear chat under the conversation.
   That is the design, and Pilot for Mac keeps it exactly. Since core 1.2.0 a website can set its
   own tagline and pills (`tagline`, `welcomePills`, see **Each app's own welcome** below); the
-  MTRX site does.
+  MTRX site does. Since core 1.3.0 a website whose pills include the key pill asks for the key
+  once: no "Bring Your Own API Key" card as well (see **Asking for the key once** below).
 - **Suggestions** are on the welcome too (before a key is added), and come first once a chat has
   started (the greeting and its pills are for starting, and fold away), and fit the page (on Genesis: "Show my projects", "What's my
   next step?"), plus **Summarise this**. **Analyze & explain…** explains the screen.
@@ -77,10 +78,46 @@ the box. It sends as soon as you add a key.", and it is sent the moment a key is
 another tab of the site. Pressing "Explain this page" with no key does the same: the screen is
 explained once the key is in.
 
+### Asking for the key once (core 1.3.0)
+
+Visitors were asked for a key two or three times in a row on the welcome (a key pill, the key card
+and the note under them). Now:
+
+- **An app's own key pill is the one ask.** When the app's `welcomePills` include the built-in
+  `settings` pill, the welcome shows no key card. With the design's five pills (no app pills), the
+  card stays exactly as it was; Pilot for Mac doesn't use this window at all and is unchanged.
+- **Websites say "AI key".** With app pills, the key card (if shown), the key settings' heading and
+  the key box say "AI key" ("Your own AI key", "Paste your AI key"). The design's words ("Bring Your
+  Own API Key") stay for the default welcome.
+- **One line for the grown-ups note on the welcome.** `keyNoteShort` (optional) is a one-line
+  version of `keyNote` shown above the box while the welcome is up (the full note is its tooltip,
+  and stays beside the key settings and in help). Without it, `keyNote` shows as before.
+- **Everything on the welcome fits.** On shorter screens (computers up to 900 px tall, phones up
+  to 760 px) the header, greeting, pills and suggestions are a little tighter and phone sheets a
+  little taller, so every pill and suggestion shows whole above the note and the box at 700 to
+  900 px on a computer and 667 to 812 px on a phone (checked in a real browser for the MTRX site).
+  Suggestions are slightly smaller on phones and short computer screens, so two fit on a row.
+
 On the MTRX site: the tagline is "Help with ideas and MTRX apps"; the pills are **Help with my idea**
 (a prompt to finish), **What is Orbyt?** and **What apps are coming?** (sent at once), **Explain this
 page** (`explain-screen`) and **Add my AI key** (`settings`); the image and video key sections are
-hidden (the site has no use for pictures or videos); and `keepInViewport` is on (below).
+hidden (the site has no use for pictures or videos); `keepInViewport` is on (below); and the
+welcome's one-line note is "AI keys are for grown-ups (18+)." (`keyNoteShort`).
+
+### Moving an app to core 1.3.0
+
+1. Copy the thirteen core files from `static/pilot/` over the app's copies (they all say `Pilot core
+   1.3.0` on their first line). Pictures, layers and poses are unchanged.
+2. Nothing else is required. With no new fields: the first look of a visit no longer shows the
+   robot whole on top of the page's words (it glows wherever placement puts it: a free corner, or
+   tucked away); the tucked-away robot is never smaller than a 44 px tap target; and with the
+   app's own key pill there is no key card on the welcome, and key wording says "AI key".
+3. Optional: `keyNoteShort`, a one-line grown-ups note for the welcome.
+4. If the app's own CSS sets `--pilot-peek-scale`, keep it at or above 0.52 on computers and 0.82
+   on phones (placement uses at least that anyway, so a smaller number would only make the drawing
+   and the placement disagree).
+5. Copy the new `tests/js/pilot.test.js` core tests, and Pilot for Mac's six shared files if the
+   app ships them.
 
 ### Moving an app to core 1.2.0
 
@@ -202,10 +239,14 @@ on a page, `<html>` has the class `pilot-on` and the CSS variable `--pilot-gutte
 needs at the bottom); a page can keep its last lines clear with `padding-bottom: var(--pilot-gutter)`
 or the `.pilot-gutter` class.
 
-**Noticed, then out of the way (core 1.2.0).** On the first page of a visit (once per tab, kept in
-sessionStorage) the robot shows whole for 4 seconds with a soft glow, even where it would otherwise
-tuck away (never on a box being typed in), so people notice it; `revealMs` changes how long (0 for
-never). It steps back for any pop-up of the page, marked or not: the four dialog selectors above,
+**Noticed, then out of the way (core 1.2.0, 1.3.0).** On the first page of a visit (once per tab,
+kept in sessionStorage) the robot glows softly for 4 seconds, so people notice it; `revealMs`
+changes how long (0 for never). Since core 1.3.0 the first look follows exactly the same placement
+rules as the rest of the visit: it shows whole in a free corner if there is one, and if every
+corner has the page's words or buttons (or things the app asks it to avoid), the glow plays where it
+is tucked away. (Core 1.2.x showed it whole wherever it was for those 4 seconds, which put it on a
+"Learn more" button, a heading's last word or a form's box.) With no corner free at all, it tucks
+in the corner where its tucked-away box covers least of the page's words and buttons. It steps back for any pop-up of the page, marked or not: the four dialog selectors above,
 the app's own `modals` selectors, and anything fixed that covers the whole screen above the page
 (a backdrop: on top at the middle of the screen and near the robot's corner, not behind the page,
 and not see-through to taps, so scenery like a starry sky never counts). It looks again when the
@@ -215,10 +256,13 @@ things that mean something without words count as content: anything with a toolt
 picture role, a progress bar or meter, or `data-pilot-clear` (Genesis's row of streak dots).
 
 **`keepInViewport` (an app's choice).** Tucked away, the robot doesn't hang off the edge: it shrinks
-to `--pilot-peek-scale` (0.42 on phones, 0.5 on computers) in its corner, `--pilot-keep-margin` from
-the edges (3 px on phones, 8 px on computers), fully on screen, and grows back on hover. On phones
-`--pilot-side` becomes 30 px so line ends stop before the small robot. Placement measures the robot
-at its own size, not as drawn while shrunk.
+to `--pilot-peek-scale` (0.82 on phones, 0.52 on computers) in its corner, `--pilot-keep-margin` from
+the edges (3 px on phones, 8 px on computers), fully on screen, and grows back on hover. Since core
+1.3.0 it is never smaller than a **44 px tap target** each way (`TAP_LEAST` and `keepScale` in
+`pilot-mascot.js`; core 1.2.x drew it about 24 px on phones). On phones `--pilot-side` is 30 px.
+Placement measures the robot at its own size, not as drawn while shrunk. (Without `keepInViewport`,
+the design's tucked robot is a slice at the screen's edge, as before; every app today uses
+`keepInViewport`.)
 
 **Clear of the page, wherever it's scrolled (core 1.1.1).** The robot also keeps off the page's own
 words and buttons: line ends, links, buttons, form fields, checkboxes and small icons (big pictures are
@@ -247,8 +291,7 @@ On the MTRX site the robot also keeps clear of the row of streak dots under toda
 project screen's stage bar and web address,
 and of the whole launch checklist (each row with its Hide button, each stage's heading with its count
 and arrow, the add-a-step box and the stage buttons). On a computer the chat window opens beside the robot, as tall as the
-screen allows, so everything in it (the "Bring Your Own API Key" card too) is in view; short screens
-get slightly tighter spacing.
+screen allows, so everything in it is in view; shorter screens get slightly tighter spacing.
 
 **Speed.** `pilot-motion.js`, `pilot-actor.js`, `pilot-actor.css` and the three layers (about 18 KB of
 pictures) are fetched once the page is idle, after load; a pose picture is fetched only when a move
@@ -291,9 +334,10 @@ Errors are said plainly: "Your key was refused by Anthropic. Check it in Pilot s
 credit, too many requests, an unknown model, the provider busy, or no connection.
 
 The user's provider bills their key for everything Pilot uses. The window says so. AI keys are for
-grown-ups: the MTRX site says "Pilot uses a grown-up's AI key (the AI companies require 18+)."
-once in the chat window, just above the message box (so it is always in full view, phones too) until
-a key is added, and beside the key settings, and never nags.
+grown-ups: the MTRX site says "AI keys are for grown-ups (18+)." on one line just above the message
+box while the welcome shows (the full "Pilot uses a grown-up's AI key (the AI companies require
+18+)." is its tooltip, and shows there once a chat has started), until a key is added; the full note
+is also beside the key settings and in help. It never nags.
 
 ### Pilot for Mac 1.4: Free mode and two editions
 
@@ -391,7 +435,7 @@ Genesis Pro members keep Pro's own answers either way.
 
 ## The files
 
-The core is the same in every app. Each file starts with `Pilot core 1.2.0 · <file name>`, so
+The core is the same in every app. Each file starts with `Pilot core 1.3.0 · <file name>`, so
 copies in different repos can be compared.
 
 | File | What it is | DOM |
@@ -475,7 +519,8 @@ Per app (on the MTRX site):
    | `screen()` | `{name, facts}`: the screen the user is on, and any short facts about it |
    | `chips(screen)` | up to 3 `{label, prompt}` suggestions for this screen (on the welcome too) |
    | `taskPrompt(screen)` | what "Get things done…" puts in the box on this screen |
-   | `keyNote` | the one-line note above the message box (until a key is added) and beside key settings (e.g. the 18+ line) |
+   | `keyNote` | the note above the message box (until a key is added) and beside key settings (e.g. the 18+ line) |
+   | `keyNoteShort` | (1.3.0) a one-line version of `keyNote` for the welcome, so the pills and suggestions keep their room |
    | `audienceNote` | who may be using it, for Pilot's rules |
    | `privacyUrl` | the app's privacy page, linked from help |
    | `themeClass` | an optional class on Pilot's root, to restyle its colours from the app's CSS |
@@ -503,10 +548,9 @@ Per app (on the MTRX site):
 
 ### Apps still on an older core
 
-CyberLogix and OmniArmor carry Pilot core 1.0.x. They keep working as they are; to get the moving
-robot and the 1.2.0 welcome they need the 1.2.0 core files, the layers and the `poses/` folder copied
-in (and the new `data-*` on their tag), then the steps in **Moving an app to core 1.2.0**, in their
-own repos, later. This repo doesn't change them.
+CyberLogix, OmniArmor and RankUp carried core 1.2.1 when 1.3.0 came out. They keep working as they
+are; each moves to 1.3.0 in its own repo by the steps in **Moving an app to core 1.3.0** (core files
+are only ever changed here and copied byte for byte). This repo doesn't change them.
 
 ### Server-side AI in an app
 
