@@ -275,6 +275,7 @@ async function motion15() {
     const open = await app.evaluate(() => global.__pilotTest.chat().isVisible());
     if (open && shotsDir && what === "mid-climb") {
       const b64 = await app.evaluate(async () => (await global.__pilotTest.robot().webContents.capturePage()).toPNG().toString("base64"));
+      fs.mkdirSync(shotsDir, { recursive: true });
       fs.writeFileSync(path.join(shotsDir, "mac15-click-climb-robot.png"), Buffer.from(b64, "base64"));
     }
     check(ok0 && open, `clicking him ${what} opens the chat${ok0 ? "" : " (he wasn't moving)"}`);
