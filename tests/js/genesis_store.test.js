@@ -538,7 +538,7 @@ test("1.16.0: saved extras are cleaned: real days and ids only, answers capped, 
   assert.deepEqual(b.load().links, { "2026-11-21": "p-9" });
 });
 
-// ---------------------------------------------------------------- moving to genesis.* (1.25.0)
+// ---------------------------------------------------------------- moving to genesis.* (1.26.0)
 
 test("the idea card names Genesis's own address once it has one", () => {
   const project = S.create(idea).project;

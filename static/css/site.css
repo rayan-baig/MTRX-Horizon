@@ -1146,7 +1146,7 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 /* The Projects tile's line breaks only at its dots. */
 .page .fact-part { white-space: nowrap; }
 
-/* ---------- 1.24.0: what's ready first, the picture edge to edge, a screen viewer ---------- */
+/* ---------- 1.25.0: what's ready first, the picture edge to edge, a screen viewer ---------- */
 /* "Ready today": Genesis and Orbyt, on a phone's first screen, above the
    three apps in development. A computer's one-screen page has them in its
    bottom row already. */

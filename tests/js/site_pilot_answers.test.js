@@ -102,7 +102,7 @@ test("Genesis: \"Show my projects\" and \"What's my next step?\" come from this 
   assert.doesNotMatch(answer(odd, "Show my projects"), /\[Open/);
 });
 
-test("genesis: \"Help with today's spark\" gives a tip and a jump to the spark box, with no key (1.24.0)", () => {
+test("genesis: \"Help with today's spark\" gives a tip and a jump to the spark box, with no key (1.25.0)", () => {
   const today = { prompt: "Design a way to help local artists sell their work.", answer: "", streak: 0, limit: 140 };
   const g = mount("/genesis", {}, { mine: () => [], nextOf: () => null, spark: () => today });
   const text = answer(g, "Help with today's spark");

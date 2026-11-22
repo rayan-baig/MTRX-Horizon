@@ -132,7 +132,7 @@ def test_vortex_page_is_compressed(client):
 
 def test_genesis_has_the_way_to_pitch_a_project():
     script = (ROOT / "static/js/genesis.js").read_text()
-    # Orbyt's address comes from the page ("/orbyt", or orbyt.* once moved, 1.25.0).
+    # Orbyt's address comes from the page ("/orbyt", or orbyt.* once moved, 1.26.0).
     assert "Pitch this in Orbyt" in script and "new URL(`${orbyt}#pitch`" in script
     assert 'const orbyt = $("genesis").dataset.orbyt || "/orbyt";' in script
     assert "S.offerToVortex(session, p.id)" in script

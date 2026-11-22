@@ -199,7 +199,7 @@ def prompt(pitch: dict) -> str:
 _ADDRESS = re.compile(r"(?:https?://|www\.)[^\s)\]>\"']+|\b(?:[a-z0-9-]+\.)+(?:com|net|org|io|ai|app|co|dev|me|uk|us|"
                       r"ly|gg|tv|xyz|info|biz|site|online|store|shop|link|page|so)\b(?:/[^\s)\]>\"']*)?",
                       re.IGNORECASE)
-# mtrxhorizyn.com and its subdomains (Genesis and Orbyt have their own, 1.25.0).
+# mtrxhorizyn.com and its subdomains (Genesis and Orbyt have their own, 1.26.0).
 _OURS = re.compile(r"^(?:https?://)?(?:[a-z0-9-]+\.)?mtrxhorizyn\.com(?:[/?#].*)?$", re.IGNORECASE)
 _PROMISES = re.compile(
     r"\b(?:we|mtrx(?: horizyn)?|our team|the team)\s*(?:will|'ll|’ll|would|could|can|are going to|want to|"

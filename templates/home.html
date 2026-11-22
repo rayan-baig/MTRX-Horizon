@@ -61,7 +61,7 @@
   {% endfor %}
 </ul>
 {%- endmacro -%}
-{#- The Projects tile's line, in the Projects card's own words. 1.24.0: the
+{#- The Projects tile's line, in the Projects card's own words. 1.25.0: the
     number and the words add up ("4" is this site, with Genesis and Orbyt,
     plus 3 apps); "Genesis & Orbyt live · 3 apps" read like 5. -#}
 {%- macro projects_line(plist) -%}
@@ -136,7 +136,7 @@
     <div class="hero-copy">
       <p class="eyebrow">Welcome to MTRX Horizyn</p>
       <h1><span class="line">Three apps that watch,</span> <span class="line gradient-text">warn and motivate.</span></h1>
-      {#- A phone's first screen leads with what works today (1.24.0):
+      {#- A phone's first screen leads with what works today (1.25.0):
           Genesis and Orbyt, then the three apps in development below. -#}
       {% if not demo %}<div class="ready-today" aria-label="Ready today">
         <p class="ready-k">Ready today</p>
@@ -344,7 +344,7 @@
 </section>
 {% endfor %}
 
-{#- "Tap to see" (1.24.0): straight to the screens, big, in a viewer of
+{#- "Tap to see" (1.25.0): straight to the screens, big, in a viewer of
     their own; Learn more stays the card with the words. A plain anchor
     pop-up like the others, so it works with no script. -#}
 {%- for key, full in [("rankup", "RankUp"), ("cyberlogix", "CyberLogix AI"), ("omniarmor", "OmniArmor.ai")] %}

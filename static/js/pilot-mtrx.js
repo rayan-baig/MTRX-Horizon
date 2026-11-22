@@ -24,7 +24,7 @@
     "/early-access": "Early access",
     "/creators": "Creators",
   };
-  // Genesis and Orbyt on their own addresses (1.25.0, horizon/hosts.py):
+  // Genesis and Orbyt on their own addresses (1.26.0, horizon/hosts.py):
   // where each is ("/genesis", or https://genesis.mtrxhorizyn.com once
   // moved), and the main site's address once they have.
   const GENESIS = d.genesis || "/genesis";
@@ -197,7 +197,7 @@
       + `One small step is enough for today.${go}\n\n${PRIVATE}`;
   }
 
-  // Genesis's "Help with today's spark" (1.24.0): a tip, and a jump to the
+  // Genesis's "Help with today's spark" (1.25.0): a tip, and a jump to the
   // spark box, from this page alone: no AI key, and nothing sent anywhere.
   // With a key added, the visitor can still ask Pilot for ideas.
   function sparkAnswer() {

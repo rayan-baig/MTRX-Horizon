@@ -180,7 +180,7 @@ test("a returning visitor sees 'Welcome back', their project's name, and its nex
   assert.match(cont, /nextSteps\(p\),/);
   // The next three steps, each ticked through update(), like the checklist.
   const next = functionSource("nextSteps");
-  // Three steps; one on the smallest phones (1.24.0), so today's spark stays on the first screen.
+  // Three steps; one on the smallest phones (1.25.0), so today's spark stays on the first screen.
   assert.match(next, /const steps = openSteps\(p, narrow && narrow\.matches \? 1 : 3\);/);
   assert.match(next, /el\("input", \{ type: "checkbox" \}\)/);
   assert.match(next, /update\(p, \(q\) => \{ q\.ticks\[item\.key\] = true; \}\);/);

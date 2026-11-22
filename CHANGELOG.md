@@ -4,7 +4,7 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
-## 1.25.0 (22 November 2026)
+## 1.26.0 (22 November 2026)
 
 - **Genesis and Orbyt can have their own addresses: genesis.mtrxhorizyn.com and
   orbyt.mtrxhorizyn.com,** like RankUp, CyberLogix and OmniArmor. The same site answers all three
@@ -30,7 +30,7 @@ which version is live.
   their own, every change must come from a page on the exact same address, and every address sends
   the same strict security headers.
 
-## 1.24.0 (22 November 2026)
+## 1.25.0 (22 November 2026)
 
 - **Home: the Projects count adds up.** The tile said "4 · Genesis & Orbyt live · 3 apps in
   development", which reads like 5. It now says "4: This site (Genesis & Orbyt) + 3 apps in
@@ -53,6 +53,34 @@ which version is live.
 - **Pilot on Genesis: "Help with today's spark" works without an AI key.** It shows today's spark,
   a quick tip for finding an answer, and a "Write my spark" link that jumps to the spark box with
   its line ready to type in. Nothing is sent anywhere.
+## 1.24.0 (22 November 2026)
+
+Pilot core 1.4.2 (`static/pilot/`, docs/PILOT.md "Moving an app to core 1.4.2").
+
+- **Pilot is always findable on a phone.** Where every spot would cover a link, the robot still
+  steps out of the way, but now, about 2 seconds after the page stops moving, a small slice of the
+  robot peeks in at the screen's left or right edge. Tap it to open Pilot. It only goes where it
+  covers no link, button, box or bar, and leaves while you scroll. On Orbyt's first phone screen it
+  shows without scrolling.
+- **Pilot stays above an app's tab bar.** An app that lifts the robot above a bar along the bottom
+  of the screen (OmniArmor) had it hidden on every scrolled phone page. Now it is tucked in its
+  lifted corner, above the bar.
+- **On a computer Pilot never sits on or right next to a link.** At 1024 pixels it no longer sits
+  over the header's links at the top right of Orbyt, and on Genesis it no longer touches "Save my
+  spark". Links and buttons count from 8 pixels away. If every corner is that close to one, the
+  robot steps away and the small slice shows at the edge instead.
+- **Without an AI key, a typed question that clearly matches one of Pilot's built-in answers gets
+  that answer straight away,** under "Here's what I can tell you without an AI key:". Anything else
+  works as before. Nothing is sent anywhere.
+- **"Summarise this" shows only once you've added an AI key** (it needs one). An app can turn it off
+  or put its own suggestion in its place.
+- **Under Pilot's own answers, this page's suggestions come first,** then the welcome buttons, each
+  once.
+- **In Pilot's window, a scrolled chat fades out under the header,** so a half-cut line (the "Clear
+  chat" underline) no longer shows there.
+- Pilot for Mac's six shared files are re-copied (only their first line changed). Pilot for Mac's
+  look is unchanged.
+
 
 ## 1.23.0 (22 November 2026)
 

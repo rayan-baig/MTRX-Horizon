@@ -11,7 +11,7 @@
   const S = window.GenesisStore;
   const $ = (id) => document.getElementById(id);
   const store = S.open((() => { try { return window.localStorage; } catch (_) { return null; } })());
-  // Genesis on its own address (1.25.0): once, before anything is drawn,
+  // Genesis on its own address (1.26.0): once, before anything is drawn,
   // what the old address saved comes over (moveIn), or the page first asks
   // the old address for it (askOldAddress, which leaves the page).
   const moved = moveIn();
@@ -191,7 +191,7 @@
       return;
     }
     const pr = S.progress(p);
-    // On a phone just "Continue →" (1.24.0): the name is right above it, and
+    // On a phone just "Continue →" (1.25.0): the name is right above it, and
     // "Continue Paw Board →" broke onto two lines.
     const go = el("a", { class: "btn btn-genesis", href: `#p/${p.id}`, "aria-label": `Continue ${p.name}` },
       el("span", { class: "say-long", text: `Continue ${p.name}` }), el("span", { class: "say-short", text: "Continue" }),
@@ -223,7 +223,7 @@
   // A returning visitor's next three steps, each ticked with one tap
   // (1.22.0), through the same update() the project's checklist uses.
   // The smallest phones (320px) show one next step, so today's spark still
-  // shows on the first screen (1.24.0); the rest are a tap away in the project.
+  // shows on the first screen (1.25.0); the rest are a tap away in the project.
   const narrow = window.matchMedia ? window.matchMedia("(max-width: 360px)") : null;
   if (narrow && narrow.addEventListener) narrow.addEventListener("change", () => { if (!$("g-list-view").hidden) drawList(); });
   function nextSteps(p) {
@@ -912,7 +912,7 @@
     const pct = `${pr.percent}% of the way to launch`;
     ctx.fillText(pct, pad, barY - 26);
 
-    // Where it was made: Genesis's own address once it has one (1.25.0).
+    // Where it was made: Genesis's own address once it has one (1.26.0).
     const home = /^https?:\/\/[^\s/]+$/.test(base) ? base : `https://${window.location.host || "mtrxhorizyn.com"}`;
     ctx.fillStyle = "#a9b6d8";
     ctx.font = '400 28px "Inter", system-ui, sans-serif';
@@ -1010,7 +1010,7 @@
     return link;
   }
 
-  // Orbyt on its own address (1.25.0) can't read this address's projects.
+  // Orbyt on its own address (1.26.0) can't read this address's projects.
   // So Orbyt opens in a new tab, says it's ready, and this page hands it the
   // three idea fields by message, only to Orbyt's own address: never in an
   // address, never the notes or ticks, and nothing is sent until Send is
@@ -1396,7 +1396,7 @@
     else window.scrollTo(0, 0);
   }
 
-  // #spark (1.24.0: Pilot's "Help with today's spark" links here): today's
+  // #spark (1.25.0: Pilot's "Help with today's spark" links here): today's
   // spark box in view, its line ready to type in (or its saved answer).
   function showSpark() {
     const box = $("g-daily");
@@ -1518,7 +1518,7 @@
   if (window.Pilot && window.Pilot.store) withPilot();
   else window.addEventListener("pilot-ready", withPilot, { once: true });
 
-  // ---------------------------------------------------------------- moving to genesis.* (1.25.0)
+  // ---------------------------------------------------------------- moving to genesis.* (1.26.0)
   // Only on genesis.*, where the page has data-move (the old address's
   // /genesis-move page). A browser keeps each address's saved data apart,
   // so once (MOVED_KEY), the old address is asked for what Genesis saved

@@ -389,7 +389,7 @@
   // own Genesis storage.
   const offered = V.handedOver(S, storage("sessionStorage"), storage("localStorage"));
   if (offered && window.location.hash !== "#pitch") history.replaceState(null, "", "#pitch");
-  // Genesis on its own address (1.25.0): its "Pitch this in Orbyt" opens
+  // Genesis on its own address (1.26.0): its "Pitch this in Orbyt" opens
   // this page in a new tab, which says it's ready, and Genesis answers with
   // the project's three idea fields by message. Only from Genesis's own
   // address, and only from the tab that opened this one.

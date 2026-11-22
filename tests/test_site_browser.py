@@ -133,7 +133,7 @@ def test_home_new_strip_and_tags_are_never_cut_or_wrapped(site, browser):
     context.close()
 
 
-# ---------------------------------------------------------------- 1.24.0 (round 9)
+# ---------------------------------------------------------------- 1.25.0 (round 9)
 
 def _box(page, selector):
     return page.eval_on_selector(selector, "e => e.getBoundingClientRect().toJSON()")
@@ -255,7 +255,7 @@ def test_pilot_helps_with_todays_spark_with_no_key_and_jumps_to_it(site, browser
     context.close()
 
 
-# ---------------------------------------------------------------- 1.25.0: Genesis and Orbyt on their own addresses
+# ---------------------------------------------------------------- 1.26.0: Genesis and Orbyt on their own addresses
 
 @pytest.fixture(scope="module")
 def moved_site(tmp_path_factory):

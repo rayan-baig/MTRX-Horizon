@@ -1,5 +1,5 @@
 """Genesis and Orbyt on their own addresses: genesis.mtrxhorizyn.com and
-orbyt.mtrxhorizyn.com, served by this same app (1.25.0).
+orbyt.mtrxhorizyn.com, served by this same app (1.26.0).
 
 Off until MTRX_APP_SUBDOMAINS=1 (config.py), so a computer running the site
 by hand, staging and the tests keep /genesis and /orbyt. Once on:

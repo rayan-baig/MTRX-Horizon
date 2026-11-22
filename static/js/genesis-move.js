@@ -1,4 +1,4 @@
-// Genesis moved to its own address (genesis.mtrxhorizyn.com, 1.25.0). This
+// Genesis moved to its own address (genesis.mtrxhorizyn.com, 1.26.0). This
 // page stays at the old address, /genesis-move, because a browser keeps each
 // address's saved data apart: only a page here can read what Genesis saved
 // here. genesis.* sends a visitor here once, with a one-time code in the

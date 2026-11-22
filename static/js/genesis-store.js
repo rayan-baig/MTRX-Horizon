@@ -842,7 +842,7 @@
     return `${today} (up to ${hour} an hour).`;
   }
 
-  // ---------------------------------------------------------------- moving to genesis.* (1.25.0)
+  // ---------------------------------------------------------------- moving to genesis.* (1.26.0)
   // Genesis moved to its own address (genesis.mtrxhorizyn.com), and a
   // browser keeps each address's saved data apart. So, once, the old
   // address's page (/genesis-move, static/js/genesis-move.js) packs what

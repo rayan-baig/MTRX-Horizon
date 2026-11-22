@@ -2,7 +2,7 @@
 
 Pilot is the AI assistant in every MTRX Horizyn app. It runs on **the user's own AI key**, from
 their browser: MTRX Horizyn never sees the key, never sees the conversation, and pays nothing for
-the AI. This file describes the shared core (**Pilot core 1.4.1**) and how it is used on the
+the AI. This file describes the shared core (**Pilot core 1.4.2**) and how it is used on the
 MTRX Horizyn site, and how a later app (CyberLogix, OmniArmor, RankUp) adds it.
 
 ## What the user sees
@@ -126,7 +126,7 @@ has one of:
 | `answer: "text"` | Pilot shows the text at once as its own chat message, under the pill's words as the visitor's message. **No key, and no network call.** |
 | `answer: (ctx) => text` | the same, from a function (it may return a promise; Pilot waits up to 8 seconds). `ctx` is `{ screen, facts, ready, label }`: this screen (`screen()`), the config's `facts`, whether a key is set, and the pill's words. A function that throws or returns nothing shows "Pilot couldn't find that answer just now." |
 
-**Genesis and Orbyt on their own addresses (MTRX site 1.25.0).** The site's config
+**Genesis and Orbyt on their own addresses (MTRX site 1.26.0).** The site's config
 (`static/js/pilot-mtrx.js`) writes its answers with main-site paths (`/genesis#new`, `/orbyt#pitch`,
 `/privacy`) and sends each to its right address from the facts on Pilot's script tag
 (`data-genesis`, `data-orbyt`, `data-site`). A link to another of the three addresses opens in a
@@ -205,6 +205,66 @@ start an idea?", Orbyt's "Which form is for me?" (a chooser jumping to each form
 after I send?", and Genesis's "Show my projects" and "What's my next step?" (read from this
 browser's own Genesis data through `window.GenesisBridge`, nothing sent) are answers too; the other
 suggestions are AI prompts.
+
+### Moving an app to core 1.4.2 (from 1.4.1)
+
+1. Copy the thirteen core files from `static/pilot/` over the app's copies (they all say `Pilot core
+   1.4.2` on their first line), and Pilot for Mac's six shared files if the app ships them (only their
+   first line changed). Nothing else is required: an app that sets nothing new keeps its look.
+2. **Raised corners are measured where they are (keepInViewport).** An app that raises the robot's
+   bottom corners above a fixed tab bar (`--pilot-gap: 76px`, or its own `bottom` on `.pilot-root`)
+   had the robot hidden on every scrolled phone page under 1.4.1: the tucked robot was measured
+   `--pilot-keep-margin` from the screen's edge, over the bar. Now `placeNow` reads the room each
+   corner really has from the robot's own place (`edgeRoom`: the root's `bottom` or `top`, kept per
+   edge) and the tucked robot is measured, and drawn, in that raised corner. Toward its top or bottom
+   edge pilot.css moves it only by the core's own room (`--pilot-keep-dy`: `--pilot-keep-room`, 16 px
+   or 12 px on a phone, less the margin), never by the app's extra, so it stays above the bar; sideways,
+   as before (`--pilot-keep-d`). For an app that sets nothing the two are the same, so nothing moves.
+   OmniArmor can drop `hideWhenCrowded: false` on its tab-bar pages. An app whose own CSS moves the
+   tucked robot vertically by `var(--pilot-keep-d)` (OmniArmor's computer rule) should use
+   `var(--pilot-keep-dy)` there, so it is drawn where it is measured.
+3. **"Summarise this"** (the suggestion after a page's own, which needs the AI) shows only once a key
+   is set. `screenChip: false` leaves it out; `screenChip: {label, answer}` or `{label, link}` puts the
+   app's own in its place (shown with or without a key); `{label, prompt}` asks the AI that about the
+   screen instead (with a key only).
+4. **The handle.** Hidden at rest (1.4.1's "hide rather than cover"), the robot could stay out of sight
+   for a whole visit. Now, about 2 s after it hides with the page still (not scrolling, nothing typed
+   in), a handle shows at the screen's left or right edge: a slice of the robot peeking in, a 44 px
+   square to tap (an accessible button, "Open Pilot, your AI helper") that opens Pilot. It goes only
+   where that whole square covers no link, button or box, no bar that stays put and nothing in `avoid`
+   or `yieldTo` (`handleSpot`: the robot's own side first, from the bottom up; a spot with nothing under
+   it first, else one with only words under its see-through part); with no such spot it stays hidden.
+   It leaves at once when the page scrolls or the robot comes back, and is checked again whenever the
+   page changes. `handle: false` in the config turns it off.
+5. **Computers: links count within 8 px, and no top corner over the header's links.** On a computer a
+   link, a button or a box within `CONTROL_PAD` (8 px) of the robot counts as under it (words still
+   count only under it); a top corner that would touch one costs `WEIGHT.top` more (so the header's
+   links never get the robot while a bottom corner covers less); and when every corner would touch one
+   (or something in `avoid`) the robot hides there too (`TOUCH`, a tenth of `WEIGHT.control`), and the
+   handle shows instead. A bar that stays put alone (an empty header end) is still a place to tuck.
+   `hideWhenCrowded: false` keeps tucking where it covers least.
+6. **A typed question with no key** that clearly asks what one of the app's own answers or links is
+   about gets that answer at once, under the line "Here's what I can tell you without an AI key:"
+   (**Typed questions without a key** below), instead of key settings. Give a pill or suggestion
+   `match: ["fridge", "warm", "ok"]` to add words it answers to; `matchTyped: false` turns it off.
+7. **Under the app's own answer** the row now has the page's own suggestions (`chips`) first, then the
+   welcome's pills, each once, at most six (the key pill, when it shows, after them).
+8. Scrolled, the chat's top edge fades under the header (nothing shows cut in half there).
+9. Copy the new `tests/js/pilot.test.js` core tests.
+
+### Typed questions without a key (core 1.4.2)
+
+With no key, what someone types is first compared, in the browser, with the app's own answers and
+links (welcome pills and this page's suggestions that have `answer` or `link`; never a prompt or a
+built-in). `pilot-panel.js` `matchTyped` keeps only the words that mean something (question words and
+the like, "what", "is", "my", "help", "need", don't count; plurals count as one word), and takes an
+item only when two of the typed words are in its label or its `match` list and they make up at least
+half of what was typed, or when the one word typed is in its `match` list; and only when no other item
+comes as close. Anything else goes on as before (the words wait in the box and key settings open).
+The answer is shown as the app's own (marked `local`): nothing is sent, and it is never sent to the AI
+later. A link is shown as a link to tap, not followed at once. Examples (CyberLogix's pills): "Is my
+walk-in fridge OK?" gets "Which fridges need me?" (with `match: ["fridge", "warm", "ok"]`); "Write me a
+poem about fridges", "How do I reset my password?" and "Is it ok?" get nothing.
 
 ### Moving an app to core 1.4.1 (from 1.4.0)
 
@@ -683,7 +743,7 @@ Genesis Pro members keep Pro's own answers either way.
 
 ## The files
 
-The core is the same in every app. Each file starts with `Pilot core 1.4.1 · <file name>`, so
+The core is the same in every app. Each file starts with `Pilot core 1.4.2 · <file name>`, so
 copies in different repos can be compared.
 
 | File | What it is | DOM |
@@ -760,6 +820,9 @@ Per app (on the MTRX site):
    | `welcomePills` | up to 5 `{icon, label, action, send}` pills for the welcome (default: the design's five; see **Each app's own welcome**); 1.4.0: `link` or `answer` instead of `action` (**Pill actions**) |
    | `answerMore` | (1.4.0) the line under an answer given with no key ("Want more? Add your AI key to ask anything."), once per chat since 1.4.1; `false` for none |
    | `hideWhenCrowded` | (1.4.1) `false` keeps 1.4.0's "tuck where it covers least" instead of fading the robot out when every spot would cover a link, a button, a bar that stays put or something to avoid |
+   | `handle` | (1.4.2) `false`: no handle at the screen's edge while the robot is hidden at rest |
+   | `screenChip` | (1.4.2) the suggestion after this page's own: "Summarise this" (once a key is set) unless `false`, or the app's own `{label, answer}`, `{label, link}` or `{label, prompt}` |
+   | `matchTyped` | (1.4.2) `false`: with no key, a typed question always goes to key settings (no matching with the app's own answers) |
    | `hideKeySections` | `["image", "video"]` (either or both) to leave those key settings out |
    | `keepInViewport` | `true`: tucked away, the robot shrinks into its corner instead of hanging off the screen's edge |
    | `modals` | CSS selectors of the app's own pop-ups that aren't marked as dialogs; the robot steps back while one shows |
@@ -769,7 +832,7 @@ Per app (on the MTRX site):
    | `compatibleHosts` | the OpenAI-compatible hosts the app's policy allows, plus `localhost`, `127.0.0.1` |
    | `kidView()` | true on a child's view: Pilot isn't shown at all, and no tools are ever offered |
    | `screen()` | `{name, facts}`: the screen the user is on, and any short facts about it |
-   | `chips(screen)` | up to 3 `{label, prompt}` suggestions for this screen (on the welcome too); 1.4.0: `{label, link}` or `{label, answer}` too |
+   | `chips(screen)` | up to 3 `{label, prompt}` suggestions for this screen (on the welcome too); 1.4.0: `{label, link}` or `{label, answer}` too; 1.4.2: `match: [words]` on those for typed questions |
    | `taskPrompt(screen)` | what "Get things done…" puts in the box on this screen |
    | `keyNote` | the note above the message box (until a key is added) and beside key settings (e.g. the 18+ line) |
    | `keyNoteShort` | (1.3.0) a one-line version of `keyNote` for the welcome, so the pills and suggestions keep their room; (1.4.1) shown for the whole chat, with a **More** link to the full note |
@@ -801,8 +864,8 @@ Per app (on the MTRX site):
 ### Apps still on an older core
 
 CyberLogix, OmniArmor and RankUp carried core 1.3.0 (or older) when 1.4.0 came out. They keep working
-as they are; each moves to 1.4.1 in its own repo by the steps in **Moving an app to core 1.4.0** and
-**Moving an app to core 1.4.1** (core
+as they are; each moves to 1.4.2 in its own repo by the steps in **Moving an app to core 1.4.0**,
+**Moving an app to core 1.4.1** and **Moving an app to core 1.4.2** (core
 files are only ever changed here and copied byte for byte). This repo doesn't change them.
 
 ### Server-side AI in an app

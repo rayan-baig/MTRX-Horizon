@@ -1,4 +1,4 @@
-"""Genesis and Orbyt on their own addresses (1.25.0, horizon/hosts.py).
+"""Genesis and Orbyt on their own addresses (1.26.0, horizon/hosts.py).
 
 genesis.mtrxhorizyn.com and orbyt.mtrxhorizyn.com are served by this same
 app once MTRX_APP_SUBDOMAINS=1. These check each address's routing, the

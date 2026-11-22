@@ -232,7 +232,7 @@ def test_projects_on_the_home_page_are_the_real_list(client):
     # to say "1 live, 3 in development", which the card didn't.
     assert (f'<a class="fact fact-projects" href="#projects">' in page
             and f'<span class="fact-k">Projects</span><b class="fact-v">{len(stats.PROJECTS)}</b>' in page)
-    # 1.24.0: the number and the words add up: this site (with Genesis and
+    # 1.25.0: the number and the words add up: this site (with Genesis and
     # Orbyt) plus 3 apps is 4. "Genesis & Orbyt live · 3 apps" read like 5.
     assert _projects_line(page) == "This site (Genesis &amp; Orbyt) + 3 apps in development"
     assert "Genesis &amp; Orbyt live" not in page
@@ -1090,7 +1090,7 @@ def test_on_a_phone_genesis_and_orbyt_are_on_the_page_and_the_menu_fits(client):
     hero = main.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
     # (The one-line news strip in the hero is What's new, not a Genesis card.)
     strip = hero.split('<p class="news-strip">', 1)[1].split("</p>", 1)[0] if 'class="news-strip"' in hero else ""
-    # 1.24.0: and "Ready today" under the headline, which a phone shows in
+    # 1.25.0: and "Ready today" under the headline, which a phone shows in
     # place of that button and the tile (still once each on any screen).
     assert hero.count('href="/genesis"') - strip.count('href="/genesis"') == 2 and "Try Genesis now (free)" in hero
     assert hero.count('<a class="ready-tile ready-genesis" href="/genesis">') == 1
@@ -1343,7 +1343,7 @@ def test_the_card_screens_are_whole_on_a_computer_and_bigger_on_a_phone(client):
     """1.17/1.18 pushed each card's screen 26% below the card's edge, so its
     bottom was cut off; on a phone it was a 46 x 62 px thumbnail. Now it sits
     whole inside the card (below the tags), and on a phone it is 54 x 90 px
-    in its own column; pressing it opens its screens big (1.24.0: the
+    in its own column; pressing it opens its screens big (1.25.0: the
     viewer, not Learn more)."""
     late = _late_css()
     desk = late.split(".page .app-card .app-shot {", 1)[1].split("}", 1)[0]
@@ -1357,7 +1357,7 @@ def test_the_card_screens_are_whole_on_a_computer_and_bigger_on_a_phone(client):
 
 
 def test_tap_to_see_opens_the_screens_and_learn_more_stays_the_card(client):
-    """1.24.0: "Tap to see" went to the Learn more card, where the screens
+    """1.25.0: "Tap to see" went to the Learn more card, where the screens
     were small at the bottom. Now it opens a viewer with just the two
     screens, big, and a way on to Learn more; Learn more is unchanged."""
     page = client.get("/").text
@@ -1372,7 +1372,7 @@ def test_tap_to_see_opens_the_screens_and_learn_more_stays_the_card(client):
 
 
 def test_a_phones_first_screen_leads_with_what_is_ready_today(client):
-    """1.24.0: Genesis and Orbyt, which work today, come first on a phone
+    """1.25.0: Genesis and Orbyt, which work today, come first on a phone
     (right under the headline), then "In development" over the three apps.
     Genesis and Orbyt are once each there: the hero's Genesis button and
     the lower tiles step aside on a phone. A computer keeps its layout."""
@@ -1384,7 +1384,7 @@ def test_a_phones_first_screen_leads_with_what_is_ready_today(client):
     assert '<a class="ready-tile ready-orbyt" href="/orbyt">' in ready
     apps = page.split('<section id="apps"', 1)[1].split("</article>", 1)[0]
     assert '<p class="apps-k">In development</p>' in apps
-    rules = Path("static/css/site.css").read_text(encoding="utf-8").split("/* ---------- 1.24.0:", 1)[1]
+    rules = Path("static/css/site.css").read_text(encoding="utf-8").split("/* ---------- 1.25.0:", 1)[1]
     assert ".ready-today, .apps-k { display: none; }" in rules
     phone = rules.split("@media (max-width: 720px) {", 1)[1].split("\n}", 1)[0]
     assert ".page .hero-copy .btn-genesis { display: none; }" in phone
