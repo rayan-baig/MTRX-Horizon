@@ -129,3 +129,125 @@ def test_home_new_strip_and_tags_are_never_cut_or_wrapped(site, browser):
         return [cue.textContent, getComputedStyle(cue).display, Math.round(cue.getBoundingClientRect().top - img.bottom)]; })""")
     assert all(c[0] == "Tap to see" and c[1] != "none" and 0 <= c[2] <= 8 for c in cues), cues
     context.close()
+
+
+# ---------------------------------------------------------------- 1.24.0 (round 9)
+
+def _box(page, selector):
+    return page.eval_on_selector(selector, "e => e.getBoundingClientRect().toJSON()")
+
+
+def test_home_phone_leads_with_what_is_ready_and_the_picture_runs_edge_to_edge(site, browser):
+    """375x667, 375x812 and 320x568: "Ready today" (Genesis and Orbyt) is
+    whole on the first screen, above the apps in development; the hero
+    picture is the full width of the screen (no hard-edged band); nothing
+    scrolls sideways."""
+    for width, height in ((375, 667), (375, 812), (320, 568)):
+        context = browser.new_context(viewport={"width": width, "height": height}, is_mobile=True, has_touch=True)
+        page = context.new_page()
+        page.goto(f"{site}/", wait_until="load")
+        ready = _box(page, ".ready-today")
+        assert ready["bottom"] <= height, (width, height, ready)
+        assert ready["bottom"] < _box(page, ".app-card")["top"], (width, height)
+        art = _box(page, ".hero-art")
+        assert abs(art["left"]) < 1 and abs(art["width"] - width) < 1, (width, art)
+        assert page.eval_on_selector(".btn-genesis", "e => getComputedStyle(e).display") == "none"
+        assert page.evaluate("() => document.documentElement.scrollWidth") <= width
+        context.close()
+    context = _computer(browser)
+    page = context.new_page()
+    page.goto(f"{site}/", wait_until="load")
+    assert page.eval_on_selector(".ready-today", "e => getComputedStyle(e).display") == "none"
+    assert page.is_visible(".fact-genesis") and page.is_visible(".btn-genesis")
+    context.close()
+
+
+def test_tap_to_see_opens_the_screens_big(site, browser):
+    """A phone: tapping a card's small screen opens the viewer with the
+    screen nearly the window's width, not the Learn more card; Learn more
+    still opens the card, and × closes the viewer."""
+    context = _phone(browser)
+    page = context.new_page()
+    page.goto(f"{site}/", wait_until="load")
+    page.click('.app-card[data-app="rankup"] .app-shot')
+    page.wait_for_selector("#shot-rankup:target")
+    page.wait_for_function("() => document.querySelector('#shot-rankup img').complete")
+    img = _box(page, "#shot-rankup .viewer-row img")
+    assert img["width"] >= 220 and img["height"] >= 400, img
+    assert page.is_hidden("#learn-rankup")
+    page.click("#shot-rankup .viewer-more")
+    page.wait_for_selector("#learn-rankup:target")
+    page.goto(f"{site}/#shot-cyberlogix")
+    page.click("#shot-cyberlogix .sheet-x")
+    page.wait_for_function("() => !document.querySelector('.sheet:target')")
+    context.close()
+
+
+def test_genesis_at_320_keeps_the_spark_on_the_first_screen_and_words_whole(site, browser):
+    """320x568, first visit and coming back: today's spark's line is on the
+    first screen; "TODAY'S SPARK · <date>" is one line; "Welcome back" is one
+    line; and the Continue button is one line ("Continue →", the project's
+    name is just above it)."""
+    context = browser.new_context(viewport={"width": 320, "height": 568}, is_mobile=True, has_touch=True)
+    page = context.new_page()
+    for returning in (False, True):
+        page.goto(f"{site}/genesis", wait_until="load")
+        if returning:
+            page.evaluate(SEED)
+            page.reload(wait_until="load")
+            page.wait_for_selector(".g-continue-tick")
+        page.wait_for_selector("#g-daily-title:not(:empty)")
+        assert _box(page, "#g-daily-input")["bottom"] <= 568, returning
+        eyebrow = page.eval_on_selector(".g-daily-eyebrow", "e => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight || 14)")
+        assert page.eval_on_selector(".g-daily-eyebrow", "e => e.getClientRects().length") == 1
+        assert _box(page, ".g-daily-eyebrow")["height"] < 22, eyebrow
+        assert page.evaluate("() => document.documentElement.scrollWidth") <= 320
+        if returning:
+            title = page.eval_on_selector(".g-continue-title", "e => [e.getBoundingClientRect().height, parseFloat(getComputedStyle(e).fontSize), e.scrollWidth <= e.clientWidth + 1]")
+            assert title[0] < title[1] * 1.6 and title[2], title
+            go = page.eval_on_selector(".g-continue .btn-genesis", "e => [e.innerText.trim(), e.getBoundingClientRect().height]")
+            assert " ".join(go[0].split()) == "Continue →" and go[1] <= 50, go
+            assert page.eval_on_selector_all(".g-continue-tick", "t => t.length") == 1
+    context.close()
+
+
+def test_genesis_one_project_on_a_computer_has_no_empty_patch(site, browser):
+    """A returning visitor with one project, on a computer: the project's
+    column ends level with today's spark beside it."""
+    context = _computer(browser)
+    page = context.new_page()
+    page.goto(f"{site}/genesis", wait_until="load")
+    page.evaluate(SEED)
+    page.reload(wait_until="load")
+    page.wait_for_selector(".g-card")
+    card, spark = _box(page, ".g-card a"), _box(page, "#g-daily")
+    assert abs(card["bottom"] - spark["bottom"]) <= 2, (card, spark)
+    context.close()
+
+
+def test_pilot_helps_with_todays_spark_with_no_key_and_jumps_to_it(site, browser):
+    """"Help with today's spark" answers at once (a tip and today's
+    prompt), with no key wall and nothing sent anywhere; its link puts the
+    spark box in view with its line ready to type in."""
+    context = _phone(browser)
+    page = context.new_page()
+    away = []
+    page.on("request", lambda r: away.append(r.url) if not r.url.startswith(site) else None)
+    page.goto(f"{site}/genesis", wait_until="load")
+    page.evaluate(SEED)
+    page.reload(wait_until="networkidle")
+    page.wait_for_selector(".pilot-launcher", timeout=10000)
+    page.click(".pilot-launcher")
+    page.click('.pilot-chip:has-text("Help with today\'s spark")')
+    page.wait_for_selector(".pilot-from-pilot .pilot-md")
+    assert page.is_hidden(".pilot-settings-view"), "no key wall"
+    text = page.inner_text(".pilot-from-pilot .pilot-md")
+    prompt = page.inner_text("#g-daily-title")
+    assert prompt in text and "Write it in one line" in text, text
+    page.click('.pilot-from-pilot a:has-text("Write my spark")')
+    page.wait_for_function("() => document.activeElement && document.activeElement.id === 'g-daily-input'")
+    box = _box(page, "#g-daily")
+    assert -2 <= box["top"] <= 200, box
+    assert page.evaluate("() => location.hash") == ""
+    assert away == [], away
+    context.close()

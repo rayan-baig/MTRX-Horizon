@@ -4,6 +4,30 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.24.0 (22 November 2026)
+
+- **Home: the Projects count adds up.** The tile said "4 · Genesis & Orbyt live · 3 apps in
+  development", which reads like 5. It now says "4: This site (Genesis & Orbyt) + 3 apps in
+  development", and the Projects card starts with the same sum in a sentence.
+- **Home on a phone: what works today comes first.** Right under the headline, "Ready today" shows
+  Genesis (plan your idea, free) and Orbyt (pitch it, or work with us), then "In development" over
+  the three apps. Genesis and Orbyt appear once each on a phone.
+- **Home on a phone: the picture runs edge to edge** and fades into the page at the bottom,
+  instead of sitting in a band with hard edges and dark strips beside it.
+- **Home: "Tap to see" shows the screens.** Tapping an app's small screen now opens its two real
+  screens big, in a viewer of their own (swipe for the second on a phone), with a button on to
+  Learn more. Learn more is still the card with the words.
+- **Genesis on a phone:** the Continue button says just "Continue →" (the project's name is right
+  above it), so it no longer breaks onto two lines, and "Welcome back" always stays on one line.
+- **Genesis at 320 px:** today's spark's line to type in is on the first screen, for a first
+  visit (the three steps become one compact row) and coming back (one next step instead of three;
+  the rest are in the project). "TODAY'S SPARK · Sun, Nov 22" stays on one line.
+- **Genesis on a computer, one project:** the project's card and today's spark beside it end level,
+  with no empty patch under the card.
+- **Pilot on Genesis: "Help with today's spark" works without an AI key.** It shows today's spark,
+  a quick tip for finding an answer, and a "Write my spark" link that jumps to the spark box with
+  its line ready to type in. Nothing is sent anywhere.
+
 ## 1.23.0 (22 November 2026)
 
 - **Orbyt Pitch Review can write itself, with AI, free for you.** In the new AI mode, when a

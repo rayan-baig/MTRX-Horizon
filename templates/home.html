@@ -61,18 +61,30 @@
   {% endfor %}
 </ul>
 {%- endmacro -%}
-{#- The Projects tile's line, in the Projects card's own words (1.22.0):
-    this website (Genesis and Orbyt) is the live one, the rest are apps. -#}
+{#- The Projects tile's line, in the Projects card's own words. 1.24.0: the
+    number and the words add up ("4" is this site, with Genesis and Orbyt,
+    plus 3 apps); "Genesis & Orbyt live · 3 apps" read like 5. -#}
 {%- macro projects_line(plist) -%}
 {%- set site_live = plist | selectattr("status", "equalto", "Live") | list | length -%}
 {%- set apps_open = plist | selectattr("status", "equalto", "Open") | list | length -%}
 {%- set apps_dev = plist | selectattr("status", "equalto", "In development") | list | length -%}
+{%- set apps_all = apps_open + apps_dev -%}
 {%- set parts = [] -%}
-{%- if site_live %}{% set _ = parts.append("Genesis & Orbyt live") %}{% endif -%}
-{%- if apps_open %}{% set _ = parts.append(apps_open ~ " app" ~ ("s" if apps_open != 1 else "") ~ " open") %}{% endif -%}
-{%- if apps_dev %}{% set _ = parts.append(apps_dev ~ " app" ~ ("s" if apps_dev != 1 else "") ~ " in development") %}{% endif -%}
-{#- Each part keeps together, so a narrow tile breaks the line at the dot. -#}
-{%- for part in parts %}{% if not loop.first %} · {% endif %}<span class="fact-part">{{ part }}</span>{% endfor -%}
+{%- if site_live %}{% set _ = parts.append("This site (Genesis & Orbyt)") %}{% endif -%}
+{%- if apps_all -%}
+{%- set noun = apps_all ~ " app" ~ ("s" if apps_all != 1 else "") -%}
+{%- if not apps_open %}{% set _ = parts.append(noun ~ " in development") %}
+{%- elif not apps_dev %}{% set _ = parts.append(noun ~ " open") %}
+{%- else %}{% set _ = parts.append(noun ~ ": " ~ apps_open ~ " open, " ~ apps_dev ~ " in development") %}{% endif -%}
+{%- endif -%}
+{#- Each part keeps together, so a narrow tile breaks the line at the plus. -#}
+{%- for part in parts %}{% if not loop.first %} + {% endif %}<span class="fact-part">{{ part }}</span>{% endfor -%}
+{%- endmacro -%}
+{#- The same count in a sentence, for the Projects card. -#}
+{%- macro projects_sum(plist) -%}
+{%- set site_live = plist | selectattr("status", "equalto", "Live") | list | length -%}
+{%- set apps_all = plist | length - site_live -%}
+{{ plist | length }} project{{ "s" if plist | length != 1 }}:{% if site_live %} this website (with Genesis and Orbyt){% endif %}{% if site_live and apps_all %} and{% endif %}{% if apps_all %} {{ apps_all }} app{{ "s" if apps_all != 1 }}{% endif %}.
 {%- endmacro -%}
 {%- macro count(value) -%}{{ "{:,}".format(value) if value is number else "—" }}{%- endmacro -%}
 <input type="checkbox" id="calm" class="calm-switch" aria-hidden="true" tabindex="-1">
@@ -124,6 +136,13 @@
     <div class="hero-copy">
       <p class="eyebrow">Welcome to MTRX Horizyn</p>
       <h1><span class="line">Three apps that watch,</span> <span class="line gradient-text">warn and motivate.</span></h1>
+      {#- A phone's first screen leads with what works today (1.24.0):
+          Genesis and Orbyt, then the three apps in development below. -#}
+      {% if not demo %}<div class="ready-today" aria-label="Ready today">
+        <p class="ready-k">Ready today</p>
+        <a class="ready-tile ready-genesis" href="/genesis"><b>Genesis</b><span>Plan your idea, free</span><i aria-hidden="true">→</i></a>
+        <a class="ready-tile ready-orbyt" href="/orbyt"><b>Orbyt</b><span>Pitch it, or work with us</span><i aria-hidden="true">→</i></a>
+      </div>{% endif %}
       <p class="lede">MTRX Horizyn is the parent company of {{ how_many }} apps, {{ apps_words }}{% if more %}, including{% else %}:{% endif %}
         <a href="#learn-rankup">RankUp</a>, a chores game for families;
         <a href="#learn-cyberlogix">CyberLogix AI</a>, equipment alarms for businesses; and
@@ -149,6 +168,7 @@
   </section>
 
   <section id="apps" class="apps" aria-label="The apps MTRX Horizyn makes">
+    {% if not demo and opened == 0 %}<p class="apps-k">In development</p>{% endif %}
     {#- One plain line each, saying what the app does. -#}
     {% for key, name, full, tags, lede in [
       ("rankup", "RankUp", "RankUp", ["Families", "Chores", "Games"],
@@ -169,7 +189,7 @@
       </div>
       <p class="app-lede">{{ lede }}</p>
       {#- A real screen from the app's own demo (pretend data). -#}
-      <a class="app-shot" href="#learn-{{ key }}" tabindex="-1" aria-hidden="true" title="See {{ full }}'s screens"><img src="/static/img/{{ key }}-screen-sm.webp" alt="" width="192" height="320" loading="lazy" decoding="async"><span class="app-shot-cue">Tap to see</span></a>
+      <a class="app-shot" href="#shot-{{ key }}" tabindex="-1" aria-hidden="true" title="See {{ full }}'s screens"><img src="/static/img/{{ key }}-screen-sm.webp" alt="" width="192" height="320" loading="lazy" decoding="async"><span class="app-shot-cue">Tap to see</span></a>
       <div class="card-actions">
         {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener" aria-label="Open {{ full }}"><span>Open<span class="app-name"> {{ name }}</span></span> <span class="arrow" aria-hidden="true">→</span></a>
         {% elif early %}<a class="btn btn-solid ea-card-btn" href="#early-access-{{ key }}" aria-label="Get early access to {{ full }}"><span>Early access</span> <span class="arrow" aria-hidden="true">→</span></a>
@@ -324,12 +344,34 @@
 </section>
 {% endfor %}
 
+{#- "Tap to see" (1.24.0): straight to the screens, big, in a viewer of
+    their own; Learn more stays the card with the words. A plain anchor
+    pop-up like the others, so it works with no script. -#}
+{%- for key, full in [("rankup", "RankUp"), ("cyberlogix", "CyberLogix AI"), ("omniarmor", "OmniArmor.ai")] %}
+<section class="sheet shot-viewer {{ {'rankup': 'green', 'cyberlogix': 'blue', 'omniarmor': 'violet'}[key] }}" id="shot-{{ key }}" aria-label="{{ full }}'s screens">
+  <a class="sheet-shut" href="#" aria-label="Close"></a>
+  <div class="sheet-card">
+    <a class="sheet-x" href="#" aria-label="Close">×</a>
+    <p class="eyebrow">{{ full }}'s screens</p>
+    <figure class="viewer-shots">
+      <div class="viewer-row">
+        <img src="/static/img/{{ key }}-screen-1.webp" alt="{{ full }}: {{ shots[key][0] }}" width="320" height="591" loading="lazy" decoding="async">
+        <img src="/static/img/{{ key }}-screen-2.webp" alt="{{ full }}: {{ shots[key][1] }}" width="320" height="591" loading="lazy" decoding="async">
+      </div>
+      <figcaption>{{ shots[key][0] }}; {{ shots[key][1] }}. Pretend data from {{ full }}'s demo.<span class="viewer-swipe"> Swipe for the next screen.</span></figcaption>
+    </figure>
+    <a class="btn btn-outline viewer-more" href="#learn-{{ key }}" aria-label="Learn more about {{ full }}"><span class="say-long">Learn more about {{ full }}</span><span class="say-short">Learn more</span> <span aria-hidden="true">→</span></a>
+  </div>
+</section>
+{%- endfor %}
+
 <section class="sheet" id="projects" aria-label="Projects">
   <a class="sheet-shut" href="#" aria-label="Close"></a>
   <div class="sheet-card">
     <a class="sheet-x" href="#" aria-label="Close">×</a>
     <p class="eyebrow">Projects</p>
     <h2>Where everything stands</h2>
+    <p class="project-sum">{{ projects_sum(projects or []) }}</p>
     <ul class="project-rows">
       {% for p in projects or [] %}
       <li><span><b>{{ p.name }}</b><small>{{ p.kind }}</small></span>

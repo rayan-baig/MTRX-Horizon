@@ -169,12 +169,31 @@
       + `One small step is enough for today.${go}\n\n${PRIVATE}`;
   }
 
+  // Genesis's "Help with today's spark" (1.24.0): a tip, and a jump to the
+  // spark box, from this page alone: no AI key, and nothing sent anywhere.
+  // With a key added, the visitor can still ask Pilot for ideas.
+  function sparkAnswer() {
+    const g = bridge();
+    const s = g && typeof g.spark === "function" ? g.spark() : null;
+    if (!s) return "Today's spark is on the [Genesis page](/genesis#spark): one line is enough.";
+    const prompt = `Today's spark: **${words(s.prompt)}**`;
+    if (s.answer) {
+      return `${prompt}\n\nYou've answered it already: “${words(s.answer)}”. Nice! `
+        + `[Open your spark](/genesis#spark) to change it, or turn it into a project with 3 first steps.\n\n${PRIVATE}`;
+    }
+    return `${prompt}\n\nA quick way in:\n\n`
+      + "- Think of one small thing that annoyed you, a friend or someone at home this week.\n"
+      + "- Ask: what if it were easier? Your answer is the idea.\n"
+      + "- Write it in one line, like “An app that…” or “A club for…”. It doesn't need to be perfect: you can change it later.\n\n"
+      + `[Write my spark](/genesis#spark)\n\n${PRIVATE}`;
+  }
+
   const CHIPS = {
     "/": [["Which app fits me?", { answer: fitAnswer }],
       ["What's ready today?", { answer: readyAnswer }],
       ["How do I start an idea?", { answer: START_IDEA }]],
     "/genesis": [["Show my projects", { answer: projectsAnswer }], ["What's my next step?", { answer: nextAnswer }],
-      ["Help with today's spark", "Help me think of an answer for today's spark."]],
+      ["Help with today's spark", { answer: sparkAnswer }]],
     // At most three: while Pitch Review is on, its answer takes the third place.
     "/orbyt": [["Which form is for me?", { answer: FORM_CHOOSER }], ["What happens after I send?", { answer: AFTER_SEND }],
       review ? ["What's a Pitch Review?", { answer: REVIEW }]

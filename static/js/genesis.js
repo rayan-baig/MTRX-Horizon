@@ -184,7 +184,11 @@
       return;
     }
     const pr = S.progress(p);
-    const go = el("a", { class: "btn btn-genesis", href: `#p/${p.id}` }, `Continue ${p.name} →`);
+    // On a phone just "Continue →" (1.24.0): the name is right above it, and
+    // "Continue Paw Board →" broke onto two lines.
+    const go = el("a", { class: "btn btn-genesis", href: `#p/${p.id}`, "aria-label": `Continue ${p.name}` },
+      el("span", { class: "say-long", text: `Continue ${p.name}` }), el("span", { class: "say-short", text: "Continue" }),
+      el("span", { "aria-hidden": "true", text: " →" }));
     // 1.19.0: the heading is a greeting. 1.22.0: the project's name under it
     // is plain words (the Continue button is the one way in, not a second
     // link beside it), and its next three steps can be ticked right here:
@@ -211,8 +215,12 @@
 
   // A returning visitor's next three steps, each ticked with one tap
   // (1.22.0), through the same update() the project's checklist uses.
+  // The smallest phones (320px) show one next step, so today's spark still
+  // shows on the first screen (1.24.0); the rest are a tap away in the project.
+  const narrow = window.matchMedia ? window.matchMedia("(max-width: 360px)") : null;
+  if (narrow && narrow.addEventListener) narrow.addEventListener("change", () => { if (!$("g-list-view").hidden) drawList(); });
   function nextSteps(p) {
-    const steps = openSteps(p, 3);
+    const steps = openSteps(p, narrow && narrow.matches ? 1 : 3);
     const box = el("div", { class: "g-continue-next" },
       el("p", { class: "g-continue-label", text: steps.length === 1 ? "Your next step" : "Your next steps" }));
     if (!steps.length) {
@@ -1351,7 +1359,19 @@
     drawPro();
     const pro = hash === "#pro" && document.getElementById("pro");
     if (pro) pro.scrollIntoView();
+    else if (hash === "#spark") showSpark();
     else window.scrollTo(0, 0);
+  }
+
+  // #spark (1.24.0: Pilot's "Help with today's spark" links here): today's
+  // spark box in view, its line ready to type in (or its saved answer).
+  function showSpark() {
+    const box = $("g-daily");
+    box.scrollIntoView({ block: "start", behavior: "instant" });
+    const input = $("g-daily-input");
+    if (!$("g-daily-form").hidden) { try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); } }
+    // The address goes back to plain, so the same link works again.
+    history.replaceState(null, "", window.location.pathname);
   }
 
   window.addEventListener("hashchange", route);
