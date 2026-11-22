@@ -95,7 +95,7 @@ test/smoke/     Playwright-for-Electron smoke test (also takes the screenshots)
 
 ### Shared core
 
-`src/core/pilot-providers.js`, `pilot-media.js`, `pilot-render.js`, `pilot-motion.js`, `pilot-actor.js` and `pilot-actor.css` are copied unchanged from the web Pilot core **1.4.0** in `static/pilot/`; `src/core/core-version.json` records their checksums and a test checks them. The desktop layers `providers.js` and `media.js` build on the core's adapters, adding pictures (screenshots in messages and tool results) and running in Node. `engine.js` is the desktop's own engine with the same structure and host interface as the core's `pilot-engine.js`; it is separate because the Mac needs pictures in tool results, every action asked first, and older screenshots dropped from what is sent again.
+`src/core/pilot-providers.js`, `pilot-media.js`, `pilot-render.js`, `pilot-motion.js`, `pilot-actor.js` and `pilot-actor.css` are copied unchanged from the web Pilot core **1.4.1** in `static/pilot/`; `src/core/core-version.json` records their checksums and a test checks them. The desktop layers `providers.js` and `media.js` build on the core's adapters, adding pictures (screenshots in messages and tool results) and running in Node. `engine.js` is the desktop's own engine with the same structure and host interface as the core's `pilot-engine.js`; it is separate because the Mac needs pictures in tool results, every action asked first, and older screenshots dropped from what is sent again.
 
 To update the core: copy those files from `static/pilot/` over, update `core-version.json`, and run `npm test`.
 

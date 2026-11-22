@@ -4,6 +4,38 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.20.0 (22 November 2026)
+
+Pilot core 1.4.1 (placement polish, the welcome stays, built-in answers stay on the device).
+
+- **Pilot's built-in answers never leave your device.** Answers Pilot gives without an AI key (like
+  "What is Orbyt?") are made from what the page shows. Before, once you added a key, they were sent
+  to your AI company along with your next question. Now they stay in the chat on your screen only;
+  the AI company just gets "(Pilot showed a built-in answer)" in their place.
+- **Typing on a phone: Pilot steps out of the way.** Typing in a box low on the screen (Genesis's
+  today's spark, Orbyt's Pitch and Partner forms) used to send the robot to the top left corner,
+  over the logo and the Home link. Now, if the only place left would cover the header or a link, it
+  fades out while you type and comes back when you're done.
+- **Scrolling on a phone: Pilot stays put.** It used to change corners every 100 pixels or so, and
+  sometimes sat full size in a top corner over the headline or a card. Now, once you scroll, it stays
+  small in one bottom corner and only moves (or fades out for a moment) when a link or button would
+  end up under it.
+- **Pilot never sits on a link card.** At the top of Orbyt, the small robot used to sit on the
+  corner of the big "Early access" and "Partner with us" cards, so tapping the card's corner opened
+  Pilot. Now a link under the robot counts in full, however big the card, and when every corner has
+  a link the robot waits out of sight until you scroll.
+- **The welcome buttons stay.** After a built-in answer, the welcome's buttons used to disappear
+  until "Clear chat". Now a small row of them sits under the answer, so the next question is one tap
+  away. A long built-in answer opens at its first line, not its last.
+- **Fewer words around Pilot's box.** The "Want more? Add your AI key" line shows once per chat,
+  not under every built-in answer, and the grown-ups note above the message box stays one line
+  with a "More" link to read all of it.
+- **A sharper robot on phones.** The robot's pictures now also come in the exact sizes a phone
+  shows them at, so it no longer looks a little soft. It looks the same.
+- **For the apps:** other apps can recolour Pilot's window with a few CSS settings
+  (docs/PILOT.md, "Theming the window"). Pilot for Mac is unchanged; its six shared core files are
+  re-copied with the new version line.
+
 ## 1.19.0 (22 November 2026)
 
 - **Home: the app screens show whole.** On a computer each card's screen used to hang off the

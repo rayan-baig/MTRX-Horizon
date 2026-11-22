@@ -15,6 +15,11 @@ never run it). It writes:
                       along the curve where the head meets the shoulders,
                       with a few pixels of overlap;
     *-rest-eyes.webp  just the two glowing eyes, so they can blink and look.
+  The web copies also come at 112 and 168 pixels wide (pilot-rest-*-112.webp,
+  -168.webp, core 1.4.1): a phone's 56 px robot at 2x and 3x, so it is drawn
+  at the file's own size (crisp). The still robot's sizes (pilot-robot-112,
+  -168 and -176.webp) are made the same way from pilot-desktop/assets/
+  robot-512.png (see still_sizes).
 
   The pose pictures (any of the names in POSES), scaled together so the
   robot's halo and head are the same size in every pose (the set is drawn at
@@ -157,6 +162,19 @@ def split_design(path: Path) -> dict:
     return {"body": to(body), "head": to(head), "eyes": to(eyes)}
 
 
+# The phone's 56 px robot at 2x and 3x (core 1.4.1); the still robot also at
+# a computer's 88 px at 2x.
+REST_SIZES = (112, 168)
+STILL_SIZES = (112, 168, 176)
+
+
+def still_sizes() -> None:
+    """The still robot (no motion) in the sizes it is drawn at, from the 512 px design."""
+    src = Image.open(ROOT / "pilot-desktop/assets/robot-512.png").convert("RGBA")
+    for w in STILL_SIZES:
+        save_webp(src.resize((w, round(w * src.height / src.width)), Image.LANCZOS), ROOT / f"static/pilot/pilot-robot-{w}.webp")
+
+
 def save_webp(img: Image.Image, path: Path, quality: int = 88) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     img.save(path, "WEBP", quality=quality, method=6, exact=False)
@@ -174,6 +192,9 @@ def main() -> None:
     for part, img in layers.items():
         save_webp(img.resize((330, round(330 * img.height / img.width)), Image.LANCZOS), desk / f"robot-rest-{part}.webp")
         save_webp(img.resize((192, round(192 * img.height / img.width)), Image.LANCZOS), web / f"pilot-rest-{part}.webp", 86)
+        for w in REST_SIZES:
+            save_webp(img.resize((w, round(w * img.height / img.width)), Image.LANCZOS), web / f"pilot-rest-{part}-{w}.webp", 86)
+    still_sizes()
 
     if args.poses:
         # A new set replaces the old one.
