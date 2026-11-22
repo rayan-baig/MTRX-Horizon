@@ -552,7 +552,6 @@ try {
   await motion15();
   // Pilot for Mac 1.5.1: frame logs of real moves (not held-still frames).
   await frameLogs15();
-  await realClicks15();
   // Calm mode: the timer sends nothing.
   await app.evaluate(() => global.__pilotTest.setCalm(true));
   check(await app.evaluate(() => global.__pilotTest.life().tick()) === null, "calm mode: no wandering");
@@ -992,6 +991,11 @@ try {
   await wait(300);
   const vis = await app.evaluate(() => ({ chat: global.__pilotTest.chat().isVisible(), robot: global.__pilotTest.robot().isVisible() }));
   check(!vis.chat && vis.robot, "closing the chat leaves the robot");
+
+  // Pilot for Mac 1.5.1: real system clicks, last (they move the real
+  // pointer, and made-up system clicks can leave another app frontmost,
+  // which would upset the focus checks above).
+  await realClicks15();
 } catch (e) {
   problems.push(String(e && e.stack || e));
   console.error(e);
