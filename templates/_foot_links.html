@@ -1,0 +1,14 @@
+{#- The footer's links, in three short groups (1.17.0): your idea, business,
+    and about this site. A computer shows them on one line; a phone shows
+    each group under its label, side by side, instead of a wall of links.
+    `home` is set on the home page, whose About card is on the page itself. -#}
+<nav class="foot-links" aria-label="About this site">
+    <div class="foot-group" role="group" aria-labelledby="foot-ideas"><span class="foot-h" id="foot-ideas">Your idea</span>
+      <a href="/genesis">Genesis</a><a href="/orbyt">Orbyt<span class="foot-long">: Work with MTRX Horizyn</span></a>
+      {%- if early %}<a href="/early-access">Early access</a>{% endif %}{% if creators %}<a href="/creators">Creators</a>{% endif %}</div>
+    <div class="foot-group" role="group" aria-labelledby="foot-business"><span class="foot-h" id="foot-business">Business</span>
+      <a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a>
+      {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% elif reach %}<a href="mailto:{{ reach }}">Contact</a>{% endif %}</div>
+    <div class="foot-group" role="group" aria-labelledby="foot-about"><span class="foot-h" id="foot-about">About</span>
+      <a href="{{ '#company' if home else '/#company' }}">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a></div>
+  </nav>

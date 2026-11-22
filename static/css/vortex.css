@@ -472,3 +472,38 @@
   .v-hero-copy .v-eyebrow { padding-right: 0; letter-spacing: 0.08em; }
   .v-title { padding-right: 60px; }
 }
+
+/* ---------- 1.17.0 ---------- */
+/* The path cards line up at the top on a computer. */
+.v-path { align-items: start; }
+.v-path-icon { align-self: start; }
+.v-how-more { font-style: normal; }
+/* A short FAQ above Send, on the Pitch form. */
+.v-faq { margin: 4px 0 14px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(5, 8, 22, 0.45); }
+.v-faq-head { margin: 0 0 4px; font: 700 14px/1.3 var(--head); color: var(--text); }
+.v-faq-item summary { cursor: pointer; padding: 8px 0; min-height: 24px; font-weight: 600; font-size: 14px; color: var(--text); }
+.v-faq-item summary:hover { color: var(--pc, var(--cyan)); }
+.v-faq-item p { margin: 0 0 10px; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+.v-faq-item + .v-faq-item { border-top: 1px solid var(--line); }
+/* What happens next, after sending: the reply-by date. */
+.v-next-step { margin: 0 auto 10px; max-width: 520px; color: var(--text); font-size: 14.5px; line-height: 1.5; }
+.v-next-step:empty { display: none; }
+/* Our apps, folded behind one line on a phone (open on a computer). */
+.v-apps-summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 44px; padding: 10px 16px; border-radius: 12px; border: 1px solid var(--line-strong);
+  background: rgba(5, 8, 22, 0.55); font-weight: 600; font-size: 14px; color: var(--text);
+}
+.v-apps-summary::-webkit-details-marker { display: none; }
+.v-apps-summary::after { content: "+"; font: 700 20px/1 var(--head); color: var(--cyan); }
+.v-apps-fold[open] > .v-apps-summary { display: none; }
+.v-apps-fold[open] { display: grid; gap: 14px; }
+@media (max-width: 720px) {
+  /* How Orbyt works, in one line: the three steps' names only. */
+  .v-how { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+  .v-how li { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; }
+  .v-how b { width: 20px; height: 20px; font-size: 11px; }
+  .v-how strong { font-size: 12.5px; margin: 0; }
+  .v-how-more { display: none; }
+  .v-path { padding: 14px 16px; }
+}

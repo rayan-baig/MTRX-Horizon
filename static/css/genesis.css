@@ -650,3 +650,74 @@
   .g-daily-eyebrow span { display: block; margin-top: 4px; }
   .g-day { width: 28px; }
 }
+
+/* ---------- 1.17.0 ---------- */
+/* A returning visitor: "Continue <project>" and its next step, in place of
+   the welcome. */
+.g-hero.g-hero-back .g-hero-copy { display: none; }
+.g-continue { position: relative; max-width: 640px; min-width: 0; }
+.g-hero-small .g-continue .g-eyebrow { display: block; }
+.g-continue-step b { flex-basis: 100%; overflow-wrap: anywhere; }
+.g-continue[hidden] { display: none; }
+.g-continue .g-eyebrow { margin-bottom: 8px; }
+.g-continue-title { font: 800 clamp(26px, 4.4vw, 40px)/1.1 var(--head); margin: 0 0 10px; overflow-wrap: anywhere; }
+.g-continue-title b { background: var(--dawn); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.g-continue-step { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 4px; font-size: 16px; }
+.g-continue-label { color: var(--muted); }
+.g-continue-done { color: var(--faint); font-size: 13px; margin: 0 0 16px; }
+/* The project: the checklist beside the stage and Ask Genesis, then notes
+   across (the side column no longer runs far past the checklist). */
+.g-lower { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+/* At the free limit: things to do while the answers come back. */
+.g-wait { display: none; margin: 0 0 12px; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid rgba(251, 191, 36, 0.45); background: rgba(251, 191, 36, 0.07); }
+.g-ask.g-ask-wait .g-wait { display: grid; gap: 10px; }
+.g-wait-head { margin: 0; font-size: 14px; color: var(--muted); }
+.g-wait-head b { color: var(--text); }
+.g-wait-pro { justify-self: start; font-size: 13.5px; color: var(--spark); }
+/* Free and Pro as two cards (phones; the table on a computer). */
+.g-compare-cards { display: none; }
+.g-plan-card { padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: rgba(5, 8, 22, 0.45); }
+.g-plan-pro { border-color: rgba(251, 191, 36, 0.55); }
+.g-plan-name { margin: 0 0 8px; font: 700 13px/1.2 var(--head); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.g-plan-pro .g-plan-name { color: var(--spark); }
+.g-plan-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
+.g-plan-card li { position: relative; padding-left: 22px; line-height: 1.4; }
+.g-plan-card li.yes::before { content: "✓"; position: absolute; left: 0; color: var(--green, #34e89e); font-weight: 700; }
+.g-plan-card li.no { color: var(--faint); text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.25); }
+.g-plan-card li.no::before { content: "–"; position: absolute; left: 2px; color: var(--faint); }
+/* A small reward: sparkles burst from the toast when a step or stage is
+   ticked, or the streak grows. None under "reduce motion". */
+.g-toast.cheer { border-color: var(--spark); box-shadow: 0 0 22px rgba(251, 191, 36, 0.35); }
+.g-toast.cheer::before, .g-toast.cheer::after {
+  content: ""; position: absolute; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, #fff 0 20%, var(--spark) 45%, transparent 70%);
+  opacity: 0; animation: g-burst 0.9s ease-out 1;
+}
+.g-toast.cheer::before { left: -6px; --dx: -26px; }
+.g-toast.cheer::after { right: -6px; --dx: 26px; animation-delay: .08s; }
+@keyframes g-burst {
+  0% { opacity: 0; transform: translate(0, 0) scale(.4); box-shadow: 0 0 0 rgba(244, 114, 182, 0); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), -14px) scale(1.4);
+    box-shadow: 10px -12px 0 -2px var(--plan), -8px -16px 0 -3px #22d3ee, 4px 10px 0 -3px #a78bfa; }
+}
+@media (max-width: 900px) {
+  .g-lower { display: contents; }
+}
+@media (max-width: 720px) {
+  .g-continue-title { padding-right: 44px; font-size: clamp(24px, 7vw, 32px); }
+  .g-hero-small .g-continue .cta-row { flex-wrap: wrap; }
+  .g-hero-small .g-continue .cta-row .btn { flex: 1 1 100%; white-space: normal; justify-content: center; }
+}
+@media (max-width: 600px) {
+  .g-compare { display: none; }
+  .g-compare-cards { display: grid; gap: 10px; }
+}
+@media (min-width: 601px) and (max-width: 720px) {
+  .g-compare { display: none; }
+  .g-compare-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .g-toast.cheer::before, .g-toast.cheer::after { animation: none; display: none; }
+}

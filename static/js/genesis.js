@@ -82,9 +82,30 @@
     const t = $("g-toast");
     t.textContent = text;
     t.classList.toggle("bad", bad);
+    t.classList.remove("cheer");
     t.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+  }
+
+  // A small reward (1.17.0): the toast with a burst of sparkles when a step
+  // or a stage is ticked, or the streak grows. Under "reduce motion" the
+  // words alone (genesis.css has no sparkles there).
+  function cheer(text) {
+    toast(text);
+    const t = $("g-toast");
+    t.classList.remove("cheer");
+    void t.offsetWidth; // start the sparkles again
+    t.classList.add("cheer");
+  }
+
+  // What a tick deserves: a launch, a whole stage, or a step.
+  function tickCheer(p, stageKey) {
+    const pr = S.progress(p);
+    if (pr.launched) { cheer(`${p.name} is launched!`); return; }
+    const stage = pr.stages.find((s) => s.key === stageKey);
+    if (stage && stage.total && stage.done === stage.total) cheer(`${stage.name} done! Every ${stage.name} step is ticked.`);
+    else cheer(`Nice! ${pr.done} of ${pr.total} steps done.`);
   }
 
   function persist() {
@@ -116,10 +137,14 @@
     // A returning visitor knows what Genesis is: the welcome shrinks to a
     // title, the buttons and where their projects stand.
     document.querySelector(".g-hero").classList.toggle("g-hero-small", projects.length > 0);
-    // A returning visitor's projects come first; a first visit starts at the top.
+    drawContinue(sorted);
+    // A returning visitor: the Continue card (in place of the welcome), then
+    // their projects; a first visit starts with the welcome.
     const view = $("g-list-view");
     const mine = $("g-mine");
-    const anchor = projects.length ? view.firstElementChild : $("g-storage-note").nextElementSibling;
+    const hero = document.querySelector(".g-hero");
+    const anchor = projects.length ? (hero.nextElementSibling === mine ? mine : hero.nextElementSibling)
+      : $("g-storage-note").nextElementSibling;
     if (anchor !== mine) view.insertBefore(mine, anchor);
     drawDaily();
     drawPro();
@@ -132,6 +157,35 @@
       el("span", { text: s.name }))),
     el("li", { class: "stage-launched" },
       el("b", { text: String(projects.filter((p) => S.progress(p).launched).length) }), el("span", { text: "Live", title: "Launched: every step done" })));
+  }
+
+  // A returning visitor (1.17.0): instead of the welcome, the project they
+  // were last on and its next step, with one press to carry on.
+  function drawContinue(sorted) {
+    const box = $("g-continue");
+    const p = sorted.find((q) => !S.progress(q).launched) || null;
+    box.hidden = sorted.length === 0;
+    document.querySelector(".g-hero").classList.toggle("g-hero-back", sorted.length > 0);
+    if (!sorted.length) { fill(box); return; }
+    const start = el("a", { class: "btn btn-ghost btn-small", href: "#new" }, "Start another idea");
+    if (!p) {
+      fill(box, el("p", { class: "eyebrow g-eyebrow", text: "Genesis · welcome back" }),
+        el("h1", { class: "g-continue-title", text: "Every project is launched." }),
+        el("p", { class: "g-continue-step", text: "Well done. Ready for the next one?" }),
+        el("div", { class: "cta-row" }, el("a", { class: "btn btn-genesis", href: "#new" }, "Start my next idea →")));
+      return;
+    }
+    const pr = S.progress(p);
+    const step = S.nextStep(p);
+    const go = el("a", { class: "btn btn-genesis", href: `#p/${p.id}` }, `Continue ${p.name} →`);
+    fill(box, el("p", { class: "eyebrow g-eyebrow", text: "Genesis · welcome back" }),
+      el("h1", { class: "g-continue-title" }, el("span", { text: "Continue " }), el("b", { text: p.name })),
+      el("p", { class: "g-continue-step" },
+        el("span", { class: `g-chip stage-${p.stage}`, text: stageOf(p.stage).name }),
+        el("span", { class: "g-continue-label", text: "Next step: " }),
+        el("b", { text: step ? step.label : `Move on from ${stageOf(p.stage).name}` })),
+      el("p", { class: "g-continue-done", text: `${pr.done} of ${pr.total} steps done` }),
+      el("div", { class: "cta-row" }, go, start));
   }
 
   // Genesis Pro shows only once it could matter: after a first project or a
@@ -247,6 +301,7 @@
     $("g-daily-input").value = "";
     const st = S.streak(days, today);
     drawDaily();
+    if (first && st.streak > 1) cheer(`${st.streak} days in a row!`);
     // Said inside the card, under the answer, where it covers nothing.
     $("g-daily-saved").textContent = first
       ? (st.streak > 1 ? `Spark saved. ${st.streak} days in a row!` : "Spark saved. Nice one.")
@@ -428,7 +483,7 @@
     if (here < S.STAGES.length - 1) {
       const next = S.STAGES[here + 1];
       const fwd = el("button", { class: "btn btn-genesis btn-small", type: "button", text: `Move to ${next.name} →` });
-      fwd.addEventListener("click", () => { update(p, (q) => { q.stage = next.key; }); toast(`On to ${next.name}.`); drawProject(p); });
+      fwd.addEventListener("click", () => { update(p, (q) => { q.stage = next.key; }); cheer(`On to ${next.name}!`); drawProject(p); });
       put(moves, fwd);
     }
     const left = pr.total - pr.done;
@@ -451,8 +506,7 @@
         box.checked = Boolean(p.ticks[item.key]);
         box.addEventListener("change", () => {
           update(p, (q) => { if (box.checked) q.ticks[item.key] = true; else delete q.ticks[item.key]; });
-          const after = S.progress(p);
-          if (after.launched) toast(`${p.name} is launched!`);
+          if (box.checked) tickCheer(p, item.stage);
           drawProject(p);
         });
         // Hide a step that doesn't fit this idea (it can come back), or
@@ -541,9 +595,13 @@
     const danger = el("section", { class: "panel g-danger" },
       el("p", { text: "Deleting can't be undone, unless you downloaded a copy." }), del);
 
+    // On a computer: the checklist beside the stage and Ask Genesis, then
+    // notes across the page (1.17.0: notes in the side column left a big
+    // empty space under the checklist).
     fill($("g-detail"), head, el("div", { class: "g-columns" },
       el("div", { class: "g-main" }, checklist),
-      el("div", { class: "g-side" }, stagePanel, ask, notes, danger)));
+      el("div", { class: "g-side" }, stagePanel, ask)),
+    el("div", { class: "g-lower" }, notes, danger));
   }
 
   // Which stages the visitor opened or folded by hand, per project, for this visit.
@@ -590,7 +648,7 @@
     if (stepAt > here) {
       const next = S.STAGES[here + 1];
       const go = el("button", { class: "btn btn-genesis btn-small", type: "button", text: `Move to ${next.name} →` });
-      go.addEventListener("click", () => { update(p, (q) => { q.stage = next.key; }); toast(`On to ${next.name}.`); drawProject(p); });
+      go.addEventListener("click", () => { update(p, (q) => { q.stage = next.key; }); cheer(`On to ${next.name}!`); drawProject(p); });
       put(box, el("span", { class: "g-next-label", text: "Next step" }),
         el("b", { class: "g-next-step", text: `Every ${S.STAGES[here].name} step is done.` }),
         el("small", { text: next.line }), go);
@@ -599,7 +657,7 @@
     const done = el("button", { class: "btn btn-genesis btn-small", type: "button", text: "Done ✓" });
     done.addEventListener("click", () => {
       update(p, (q) => { q.ticks[step.key] = true; });
-      toast(S.progress(p).launched ? `${p.name} is launched!` : "Ticked. On to the next one.");
+      tickCheer(p, step.stage);
       drawProject(p);
     });
     // Ask Genesis sits below the whole checklist on a phone; this goes
@@ -922,13 +980,44 @@
     const which = !pro && !own && document.getElementById("pilot-core")
       ? el("p", { class: "g-ask-which", text: "Ask Genesis is free here, with the limits above. Pilot, the robot in the corner, works with a grown-up's own AI key, with no limit." })
       : null;
+    // At the limit (1.17.0): not just greyed-out buttons, but useful things
+    // to do while the free answers come back (shown by genesis.css while the
+    // panel waits).
+    const wait = left ? waitBox(p) : null;
     // The limit is said up front, above the first question, not in small print.
-    const panel = el("section", { class: "panel g-ask" }, head, left,
+    const panel = el("section", { class: "panel g-ask" }, head, left, wait,
       el("div", { class: "g-helpers" }, ...buttons), form, which, note, out);
     drawAnswer(p, out);
     if (left && !freeAllowance) loadAllowance();
     if (left) { gate(panel, freeBlockedNow()); setTimeout(drawAllowance, 0); }
     return panel;
+  }
+
+  // While you wait: tick the next step, use Pilot with a grown-up's own AI
+  // key (no limit), or, softly, Genesis Pro (only where Pro is offered).
+  function waitBox(p) {
+    const step = S.nextStep(p);
+    let tick = null;
+    if (step) {
+      tick = el("button", { class: "g-tool g-tool-strong", type: "button", text: "Tick your next step" });
+      tick.title = step.label;
+      tick.addEventListener("click", () => {
+        update(p, (q) => { q.ticks[step.key] = true; });
+        tickCheer(p, step.stage);
+        drawProject(p);
+      });
+    }
+    let pilot = null;
+    if (window.Pilot && typeof window.Pilot.open === "function" && document.getElementById("pilot-core")) {
+      pilot = el("button", { class: "g-tool", type: "button", text: "Use Pilot with your own AI key" });
+      pilot.addEventListener("click", () => window.Pilot.open());
+    }
+    const pro = document.getElementById("pro") && !isPro()
+      ? el("a", { class: "g-link g-wait-pro", href: "#pro" }, "More answers a day with Genesis Pro") : null;
+    return el("div", { class: "g-wait" },
+      el("p", { class: "g-wait-head" }, el("b", { text: "While you wait" }),
+        el("span", { text: step ? ` Your next step: ${step.label}` : " Every step here is ticked." })),
+      el("div", { class: "g-tools" }, tick, pilot), pro);
   }
 
   // ---- the free limit, honestly: "4 of 5 left today (up to 3 an hour)".

@@ -67,10 +67,12 @@ test("the next step card passes a missing hint and a missing Ask button as empty
   assert.match(next, /put\(box, el\("span", \{ class: "g-next-label", text: "Your next step" \}\)/);
 });
 
-test("a returning visitor's projects come first; a first visit starts with the hero", () => {
+test("a returning visitor gets the Continue card, then their projects; a first visit starts with the hero", () => {
   const list = functionSource("drawList");
-  assert.match(list, /const anchor = projects\.length \? view\.firstElementChild : \$\("g-storage-note"\)\.nextElementSibling;/);
+  // 1.17.0: the Continue card (in the hero's place) comes first, then the projects.
+  assert.match(list, /const anchor = projects\.length \? \(hero\.nextElementSibling === mine \? mine : hero\.nextElementSibling\)/);
   assert.match(list, /view\.insertBefore\(mine, anchor\)/);
+  assert.match(list, /drawContinue\(sorted\);/);
   assert.match(list, /drawPro\(\);/);
 });
 
@@ -94,7 +96,7 @@ test("the free answers left today are shown from what the server says", () => {
 // 1.15.0: the limit is said up front, and at the limit the buttons wait.
 test("the limit line comes first, above the quick questions and Ask", () => {
   const panel = functionSource("askPanel");
-  assert.match(panel, /el\("section", \{ class: "panel g-ask" \}, head, left,\n\s+el\("div", \{ class: "g-helpers" \}, \.\.\.buttons\), form,/);
+  assert.match(panel, /el\("section", \{ class: "panel g-ask" \}, head, left, wait,\n\s+el\("div", \{ class: "g-helpers" \}, \.\.\.buttons\), form,/);
   assert.match(panel, /if \(left\) \{ gate\(panel, freeBlockedNow\(\)\); setTimeout\(drawAllowance, 0\); \}/);
 });
 
@@ -160,4 +162,61 @@ test("1.16.0: the last stage tile says Live (never cut short), and Delete all is
   assert.ok(source.includes("if (!confirm(`Delete all ${projects.length} project"));
   const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
   assert.ok(!/\.g-path span \{[^}]*text-overflow: ellipsis/.test(css));
+});
+
+// ---------------------------------------------------------------- 1.17.0
+
+test("a returning visitor sees 'Continue <project>' with its next step, not the welcome", () => {
+  const cont = functionSource("drawContinue");
+  assert.match(cont, /sorted\.find\(\(q\) => !S\.progress\(q\)\.launched\)/);
+  assert.match(cont, /el\("span", \{ text: "Continue " \}\), el\("b", \{ text: p\.name \}\)/);
+  assert.match(cont, /el\("span", \{ class: "g-continue-label", text: "Next step: " \}\)/);
+  assert.match(cont, /href: `#p\/\$\{p\.id\}`/);
+  assert.match(cont, /classList\.toggle\("g-hero-back", sorted\.length > 0\)/);
+  const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
+  assert.match(css, /\.g-hero\.g-hero-back \.g-hero-copy \{ display: none; \}/);
+});
+
+test("at the free limit: a 'While you wait' line with useful buttons, not only greyed-out ones", () => {
+  const wait = functionSource("waitBox");
+  assert.match(wait, /text: "Tick your next step"/);
+  assert.match(wait, /text: "Use Pilot with your own AI key"/);
+  assert.match(wait, /window\.Pilot\.open\(\)/);
+  assert.match(wait, /"More answers a day with Genesis Pro"/);
+  assert.match(wait, /document\.getElementById\("pro"\) && !isPro\(\)/);
+  assert.match(functionSource("askPanel"), /const wait = left \? waitBox\(p\) : null;/);
+  const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
+  assert.match(css, /\.g-wait \{ display: none;/);
+  assert.match(css, /\.g-ask\.g-ask-wait \.g-wait \{ display: grid;/);
+  // The wait box's buttons aren't the ones gate() greys out.
+  assert.match(functionSource("gate"), /"\.g-helper, \.g-question input, \.g-question button"/);
+});
+
+test("small rewards: ticking a step or a stage, or a longer streak, cheers; never under reduce motion", () => {
+  const stages = [{ key: "spark", name: "Spark", done: 3, total: 3 }, { key: "plan", name: "Plan", done: 1, total: 5 }];
+  const run = (pr, stage) => {
+    const out = [];
+    const t = { textContent: "", classList: { add() {}, remove() {}, toggle() {} }, offsetWidth: 1 };
+    const fns = new Function("$", "toast", "S", `${functionSource("cheer")}\n${functionSource("tickCheer")}\nreturn { tickCheer };`)(
+      () => t, (x) => out.push(x), { progress: () => pr });
+    fns.tickCheer({ name: "Plant Pal" }, stage);
+    return out[0];
+  };
+  assert.equal(run({ launched: false, done: 4, total: 19, stages }, "spark"), "Spark done! Every Spark step is ticked.");
+  assert.equal(run({ launched: false, done: 4, total: 19, stages }, "plan"), "Nice! 4 of 19 steps done.");
+  assert.equal(run({ launched: true, done: 19, total: 19, stages }, "plan"), "Plant Pal is launched!");
+  assert.match(source, /if \(box\.checked\) tickCheer\(p, item\.stage\);/);
+  assert.match(source, /if \(first && st\.streak > 1\) cheer\(`\$\{st\.streak\} days in a row!`\);/);
+  assert.equal((source.match(/cheer\(`On to \$\{next\.name\}!`\)/g) || []).length, 2);
+  const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
+  const still = css.split("@media (prefers-reduced-motion: reduce)").pop();
+  assert.match(still, /\.g-toast\.cheer::before, \.g-toast\.cheer::after \{ animation: none; display: none; \}/);
+});
+
+test("the project on a computer: checklist beside the stage and Ask; notes across underneath", () => {
+  const project = functionSource("drawProject");
+  assert.match(project, /el\("div", \{ class: "g-side" \}, stagePanel, ask\)\),\n\s+el\("div", \{ class: "g-lower" \}, notes, danger\)\);/);
+  const css = fs.readFileSync(path.join(__dirname, "..", "..", "static", "css", "genesis.css"), "utf8");
+  assert.match(css, /\.g-lower \{ display: grid; grid-template-columns: minmax\(0, 1\.35fr\) minmax\(0, 1fr\);/);
+  assert.match(css, /\.g-lower \{ display: contents; \}/);
 });

@@ -50,9 +50,9 @@ def render_home(urls: dict) -> str:
     env.globals["asset"] = lambda path: "/static/" + path
     # The real project list, and no app numbers: the demo has no apps
     # reporting to it, so its activity panel says the numbers come at launch.
-    from horizon import stats
+    from horizon import news, stats
     html = env.get_template("home.html").render(
-        urls=urls, demo=True, numbers=None, projects=stats.PROJECTS)
+        urls=urls, demo=True, numbers=None, projects=stats.PROJECTS, news=news.items())
     html = html.replace('"/static/', '"static/')
     # Unwrap to the form an Artifact page takes.
     for pattern in (r"<!doctype html>\s*", r"<html[^>]*>\s*", r"</html>\s*",

@@ -607,7 +607,6 @@ body:has(> .page), html:has(> body > .page) { height: 100%; overflow: hidden; }
 .values em { grid-column: 2; font-style: normal; color: var(--faint); font-size: 13px; }
 .news li { display: grid; grid-template-columns: 14px 1fr; gap: 10px; align-items: start; font-size: 14.5px; color: var(--muted); }
 .news li .dot { margin-top: 6px; }
-.news b + span b, .news span b { display: block; color: var(--text); }
 .toggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; cursor: pointer;
   padding: 14px; border-radius: 10px; background: rgba(59, 130, 246, .07); border: 1px solid var(--line); }
 .toggle small { display: block; color: var(--faint); font-size: 13px; }
@@ -945,4 +944,86 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   /* The apps stack on a phone, and the third card's line ran under the
      robot on the first screen: each card's line keeps clear of its corner. */
   :root.pilot-on .page .app-card .app-lede { padding-right: 48px; }
+}
+
+/* ---------- 1.17.0: real screens, the phone hero, dated news, grouped footer ---------- */
+/* Each app card shows a real screen from the app's own demo, peeking up
+   from the card's bottom right over the artwork. */
+.page .app-card .app-shot {
+  position: absolute; right: clamp(10px, 1.1vw, 18px); bottom: 0; z-index: 1;
+  width: clamp(54px, 6vw, 92px); transform: translateY(26%);
+  border-radius: 10px; overflow: hidden; line-height: 0;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent), 0 10px 26px rgba(0, 0, 0, .55);
+  transition: transform .2s ease;
+}
+.page .app-card .app-shot img { display: block; width: 100%; height: auto; }
+.page .app-card:hover .app-shot { transform: translateY(20%); }
+/* The tags keep a dark fade behind them, so "Alarms" and "Records" read
+   clearly where the artwork shows through. */
+.page .app-card .tags {
+  display: inline-block; max-width: 100%; margin-left: -8px; padding: 3px 26px 3px 8px; border-radius: 6px;
+  background: linear-gradient(90deg, rgba(6, 14, 38, .9) 72%, rgba(6, 14, 38, 0));
+}
+/* Learn more: the words, then two real screens beside them. */
+.learn .sheet-card { width: min(820px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 340px); gap: 0 24px; align-items: start; }
+.learn .learn-head { grid-column: 1 / -1; }
+.learn-body > p { color: var(--muted); margin: 0 0 14px; font-size: 15px; }
+.learn-shots { margin: 0; display: grid; gap: 8px; }
+.learn-shot-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.learn-shots img { display: block; width: 100%; height: auto; border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 8px 22px rgba(0, 0, 0, .5); }
+.learn-shots figcaption { color: var(--faint); font-size: 12px; line-height: 1.4; }
+/* What's new: each item dated, and a link. */
+.news .news-item { display: block; color: var(--muted); text-decoration: none; }
+.news .news-item b { display: inline; color: var(--text); }
+.news .news-item time { font-size: 12px; color: var(--faint); margin-left: 4px; }
+.news .news-item span { display: block; }
+.news .news-item:hover span, .news .news-item:focus-visible span { color: var(--text); text-decoration: underline; }
+/* The footer's groups: one line on a computer, labelled groups on a phone. */
+.foot-group { display: contents; }
+.foot-h { display: none; }
+@media (max-width: 720px) {
+  .learn .sheet-card { display: block; }
+  .learn-shots { margin-top: 18px; }
+  /* The phone hero: the headline in two even lines, tighter spacing, and
+     the two buttons side by side (the tour is in the menu). */
+  .page .hero h1 { font-size: clamp(20px, 6.6vw, 34px); text-wrap: balance; margin-bottom: 8px; }
+  .page .hero h1 .line { text-wrap: balance; }
+  .page .hero .eyebrow { margin-bottom: 6px; }
+  .page .hero-copy { padding-block: 0 2px; }
+  .page .lede { margin-bottom: 12px; }
+  .page .cta-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 8px; }
+  .page .cta-row .btn { padding: 0 8px; font-size: 13px; justify-content: center; gap: 6px; white-space: nowrap; }
+  .page .hero-copy .btn > span[aria-hidden] { display: none; }
+  /* The tour is in the menu on a phone. */
+  .page .hero-copy .btn-tour { display: none; }
+  /* The real screen: a small window at the card's top right. */
+  .page .app-card .app-shot { top: 10px; right: 10px; bottom: auto; width: 46px; height: 62px; transform: none; border-radius: 8px; }
+  .page .app-card:hover .app-shot { transform: none; }
+  .page .app-card .tags { display: none; }
+  :root .page .app-card .app-lede { padding-right: 56px; }
+  .page .app-card h2 { padding-right: 56px; }
+  /* The footer: three labelled groups side by side. */
+  .page .footer .foot-links, .footer .foot-links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 10px; width: 100%; text-align: left; }
+  .foot-group { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+  .foot-h { display: block; margin: 6px 0 0; font: 600 10px/1.2 var(--head); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+  .foot-links .foot-group a { justify-content: flex-start; min-width: 0; text-align: left; }
+  .foot-long { display: none; }
+}
+/* Tablets: the screen at the end of each slim row. */
+@media (min-width: 721px) and (max-width: 900px) {
+  .page .app-card { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  .page .app-card .app-shot { position: relative; right: auto; bottom: auto; grid-column: 4; grid-row: 1 / span 2; width: 44px; height: 60px; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page .app-card .app-shot { transition: none; }
+}
+/* Tablets too: the tour waits in the menu, so the two main buttons sit together. */
+@media (min-width: 721px) and (max-width: 900px) {
+  .page .hero-copy .btn-tour { display: none; }
+}
+/* The smallest phones: both hero buttons still fit side by side. */
+@media (max-width: 360px) {
+  .page .cta-row .btn { font-size: 12px; padding: 0 4px; }
 }

@@ -44,15 +44,12 @@
 {%- set live = n.total_users is not none -%}
 {%- from "_early_form.html" import early_form, early_promise -%}
 {#- What's new: shown on the page (on a phone) and in the bell's pop-up,
-    from this one list. -#}
-{%- set news = [
-  ("green-dot", "RankUp", "Block Craft now tells a story, with battle scenes and a dragon fought with chores."),
-  ("blue", "CyberLogix AI", "Run several businesses from one sign-in and switch between them."),
-  ("violet", "MTRX Horizyn", "Genesis now shows how many free AI answers you have left today."),
-] -%}
+    from this one list (horizon/news.py: dated, linked, newest first, and
+    checked against the changelogs). -#}
+{%- set news = news or [] -%}
 {%- macro news_list() -%}
 <ul class="news">
-  {% for dot, who, what in news %}<li><b class="dot {{ dot }}"></b><span><b>{{ who }}</b> {{ what }}</span></li>
+  {% for item in news %}<li><b class="dot {{ item.dot }}"></b><a class="news-item" href="{{ item.href }}"><b>{{ item.who }}</b> <time datetime="{{ item.date }}">{{ item.shown }}</time> <span>{{ item.text }}</span></a></li>
   {% endfor %}
 </ul>
 {%- endmacro -%}
@@ -114,7 +111,8 @@
         {#- While early access is on, it takes the first button. -#}
         {% if early %}<a class="btn btn-primary" href="#early-access">Get early access <span aria-hidden="true">→</span></a>
         {% else %}<a class="btn btn-primary" href="#apps">Explore Our Apps <span aria-hidden="true">→</span></a>{% endif %}
-        <a class="btn btn-ghost" href="#tour">
+        {% if not demo %}<a class="btn btn-ghost btn-genesis" href="/genesis">Try Genesis now (free)</a>{% endif %}
+        <a class="btn btn-ghost btn-tour" href="#tour">
           <svg class="play" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg>
           Quick tour</a>
       </div>
@@ -141,6 +139,8 @@
         </div>
       </div>
       <p class="app-lede">{{ lede }}</p>
+      {#- A real screen from the app's own demo (pretend data). -#}
+      <a class="app-shot" href="#learn-{{ key }}" tabindex="-1" aria-hidden="true"><img src="/static/img/{{ key }}-screen-sm.webp" alt="" width="192" height="320" loading="lazy" decoding="async"></a>
       <div class="card-actions">
         {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener" aria-label="Open {{ full }}"><span>Open<span class="app-name"> {{ name }}</span></span> <span class="arrow" aria-hidden="true">→</span></a>
         {% elif early %}<a class="btn btn-solid ea-card-btn" href="#early-access-{{ key }}" aria-label="Get early access to {{ full }}"><span>Early access</span> <span class="arrow" aria-hidden="true">→</span></a>
@@ -234,17 +234,18 @@
   <span class="foot-values">Innovation <i>•</i> Creativity <i>•</i> Impact</span>
   <span class="foot-line">Technology for a stronger tomorrow.</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.{% if not demo %} <span class="foot-version">Version {{ version }}</span>{% endif %}</span>
-  {% if not demo %}<nav class="foot-links" aria-label="About this site">
-    <a href="#company">About</a><a href="/genesis">Genesis</a><a href="/orbyt">Orbyt: Work with MTRX Horizyn</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a>
-    {%- if early %}<a href="/early-access">Early access</a>{% endif %}{% if creators %}<a href="/creators">Creators</a>{% endif %}<a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
-    {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% else %}<a href="mailto:{{ reach }}">Contact</a>{% endif %}
-  </nav>{% endif %}
+  {% if not demo %}{% set home = true %}{% include "_foot_links.html" %}{% endif %}
 </footer>
 </div>
 
 {#- Pop-up cards. Each opens when the address ends in its id (#projects,
     #company, ...), so they work with no script at all; the dimmed backdrop
     and the × both close by going back to plain #. -#}
+{%- set shots = {
+  "rankup": ("The parent's dashboard", "a child's home, in the Pegasus world", "the demo family"),
+  "cyberlogix": ("A walk-in cooler warming up", "the alert text, and who answered", "the pretend kitchen"),
+  "omniarmor": ("A restaurant's overview", "its checklist, each check with its rule", "the sample kitchen"),
+} -%}
 {%- for key, name, full, lede, points in [
   ("rankup", "RankUp", "RankUp", "Chores that turn into points and games.", [
     "A parent sets a chore, the child does it and snaps a photo as proof.",
@@ -270,6 +271,7 @@
       <img src="/static/img/{{ key }}-icon.svg" alt="" width="52" height="52" loading="lazy">
       <div><p class="eyebrow">An MTRX Horizyn app</p><h2>{{ full }}</h2></div>
     </div>
+    <div class="learn-body">
     <p>{{ lede }}</p>
     <ul class="learn-points">
       {% for point in points %}<li>{{ point }}</li>{% endfor %}
@@ -277,6 +279,15 @@
     {% if urls[key] %}<a class="btn btn-solid" href="{{ urls[key] }}" rel="noopener">Open {{ name }} <span aria-hidden="true">→</span></a>
     {% else %}<p class="learn-soon">{{ full }} is in development.</p>
     {% if early %}<a class="btn btn-solid" href="#early-access-{{ key }}">Get early access <span aria-hidden="true">→</span></a>{% endif %}{% endif %}
+    </div>
+    {#- Two real screens, taken from the app's own demo with pretend data. -#}
+    <figure class="learn-shots">
+      <div class="learn-shot-row">
+        <img src="/static/img/{{ key }}-screen-1.webp" alt="{{ full }}: {{ shots[key][0] }}" width="320" height="591" loading="lazy" decoding="async">
+        <img src="/static/img/{{ key }}-screen-2.webp" alt="{{ full }}: {{ shots[key][1] }}" width="320" height="591" loading="lazy" decoding="async">
+      </div>
+      <figcaption>{{ shots[key][0] }}; {{ shots[key][1] }}. From {{ full }}'s demo, with {{ shots[key][2] }} (pretend data).</figcaption>
+    </figure>
   </div>
 </section>
 {% endfor %}

@@ -23,6 +23,11 @@ jobs:
           python-version: '3.13'   # what the Dockerfile ships
           cache: pip
       - run: pip install -r requirements.txt -c constraints.txt pytest httpx pip-audit
+      - name: A browser for tests/test_browser.py
+        # Playwright and its Chromium are for the tests only, never in the image.
+        run: |
+          pip install playwright==1.64.1
+          python -m playwright install --with-deps chromium
       - name: Tests
         # tests/test_live.py walks the owner's way in against real uvicorn from
         # 127.0.0.1 and ::1. Without this it would skip ::1 on a runner with no

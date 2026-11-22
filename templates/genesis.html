@@ -52,6 +52,9 @@
           <a class="btn btn-ghost" href="#example">Try an example</a>
         </div>
       </div>
+      {#- A returning visitor (1.17.0): no welcome, but the project they were
+          on and its next step. static/js/genesis.js (drawContinue) fills it. -#}
+      <div class="g-continue" id="g-continue" hidden></div>
       <ol class="g-how" id="g-how">
         <li class="stage-spark"><b>1</b><span><strong>Write it down</strong> A name, one line, and who it's for.</span></li>
         <li class="stage-plan"><b>2</b><span><strong>Tick small steps</strong> 19 steps in plain words, in any order.</span></li>
@@ -140,22 +143,42 @@
       <div class="g-pro-offer" id="g-pro-offer">
         <p class="g-pro-lede">Genesis is free to use. Pro is only for people who ask Genesis for help
           a lot.</p>
+        {#- One list of what Free and Pro give: a table on a computer, two
+            cards side by side, then stacked, on a phone (1.17.0). -#}
+        {%- set compare = [("Projects, the launch checklist, today's spark and idea cards", "Yes", "Yes")] %}
+        {#- Rows about Ask Genesis only while it is on (Pro itself is only
+            offered then: genesis_pro.ready). Said the same way on both
+            sides, and no promise of a number every day: Pro's answers come
+            from a monthly allowance. -#}
+        {%- if pro.ai %}
+        {%- set compare = compare + [
+          ("Ask Genesis answers", pro.free_per_day ~ " a day, up to " ~ pro.free_per_hour ~ " an hour", "Up to " ~ pro.per_day ~ " a day, from a monthly allowance"),
+          ("Longer answers, plus a four-week plan, website words and price ideas", "No", "Yes")] %}
+        {%- endif %}
+        {%- set compare = compare + [("Private cloud backup, if this browser is cleared", "No", "Yes"),
+                                     ("Download a project as a tidy plan", "No", "Yes")] %}
         <table class="g-compare">
           <thead><tr><th scope="col"><span class="visually-hidden">What you get</span></th><th scope="col">Free</th><th scope="col">Pro</th></tr></thead>
           <tbody>
-            <tr><th scope="row">Projects, the launch checklist, today's spark and idea cards</th><td>Yes</td><td>Yes</td></tr>
-            {#- Rows about Ask Genesis only while it is on (Pro itself is
-                only offered then: genesis_pro.ready). -#}
-            {%- if pro.ai %}
-            {#- Said the same way on both sides, and no promise of a number every
-                day: Pro's answers come from a monthly allowance. -#}
-            <tr><th scope="row">Ask Genesis answers</th><td>{{ pro.free_per_day }} a day, up to {{ pro.free_per_hour }} an hour</td><td>Up to {{ pro.per_day }} a day, from a monthly allowance</td></tr>
-            <tr><th scope="row">Longer answers, plus a four-week plan, website words and price ideas</th><td>No</td><td>Yes</td></tr>
-            {%- endif %}
-            <tr><th scope="row">Private cloud backup, if this browser is cleared</th><td>No</td><td>Yes</td></tr>
-            <tr><th scope="row">Download a project as a tidy plan</th><td>No</td><td>Yes</td></tr>
+            {%- for what, free, paid in compare %}
+            <tr><th scope="row">{{ what }}</th><td>{{ free }}</td><td>{{ paid }}</td></tr>
+            {%- endfor %}
           </tbody>
         </table>
+        <div class="g-compare-cards">
+          {%- for col, label in [(1, "Free"), (2, "Pro")] %}
+          <div class="g-plan-card g-plan-{{ label | lower }}">
+            <p class="g-plan-name">{{ label }}</p>
+            <ul>
+              {%- for row in compare %}
+              {%- if row[col] == "Yes" %}<li class="yes">{{ row[0] }}</li>
+              {%- elif row[col] == "No" %}<li class="no">{{ row[0] }}<span class="visually-hidden">: not included</span></li>
+              {%- else %}<li class="yes">{{ row[0] }}: {{ row[col] }}</li>{% endif %}
+              {%- endfor %}
+            </ul>
+          </div>
+          {%- endfor %}
+        </div>
         <p class="g-pro-small">{% if pro.ai %}Pro's answers come from a monthly allowance that is plenty for most
           people; on any one day you can ask up to {{ pro.per_day }}. If you ever use it up, it tops up day by day.
           {% endif %}Only you can see your projects and backups.</p>
@@ -264,10 +287,7 @@
 <footer class="footer">
   <span class="foot-brand">MTRX HORIZYN</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
-  <nav class="foot-links" aria-label="About this site">
-    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/orbyt">Orbyt: Work with MTRX Horizyn</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
-    {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
-  </nav>
+  {% include "_foot_links.html" %}
 </footer>
 
 <dialog class="g-share" id="g-share" aria-labelledby="g-share-title">

@@ -106,11 +106,32 @@
     return out;
   }
 
+  // The reply time the page promises (above Send, and in sentLine): 7 days.
+  const REPLY_DAYS = 7;
+
   function sentLine(email) {
     return `We'll reply to ${email} within 7 days, even if the answer is no.`;
   }
 
-  const api = { KINDS, LIMITS, FIELDS, COMPANY, PARTNERSHIPS, TRAP, fieldsOf, body, problems, fromGenesis, fill, handedOver, fromHash, sentLine };
+  // The date a reply is due by, in plain words ("Sunday 29 November"), the
+  // same in every browser (no locale needed).
+  const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+    "October", "November", "December"];
+  function replyBy(now) {
+    const d = new Date(now instanceof Date ? now.getTime() : Date.now());
+    d.setDate(d.getDate() + REPLY_DAYS);
+    return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  }
+
+  // What happens next, on the Sent screen.
+  function nextLine(now) {
+    return `What happens next: a real person reads your message and emails you back by ${replyBy(now)}. `
+      + "If it's a yes, or we have a question, that email is where we start.";
+  }
+
+  const api = { KINDS, LIMITS, FIELDS, COMPANY, PARTNERSHIPS, TRAP, REPLY_DAYS, fieldsOf, body, problems, fromGenesis, fill, handedOver,
+    fromHash, sentLine, replyBy, nextLine };
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.VortexForm = api;
 })(typeof window !== "undefined" ? window : globalThis);

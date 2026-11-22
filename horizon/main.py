@@ -24,8 +24,8 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.templating import Jinja2Templates
 
-from . import (catalog, config, costs, creators, db, early_access, errors, genesis_ai, genesis_pro, growth, health,
-               lock, numbers, offers, ready, stats, upkeep, vortex)
+from . import (catalog, config, costs, creators, db, early_access, errors, genesis_ai, genesis_pro, growth,
+               health, lock, news, numbers, offers, ready, stats, upkeep, vortex)
 
 DEVICE_COOKIE = "mh_d"
 # Browsers keep a cookie for 400 days at most.
@@ -442,6 +442,8 @@ def home(request: Request):
         # about them on the page, while they are off.
         "early": early_access.offer(),
         "creators": creators.enabled(),
+        # What's new: dated, linked, newest first (horizon/news.py).
+        "news": news.items(),
     })
 
 

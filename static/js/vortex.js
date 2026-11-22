@@ -128,6 +128,7 @@
     sentKind = kind;
     for (const k of V.KINDS) $(`v-${k}`).hidden = true;
     $("v-sent-line").textContent = V.sentLine(email);
+    $("v-next-step").textContent = V.nextLine(new Date());
     // A useful next step for this path, while the visitor waits for a reply.
     document.querySelectorAll("[data-next]").forEach((link) => {
       link.hidden = !link.dataset.next.split(" ").includes(kind);
@@ -223,8 +224,25 @@
     document.querySelectorAll(".v-business").forEach((row) => row.classList.toggle("on", kind === "invest" || kind === "buy"));
     document.querySelectorAll(".v-paths").forEach((nav) => nav.classList.toggle("chosen", Boolean(kind)));
     $("v-choose").hidden = Boolean(kind);
-    if (kind) $(`v-${kind}`).scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
+    if (kind) jump(kind, smooth);
   }
+
+  // To a form. On arrival (/orbyt#pitch) the jump is "instant": "auto"
+  // follows the page's smooth-scroll style, and a smooth scroll that early
+  // was often cut short by the page still settling, leaving the visitor at
+  // the top (1.17.0). It is done again once the page has loaded, in case
+  // fonts or pictures moved things.
+  function jump(kind, smooth) {
+    $(`v-${kind}`).scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "instant" });
+  }
+
+  // Our apps: folded on a phone (the page was long), open on a computer,
+  // and opened whenever something points at it.
+  const appsFold = $("v-apps-fold");
+  function openApps() { if (appsFold) appsFold.open = true; }
+  if (appsFold && window.matchMedia && window.matchMedia("(min-width: 721px)").matches) openApps();
+  if (window.location.hash === "#our-apps") openApps();
+  window.addEventListener("hashchange", () => { if (window.location.hash === "#our-apps") openApps(); });
 
   window.addEventListener("hashchange", () => route(true));
 
@@ -260,4 +278,15 @@
   if (offered && window.location.hash !== "#pitch") history.replaceState(null, "", "#pitch");
   route(false);
   if (offered) useProject(offered);
+  // Arrived straight at a form: make sure it is still in view once the
+  // page has finished loading (and again a moment later, after late layout).
+  const arrived = V.fromHash(window.location.hash).kind;
+  if (arrived) {
+    const again = () => {
+      const kind = V.fromHash(window.location.hash).kind;
+      if (kind === arrived && !sentKind && window.scrollY < 40) jump(kind, false);
+    };
+    if (document.readyState === "complete") setTimeout(again, 0);
+    else window.addEventListener("load", () => { again(); setTimeout(again, 250); }, { once: true });
+  }
 })();

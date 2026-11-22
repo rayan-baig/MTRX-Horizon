@@ -60,10 +60,23 @@
 <p class="v-error" data-error></p>
 {#- Said once each, just before Send: the 7-day reply, and (for ideas)
     that we won't publish or pass it on. -#}
-<p class="v-reply">We reply within 7 days, even if the answer is no.</p>
 {%- if kind == "pitch" %}
-<p class="v-open-ideas">We won't publish or pass on what you send, but we can't promise we aren't working on something similar.</p>
+{#- A short FAQ above Send (1.17.0), answered from the terms and the
+    privacy page: nothing here promises more than they do. -#}
+<div class="v-faq" id="faq">
+  <p class="v-faq-head">Before you send</p>
+  <details class="v-faq-item"><summary>Who owns my idea?</summary>
+    <p>You do. Your idea stays yours: we never take a share of it without a written agreement that you
+      (and a parent or guardian, if you're under 18) sign. Sending it doesn't create a partnership, an
+      agreement or any obligation for either of us.</p></details>
+  <details class="v-faq-item"><summary>What happens after I send?</summary>
+    <p>A real person reads it and emails you back, even if the answer is no. If we'd like to hear more,
+      we'll ask in that email. We keep your message only to reply, then delete it.</p></details>
+  <details class="v-faq-item"><summary>Will you build it without me?</summary>
+    <p class="v-open-ideas">We won't publish or pass on what you send, but we can't promise we aren't working on something similar.</p></details>
+</div>
 {%- endif %}
+<p class="v-reply">We reply within 7 days, even if the answer is no.</p>
 <div class="v-send">
   <button class="btn btn-vortex" type="submit">Send <span aria-hidden="true">→</span></button>
   <p class="v-private">We keep what you send here only to reply to you, for up to {{ keep_days }} days{% if kind != "pitch" %}, and
@@ -137,10 +150,11 @@
     </a>
   </nav>
 
+  {#- On a phone, one line (1.17.0): the three steps' names only. -#}
   <ol class="v-how" id="v-choose" aria-label="How Orbyt works">
-    <li><b>1</b><span><strong>Pick a path</strong> The one that sounds most like you.</span></li>
-    <li><b>2</b><span><strong>Write a short note</strong> Your name, email and a few lines.</span></li>
-    <li><b>3</b><span><strong>We reply by email</strong> A yes, a no, or a question back, from a real person.</span></li>
+    <li><b>1</b><span><strong>Pick a path</strong> <em class="v-how-more">The one that sounds most like you.</em></span></li>
+    <li><b>2</b><span><strong>Write a short note</strong> <em class="v-how-more">Your name, email and a few lines.</em></span></li>
+    <li><b>3</b><span><strong>We reply by email</strong> <em class="v-how-more">A yes, a no, or a question back, from a real person.</em></span></li>
   </ol>
 
   {#- Investors and buying come after the main paths (most visitors are here
@@ -214,8 +228,8 @@
         {{ field("pitch", "name", "Your name", limits.name, "name") }}
         {{ field("pitch", "email", "Email", limits.email, "email", kind_of="email") }}
         {{ field("pitch", "idea", "Idea name", limits.idea, wide=true, placeholder="e.g. Nova") }}
-        {{ field("pitch", "pitch", "One-line pitch", limits.pitch, wide=true, placeholder="e.g. Homework reminders that actually work") }}
-        {{ field("pitch", "audience", "Who it's for", limits.audience, wide=true, placeholder="e.g. Students who forget what's due") }}
+        {{ field("pitch", "pitch", "One-line pitch", limits.pitch, wide=true, placeholder="e.g. Homework reminders") }}
+        {{ field("pitch", "audience", "Who it's for", limits.audience, wide=true, placeholder="e.g. Students") }}
         {{ message("Message", "Anything else: what you've done so far, and what you'd like from us.", required=false) }}
       </div>
       {{ send_row("pitch") }}
@@ -268,6 +282,7 @@
     <span class="v-swirl v-swirl-small" aria-hidden="true"><i class="v-ring r1"></i><i class="v-ring r2"></i><i class="v-core"></i></span>
     <h2 class="v-sent-title">Sent.</h2>
     <p class="v-sent-line" id="v-sent-line" role="status"></p>
+    <p class="v-next-step" id="v-next-step"></p>
     <p class="v-sent-small">Check your spam folder if you don't hear from us. We keep your message only to
       reply, for up to {{ keep_days }} days.</p>
     <div class="v-next" id="v-next">
@@ -298,6 +313,10 @@
         one gets an Open button the day it launches.{% else %}Every app MTRX Horizyn makes. New ones join this
         list as they launch.{% endif %}</p>
     </div>
+    {#- Folded on a phone (1.17.0: the page was long); vortex.js opens it on
+        a computer and whenever something points here. -#}
+    <details class="v-apps-fold" id="v-apps-fold">
+    <summary class="v-apps-summary">See our {{ apps | length }} apps and the Kitchen Safety Bundle</summary>
     <a class="v-bundle" href="/bundle">
       <span class="v-bundle-icons" aria-hidden="true"><img src="/static/img/cyberlogix-icon.svg" alt="" width="34" height="34"><img src="/static/img/omniarmor-icon.svg" alt="" width="34" height="34"></span>
       <span class="v-bundle-text"><b>Kitchen Safety Bundle</b>
@@ -326,6 +345,7 @@
       </li>
       {% endfor %}
     </ul>
+    </details>
   </section>
   {%- else %}
   <section class="panel v-catalog-empty" id="our-apps">
@@ -339,10 +359,7 @@
 <footer class="footer">
   <span class="foot-brand">MTRX HORIZYN</span>
   <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
-  <nav class="foot-links" aria-label="About this site">
-    <a href="/#company">About</a><a href="/genesis">Genesis</a><a href="/orbyt">Orbyt: Work with MTRX Horizyn</a><a href="/partners">Partners</a><a href="/bundle">Kitchen Safety Bundle</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/brand">Brand</a>
-    {%- if contact %}<a href="mailto:{{ contact }}">Business enquiries</a>{% endif %}
-  </nav>
+  {% include "_foot_links.html" %}
 </footer>
 
 <script src="{{ asset('js/genesis-store.js') }}" defer></script>

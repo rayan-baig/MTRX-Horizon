@@ -20,6 +20,28 @@ which version is live.
   full view above the message box instead of half hidden.
 - **The tucked-away robot is easy to tap.** It never shrinks below 44 pixels (it was about 24 on
   phones).
+- **Home shows the real apps.** Each app card has a real screen from that app's own demo (pretend
+  data), and each Learn more card has two, with a line saying where they come from. On a phone the
+  headline is two even lines, the spacing is tighter so the apps start sooner, and there's a second
+  button, "Try Genesis now (free)" (the tour is in the menu). On a computer the cards' tags keep a
+  dark fade behind them, so "Alarms" and "Records" read clearly over the artwork.
+- **What's new is dated and linked**, newest first, from a small list kept in step with the
+  changelogs (a test checks the dates and refuses stale lines). The old Block Craft line is gone.
+- **Shorter footers on phones.** The links are three labelled groups (Your idea, Business, About)
+  instead of a wall of links, on Home, Genesis and Orbyt.
+- **Genesis.** Coming back, you see "Continue <your project>" with its next step instead of the
+  welcome. On a computer, notes sit across the page under the checklist, so there's no big empty
+  space beside it. At the free limit there's a "While you wait" line: tick your next step, use
+  Pilot with your own AI key, or (softly) Pro. Free and Pro are two cards on a phone instead of a
+  cramped table. Ticking a step, finishing a stage, moving on or growing your streak gets a short
+  cheer with a few sparkles (words only if your device asks for less motion).
+- **Orbyt.** A link straight to a form (/orbyt#pitch, #partner) now always lands on it: the first
+  jump is instant, and it checks again once the page has loaded (a browser test loads it many
+  times). The Pitch form has a short FAQ above Send (who owns my idea, what happens after I send,
+  will you build it without me), answered from the terms and privacy page. After sending, it says
+  what happens next and the date we'll reply by (from the 7 days the page already promises). On a
+  phone, "How Orbyt works" is one line and "Our apps" folds behind one button; the examples in the
+  boxes are short enough to read; on a computer the path cards line up at the top.
 
 ## 1.16.1 (22 November 2026)
 

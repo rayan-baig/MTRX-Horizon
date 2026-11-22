@@ -917,3 +917,26 @@ def test_pro_stays_off_until_email_works_and_the_console_says_why(client, pro, m
     assert card["enabled"] is True and card["ready"] is False
     assert any("MTRX_SMTP_HOST" in p for p in card["problems"])
 
+
+
+def test_on_a_phone_free_and_pro_are_two_cards_from_the_same_rows(client, pro):
+    """1.17.0: the table was cramped on phones; there it is two cards, built
+    from the very rows the table shows, so they can't say different things."""
+    import re
+    page = client.get("/genesis").text
+    offer = page.split('id="g-pro-offer"', 1)[1].split('<div class="g-pro-buy">', 1)[0]
+    rows = re.findall(r'<tr><th scope="row">([^<]+)</th><td>([^<]+)</td><td>([^<]+)</td></tr>', offer)
+    assert len(rows) >= 4
+    cards = offer.split('<div class="g-compare-cards">', 1)[1]
+    free = cards.split('g-plan-free', 1)[1].split("</ul>", 1)[0]
+    paid = cards.split('g-plan-pro', 1)[1].split("</ul>", 1)[0]
+    for what, f, p in rows:
+        what = what.replace("&#39;", "'")
+        for side, value in ((free, f), (paid, p)):
+            side = side.replace("&#39;", "'")
+            assert what in side, what
+            if value not in ("Yes", "No"):
+                assert f"{what}: {value}" in side
+    assert "Up to 100 a day, from a monthly allowance" in paid
+    css = (Path(__file__).resolve().parent.parent / "static/css/genesis.css").read_text(encoding="utf-8")
+    assert "@media (max-width: 600px) {\n  .g-compare { display: none; }\n  .g-compare-cards { display: grid;" in css

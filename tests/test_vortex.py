@@ -182,7 +182,7 @@ def test_the_genesis_hand_off_pre_fills_in_node():
                              str(ROOT / "tests/js/vortex_handoff.test.js")],
                             capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "# fail 0" in result.stdout and "# pass 4" in result.stdout
+    assert "# fail 0" in result.stdout and "# pass 5" in result.stdout
 
 
 # ---------------------------------------------------------------- sending
@@ -882,7 +882,7 @@ def test_orbyt_is_shorter_and_its_examples_say_so(client):
     page = client.get("/orbyt").text
     # The idea name's placeholder is clearly an example, like the others.
     assert 'placeholder="e.g. Nova"' in page and 'placeholder="Nova"' not in page
-    assert 'placeholder="e.g. Homework reminders that actually work"' in page
+    assert 'placeholder="e.g. Homework reminders"' in page and 'placeholder="e.g. Students"' in page
     # Investors and buyers: one "Business enquiries" row, a button each,
     # and either one lights the row up.
     more = page.split('<nav class="v-paths v-paths-more"', 1)[1].split("</nav>", 1)[0]
@@ -896,3 +896,56 @@ def test_orbyt_is_shorter_and_its_examples_say_so(client):
     css = (ROOT / "static/css/vortex.css").read_text()
     small = css.split("@media (max-width: 360px) {", 1)[1].split("\n}\n", 1)[0]
     assert ".v-hero-copy .v-eyebrow { padding-right: 0;" in small and ".v-hero-art { top: 46px; }" in small
+
+
+# ---------------------------------------------------------------- 1.17.0
+
+def test_the_pitch_form_has_a_short_faq_above_send_that_promises_no_more_than_the_terms(client):
+    page = client.get("/orbyt").text
+    pitch = page.split('id="v-pitch"', 1)[1].split("</section>", 1)[0]
+    before_send = pitch.split('<div class="v-send">', 1)[0]
+    faq = before_send.split('<div class="v-faq" id="faq">', 1)[1].split("</div>", 1)[0]
+    questions = re.findall(r"<summary>([^<]+)</summary>", faq)
+    assert questions == ["Who owns my idea?", "What happens after I send?", "Will you build it without me?"]
+    flat = " ".join(faq.split()).replace("&#39;", "'")
+    assert "Your idea stays yours: we never take a share of it without a written agreement" in flat
+    assert "parent or guardian" in flat
+    # The same words the terms use: sending creates no agreement.
+    terms = " ".join(client.get("/terms").text.split()).replace("&#39;", "'")
+    assert "doesn't create a partnership, an agreement or any obligation for either of us" in terms
+    assert "doesn't create a partnership, an agreement or any obligation for either of us" in flat
+    assert CONFIDENTIAL in flat
+    # Above the 7-day line and Send, and only on the Pitch form.
+    assert before_send.index('id="faq"') < before_send.index('class="v-reply"')
+    assert page.count('class="v-faq"') == 1
+    for word in ("guarantee", "we will build", "royalt"):
+        assert word not in flat.lower(), word
+
+
+def test_the_phone_page_is_shorter_how_it_works_is_one_line_and_the_apps_fold(client):
+    page = client.get("/orbyt").text
+    how = page.split('<ol class="v-how" id="v-choose"', 1)[1].split("</ol>", 1)[0]
+    assert how.count('<em class="v-how-more">') == 3
+    css = (ROOT / "static/css/vortex.css").read_text()
+    late = css.split("/* ---------- 1.17.0 ---------- */", 1)[1]
+    phone = late.split("@media (max-width: 720px) {", 1)[1]
+    assert ".v-how-more { display: none; }" in phone
+    catalog = page.split('id="our-apps"', 1)[1].split("</section>", 1)[0]
+    assert '<details class="v-apps-fold" id="v-apps-fold">' in catalog
+    assert catalog.index("v-apps-fold") < catalog.index('class="v-app-list"')
+    script = (ROOT / "static/js/vortex.js").read_text()
+    assert 'window.matchMedia("(min-width: 721px)").matches) openApps();' in script
+    assert 'if (window.location.hash === "#our-apps") openApps();' in script
+    # The desktop path cards line up at the top; the examples are short enough for a phone.
+    assert ".v-path { align-items: start; }" in late
+    for example in re.findall(r'placeholder="(e\.g\. [^"]+)"', page):
+        assert len(example) <= 24, example
+
+
+def test_a_direct_link_to_a_form_scrolls_instantly_and_again_after_load():
+    script = (ROOT / "static/js/vortex.js").read_text()
+    assert 'behavior: smooth ? "smooth" : "instant"' in script
+    assert 'smooth" : "auto"' not in script
+    assert 'window.addEventListener("load", () => { again(); setTimeout(again, 250); }, { once: true });' in script
+    page_js = (ROOT / "static/js/vortex.js").read_text()
+    assert '$("v-next-step").textContent = V.nextLine(new Date());' in page_js

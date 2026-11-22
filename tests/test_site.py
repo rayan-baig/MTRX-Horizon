@@ -1045,7 +1045,7 @@ def test_on_a_phone_the_apps_stack_and_whats_new_is_on_the_page(client):
     news = frame.split('<section class="panel home-news" id="news"', 1)[1].split("</section>", 1)[0]
     bell = page.split('id="updates"', 1)[1].split("</section>", 1)[0]
     items = re.findall(r"<li>.*?</li>", news, re.S)
-    assert len(items) == 3 and items == re.findall(r"<li>.*?</li>", bell, re.S)
+    assert 3 <= len(items) <= 6 and items == re.findall(r"<li>.*?</li>", bell, re.S)
     assert "<p class=\"home-who\">MTRX Horizyn is a small independent software company.</p>" in news
     assert "all on one screen" not in page
     css = Path("static/css/site.css").read_text(encoding="utf-8")
@@ -1067,7 +1067,13 @@ def test_on_a_phone_genesis_and_orbyt_are_on_the_page_and_the_menu_fits(client):
     # Every tile is one link, the whole tile: nothing in the strip is just a figure.
     assert tiles.count("<li>") == tiles.count('<a class="fact ')
     main = page.split('<main id="top">', 1)[1].split("</main>", 1)[0]
-    assert main.count('href="/genesis"') == 1
+    # 1.17.0: the hero has its own "Try Genesis now (free)" button (the
+    # reviewers asked for it), so Genesis is the tile, that button, and its
+    # dated line in What's new; never two cards in a row.
+    hero = main.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
+    assert hero.count('href="/genesis"') == 1 and "Try Genesis now (free)" in hero
+    news = main.split('id="news"', 1)[1]
+    assert main.count('href="/genesis"') - news.count('href="/genesis"') == 2
     css = Path("static/css/site.css").read_text(encoding="utf-8")
     phone = css.split("@media (max-width: 720px) {\n  /* A phone may scroll", 1)[1].split("\n}\n", 1)[0]
     assert ".page .facts { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr));" in phone
@@ -1108,3 +1114,85 @@ def test_the_help_address_is_in_the_mailbox_list_and_the_readme_is_right():
     readme = " ".join((ROOT / "README.md").read_text().split())
     assert "Unset (or not a plain address), nothing is shown." not in readme
     assert f"`{config.HELP_EMAIL}`" in readme
+
+
+# ---------------------------------------------------------------- 1.17.0: Home
+
+def test_whats_new_is_dated_linked_and_kept_in_step_with_the_changelog(client):
+    """Each item has a date and a link, newest first, none stale; an MTRX
+    Horizyn item names a version that CHANGELOG.md has, on the same date."""
+    from datetime import date, timedelta
+    from horizon import news
+    changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+    months = {m: i + 1 for i, m in enumerate(("January", "February", "March", "April", "May", "June", "July",
+                                               "August", "September", "October", "November", "December"))}
+    released = {v: date(int(y), months[m], int(d)) for v, d, m, y in
+                re.findall(r"^## (\d+\.\d+\.\d+) \((\d+) (\w+) (\d{4})\)", changelog, re.M)}
+    newest = max(released.values())
+    dates = [date.fromisoformat(i["date"]) for i in news.NEWS]
+    assert dates == sorted(dates, reverse=True)
+    assert newest - dates[0] <= timedelta(days=news.FRESH_DAYS), "the newest item is stale"
+    assert dates[0] - dates[-1] <= timedelta(days=news.SPAN_DAYS), "an old item lingers"
+    for item in news.NEWS:
+        assert item["href"].startswith("/") and item["text"].strip() and item["who"].strip()
+        if item["source"].startswith("MTRX Horizyn "):
+            version = item["source"].split()[-1]
+            assert released.get(version) == date.fromisoformat(item["date"]), item
+        else:
+            assert re.fullmatch(r"(RankUp|CyberLogix AI|OmniArmor\.ai) \d+\.\d+\.\d+", item["source"]), item
+    page = client.get("/").text
+    bell = page.split('id="updates"', 1)[1].split("</section>", 1)[0]
+    items = re.findall(r"<li>.*?</li>", bell, re.S)
+    assert len(items) == len(news.NEWS)
+    for li, item in zip(items, news.NEWS):
+        assert f'<time datetime="{item["date"]}">' in li and 'class="news-item" href="' in li
+    # Links to the apps' cards stay on the page; the cards they name exist.
+    for anchor in re.findall(r'class="news-item" href="#([\w-]+)"', bell):
+        assert f'id="{anchor}"' in page
+    for path in {i["href"].split("#")[0] for i in news.NEWS if not i["href"].startswith("/#")}:
+        assert client.get(path).status_code == 200, path
+    assert "Block Craft now tells a story" not in page  # the stale line is gone
+
+
+def test_the_app_cards_and_learn_more_show_real_screens(client):
+    """1-2 real screens per app, from the apps' own demos (pretend data),
+    small WebP files with their sizes written in."""
+    from tests.test_speed import webp_size
+    page = client.get("/").text
+    for key in ("rankup", "cyberlogix", "omniarmor"):
+        card = page.split(f'data-app="{key}"', 1)[1].split("</article>", 1)[0]
+        assert f'<img src="/static/img/{key}-screen-sm.webp" alt="" width="192" height="320" loading="lazy"' in card
+        learn = page.split(f'id="learn-{key}"', 1)[1].split("</section>", 1)[0]
+        for n in (1, 2):
+            assert f'src="/static/img/{key}-screen-{n}.webp"' in learn and 'width="320" height="591"' in learn
+        assert "pretend data" in learn
+        for name, size in ((f"{key}-screen-sm.webp", (192, 320)), (f"{key}-screen-1.webp", (320, 591)),
+                           (f"{key}-screen-2.webp", (320, 591))):
+            path = Path("static/img") / name
+            assert webp_size(path) == size, name
+            assert path.stat().st_size < 30_000, name
+    css = Path("static/css/site.css").read_text(encoding="utf-8")
+    # The desktop tags keep a dark fade behind them, over the artwork.
+    assert ".page .app-card .tags {" in css and "linear-gradient(90deg, rgba(6, 14, 38, .9) 72%, rgba(6, 14, 38, 0))" in css
+
+
+def test_the_phone_hero_has_two_buttons_and_a_balanced_headline(client):
+    page = client.get("/").text
+    hero = page.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
+    assert '<a class="btn btn-ghost btn-genesis" href="/genesis">Try Genesis now (free)</a>' in hero
+    css = Path("static/css/site.css").read_text(encoding="utf-8")
+    late = css.split("/* ---------- 1.17.0:", 1)[1]
+    phone = late.split("@media (max-width: 720px) {", 1)[1].split("\n}\n", 1)[0]
+    assert "text-wrap: balance" in phone and "grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr)" in phone
+
+
+def test_the_footer_is_three_labelled_groups(client):
+    for path in ("/", "/genesis", "/orbyt"):
+        page = client.get(path).text
+        foot = page.split('<nav class="foot-links"', 1)[1].split("</nav>", 1)[0]
+        labels = re.findall(r'<span class="foot-h" id="[\w-]+">([^<]+)</span>', foot)
+        assert labels == ["Your idea", "Business", "About"], path
+        assert foot.count('class="foot-group" role="group"') == 3
+        assert foot.count("<a ") <= 12
+    css = Path("static/css/site.css").read_text(encoding="utf-8")
+    assert ".foot-group { display: contents; }" in css and ".foot-h { display: none; }" in css
