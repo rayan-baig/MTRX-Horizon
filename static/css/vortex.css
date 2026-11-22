@@ -378,6 +378,8 @@
 
 /* ---------- sent ---------- */
 .v-sent {
+  /* Its top sits just under the bar when shown (1.23.0: centring it hid "Sent." on a phone). */
+  scroll-margin-top: 96px;
   display: grid; justify-items: center; text-align: center; gap: 10px; padding: clamp(28px, 5vw, 48px) 20px;
   border-color: rgba(52, 232, 158, 0.5);
 }

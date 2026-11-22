@@ -584,3 +584,49 @@ def test_the_owners_doc_has_the_free_steps():
     for words in ("ORBYT_REVIEW_AI_URL", "ORBYT_REVIEW_AI_KEY", "ORBYT_REVIEW_AI_MODEL", "ORBYT_REVIEW_AI_PER_DAY",
                   "ORBYT_REVIEW_MODE", "Google AI Studio", "Groq", "OpenRouter", "free"):
         assert words in doc, words
+
+
+# ---------------------------------------------------------------- the Sent screen and coming back (round 8)
+
+def test_the_offer_comes_after_the_confirmation_and_while_you_wait(client, review):  # noqa: F811
+    page = client.get("/orbyt").text
+    sent = page.split('<section class="panel v-sent"', 1)[1].split("</section>", 1)[0]
+    order = [sent.index(m) for m in ('class="v-sent-title"', 'id="v-sent-line"', 'id="v-next-step"', 'id="v-next"',
+                                     'id="v-review"', 'class="cta-row"')]
+    assert order == sorted(order), order
+    script = (ROOT / "static/js/vortex.js").read_text()
+    # Shown from its top, under the bar, never centred (that hid "Sent." on a phone).
+    assert 'scrollIntoView({ block: "center" })' not in script
+    assert '$("v-sent").scrollIntoView({ block: "start", behavior: "instant" })' in script
+    css = (ROOT / "static/css/vortex.css").read_text()
+    assert "scroll-margin-top: 96px;" in css.split(".v-sent {", 1)[1].split("}", 1)[0]
+
+
+def test_coming_back_from_a_cancelled_checkout_is_handled_and_honest(client, review):  # noqa: F811
+    ticket = pitch(client)["review"]
+    checkout(client, ticket)
+    assert review["stripe"]["calls"][-1]["form"]["cancel_url"] == "https://testserver/orbyt#review-cancelled"
+    script = (ROOT / "static/js/vortex.js").read_text()
+    for words in ('window.location.hash === "#review-cancelled"', 'const TICKET_KEY = "orbyt-review-ticket"',
+                  'storage("sessionStorage")', '$("v-sent-line").textContent = CANCELLED;', "keptTicket()",
+                  '"Your pitch was sent. Checkout was cancelled, and nothing was charged."'):
+        assert words in script, words
+    # Never the pitcher's email in the browser's storage: the ticket and the time only.
+    assert "JSON.stringify({ ticket, at: Date.now() })" in script
+    privacy = flat(client.get("/privacy").text)
+    assert "Your browser keeps the code too, in this tab only" in privacy and "it goes when the tab is closed" in privacy
+
+
+def test_early_access_says_what_it_keeps_like_orbyt_does(client, monkeypatch):
+    monkeypatch.setenv("EARLY_ACCESS_ENABLED", "1")
+    monkeypatch.setenv("MTRX_SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("EARLY_ACCESS_EMAIL_FROM", "news@example.com")
+    monkeypatch.setenv("MTRX_PUBLIC_URL", "https://testserver")
+    page = flat(client.get("/early-access").text)
+    line = ("We keep only your email and the apps you picked, until you unsubscribe (one click, any time), and never "
+            'pass them on. <a href="/privacy">Privacy</a>')
+    assert line in page
+    # The privacy page says the same: only the email and the apps, until unsubscribing.
+    privacy = flat(client.get("/privacy").text)
+    assert "The early access list keeps only your email and the apps you picked" in privacy
+    assert "one-click unsubscribe that deletes you from the list" in privacy

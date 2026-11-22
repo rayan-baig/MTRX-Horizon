@@ -210,7 +210,9 @@ def checkout(who: str, ticket, adult, base: str, ai_ok=None) -> tuple[int, dict]
         "line_items[0][price]": s.orbyt_review_price,
         "line_items[0][quantity]": "1",
         "success_url": f"{base}/orbyt/review/thanks",
-        "cancel_url": f"{base}/orbyt#pitch",
+        # Back from cancelling: the page says the pitch was sent and nothing
+        # was charged, and offers the review again (static/js/vortex.js).
+        "cancel_url": f"{base}/orbyt#review-cancelled",
         "metadata[product]": PRODUCT,
         "metadata[message]": str(pitch["id"]),
         "payment_intent_data[metadata][product]": PRODUCT,
