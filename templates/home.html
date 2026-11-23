@@ -135,7 +135,18 @@
     <div class="hero-art" role="img" aria-label="The MTRX Horizyn city under a ringed planet"></div>
     <div class="hero-copy">
       <p class="eyebrow">Welcome to MTRX Horizyn</p>
+      {#- 1.27.0: the headline says what works today (Genesis, the "Ready
+          today" tile right under it on a phone) and, honestly, where the
+          apps are: on the way until one opens. The demo has no Genesis, so
+          it keeps the line about the apps. -#}
+      {%- if demo %}
       <h1><span class="line">Three apps that watch,</span> <span class="line gradient-text">warn and motivate.</span></h1>
+      {%- else %}
+      <h1><span class="line">Plan your idea today.</span> <span class="line gradient-text">
+        {%- if opened == 0 %}{{ how_many | string | capitalize }} apps on the way.
+        {%- elif opened == total %}{{ how_many | string | capitalize }} apps, open now.
+        {%- else %}More apps on the way.{% endif %}</span></h1>
+      {%- endif %}
       {#- A phone's first screen leads with what works today (1.25.0):
           Genesis and Orbyt, then the three apps in development below. -#}
       {% if not demo %}<div class="ready-today" aria-label="Ready today">
@@ -389,7 +400,7 @@
     <a class="sheet-x" href="#" aria-label="Close">×</a>
     <p class="eyebrow">About</p>
     <h2>About MTRX Horizyn</h2>
-    <p>MTRX Horizyn is a small independent software company. It is the parent company of {{ how_many }} apps ({{ apps_line }}), and
+    <p>MTRX Horizyn is a small independent software company. It is the parent company of {{ how_many }} apps, {{ apps_words }}, and
       each one takes a worry off someone's plate, from a family's chore list to a
       business's freezer at 3am.</p>
     <ul class="company-apps">

@@ -165,7 +165,7 @@ def pilot_facts() -> dict:
         "review": orbyt_review.ready(),
         "review_price": settings.orbyt_review_price_text if orbyt_review.ready() else "",
         "review_days": settings.orbyt_review_days if orbyt_review.ready() else "",
-        # Who writes it: "ai" (an AI-written review, sent within about an
+        # Who writes it: "ai" (an AI-written review, usually within an
         # hour) or "person", so Pilot says it the same way the page does.
         "review_mode": ("ai" if review["ai"] else "person") if review else "",
         "early": early_access.ready(),

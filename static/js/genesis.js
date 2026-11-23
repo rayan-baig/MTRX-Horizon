@@ -270,7 +270,9 @@
     const look = pr.launched ? "launched" : p.stage;
     const segs = el("span", { class: "g-segs" }, ...pr.stages.map((s) =>
       el("span", { class: `g-seg stage-${s.key}${s.key === p.stage ? " here" : ""}` },
-        meter(s.done, s.total), el("small", { text: s.name }))));
+        meter(s.done, s.total), el("small", { text: s.name }),
+        // Shown with one project on a computer (1.27.0): this stage's count.
+        el("small", { class: "g-seg-n", text: `${s.done} of ${s.total}` }))));
     return el("li", { class: `g-card stage-${look}` },
       el("a", { href: `#p/${p.id}` },
         el("span", { class: "g-card-top" },
@@ -1493,7 +1495,8 @@
     spark() {
       const today = S.dayKey(new Date());
       const days = daily.load();
-      return { prompt: S.promptFor(today).text, answer: days[today] || "", streak: S.streak(days, today).streak, limit: S.DAILY_LIMIT };
+      const p = S.promptFor(today);
+      return { prompt: p.text, example: p.example || "", answer: days[today] || "", streak: S.streak(days, today).streak, limit: S.DAILY_LIMIT };
     },
     fillSpark(text) {
       const answer = S.line(text).slice(0, S.DAILY_LIMIT);

@@ -185,6 +185,14 @@ def test_tap_to_see_opens_the_screens_big(site, browser):
     context.close()
 
 
+# A day whose spark is the longest of the 45 (genesis-store.js PROMPTS), at
+# noon there; and a check, in the page, that the spark shown is the longest.
+LONGEST_SPARK_DAY = "2026-11-23T12:00:00"
+_IS_LONGEST_SPARK = """() => { const S = window.GenesisStore;
+  const most = Math.max(...S.PROMPTS.map((p) => p.length));
+  return document.getElementById('g-daily-title').textContent.length === most; }"""
+
+
 def test_genesis_at_320_keeps_the_spark_on_the_first_screen_and_words_whole(site, browser):
     """320x568, first visit and coming back: today's spark's line is on the
     first screen; "TODAY'S SPARK · <date>" is one line; "Welcome back" is one
@@ -192,6 +200,10 @@ def test_genesis_at_320_keeps_the_spark_on_the_first_screen_and_words_whole(site
     name is just above it)."""
     context = browser.new_context(viewport={"width": 320, "height": 568}, is_mobile=True, has_touch=True)
     page = context.new_page()
+    # 1.27.0: the same every day. The page's clock is pinned to a day whose
+    # spark is the longest of them all (checked below), so this can't pass
+    # or fail with the date.
+    page.clock.set_fixed_time(LONGEST_SPARK_DAY)
     for returning in (False, True):
         page.goto(f"{site}/genesis", wait_until="load")
         if returning:
@@ -199,6 +211,7 @@ def test_genesis_at_320_keeps_the_spark_on_the_first_screen_and_words_whole(site
             page.reload(wait_until="load")
             page.wait_for_selector(".g-continue-tick")
         page.wait_for_selector("#g-daily-title:not(:empty)")
+        assert page.evaluate(_IS_LONGEST_SPARK), page.inner_text("#g-daily-title")
         assert _box(page, "#g-daily-input")["bottom"] <= 568, returning
         eyebrow = page.eval_on_selector(".g-daily-eyebrow", "e => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight || 14)")
         assert page.eval_on_selector(".g-daily-eyebrow", "e => e.getClientRects().length") == 1
@@ -355,7 +368,8 @@ def test_pitch_this_in_orbyt_brings_the_idea_to_orbyts_own_address(moved_site, b
     orbyt.goto(f"{moved_site['orbyt']}/#review-cancelled", wait_until="load")
     orbyt.reload(wait_until="load")
     orbyt.wait_for_selector("#v-sent:not([hidden])")
-    assert "Checkout was cancelled, and nothing was charged" in orbyt.inner_text("#v-sent-line")
+    # No pitch sent from this tab (1.27.0): it can't say one was.
+    assert orbyt.inner_text("#v-sent-line") == "If you sent a pitch, it's on its way. Nothing was charged."
     context.close()
 
 
@@ -398,3 +412,86 @@ def test_too_much_to_move_in_an_address_becomes_a_file_to_import(moved_site, bro
     page.wait_for_function("() => document.getElementById('g-toast') && /press Import/.test(document.getElementById('g-toast').textContent)")
     assert page.url == f"{moved_site['genesis']}/"
     context.close()
+
+
+# ---------------------------------------------------------------- 1.27.0 (round 10)
+
+def test_genesis_at_320_keeps_welcome_back_whole_and_try_an_example_on_one_line(site, browser):
+    """Coming back at 320 px, the star no longer sits over "back"; a first
+    visit shows "Try an example" on one line, inside the welcome."""
+    context = browser.new_context(viewport={"width": 320, "height": 568}, is_mobile=True, has_touch=True)
+    page = context.new_page()
+    page.clock.set_fixed_time(LONGEST_SPARK_DAY)
+    page.goto(f"{site}/genesis", wait_until="load")
+    page.wait_for_selector(".g-hero .cta-row .btn-ghost")
+    one_line = """() => [...document.querySelectorAll('.g-hero .cta-row .btn')].map((b) => {
+      const r = b.getBoundingClientRect(); const lh = parseFloat(getComputedStyle(b).lineHeight) || 20;
+      const range = document.createRange(); range.selectNodeContents(b);
+      const lines = new Set([...range.getClientRects()].filter((x) => x.width > 2).map((x) => Math.round(x.top))).size;
+      const box = document.querySelector('.g-hero').getBoundingClientRect();
+      return { text: b.textContent.trim(), lines, inside: r.right <= box.right - 8 && r.left >= box.left + 8 };
+    })"""
+    for button in page.evaluate(one_line):
+        assert button["lines"] == 1 and button["inside"], button
+    page.evaluate(SEED)
+    page.reload(wait_until="load")
+    page.wait_for_selector(".g-continue-title")
+    star = page.eval_on_selector(".g-hero-art .g-spark", "e => { const r = e.getBoundingClientRect(); return getComputedStyle(e).display === 'none' ? null : r.toJSON(); }")
+    title = page.eval_on_selector(".g-continue-title", "e => e.getBoundingClientRect().toJSON()")
+    assert star is None or star["left"] >= title["right"] or star["bottom"] <= title["top"], (star, title)
+    assert page.evaluate("() => document.documentElement.scrollWidth") <= 320
+    context.close()
+
+
+def test_genesis_one_project_card_on_a_computer_has_no_stretched_gaps(site, browser):
+    """One project at 1440x900: the card's words sit at the top with small
+    gaps, and the stages (each with its count) fill the rest, down to the
+    total, level with today's spark beside it."""
+    context = _computer(browser)
+    page = context.new_page()
+    page.goto(f"{site}/genesis", wait_until="load")
+    page.evaluate(SEED)
+    page.reload(wait_until="load")
+    page.wait_for_selector(".g-card .g-seg-n")
+    at = page.evaluate("""() => {
+      const r = (s) => document.querySelector(s).getBoundingClientRect();
+      const kids = [...document.querySelector('.g-card a').children].map((k) => k.getBoundingClientRect());
+      const gaps = kids.slice(1, 5).map((k, i) => Math.round(k.top - kids[i].bottom));
+      return { gaps, card: r('.g-card a').bottom, spark: r('#g-daily').bottom,
+               counts: [...document.querySelectorAll('.g-card .g-seg-n')].map((n) => n.offsetParent !== null ? n.textContent : '') };
+    }""")
+    assert max(at["gaps"]) <= 16, at
+    assert abs(at["card"] - at["spark"]) <= 2, at
+    assert at["counts"] == ["0 of 3", "0 of 5", "0 of 6", "0 of 5"], at
+    context.close()
+
+
+def test_orbyt_first_path_card_shows_whole_on_a_small_phone(site, browser):
+    """375x667 (and 320x568): "Pitch an idea", the first path card, is whole
+    on the first screen, with room to spare for a browser's own bars."""
+    for width, height, most in ((375, 667, 500), (320, 568, 520)):
+        context = browser.new_context(viewport={"width": width, "height": height}, is_mobile=True, has_touch=True)
+        page = context.new_page()
+        page.goto(f"{site}/orbyt", wait_until="load")
+        page.evaluate("document.fonts.ready")
+        card = page.eval_on_selector(".v-path.path-pitch", "e => e.getBoundingClientRect().toJSON()")
+        assert card["bottom"] <= most, (width, card)
+        assert page.is_visible(".v-intro") and not page.is_visible(".v-promises")
+        context.close()
+
+
+def test_home_on_a_computer_has_room_under_the_bar(site, browser):
+    """"Welcome to MTRX Horizyn" sat 6 px under the bar at 1440x900 and
+    touched it at 1280x720. Now there's room, and the one-screen page still
+    fits (no scrolling on a computer)."""
+    for width, height in ((1440, 900), (1280, 720), (1024, 768)):
+        context = _computer(browser, width, height)
+        page = context.new_page()
+        page.goto(f"{site}/", wait_until="load")
+        page.evaluate("document.fonts.ready")
+        at = page.evaluate("""() => ({ bar: document.querySelector('.topbar').getBoundingClientRect().bottom,
+          eyebrow: document.querySelector('.hero .eyebrow').getBoundingClientRect().top,
+          tall: document.documentElement.scrollHeight, view: innerHeight })""")
+        assert at["eyebrow"] - at["bar"] >= 12, (width, at)
+        assert at["tall"] <= at["view"], (width, at)
+        context.close()

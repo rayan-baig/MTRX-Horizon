@@ -124,8 +124,10 @@
     if (data.field) focusField(form, data.field);
   }
 
+  const sentTitle = document.querySelector(".v-sent-title");
   function showSent(kind, email, ticket) {
     sentKind = kind;
+    sentTitle.textContent = "Sent.";
     offerReview(kind === "pitch" ? ticket : "");
     for (const k of V.KINDS) $(`v-${k}`).hidden = true;
     $("v-sent-line").textContent = V.sentLine(email);
@@ -141,9 +143,32 @@
   // "Sent." and where the reply goes are the first thing seen. It used to be
   // centred, and with the Pitch Review offer it is taller than a phone's
   // screen, so "Sent." ended up above the top (1.23.0).
+  // 1.27.0: the same place every time. The panel's scroll-margin-top is the
+  // bar's own height (measured, so exactly under it at every width, not the
+  // stylesheet's 96 px guess), and once the fonts are in and the page has
+  // drawn one frame (document.fonts.ready, then one requestAnimationFrame)
+  // it is put there again, unless the visitor has scrolled or tapped since.
+  let placing = 0;
+  function placeSent() {
+    const sent = $("v-sent");
+    if (sent.hidden) return;
+    const bar = document.querySelector(".topbar");
+    sent.style.scrollMarginTop = `${bar ? Math.ceil(bar.getBoundingClientRect().height) : 0}px`;
+    sent.scrollIntoView({ block: "start", behavior: "instant" });
+  }
   function showPanel() {
     $("v-sent").hidden = false;
-    $("v-sent").scrollIntoView({ block: "start", behavior: "instant" });
+    placeSent();
+    const mine = ++placing;
+    let moved = false;
+    const touches = ["wheel", "touchstart", "keydown", "mousedown"];
+    const visitor = () => { moved = true; };
+    touches.forEach((type) => window.addEventListener(type, visitor, { passive: true, once: true }));
+    const settled = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+    settled.catch(() => {}).then(() => requestAnimationFrame(() => {
+      touches.forEach((type) => window.removeEventListener(type, visitor));
+      if (mine === placing && !moved) placeSent();
+    }));
   }
 
   // ---------------------------------------------------------------- Pitch Review
@@ -161,8 +186,11 @@
   const TICKET_KEY = "orbyt-review-ticket";
   const TICKET_MS = 2 * 86400 * 1000;
   // The Sent screen's first line then: the pitch went before checkout, and
-  // cancelling took no money.
+  // cancelling took no money. 1.27.0: only when this tab still holds the
+  // pitch's one-time code does it say the pitch was sent; otherwise (another
+  // tab, or the code gone) it can't know, so it says so.
   const CANCELLED = "Your pitch was sent. Checkout was cancelled, and nothing was charged.";
+  const CANCELLED_UNKNOWN = "If you sent a pitch, it's on its way. Nothing was charged.";
 
   function keepTicket(ticket) {
     try {
@@ -416,7 +444,8 @@
     sentKind = "pitch";
     offerReview(kept ? kept.ticket : "");
     for (const k of V.KINDS) $(`v-${k}`).hidden = true;
-    $("v-sent-line").textContent = CANCELLED;
+    $("v-sent-line").textContent = kept ? CANCELLED : CANCELLED_UNKNOWN;
+    sentTitle.textContent = kept ? "Sent." : "Checkout cancelled.";
     $("v-next-step").textContent = kept ? V.nextLine(new Date(kept.at)) : "";
     document.querySelectorAll("[data-next]").forEach((link) => {
       link.hidden = !link.dataset.next.split(" ").includes("pitch");

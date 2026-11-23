@@ -494,21 +494,24 @@ def test_an_ai_review_is_forgotten_with_the_email_address(client, ai):
 def test_in_ai_mode_every_page_says_plainly_that_ai_writes_it(client, ai):
     page = flat(client.get("/orbyt").text)
     faq = page.split('id="faq-review"', 1)[1].split("</details>", 1)[0]
-    for words in ("an AI-written review of your idea, sent within about an hour",
+    for words in ("an AI-written review of your idea, usually within an hour",
                   "the idea you sent (not your name or email) goes to an AI service",
                   "the grown-up who pays agrees to that at checkout", "one payment of $19 (not a subscription)",
                   "If it isn't with you within 5 days, or we can't review your idea, you get a full refund"):
         assert words in faq, words
     assert "A real person" not in faq
+    # 1.27.0: "usually within an hour" everywhere, never "within about an hour".
+    for path in ("/orbyt", "/terms", "/privacy", "/orbyt/review/thanks"):
+        assert "within about an hour" not in flat(client.get(path).text), path
     sent = page.split('<section class="panel v-sent"', 1)[1].split("</section>", 1)[0]
-    for words in ("get an AI-written review", "sent within about an hour", "Written by AI.",
+    for words in ("get an AI-written review", "(and whether it might fit Orbyt), usually within an hour", "Written by AI.",
                   "never your name or email) goes to an AI service", "I'm 18 or over, and I'm the one paying",
                   'id="v-review-ai"', "I agree the idea is sent to an AI service to write the review",
                   "Full refund if it isn't with you within 5 days", 'href="/privacy#pitch-review"'):
         assert words in sent, words
     assert "a real person at MTRX Horizyn writes one" not in sent
     terms = flat(client.get("/terms").text)
-    for words in ("you get an AI-written review of your idea", "usually within about an hour",
+    for words in ("you get an AI-written review of your idea", "usually within an hour",
                   "reaches you within 5 days of the payment", "written by an AI service, following our instructions",
                   "not written by a person", "the adult ticks to agree that the idea is sent to an AI service",
                   "If the review isn't with you within 5 days"):
@@ -567,7 +570,7 @@ process.stdout.write(JSON.stringify({{ answer: chip ? chip.answer : null, facts:
 def test_pilot_says_who_writes_it_in_each_mode():
     base = {"review": "on", "reviewPrice": "$19", "reviewDays": "5", "apps": "[]"}
     ai_mode = node_answer({**base, "reviewMode": "ai"})
-    assert "**AI-written review**" in ai_mode["answer"] and "sent within about an hour" in ai_mode["answer"]
+    assert "**AI-written review**" in ai_mode["answer"] and "of your idea, usually within an hour" in ai_mode["answer"]
     assert "goes to an AI service" in ai_mode["answer"] and "agrees to that at checkout" in ai_mode["answer"]
     assert "If it isn't with you within 5 days" in ai_mode["answer"] and "real person" not in ai_mode["answer"]
     assert ai_mode["facts"]["reviewAi"] is True
@@ -597,7 +600,12 @@ def test_the_offer_comes_after_the_confirmation_and_while_you_wait(client, revie
     script = (ROOT / "static/js/vortex.js").read_text()
     # Shown from its top, under the bar, never centred (that hid "Sent." on a phone).
     assert 'scrollIntoView({ block: "center" })' not in script
-    assert '$("v-sent").scrollIntoView({ block: "start", behavior: "instant" })' in script
+    assert 'sent.scrollIntoView({ block: "start", behavior: "instant" })' in script
+    # 1.27.0: its scroll-margin-top is the bar's measured height, set again
+    # once the fonts are in and a frame is drawn (the stylesheet's 96 px
+    # stays only as the fallback before the script runs).
+    assert "sent.style.scrollMarginTop = " in script and "document.fonts.ready" in script
+    assert "requestAnimationFrame(() => {" in script.split("function showPanel()", 1)[1].split("\n  }\n", 1)[0]
     css = (ROOT / "static/css/vortex.css").read_text()
     assert "scroll-margin-top: 96px;" in css.split(".v-sent {", 1)[1].split("}", 1)[0]
 
@@ -608,7 +616,7 @@ def test_coming_back_from_a_cancelled_checkout_is_handled_and_honest(client, rev
     assert review["stripe"]["calls"][-1]["form"]["cancel_url"] == "https://testserver/orbyt#review-cancelled"
     script = (ROOT / "static/js/vortex.js").read_text()
     for words in ('window.location.hash === "#review-cancelled"', 'const TICKET_KEY = "orbyt-review-ticket"',
-                  'storage("sessionStorage")', '$("v-sent-line").textContent = CANCELLED;', "keptTicket()",
+                  'storage("sessionStorage")', '$("v-sent-line").textContent = kept ? CANCELLED : CANCELLED_UNKNOWN;', "keptTicket()",
                   '"Your pitch was sent. Checkout was cancelled, and nothing was charged."'):
         assert words in script, words
     # Never the pitcher's email in the browser's storage: the ticket and the time only.

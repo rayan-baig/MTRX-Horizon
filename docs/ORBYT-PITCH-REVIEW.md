@@ -140,7 +140,7 @@ time to time):
    Read it in the console.
 
 **What changes for visitors in AI mode.** Every place that offers it says plainly that it's an
-**AI-written review of your idea, sent within about an hour**, and that the idea is sent to an AI
+**AI-written review of your idea, usually within an hour**, and that the idea is sent to an AI
 service to write it. The grown-up ticks a second box at checkout to agree to that. The days are
 still the promise: if the review isn't with them within `ORBYT_REVIEW_DAYS` days, they get a full
 refund. The privacy page names the kind of service and the address in use, what is sent and what

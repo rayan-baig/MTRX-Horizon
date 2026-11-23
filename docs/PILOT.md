@@ -204,7 +204,11 @@ links to early access (or Orbyt when early access is off). The home page's "What
 start an idea?", Orbyt's "Which form is for me?" (a chooser jumping to each form) and "What happens
 after I send?", and Genesis's "Show my projects" and "What's my next step?" (read from this
 browser's own Genesis data through `window.GenesisBridge`, nothing sent) are answers too; the other
-suggestions are AI prompts.
+suggestions are AI prompts. Since 1.27.0 each of these has `match` words (`MATCH` in `static/js/pilot-mtrx.js`)
+so typed questions find them with no key ("What is Genesis?", "Is it free?", "When does RankUp open?",
+"Do you reply?"); a word is listed on one answer per page only, and never a word another answer's label
+has (tests/js/site_pilot_answers.test.js checks both). On Orbyt the second welcome pill is "Who owns my
+idea?" (the page's own "Before you send" answers) in place of "What is Orbyt?".
 
 ### Moving an app to core 1.4.3 (from 1.4.2)
 

@@ -1219,3 +1219,11 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
   .ready-tile b { font-size: 15px; }
   .ready-tile span { font-size: 12px; }
 }
+
+/* ---------- 1.27.0 ---------- */
+/* A computer: room between the bar and "Welcome to MTRX Horizyn" (it sat
+   6 px under the bar at 1440x900, and touched it at 1280x720). The words
+   size themselves to the space left (cqh), so the one-screen page still fits. */
+@media (min-width: 721px) {
+  .page .hero { padding-top: clamp(14px, 3.2vh, 34px); }
+}

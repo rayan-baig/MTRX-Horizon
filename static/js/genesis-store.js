@@ -531,6 +531,56 @@
     "Invent a way to help people fix things instead of throwing them away.",
     "What's a problem only you seem to notice? Write the fix.",
   ];
+  // One example answer for each prompt, in the same order (1.27.0): Pilot's
+  // "Help with today's spark" shows today's, so a stuck visitor sees what a
+  // one-line answer to that very spark can look like.
+  const SPARK_EXAMPLES = [
+    "An app that lays out tomorrow's clothes and bag list the night before.",
+    "A tiny tag for my keys that beeps when I clap twice.",
+    "A washing-up race where every clean plate scores a point for your team.",
+    "An app for skateboarders that maps smooth, safe places to skate nearby.",
+    "A map where neighbours flag broken streetlights and see when they're fixed.",
+    "A photo frame that shows the grandchildren's newest pictures each morning.",
+    "A box of indoor missions you open one at a time when it rains.",
+    "An app that suggests a dinner from what's about to go off in the fridge.",
+    "A buddy card that pairs each new person with someone who shows them around.",
+    "One stamp card on your phone for all the shops on one street.",
+    "A one-page guide for first-time bike riders, written by people who've done it.",
+    "A treasure hunt app with clues hidden in real parks.",
+    "A savings jar app that levels you up every time you skip a buy.",
+    "An app that reminds owners when each pet's next vet check is due.",
+    "A bedtime timer that dims the lights and plays rain sounds.",
+    "A drills app where the coach sets 10-minute games the team ticks off.",
+    "A street library for tools: borrow a drill instead of buying one.",
+    "One page where friends vote on dates and see who has paid for what.",
+    "A five-words-a-day language game you play while the kettle boils.",
+    "A noticeboard app where neighbours offer and ask for small favours.",
+    "A list of 15-minute dinners made from five things most kitchens have.",
+    "A road-trip bingo app for things you spot out of the window.",
+    "A bottle that glows when it's time for another sip.",
+    "An app that writes a plumber's invoice from a photo of the job.",
+    "A tidy-up timer that turns each room into a 5-minute race.",
+    "An app that lists what you've lent, to whom, and reminds you after a month.",
+    "One shared page for a club's dates, kit list and who's bringing snacks.",
+    "A big-button helper that makes long sign-up forms easy on a phone.",
+    "A button that suggests a kinder way to say a comment before you post it.",
+    "An app that tells you which bin something goes in from a photo.",
+    "An app that turns your humming into a beat you can share.",
+    "A calendar that reminds you a week before each friend's birthday, with a gift idea.",
+    "A homework planner that splits big projects into 20-minute steps.",
+    "A night-feed log both parents can tick from their phones.",
+    "A rain alert that tells gardeners when to skip watering.",
+    "A map of quiet places to study nearby, rated by the people who use them.",
+    "A plant tag that sends a text when your plants need water.",
+    "A text that tells you when it's your turn, so you can wait anywhere.",
+    "An app that lets local artists show and sell their work in nearby cafés.",
+    "A habit tracker where friends cheer each day you keep it up.",
+    "A chore wheel app that spins fairly and keeps score.",
+    "A museum scavenger hunt where each find unlocks a story.",
+    "A monthly box with a new craft kit, because I'd pay for a fresh project each month.",
+    "A map of repair cafés that shows where to get things fixed for free.",
+    "A sign that tells drivers when the school crossing is busy.",
+  ];
   // Steps through every prompt before any comes round again, never two
   // neighbours on neighbouring days (17 shares no factor with 45 prompts).
   const PROMPT_STEP = 17;
@@ -561,7 +611,7 @@
   function promptFor(key) {
     const n = dayNumber(key);
     const i = Number.isFinite(n) ? (((n * PROMPT_STEP) % PROMPTS.length) + PROMPTS.length) % PROMPTS.length : 0;
-    return { index: i, text: PROMPTS[i] };
+    return { index: i, text: PROMPTS[i], example: SPARK_EXAMPLES[i] || "" };
   }
 
   // Answers from anywhere (storage), made safe: real days, one line each,
@@ -941,7 +991,7 @@
     HANDOFF_KEY, offerToVortex, takeVortexOffer,
     PRO_KEY, proKey, readProKey, keepProKey, forgetProKey, planText, planFileName,
     EXAMPLES, example, nextStep,
-    DAILY_KEY, DAILY_LIMIT, FREEZE_EARN, PROMPTS, dayKey, dayNumber, promptFor, cleanDays, streak, lastDays, openDaily,
+    DAILY_KEY, DAILY_LIMIT, FREEZE_EARN, PROMPTS, SPARK_EXAMPLES, dayKey, dayNumber, promptFor, cleanDays, streak, lastDays, openDaily,
     shareText, madeAt, cardFileName,
     EXTRAS_KEY, ANSWER_LIMIT, cleanExtras, openExtras,
     MOVE_KEYS, MOVE_MOST, packMove, unpackMove, applyMove,

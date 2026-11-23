@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def test_home_page_shows_all_three_apps(client):
     page = client.get("/").text
-    for name in ("RankUp", "CyberLogix AI", "OmniArmor.ai", "Three apps that watch,"):
+    for name in ("RankUp", "CyberLogix AI", "OmniArmor.ai", "Three apps on the way."):
         assert name in page
 
 
@@ -969,7 +969,12 @@ def test_until_launch_every_part_of_the_home_page_says_the_apps_are_in_developme
     page = client.get("/").text
     assert "Available" not in page and "Total Apps" not in page
     assert "parent company of three apps, all in development" in page
-    assert "parent company of three apps (3 in development)" in page
+    # The About card says it the same way (1.27.0: it said "(3 in development)").
+    about = page.split('id="company"', 1)[1].split("</section>", 1)[0]
+    assert "parent company of three apps, all in development, and" in about
+    assert "(3 in development)" not in page
+    # The headline too: the apps are on the way.
+    assert "Three apps on the way." in page
     # Released in the console but with no address: still in development.
     assert "Open RankUp" not in page and "RankUp is in development." in page
 
@@ -986,6 +991,7 @@ def test_the_day_the_apps_open_the_home_page_says_so(client, monkeypatch):
     monkeypatch.setenv("MTRX_OPEN_APPS", "all")
     page = client.get("/").text
     assert "parent company of three apps, all open now" in page
+    assert "Three apps, open now." in page and "on the way" not in page
     assert "In development" not in page and 'aria-label="Open RankUp"' in page
     monkeypatch.setenv("MTRX_OPEN_APPS", "rankup, cyberlogix")
     page = client.get("/").text
@@ -1035,7 +1041,9 @@ def test_the_live_panel_comes_back_once_an_app_reports(client, monkeypatch):
 def test_the_home_page_says_plainly_what_the_company_makes(client):
     page = client.get("/").text
     hero = page.split('class="hero-copy"', 1)[1].split("</section>", 1)[0]
-    assert '<h1><span class="line">Three apps that watch,</span> <span class="line gradient-text">warn and motivate.</span></h1>' in hero
+    # 1.27.0: the headline matches "Ready today" under it: what works today
+    # (Genesis), and honestly where the apps are.
+    assert '<h1><span class="line">Plan your idea today.</span> <span class="line gradient-text">Three apps on the way.</span></h1>' in hero
     assert "One Vision." not in hero and "Infinite Possibilities." not in hero
     # Plain lines on the cards, never vague ones; and they show on phones too.
     for line in ("Chores that turn into points and games", "Fridge and freezer alarms that call you",
@@ -1196,6 +1204,21 @@ def test_the_app_cards_and_learn_more_show_real_screens(client):
     css = Path("static/css/site.css").read_text(encoding="utf-8")
     # The desktop tags keep a dark fade behind them, over the artwork.
     assert ".page .app-card .tags {" in css and "linear-gradient(90deg, rgba(6, 14, 38, .9) 72%, rgba(6, 14, 38, 0))" in css
+
+
+def test_the_rankup_screens_have_no_start_for_free_button():
+    """1.27.0: RankUp is in development, so its demo's "Start for free"
+    button (top right of its screens) is covered by a plain "Pretend data"
+    label in the pictures the home page shows. The button was a saturated
+    blue or violet fill over most of that corner; now there is next to none."""
+    image = pytest.importorskip("PIL.Image")
+    for name in ("rankup-screen-sm.webp", "rankup-screen-1.webp", "rankup-screen-2.webp"):
+        im = image.open(Path("static/img") / name).convert("RGB")
+        w, h = im.size
+        corner = im.crop((int(w * 0.70), 0, w, int(h * 0.07)))
+        px = [corner.getpixel((x, y)) for y in range(corner.height) for x in range(corner.width)]
+        filled = sum(1 for c in px if max(c) - min(c) > 90 and c[2] > 170) / len(px)
+        assert filled < 0.05, (name, filled)
 
 
 def test_the_phone_hero_has_two_buttons_and_a_balanced_headline(client):

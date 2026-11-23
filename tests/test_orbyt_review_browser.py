@@ -17,6 +17,8 @@ import pytest
 from tests.test_browser import _free_port, _serve, browser, sync_api  # noqa: F401
 
 CANCELLED = "Your pitch was sent. Checkout was cancelled, and nothing was charged."
+# 1.27.0: this tab has no pitch's code, so it can't know a pitch was sent.
+UNKNOWN = "If you sent a pitch, it's on its way. Nothing was charged."
 
 
 @pytest.fixture(scope="module")
@@ -94,6 +96,7 @@ def test_cancelling_checkout_comes_back_to_sent_and_the_offer_again(review_site,
                            timeout=5000)
     page.wait_for_timeout(500)
     assert page.text_content("#v-sent-line") == CANCELLED
+    assert page.text_content(".v-sent-title") == "Sent."
     assert "a real person reads your message and emails you back by" in page.text_content("#v-next-step")
     assert page.is_visible("#v-review") and not page.is_visible('form[data-kind="pitch"]')
     at = page.evaluate(_PLACE)
@@ -108,15 +111,75 @@ def test_cancelling_checkout_comes_back_to_sent_and_the_offer_again(review_site,
 
 
 def test_coming_back_in_another_tab_still_says_nothing_was_charged(review_site, browser):
-    """No ticket in this tab (a new tab, or it ran out): the same reassurance,
-    and no offer that would only fail."""
+    """No ticket in this tab (a new tab, or it ran out): nothing was charged,
+    but it doesn't claim a pitch was sent (1.27.0: it can't know), and no
+    offer that would only fail."""
     context = browser.new_context(viewport={"width": 1280, "height": 900})
     page = context.new_page()
     page.goto(f"{review_site}/orbyt#review-cancelled", wait_until="load")
     page.wait_for_selector("#v-sent:not([hidden])", timeout=5000)
-    assert page.text_content("#v-sent-line") == CANCELLED
+    assert page.text_content("#v-sent-line") == UNKNOWN
+    assert page.text_content(".v-sent-title") == "Checkout cancelled."
+    assert "was sent" not in page.inner_text("#v-sent")
     assert not page.is_visible("#v-review")
     # "Send another" opens the pitch form.
     page.click("#v-again")
     page.wait_for_selector('form[data-kind="pitch"]', state="visible", timeout=5000)
+    context.close()
+
+
+# The Sent panel's top against the bar's bottom, once the fonts are in and two
+# frames have been drawn.
+_SETTLED = """async () => {
+  await document.fonts.ready;
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const bar = document.querySelector(".topbar").getBoundingClientRect();
+  const sent = document.getElementById("v-sent").getBoundingClientRect();
+  const title = document.querySelector(".v-sent-title").getBoundingClientRect();
+  return { bar: bar.bottom, sent: sent.top, title: title.top, margin: getComputedStyle(document.getElementById("v-sent")).scrollMarginTop,
+           height: bar.height, view: innerHeight };
+}"""
+
+
+def test_sent_lands_exactly_under_the_bar_every_time(review_site, browser):
+    """1.27.0: after each of many sends at 375x667, the Sent panel's top is
+    exactly at the bar's bottom (its scroll-margin-top is the bar's measured
+    height, set again after document.fonts.ready and one frame), never the
+    stylesheet's 96 px guess, which left a gap that changed with the bar.
+    The send is answered by the test, at varied speeds, so the server's
+    hourly limit doesn't apply."""
+    context = browser.new_context(viewport={"width": 375, "height": 667}, is_mobile=True, has_touch=True)
+    page = context.new_page()
+    sends = {"n": 0}
+
+    def answer(route):
+        sends["n"] += 1
+        page.wait_for_timeout([0, 40, 150, 5][sends["n"] % 4])
+        route.fulfill(status=200, content_type="application/json",
+                      body='{"ok": true, "email": "ada@example.com", "review": "ticket_%022d"}' % sends["n"])
+
+    page.route("**/api/vortex/send", answer)
+    places = []
+    for attempt in range(16):
+        if attempt % 4 == 0:
+            page.goto("about:blank")
+            page.goto(f"{review_site}/orbyt#pitch", wait_until="load" if attempt % 8 else "domcontentloaded")
+        else:
+            page.click("#v-again")
+        form = 'form[data-kind="pitch"]'
+        page.wait_for_selector(form, state="visible")
+        page.fill(f'{form} input[name="name"]', "Ada")
+        page.fill(f'{form} input[name="email"]', "ada@example.com")
+        page.fill(f'{form} input[name="idea"]', f"Nova {attempt}")
+        page.fill(f'{form} input[name="pitch"]', "Homework reminders")
+        page.fill(f'{form} input[name="audience"]', "Students")
+        page.click(f'{form} button[type="submit"]')
+        page.wait_for_selector("#v-sent:not([hidden])", timeout=10000)
+        at = page.evaluate(_SETTLED)
+        places.append(at)
+        assert abs(at["sent"] - at["bar"]) <= 1, (attempt, at)
+        assert at["margin"] == f"{int(-(-at['height'] // 1))}px", (attempt, at)
+        assert page.is_visible("#v-review")
+    # The same place every time.
+    assert len({round(a["sent"]) for a in places}) == 1, places
     context.close()

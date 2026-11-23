@@ -83,8 +83,8 @@
     {%- if review.ai %}
     {#- AI mode (horizon/orbyt_review_ai.py): it says plainly that AI writes
         it, what goes to the AI service, and that the grown-up agrees. -#}
-    <p>An optional extra you can add after sending your pitch: an AI-written review of your idea, sent within
-      about an hour. It says what's strong, what to fix, your next 3 steps, and whether it might fit Orbyt. To
+    <p>An optional extra you can add after sending your pitch: an AI-written review of your idea, usually
+      within an hour. It says what's strong, what to fix, your next 3 steps, and whether it might fit Orbyt. To
       write it, the idea you sent (not your name or email) goes to an AI service, and the grown-up who pays agrees
       to that at checkout. It's one payment of {{ review.price }} (not a subscription). If it isn't with you within
       {{ review.days }} day{{ 's' if review.days != 1 }}, or we can't review your idea, you get a full refund.
@@ -153,6 +153,11 @@
       <p class="v-line">Want to work with MTRX Horizyn? Start here.</p>
       <p class="v-text">Pick what fits you below, write us a short note, and we'll reply by email. We
         make RankUp, CyberLogix AI and OmniArmor.ai{% if apps | rejectattr("icon") | list %}, and more{% endif %}.</p>
+      {#- A phone's intro (1.27.0): the note and both promises in one short
+          paragraph, so the first path card, "Pitch an idea", shows whole on
+          the first screen (375x667). -#}
+      <p class="v-intro">Pick what fits you below and write a short note. It takes about 2 minutes, and a real
+        person replies by email.</p>
       {#- Two promises, not four: the reply time is said once, just above Send. -#}
       <ul class="v-promises">
         <li>Takes about 2 minutes</li>
@@ -342,7 +347,7 @@
       {%- if review.ai %}
       <p class="v-review-line">Your pitch is sent and gets a reply either way. If you'd also like a review of your
         idea now, get an AI-written review: what's strong, what to fix, and your next 3 steps (and whether it
-        might fit Orbyt), sent within about an hour. One payment of {{ review.price }}, not a subscription.</p>
+        might fit Orbyt), usually within an hour. One payment of {{ review.price }}, not a subscription.</p>
       <p class="v-review-adult"><b>A grown-up pays.</b> If you're under 18, ask a parent or guardian: checkout is
         theirs, and the review goes to the email they use there.</p>
       <p class="v-review-adult"><b>Written by AI.</b> To write it, the idea you sent (its name, pitch and details,

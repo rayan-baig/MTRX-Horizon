@@ -4,6 +4,55 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.27.0 (23 November 2026)
+
+Home, Genesis and Orbyt round-10 fixes.
+
+- **Home: the headline says what works today.** "Plan your idea today. Three apps on the way.", which
+  matches "Ready today" (Genesis and Orbyt) right under it on a phone, and says honestly that the
+  three apps are still coming. The day they open it says "Three apps, open now." (or "More apps on the
+  way." while only some are). The demo keeps "Three apps that watch, warn and motivate."
+- **Home: Pilot answers typed questions without an AI key.** "What is Genesis?", "Is it free?", "How
+  much does it cost?", "When does RankUp open?", "Which app is for my family?" and the like get the
+  right built-in answer. "What's ready today?" now also says what's free (Genesis, sending a pitch in
+  Orbyt, and Pilot's built-in answers; Genesis Pro and Pitch Review named as optional paid extras only
+  while they're on), and asking about one app starts with a line about that app ("RankUp is still in
+  development.").
+- **Home: the About card says "three apps, all in development"** (it said "three apps (3 in
+  development)").
+- **Home on a computer: room under the bar.** "Welcome to MTRX Horizyn" sat 6 px under it at 1440x900
+  and touched it at 1280x720. The page still fits one screen.
+- **Home: RankUp's screens no longer show a "Start for free" button.** RankUp is in development, so
+  in the three pictures of its demo (the card, "Tap to see" and Learn more) the button is covered by a
+  plain "Pretend data" label.
+- **Genesis: "Show my projects" and "What's my next step?" are found when typed,** with or without the
+  exact words ("my projects", "how is my progress", "what should I do next"), and so is "Help with
+  today's spark" ("my streak").
+- **Genesis: Pilot's spark tip gives one example answer to today's spark.** Each of the 45 sparks has
+  its own example line, so a stuck visitor sees what one line can look like ("For today's spark, one
+  line could be: ...").
+- **Genesis at 320 px:** coming back, the star no longer sits over "back" (it steps aside under 360
+  px); a first visit shows "Try an example" on one line; and today's spark's box is on the first
+  screen even for the longest spark.
+- **Genesis on a computer, one project:** the card's words sit at the top with their usual gaps (they
+  were spread out over the card's height), and the stages fill the rest, one per line with their
+  counts ("0 of 5"), down to the total.
+- **Orbyt: after sending, "Sent." lands in exactly the same place every time,** right under the bar.
+  The panel's top margin is the bar's own measured height (it was a 96 px guess, which left a gap on
+  a phone), and it is put there again once the fonts are in and the page has drawn a frame.
+- **Orbyt: coming back from a cancelled checkout only says "Your pitch was sent" when this tab sent
+  it** (it holds the pitch's one-time code). Otherwise it can't know, so it says "Checkout cancelled.
+  If you sent a pitch, it's on its way. Nothing was charged."
+- **Orbyt: Pilot answers the page's questions when typed.** "Who owns my idea?" and "Will you build it
+  without me?" (from "Before you send", now Pilot's second button on Orbyt, in place of "What is
+  Orbyt?"; typed "What is Orbyt?" still gets what Orbyt is), "Do you reply?", "Is it a real person?",
+  "How much does it cost?" and "Can I get a refund?".
+- **Orbyt Pitch Review (AI mode): "usually within an hour"** in the offer, the FAQ, Pilot's answer and
+  the terms (they said "within about an hour").
+- **Orbyt on a phone: a shorter top,** one short paragraph ("It takes about 2 minutes, and a real
+  person replies by email.") in place of two lines and two badges, so "Pitch an idea" shows whole on
+  the first screen at 375x667 (it now ends at 445 px, was 579 px).
+
 ## 1.26.1 (22 November 2026)
 
 Pilot core 1.4.3, a small patch to the helper on every page:

@@ -863,6 +863,36 @@
   .g-how strong { display: block; margin: 0; font-size: 12.5px; line-height: 1.25; }
 }
 
+/* ---------- 1.27.0 ---------- */
+@media (max-width: 360px) {
+  /* Coming back at 320 px: "Welcome back" fills the line, so the star left
+     no room and sat over "back". It goes; the greeting stays whole. */
+  .g-hero-back .g-hero-art .g-spark { display: none; }
+  /* A first visit at 320 px: "Try an example" on one line. Each button is
+     as wide as its words (not half the row each), a little tighter. */
+  .g-hero:not(.g-hero-small) .cta-row { gap: 6px; }
+  .g-hero:not(.g-hero-small) { padding-inline: 14px; }
+  .g-hero:not(.g-hero-small) .cta-row .btn { flex: 1 1 auto; min-width: max-content; padding: 0 8px; font-size: 13px; white-space: nowrap; }
+  /* Today's spark's box on the first screen with any spark, the longest
+     too (four lines at 20 px pushed it off; the phone's side gutter grew
+     4 px each side in Pilot core 1.4.3). */
+  .g-daily { gap: 10px; padding: 14px 14px 16px; }
+  .g-daily-prompt { font-size: 17.5px; line-height: 1.25; }
+}
+@media (min-width: 901px) {
+  /* One project on a computer: the card's words sit at the top with their
+     usual small gaps (1.25.0 spread them over the card's height), and the
+     progress row takes the room left: each stage on its own line, with its
+     count, down to the total. */
+  #g-list-view.g-one .g-card a { align-content: start; grid-template-rows: auto auto auto auto minmax(0, 1fr) auto; }
+  #g-list-view.g-one .g-segs { grid-template-columns: minmax(0, 1fr); align-content: space-evenly; gap: 10px; margin-top: 8px; }
+  #g-list-view.g-one .g-seg { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name count" "bar bar"; gap: 6px 10px; }
+  #g-list-view.g-one .g-seg > .g-bar { grid-area: bar; }
+  #g-list-view.g-one .g-seg > small:not(.g-seg-n) { grid-area: name; font-size: 12.5px; }
+  #g-list-view.g-one .g-seg-n { display: block; grid-area: count; }
+}
+.g-seg-n { display: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
 /* ---------- 1.26.0: the old address's one page, while Genesis moves ---------- */
 .g-move { max-width: 640px; margin: 0 auto; }
 .g-move-panel { display: grid; gap: 12px; padding: 26px 24px; }

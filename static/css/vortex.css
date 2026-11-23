@@ -465,6 +465,17 @@
   .v-panel { padding: 20px 16px; }
   .v-send .btn { width: 100%; justify-content: center; }
 }
+/* 1.27.0: a shorter top on a phone, so the first path card ("Pitch an idea")
+   shows whole on the first screen at 375x667: one short paragraph holds the
+   note and both promises. */
+.v-intro { display: none; }
+@media (max-width: 720px) {
+  .v-hero { padding: 18px 16px 16px; }
+  .v-hero-art { top: 12px; }
+  .v-hero .v-text, .v-hero .v-promises { display: none; }
+  .v-hero .v-line { margin-bottom: 6px; }
+  .v-intro { display: block; margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.45; }
+}
 /* The smallest phones: a smaller swirl, so the label still fits on one line. */
 @media (max-width: 360px) {
   .v-hero-art .v-swirl { width: 52px; }

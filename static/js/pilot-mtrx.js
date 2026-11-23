@@ -64,8 +64,16 @@
 
   // Core 1.4.0: answers Pilot gives at once, with no AI key and nothing sent
   // anywhere. Only facts the site itself shows (the catalog, templates/vortex.html).
-  function appsAnswer() {
+  // ctx.label is what was typed when a typed question matched (core 1.4.2):
+  // "When does RankUp open?" gets a first line about RankUp (1.27.0).
+  const nameKey = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  function appsAnswer(ctx) {
     if (!APPS.length) return "MTRX Horizyn's apps are listed on the [home page](/).";
+    const typed = nameKey(ctx && ctx.label);
+    const named = typed ? APPS.find((a) => { const k = nameKey(String(a.name).split(/[\s.]/)[0]); return k.length > 2 && typed.includes(k); }) : null;
+    const lead = !named ? ""
+      : named.open ? `**${words(named.name)}** is open now.\n\n`
+        : `**${words(named.name)}** is still in development.\n\n`;
     const open = APPS.filter((a) => a.open);
     const head = open.length === 0
       ? `MTRX Horizyn makes ${APPS.length} app${APPS.length === 1 ? "" : "s"}, all in development. None is open yet:`
@@ -78,7 +86,7 @@
     const hear = open.length === APPS.length ? ""
       : early ? "\n\nTo hear the day one opens, [join early access](/early-access)."
         : "\n\nTo hear when one opens, [write to us in Orbyt](/orbyt).";
-    return `${head}\n\n${list.join("\n")}${hear}`;
+    return `${lead}${head}\n\n${list.join("\n")}${hear}`;
   }
 
   // On Orbyt itself there's no "Open Orbyt" (1.22.0): the visitor is there.
@@ -93,7 +101,9 @@
 
   // Orbyt's "Which form is for me?" (1.22.0): a chooser, one line per kind
   // of visitor, each jumping straight to its form on this page.
-  const FORM_CHOOSER = "Pick the line that sounds most like you:\n\n"
+  // 1.27.0: it starts by saying what Orbyt is, since on Orbyt it also
+  // answers a typed "What is Orbyt?" (Orbyt has no pill of its own there).
+  const FORM_CHOOSER = "**Orbyt** is where you work with MTRX Horizyn. Pick the line that sounds most like you:\n\n"
     + "- **I have an idea** (a business or app, or a project from Genesis): [Pitch an idea](/orbyt#pitch)\n"
     + (early ? "- **I want to try the apps first**: [Early access](/early-access), and we email you the day one opens\n" : "")
     + "- **I run a business** and want to resell, connect with or recommend one of our apps: [Partner with us](/orbyt#partner)\n"
@@ -117,7 +127,13 @@
       text += `\n\n**Coming:** ${coming.map(appLink).join(", ")}.`;
       text += early ? " [Get early access](/#early-access) to hear the day each one opens." : " [Write to us in Orbyt](/orbyt) to hear more.";
     }
-    return `${text}\n\nGenesis turns your idea into a plan, Orbyt is where you pitch it or work with us, and Pilot (me) answers questions.`;
+    // What costs nothing, from the site's own settings: Genesis Pro and the
+    // Pitch Review are named as optional extras only while they're on.
+    const pro = d.pro === "on";
+    const paidReview = d.review === "on";
+    const free = `**Free:** Genesis${pro ? " (Genesis Pro is an optional paid extra)" : ""}, sending a pitch in Orbyt`
+      + `${paidReview ? " (a Pitch Review is an optional paid extra)" : ""}, and answers like this one from Pilot.`;
+    return `${text}\n\n${free}\n\nGenesis turns your idea into a plan, Orbyt is where you pitch it or work with us, and Pilot (me) answers questions.`;
   }
 
   // Home's "Which app fits me?" (1.22.0): a three-way chooser from the site's
@@ -138,18 +154,26 @@
 
   const AFTER_SEND = "A real person reads your message and emails you back within 7 days, even if the answer is no. "
     + "If we'd like to hear more, we'll ask in that email. We keep your message only to reply, for up to 365 days.";
+  // Orbyt's "Who owns my idea?" (1.27.0): the page's own two answers from
+  // "Before you send" (templates/vortex.html), nothing more.
+  const OWN_IDEA = "**Who owns my idea?** You do. Your idea stays yours: we never take a share of it without a written "
+    + "agreement that you (and a parent or guardian, if you're under 18) sign. Sending it doesn't create a partnership, "
+    + "an agreement or any obligation for either of us.\n\n"
+    + "**Will you build it without me?** No. We won't publish or pass on what you send. We may already be working on "
+    + "something similar; if we are, we'll tell you when we reply, so you know where you stand.\n\n"
+    + "[Pitch an idea](/orbyt#pitch)";
 
   // Orbyt Pitch Review (horizon/orbyt_review.py): only while the server says
   // it is offered (main.pilot_facts), with its price and days from the
   // settings. Nothing beyond what the terms promise.
   const review = d.review === "on";
   const reviewDays = Number(d.reviewDays) || 0;
-  // "ai": the review is written by AI and sent within about an hour; the
+  // "ai": the review is written by AI and sent usually within an hour; the
   // idea goes to an AI service, which the grown-up agrees to at checkout.
   const reviewAi = review && d.reviewMode === "ai";
   const REVIEW = reviewAi
     ? "A **Pitch Review** is an optional extra you can add after sending a pitch in Orbyt: an **AI-written review** of your idea, "
-      + "sent within about an hour. It says what's strong, what to fix, your next 3 steps, and whether it might fit Orbyt. "
+      + "usually within an hour. It says what's strong, what to fix, your next 3 steps, and whether it might fit Orbyt. "
       + "To write it, the idea you sent (not your name or email) goes to an AI service, and the grown-up (18+) who pays agrees to that at checkout. "
       + `It's one payment of ${words(d.reviewPrice)} (not a subscription), through Stripe. `
       + `If it isn't with you within ${reviewDays} day${reviewDays === 1 ? "" : "s"}, or we can't review your idea, you get a full refund.\n\n`
@@ -212,19 +236,46 @@
     return `${prompt}\n\nA quick way in:\n\n`
       + "- Think of one small thing that annoyed you, a friend or someone at home this week.\n"
       + "- Ask: what if it were easier? Your answer is the idea.\n"
-      + "- Write it in one line, like “An app that…” or “A club for…”. It doesn't need to be perfect: you can change it later.\n\n"
+      + "- Write it in one line. It doesn't need to be perfect: you can change it later.\n\n"
+      // 1.27.0: one example answer to today's very spark (genesis-store.js SPARK_EXAMPLES).
+      + (s.example ? `For today's spark, one line could be: “${words(s.example)}”\n\n` : "")
       + `[Write my spark](/genesis#spark)\n\n${PRIVATE}`;
   }
 
+  // `match` (core 1.4.2): more words a typed question may use for each of
+  // these answers, with no AI key ("What is Genesis?", "Is it free?", "When
+  // does RankUp open?", "Do you reply?"). One typed word that is listed is
+  // enough, so a word is listed on one answer per page only, and never a
+  // word another answer's label has ("idea" is "Help with my idea"'s).
+  const MATCH = {
+    fit: ["family", "families", "kid", "kids", "child", "children", "parent", "chore", "business", "restaurant", "kitchen",
+      "fridge", "freezer", "safety", "compliance", "suit", "best", "right", "choose", "pick", "recommend"],
+    ready: ["ready", "today", "now", "free", "cost", "much", "price", "pay", "money", "available", "use", "try", "live", "working"],
+    start: ["genesis", "start", "begin", "plan", "planner", "step", "steps"],
+    apps: ["rankup", "cyberlogix", "omniarmor", "open", "opening", "launch", "release", "coming", "soon", "date", "early", "access"],
+    orbyt: ["orbyt", "pitch", "partner", "invest", "investor", "contact", "work"],
+    projects: ["project", "projects", "saved", "list", "mine", "progress", "stage", "done"],
+    next: ["next", "step", "steps", "todo", "continue", "tick", "task"],
+    spark: ["spark", "sparks", "prompt", "daily", "today", "streak", "challenge"],
+    form: ["form", "forms", "path", "investor", "invest", "buy", "business", "partner", "orbyt"],
+    after: ["reply", "replies", "person", "human", "real", "read", "answer", "email", "hear", "back", "long", "wait", "days", "keep", "delete"],
+    review: ["review", "price", "cost", "pay", "paid", "money", "much", "free", "charge", "refund", "stripe"],
+    own: ["own", "owns", "owner", "ownership", "mine", "build", "without", "steal", "copy", "publish", "share", "secret", "safe", "rights"],
+  };
+  // While Pitch Review is off, "Is it free?" and the like go to what happens
+  // after sending, which says sending is free.
+  const AFTER = review ? AFTER_SEND : `${AFTER_SEND} Sending is free.`;
   const CHIPS = {
-    "/": [["Which app fits me?", { answer: fitAnswer }],
-      ["What's ready today?", { answer: readyAnswer }],
-      ["How do I start an idea?", { answer: START_IDEA }]],
-    "/genesis": [["Show my projects", { answer: projectsAnswer }], ["What's my next step?", { answer: nextAnswer }],
-      ["Help with today's spark", { answer: sparkAnswer }]],
+    "/": [["Which app fits me?", { answer: fitAnswer, match: MATCH.fit }],
+      ["What's ready today?", { answer: readyAnswer, match: MATCH.ready }],
+      ["How do I start an idea?", { answer: START_IDEA, match: MATCH.start }]],
+    "/genesis": [["Show my projects", { answer: projectsAnswer, match: MATCH.projects }],
+      ["What's my next step?", { answer: nextAnswer, match: MATCH.next }],
+      ["Help with today's spark", { answer: sparkAnswer, match: MATCH.spark }]],
     // At most three: while Pitch Review is on, its answer takes the third place.
-    "/orbyt": [["Which form is for me?", { answer: FORM_CHOOSER }], ["What happens after I send?", { answer: AFTER_SEND }],
-      review ? ["What's a Pitch Review?", { answer: REVIEW }]
+    "/orbyt": [["Which form is for me?", { answer: FORM_CHOOSER, match: MATCH.form }],
+      ["What happens after I send?", { answer: AFTER, match: review ? MATCH.after : MATCH.after.concat(["free", "cost", "much", "price", "pay", "money"]) }],
+      review ? ["What's a Pitch Review?", { answer: REVIEW, match: MATCH.review }]
         : ["Bring a Genesis idea", "How do I pitch a project from Genesis in Orbyt?"]],
     "/partners": [["How do partners earn?", "How do CyberLogix AI partners earn?"], ["What can partners see?", "What can a partner see in the partner portal?"],
       ["How do I apply?", "How do I apply to be a partner?"]],
@@ -270,11 +321,16 @@
     // idea" goes to Genesis's start form (free, and Genesis has its own free
     // AI help), "What is Orbyt?" and "What apps are coming?" are answered at
     // once from the site's own facts; "Explain this page" needs the AI.
+    // 1.27.0: `match` words for typed questions (MATCH above). On Orbyt,
+    // where "What is Orbyt?" is the page itself (and "Which form is for
+    // me?" answers "orbyt"), the second pill is the page's first question
+    // before sending, "Who owns my idea?".
     welcomePills: [
       startPill,
-      { icon: "chat", label: "What is Orbyt?", answer: answered(ORBYT_TEXT) },
+      onOrbyt ? { icon: "chat", label: "Who owns my idea?", answer: answered(OWN_IDEA), match: MATCH.own }
+        : { icon: "chat", label: "What is Orbyt?", answer: answered(ORBYT_TEXT), match: MATCH.orbyt },
       { icon: "bars", label: "Explain this page", action: "explain-screen" },
-      { icon: "bolt", label: "What apps are coming?", answer: answered(appsAnswer) },
+      { icon: "bolt", label: "What apps are coming?", answer: answered(appsAnswer), match: MATCH.apps },
       { icon: "key", label: "Add my AI key", action: "settings" },
     ],
     // Under an answer Pilot gives without a key.
