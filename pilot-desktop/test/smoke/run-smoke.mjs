@@ -481,7 +481,7 @@ async function realClicks15() {
   }
   check(true, "a real system click on him standing still opens the chat (macOS's own mouse events, through the overlay)");
   const results = [];
-  for (const [what, run, test] of [["mid-walk", false, (p) => /^walk/.test(p)], ["mid-run", true, (p) => /^run/.test(p)]]) {
+  for (const [what, running, test] of [["mid-walk", false, (p) => /^walk/.test(p)], ["mid-run", true, (p) => /^run/.test(p)]]) {
     await settle(robot);
     // A long walk (or run) across the screen, played like any move (at the
     // end of the smoke test the app's own state could hold a "walk" back).
@@ -492,7 +492,7 @@ async function realClicks15() {
       P.actor.place(x0, g.floor);
       P.actor.show("standing", 0);
       P.play(window.PilotRoam.walkTo({ ...g, pos: { x: x0, y: g.floor } }, g.right - g.u, "standing", r));
-    }, run);
+    }, running);
     const n = await untilPose(robot, test, 15000);
     await wait(400);
     // The pointer comes onto him (as a hand would), rests a moment, and clicks where he is then.
