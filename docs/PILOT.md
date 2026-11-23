@@ -206,6 +206,53 @@ after I send?", and Genesis's "Show my projects" and "What's my next step?" (rea
 browser's own Genesis data through `window.GenesisBridge`, nothing sent) are answers too; the other
 suggestions are AI prompts.
 
+### Moving an app to core 1.4.3 (from 1.4.2)
+
+A small patch: typed questions, the row under an answer, the no-key reply, and the phone's side gutter.
+
+1. Copy the thirteen core files from `static/pilot/` over the app's copies (they all say `Pilot core
+   1.4.3` on their first line), and Pilot for Mac's six shared files if the app ships them (only their
+   first line and `VERSION` changed).
+2. **"does" and "this" no longer count in typed questions.** `wordsOf` checked the stop words after
+   stemming, so "does" became "doe" and "this" became "thi" and both counted: "What does this check
+   mean?" tied "Explain this check" with "What does this colour mean?" and got neither, and "Does this
+   work with my sensor?" got an alert answer because its label said "What does this alert mean?". Stop
+   words are now dropped as typed, before stemming (and once stemmed too). A typed question that has
+   every word of a label also fits it, when those words are at least half of what was typed, so "How
+   much does it cost?" still gets "What does it cost?". An app that listed "does" or "this" in `match`
+   to force a tie (CyberLogix 3.31.0) can take them out.
+3. **The same item twice is one item.** A pill and a suggestion with the same `answer` (one function,
+   or the same words), the same `link`, or the same label once made plain (case, spaces and
+   punctuation aside) are one item (`sameItem`): they no longer tie in `matchTyped`, and only the first
+   shows in the row under an answer. Pressing either leaves both out of that row. OmniArmor's app-side
+   workaround (leaving such suggestions out with no key) can go.
+4. **Under a typed match, the matched item isn't offered again.** The answer remembers the label of
+   the item it matched (`of` on the app's own answer, kept in the stored chat) and the row under it
+   leaves that item, and any item that is the same, out.
+5. **Phones: 34 px of side gutter** with `keepInViewport` (was 30 px). The tucked robot is 46 px wide and
+   3 px from the edge, so it reaches 49 px in; a full-width card 16 px inside the gutter now starts at
+   50 px, clear of the ring's tip (CyberLogix /for at 375-390 px had it 3 px over the card's border).
+   Still a 44 px tap target, and the robot looks the same. An app that sizes its own phone padding
+   from `var(--pilot-side)` gets the extra 4 px each side by itself; check that nothing at 320 px was
+   counting on the old 30.
+6. **No key, and nothing fits: Pilot answers in the chat** (OmniArmor round-9 review). Before, a typed
+   question with no key that none of the app's own answers fits opened key settings at once. Now
+   Pilot stays in the chat with a short message of its own, "I need an AI key to answer that one.
+   Here's what I can help with right now:", and under it, as a row of small pills, this page's
+   suggestions that answer or link, then the welcome's pills that do (each once, at most six), then
+   the key pill (the app's own, or "Add my AI key"). The typed words stay in the box with "Your
+   message is waiting in the box. It sends as soon as you add a key." under the row, and they are
+   sent once a key is added, as before. A second question replaces the message. The message is a
+   note (kind `nokey`): never sent to an AI, and gone once a key is set. Apps that set nothing get it;
+   the design's five pills (no answers of their own) show the shorter "I need an API key to answer
+   that one." with only "Customize with your API key", in the design's words and look.
+   `noKeyReply: false` keeps the jump to key settings; `noKeyReply: "..."` uses the app's own words.
+   A pill or suggestion that is an AI prompt goes the same way; a shared screen ("Summarise this")
+   still opens key settings.
+7. Copy the new `tests/js/pilot.test.js` core tests (the 1.4.3 ones, and the 1.4.2 tests that
+   changed: the `answerWith` line, distinct answers in the "at most six" check, and the no-key line
+   in the 1.2.0 "message typed with no key" check).
+
 ### Moving an app to core 1.4.2 (from 1.4.1)
 
 1. Copy the thirteen core files from `static/pilot/` over the app's copies (they all say `Pilot core
@@ -260,7 +307,12 @@ built-in). `pilot-panel.js` `matchTyped` keeps only the words that mean somethin
 the like, "what", "is", "my", "help", "need", don't count; plurals count as one word), and takes an
 item only when two of the typed words are in its label or its `match` list and they make up at least
 half of what was typed, or when the one word typed is in its `match` list; and only when no other item
-comes as close. Anything else goes on as before (the words wait in the box and key settings open).
+comes as close. Core 1.4.3: stop words ("does", "this", "is"...) are dropped before a word is stemmed;
+every word of a label typed fits too (when those are half of what was typed: "How much does it cost?"
+gets "What does it cost?"); and two items with the same answer, link or label are one, not a tie.
+Anything else goes on as before: the words wait in the box, and (core 1.4.3, `noKeyReply`) Pilot says
+in the chat that it needs a key for that one, with what it can do now under it; before 1.4.3, or with
+`noKeyReply: false`, key settings open.
 The answer is shown as the app's own (marked `local`): nothing is sent, and it is never sent to the AI
 later. A link is shown as a link to tap, not followed at once. Examples (CyberLogix's pills): "Is my
 walk-in fridge OK?" gets "Which fridges need me?" (with `match: ["fridge", "warm", "ok"]`); "Write me a
@@ -527,7 +579,8 @@ shrinking the 128 px or 192 px one (soft on phones). Same pictures, same look.
 to `--pilot-peek-scale` (0.82 on phones, 0.52 on computers) in its corner, `--pilot-keep-margin` from
 the edges (3 px on phones, 8 px on computers), fully on screen, and grows back on hover. Since core
 1.3.0 it is never smaller than a **44 px tap target** each way (`TAP_LEAST` and `keepScale` in
-`pilot-mascot.js`; core 1.2.x drew it about 24 px on phones). On phones `--pilot-side` is 30 px.
+`pilot-mascot.js`; core 1.2.x drew it about 24 px on phones). On phones `--pilot-side` is 34 px
+(30 px before core 1.4.3).
 Placement measures the robot at its own size, not as drawn while shrunk. (Without `keepInViewport`,
 the design's tucked robot is a slice at the screen's edge, as before; every app today uses
 `keepInViewport`.)
@@ -822,7 +875,8 @@ Per app (on the MTRX site):
    | `hideWhenCrowded` | (1.4.1) `false` keeps 1.4.0's "tuck where it covers least" instead of fading the robot out when every spot would cover a link, a button, a bar that stays put or something to avoid |
    | `handle` | (1.4.2) `false`: no handle at the screen's edge while the robot is hidden at rest |
    | `screenChip` | (1.4.2) the suggestion after this page's own: "Summarise this" (once a key is set) unless `false`, or the app's own `{label, answer}`, `{label, link}` or `{label, prompt}` |
-   | `matchTyped` | (1.4.2) `false`: with no key, a typed question always goes to key settings (no matching with the app's own answers) |
+   | `matchTyped` | (1.4.2) `false`: with no key, a typed question is never matched with the app's own answers |
+   | `noKeyReply` | (1.4.3) with no key, a typed question nothing fits gets "I need an AI key to answer that one..." in the chat, with what works now; `false`: key settings open instead (1.4.2); a string: the app's own words |
    | `hideKeySections` | `["image", "video"]` (either or both) to leave those key settings out |
    | `keepInViewport` | `true`: tucked away, the robot shrinks into its corner instead of hanging off the screen's edge |
    | `modals` | CSS selectors of the app's own pop-ups that aren't marked as dialogs; the robot steps back while one shows |

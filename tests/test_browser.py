@@ -765,3 +765,142 @@ def test_pilot_on_a_computer_never_touches_a_link_or_parks_over_the_header(site,
         h = page.evaluate(_HANDLE)
         assert h and not h["under"], h
     context.close()
+
+
+# ---------------------------------------------------------------- core 1.4.3
+
+def test_pilot_typed_match_does_not_offer_the_same_pill_again(site, browser):
+    """Core 1.4.3 (CyberLogix 3.31.0): with no key, a typed question that
+    matched a welcome pill got that pill's answer, and then the same pill
+    was offered again right under its own answer (the row leaves out what
+    was asked, and what was asked was the typed words). Now the answer
+    remembers the item it matched and leaves it out. Nothing leaves the
+    site."""
+    context = _phone(browser)
+    page = context.new_page()
+    away = []
+    page.on("request", lambda r: away.append(r.url) if not r.url.startswith(site) else None)
+    page.goto(f"{site}/", wait_until="networkidle")
+    page.wait_for_selector(".pilot-root", state="attached", timeout=10000)
+    page.evaluate("Pilot.open()")
+    page.wait_for_selector(".pilot-input")
+    page.fill(".pilot-input", "Which apps are coming soon?")
+    page.press(".pilot-input", "Enter")
+    page.wait_for_selector(".pilot-again .pilot-pill")
+    assert page.is_hidden(".pilot-settings-view"), "answered here, no key wall"
+    log = page.inner_text(".pilot-log")
+    assert "Here's what I can tell you without an AI key:" in log and "RankUp" in log, log
+    row = page.eval_on_selector_all(".pilot-again .pilot-pill", "ps => ps.map(p => p.innerText.trim())")
+    assert "What apps are coming?" not in row, row
+    assert "What is Orbyt?" in row and "Help with my idea" in row, row
+    # It stays left out on the next page too (the chat follows from page to page).
+    page.goto(f"{site}/privacy", wait_until="networkidle")
+    page.evaluate("Pilot.open()")
+    page.wait_for_selector(".pilot-again .pilot-pill")
+    row = page.eval_on_selector_all(".pilot-again .pilot-pill", "ps => ps.map(p => p.innerText.trim())")
+    assert "What apps are coming?" not in row, row
+    assert away == [], away
+    context.close()
+
+
+# A CyberLogix /for-like phone page: words, then full-width link cards in a
+# wrapper with 16 px of its own padding, inside `main` (which the core gives
+# the side gutter).
+CARDS_PAGE = """() => {
+  for (const n of [...document.body.children]) if (!n.classList.contains("pilot-root")) n.remove();
+  const main = document.createElement("main");
+  const wrap = document.createElement("div"); wrap.className = "t-wrap";
+  for (let i = 0; i < 2; i++) { const p = document.createElement("p"); p.textContent = "Words of the page. ".repeat(20); wrap.append(p); }
+  for (let i = 0; i < 8; i++) { const a = document.createElement("a"); a.href = "/orbyt"; a.className = "t-card"; a.textContent = "An industry card"; wrap.append(a); }
+  main.append(wrap);
+  document.body.append(main);
+  const s = new CSSStyleSheet();
+  s.replaceSync(`main{padding:0 0} .t-wrap{padding:0 16px} .t-card{display:block;height:150px;margin:0 0 12px;border:1px solid #9ab}`);
+  document.adoptedStyleSheets = [s];
+  PilotMascot.sideGutter(document, window, ["main"]);
+}"""
+
+
+@pytest.mark.parametrize("size", [(320, 640), (375, 667), (390, 844)])
+def test_pilot_tucked_on_a_phone_clears_cards_inside_the_side_gutter(site, browser, size):
+    """Core 1.4.3 (CyberLogix /for at 375-390 px): the tucked phone robot is
+    46 px wide, 3 px from the edge, so it reaches 49 px in; with 30 px of
+    side gutter, full-width cards 16 px inside it started 46 px in, and the
+    tip of the robot's ring sat 3 px over their right border. The gutter is
+    34 px now: the cards start past the robot, which is still a 44 px tap
+    target."""
+    context = _phone_size(browser, *size)
+    page = _pilot_page(context, f"{site}/privacy")
+    page.evaluate(CARDS_PAGE)
+    page.evaluate("window.scrollTo(0, 400)")
+    page.wait_for_timeout(300)
+    for corner in ("br", "bl"):
+        got = page.evaluate("""(corner) => { const root = document.querySelector('.pilot-root');
+          root.classList.remove('pilot-away', 'pilot-at-bl', 'pilot-at-br', 'pilot-at-tl', 'pilot-at-tr');
+          root.classList.add('pilot-peek', 'pilot-at-' + corner);
+          const s = new CSSStyleSheet(); s.replaceSync('.pilot-root *, .pilot-root { transition: none !important; animation: none !important; }');
+          document.adoptedStyleSheets = [...document.adoptedStyleSheets, s];
+          const r = root.querySelector('.pilot-launcher').getBoundingClientRect();
+          const cards = [...document.querySelectorAll('.t-card')].map(c => c.getBoundingClientRect()).filter(c => c.bottom > 0 && c.top < innerHeight);
+          return { left: r.left, right: r.right, width: r.width, height: r.height,
+            cardLeft: Math.min(...cards.map(c => c.left)), cardRight: Math.max(...cards.map(c => c.right)),
+            side: getComputedStyle(document.documentElement).getPropertyValue('--pilot-side').trim() }; }""", corner)
+        assert got["width"] >= 43.9 and got["height"] >= 43.9, ("a 44 px tap target", got)
+        if corner == "br":
+            assert got["left"] >= got["cardRight"], (corner, got)
+        else:
+            assert got["right"] <= got["cardLeft"], (corner, got)
+        assert got["side"] == "34px", got
+    context.close()
+
+
+def test_pilot_with_no_key_answers_in_the_chat_instead_of_jumping_to_key_settings(site, browser):
+    """Core 1.4.3 (OmniArmor round-9 review): with no key, a typed question
+    that none of the site's own answers fits opened key settings at once.
+    Now Pilot stays in the chat: "I need an AI key to answer that one.
+    Here's what I can help with right now:", the answers that work with no
+    key and an "Add my AI key" button under it. The words wait in the box;
+    key settings say so. config.noKeyReply: false keeps the old jump."""
+    context = _phone(browser)
+    page = context.new_page()
+    away = []
+    page.on("request", lambda r: away.append(r.url) if not r.url.startswith(site) else None)
+    page.goto(f"{site}/privacy", wait_until="networkidle")
+    page.wait_for_selector(".pilot-root", state="attached", timeout=10000)
+    page.evaluate("Pilot.open()")
+    page.wait_for_selector(".pilot-input")
+    page.fill(".pilot-input", "Write me a poem about the sea")
+    page.press(".pilot-input", "Enter")
+    page.wait_for_selector(".pilot-nokey")
+    assert page.is_hidden(".pilot-settings-view"), "stays in the chat"
+    assert page.inner_text(".pilot-nokey") == "I need an AI key to answer that one. Here's what I can help with right now:"
+    row = page.eval_on_selector_all(".pilot-nokey-row .pilot-pill", "ps => ps.map(p => p.innerText.trim())")
+    assert row[-1] == "Add my AI key" and "What is Orbyt?" in row and "What apps are coming?" in row, row
+    assert "Explain this page" not in row, row
+    assert page.input_value(".pilot-input") == "Write me a poem about the sea"
+    assert "waiting in the box" in page.inner_text(".pilot-nokey-row")
+    # A second question replaces the message (one at a time).
+    page.fill(".pilot-input", "Tell me a joke")
+    page.press(".pilot-input", "Enter")
+    page.wait_for_timeout(300)
+    assert page.locator(".pilot-nokey").count() == 1
+    # A built-in answer from the row works with no key.
+    page.click('.pilot-nokey-row .pilot-pill:has-text("What is Orbyt?")')
+    page.wait_for_selector(".pilot-from-pilot .pilot-md")
+    assert "official place to work with MTRX Horizyn" in page.inner_text(".pilot-log")
+    # "Add my AI key" opens key settings, which say the message is waiting.
+    page.fill(".pilot-input", "Write me a poem about the sea")
+    page.press(".pilot-input", "Enter")
+    page.wait_for_selector(".pilot-nokey-row")
+    page.click('.pilot-nokey-row .pilot-pill:has-text("Add my AI key")')
+    page.wait_for_selector(".pilot-settings-view:not([hidden])")
+    assert "Your message is waiting in the box" in page.inner_text(".pilot-settings-view")
+    # The old jump, for an app that asks for it.
+    page.evaluate("Pilot.config.noKeyReply = false")
+    page.click(".pilot-settings-view .pilot-back")
+    page.wait_for_selector(".pilot-input")
+    page.fill(".pilot-input", "Write me a limerick")
+    page.press(".pilot-input", "Enter")
+    page.wait_for_selector(".pilot-settings-view:not([hidden])")
+    assert away == [], away
+    context.close()
