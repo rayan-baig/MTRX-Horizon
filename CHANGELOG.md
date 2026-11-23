@@ -4,6 +4,18 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.26.2 (23 November 2026)
+
+Three more fixes to Pilot core 1.4.3, from the round-9 review:
+
+- **Typing a button's own words gets its answer, every time.** "what is orbyt" gets the "What is
+  Orbyt?" answer and "show my projects" lists your Genesis projects, with no AI key.
+- **Typing on a small phone keeps the answer in view.** With the keyboard open, Pilot's tagline, the
+  18+ line and the row of round buttons step aside while you type, so more of the answer shows. They
+  come back when you're done typing.
+- **The robot keeps off footer words at the end of a page.** Near the bottom of a page, when it would
+  sit on dense words (like "© 2026 / YOUR IDEA") and the other corner is empty, it moves there.
+
 ## 1.26.1 (22 November 2026)
 
 Pilot core 1.4.3, a small patch to the helper on every page:

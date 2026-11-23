@@ -904,3 +904,101 @@ def test_pilot_with_no_key_answers_in_the_chat_instead_of_jumping_to_key_setting
     page.wait_for_selector(".pilot-settings-view:not([hidden])")
     assert away == [], away
     context.close()
+
+
+@pytest.mark.parametrize("path,typed,expect", [("/", "what is orbyt", "official place to work with MTRX Horizyn"),
+                                               ("/genesis", "show my projects", "Here's what I can tell you without an AI key:")])
+def test_pilot_typing_a_buttons_own_words_gets_its_answer(site, browser, path, typed, expect):
+    """Core 1.4.3 (MTRX round-9 review): typing a pill's or a suggestion's
+    own words ("what is orbyt", "show my projects": a live answer read from
+    this browser's Genesis data) gets that item's answer every time, with no
+    key and nothing sent."""
+    context = _phone(browser)
+    page = context.new_page()
+    away = []
+    page.on("request", lambda r: away.append(r.url) if not r.url.startswith(site) else None)
+    page.goto(f"{site}{path}", wait_until="networkidle")
+    page.wait_for_selector(".pilot-root", state="attached", timeout=10000)
+    page.evaluate("Pilot.open()")
+    page.wait_for_selector(".pilot-input")
+    page.fill(".pilot-input", typed)
+    page.press(".pilot-input", "Enter")
+    page.wait_for_selector(".pilot-from-pilot .pilot-md")
+    assert expect in page.inner_text(".pilot-log")
+    assert page.locator(".pilot-nokey").count() == 0 and page.is_hidden(".pilot-settings-view")
+    assert away == [], away
+    context.close()
+
+
+_COMPACT = """() => { const vis = (s) => { const e = document.querySelector('.pilot-panel ' + s); return Boolean(e && e.getClientRects().length && getComputedStyle(e).display !== 'none'); };
+  return { tagline: vis('.pilot-tagline'), note: vis('.pilot-foot-note'), bottom: vis('.pilot-bottom'), input: vis('.pilot-input') }; }"""
+
+
+@pytest.mark.parametrize("size", [(320, 430), (375, 450)])
+def test_pilot_typing_on_a_short_screen_goes_compact(site, browser, size):
+    """Core 1.4.3 (MTRX round-9 review): with the keyboard open (the visible
+    height under about 500 px at 320 px wide and 375 x 667) only a line or
+    two of an answer showed. While the message box has focus on a short
+    screen, the tagline, the 18+ line and the round buttons step aside;
+    they are back once it loses focus, and a tall screen keeps them."""
+    context = _phone_size(browser, *size)
+    page = context.new_page()
+    page.goto(f"{site}/", wait_until="networkidle")
+    page.wait_for_selector(".pilot-root", state="attached", timeout=10000)
+    page.evaluate("Pilot.open()")
+    page.wait_for_selector(".pilot-input")
+    page.locator('.pilot-pill:has-text("What is Orbyt?")').evaluate("b => b.click()")
+    page.wait_for_selector(".pilot-from-pilot .pilot-md")
+    page.focus(".pilot-input")
+    page.wait_for_timeout(100)
+    typing = page.evaluate(_COMPACT)
+    assert typing == {"tagline": False, "note": False, "bottom": False, "input": True}, typing
+    page.evaluate("document.activeElement.blur()")
+    page.wait_for_timeout(100)
+    rested = page.evaluate(_COMPACT)
+    assert rested["tagline"] and rested["note"] and rested["bottom"], rested
+    page.set_viewport_size({"width": size[0], "height": 812})
+    page.focus(".pilot-input")
+    page.wait_for_timeout(200)
+    tall = page.evaluate(_COMPACT)
+    assert tall["tagline"] and tall["note"] and tall["bottom"], tall
+    context.close()
+
+
+# A phone page whose end is a footer with its words at the right ("© 2026 / YOUR IDEA"), the left end empty.
+FOOTER_PAGE = """() => {
+  for (const n of [...document.body.children]) if (!n.classList.contains("pilot-root")) n.remove();
+  const main = document.createElement("main");
+  for (let i = 0; i < 8; i++) { const p = document.createElement("p"); p.textContent = "Words of the page. ".repeat(24); main.append(p); }
+  const foot = document.createElement("footer"); foot.className = "t-foot";
+  for (const t of ["© 2026 MTRX", "YOUR IDEA", "STARTS HERE"]) { const p = document.createElement("p"); p.textContent = t; foot.append(p); }
+  document.body.append(main, foot);
+  const s = new CSSStyleSheet();
+  s.replaceSync(`html,body{margin:0!important;padding:0!important} main{padding:0 16px} .t-foot{padding:8px 4px 2px 0;text-align:right;font:700 16px/22px sans-serif} .t-foot p{margin:0}`);
+  document.adoptedStyleSheets = [s];
+  window.scrollTo(0, 0);
+}"""
+
+
+@pytest.mark.parametrize("size", [(320, 640), (375, 667)])
+def test_pilot_near_the_page_end_keeps_off_dense_footer_words(site, browser, size):
+    """Core 1.4.3 (MTRX round-9 review): at the page's end the tucked robot
+    sat on the footer's words ("© 2026 / YOUR IDEA") with the other bottom
+    corner empty. Near the end, dense words count when the other corner is
+    wholly clear: it moves there."""
+    context = _phone_size(browser, *size)
+    page = _pilot_page(context, f"{site}/privacy")
+    page.evaluate(FOOTER_PAGE)
+    height = page.evaluate("document.documentElement.scrollHeight - innerHeight")
+    for y in range(300, height, 300):
+        page.evaluate(f"window.scrollTo(0, {y})")
+        page.wait_for_timeout(500)
+    page.evaluate(f"window.scrollTo(0, {height})")
+    page.wait_for_timeout(1200)
+    r = page.evaluate(_ROBOT)
+    over = page.evaluate("""() => { const l = document.querySelector('.pilot-launcher').getBoundingClientRect();
+      return [...document.querySelectorAll('.t-foot p')].some(p => { const rg = document.createRange(); rg.selectNodeContents(p);
+        return [...rg.getClientRects()].some(b => b.right > l.left && b.left < l.right && b.bottom > l.top && b.top < l.bottom); }); }""")
+    assert r["hidden"] or not over, (r, "on the footer's words")
+    assert not r["under"], r
+    context.close()
