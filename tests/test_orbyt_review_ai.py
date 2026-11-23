@@ -561,7 +561,8 @@ let given = null;
 const window = {{ Pilot: {{ mount: (c) => {{ given = c; }} }}, location: {{ pathname: "/orbyt" }} }};
 vm.runInNewContext(src, {{ window, document: {{ getElementById: () => ({{ dataset: {json.dumps(data)} }}), title: "" }} }});
 const chip = given.chips().find((c) => c.label === "What's a Pitch Review?");
-process.stdout.write(JSON.stringify({{ answer: chip ? chip.answer : null, facts: given.facts }}));
+// 1.28.0: an answer is a function (a typed question is checked first); pressed:
+process.stdout.write(JSON.stringify({{ answer: chip ? chip.answer({{ label: chip.label }}) : null, facts: given.facts }}));
 """
     out = subprocess.run([node, "-e", script], capture_output=True, text=True, check=True)
     return json.loads(out.stdout)

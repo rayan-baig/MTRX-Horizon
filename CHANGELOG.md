@@ -4,6 +4,38 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.28.0 (23 November 2026)
+
+Home, Genesis and Orbyt round-11 fixes.
+
+- **Home: the main button is "Start my idea (free)"**, straight to Genesis's start form, on a phone and a
+  computer alike. "Get early access" is now the outline button beside it.
+- **Home on a computer: "Ready today" (Genesis and Orbyt) under the headline**, as on a phone. Genesis
+  and Orbyt are once each there now (the bottom row keeps About us and Projects), and where the screen
+  isn't tall (940 px or less) the one-line "New" strip makes room for it (the bell still has the news).
+  The page still fits one screen at 1024x768, 1280x720 and 1440x900.
+- **Home: Learn more's close button has its own room.** It crowded "An MTRX Horizyn app"; now it sits
+  beside the heading on a computer, and in a strip of its own above it on a phone.
+- **"Explain this page" works without an AI key** on Home, Genesis and Orbyt: Pilot gives a short
+  built-in summary of the page at once. With a key it is still the AI's own explanation.
+- **Home: more typed questions get Pilot's built-in answers with no key:** "Is Genesis free?" (now one of
+  the suggestions), "How much is Genesis Pro?" (only while Pro is offered, with its price from the
+  settings), "Is my data safe?", "I have an idea for a game", "Who made this?", "What is Pilot?" and a
+  plain "hi". "Help with my idea" now answers in the chat (its "Start my idea" link opens the form), so
+  typed ideas get a reply too.
+- **Genesis: "How do I start?", "Is my idea saved?", "What is Genesis Pro?" and "Where are my
+  projects?"** are answered when typed, and "Give me an idea" gets one of Genesis's example ideas with
+  a "Try an example" link.
+- **Orbyt: "How long does the review take?", "Is the review written by a person?", "I'm 13, can I
+  pitch?"** (the page's own age rules: under 13 a parent or guardian sends it; under 18 a grown-up signs
+  any agreement) **and "Can you build my app?"** are answered when typed. "How much does it cost?" now
+  starts with "Pitching is free; the only paid thing is an optional $19 Pitch Review" (the price from the
+  settings), or "Pitching is free" while there's no Pitch Review.
+- **Orbyt: a send error shows whole, just under the bar,** like "Sent." (its scroll margin is the bar's
+  measured height), and is read out by screen readers.
+- **Pilot keeps clear of more:** the home page's app cards (RankUp's is on a phone's first screen) and the
+  Projects tile, each day of Genesis's spark week, and Orbyt's three steps and section headings.
+
 ## 1.27.0 (23 November 2026)
 
 Home, Genesis and Orbyt round-10 fixes.

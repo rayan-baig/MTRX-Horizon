@@ -71,11 +71,13 @@ test("Orbyt: \"Which form is for me?\" jumps to each form, and never says \"Open
   // "What is Orbyt?" (a welcome pill elsewhere) keeps its "Open Orbyt"; on Orbyt
   // (1.27.0) that pill is "Who owns my idea?", and typed "What is Orbyt?" is
   // answered by "Which form is for me?", which starts with what Orbyt is.
+  // 1.28.0: every answer is a function (typed words checked first), pressed here.
   const pill = (c, label) => c.welcomePills.find((p) => p.label === label);
-  assert.match(pill(mount("/", { apps: APPS }), "What is Orbyt?").answer, /\[Open Orbyt\]\(\/orbyt\)$/);
+  const press = (item) => item.answer({ label: item.label });
+  assert.match(press(pill(mount("/", { apps: APPS }), "What is Orbyt?")), /\[Open Orbyt\]\(\/orbyt\)$/);
   assert.equal(pill(orbyt, "What is Orbyt?"), undefined);
-  assert.match(pill(orbyt, "Who owns my idea?").answer, /^\*\*Who owns my idea\?\*\* You do\./);
-  const asked = chip(orbyt, "Which form is for me?").answer;
+  assert.match(press(pill(orbyt, "Who owns my idea?")), /^\*\*Who owns my idea\?\*\* You do\./);
+  const asked = press(chip(orbyt, "Which form is for me?"));
   assert.match(asked, /^\*\*Orbyt\*\* is where you work with MTRX Horizyn\. Pick the line/);
   assert.doesNotMatch(asked, /Open Orbyt/);
 });
@@ -164,19 +166,21 @@ function typed(pathname, data, bridge) {
 }
 
 test("home: typed questions get the right answer with no key (match words)", () => {
-  const { pick, say } = typed("/", { apps: APPS, early: "on", pro: "on" });
-  assert.equal(pick("What is Genesis?"), "How do I start an idea?");
-  assert.match(say("what is genesis"), /\*\*Genesis\*\* turns an idea into a plan/);
-  assert.equal(pick("Is it free?"), "What's ready today?");
-  assert.match(say("Is it free?"), /\*\*Free:\*\* Genesis \(Genesis Pro is an optional paid extra\), sending a pitch in Orbyt/);
-  assert.equal(pick("How much does it cost?"), "What's ready today?");
+  const { pick, say } = typed("/", { apps: APPS, early: "on", pro: "on", proPrice: "$4.99" });
+  // 1.28.0: Genesis's questions go to "Is Genesis free?" (the third suggestion,
+  // in place of "How do I start an idea?", which "Help with my idea" answers).
+  assert.equal(pick("What is Genesis?"), "Is Genesis free?");
+  assert.match(say("what is genesis"), /^\*\*Genesis\*\* turns an idea into a plan/);
+  assert.equal(pick("Is it free?"), "Is Genesis free?");
+  assert.match(say("Is it free?"), /^\*\*Free:\*\* Genesis, sending a pitch in Orbyt, and answers like this one from Pilot\.\n\n\*\*Optional paid extras:\*\* Genesis Pro \(\$4\.99 a month\)\./);
+  assert.equal(pick("How much does it cost?"), "Is Genesis free?");
   assert.equal(pick("When does RankUp open?"), "What apps are coming?");
   assert.match(say("When does RankUp open?"), /^\*\*RankUp\*\* is still in development\.\n\n/);
   assert.match(say("when will omniarmor launch"), /^\*\*OmniArmor\.ai\*\* is still in development\./);
   assert.equal(pick("What is Orbyt?"), "What is Orbyt?");
   assert.equal(pick("which app is for my family"), "Which app fits me?");
   assert.equal(pick("I run a restaurant kitchen"), "Which app fits me?");
-  assert.equal(pick("how do I start"), "How do I start an idea?");
+  assert.equal(pick("how do I start"), "Help with my idea");
   assert.equal(pick("what's ready"), "What's ready today?");
   // Pressed (not typed), "What apps are coming?" has no app's first line.
   assert.doesNotMatch(say("What apps are coming?"), /still in development\.\n\n/);
@@ -186,7 +190,139 @@ test("home: typed questions get the right answer with no key (match words)", () 
   // The free line says only what's on: no Genesis Pro or Pitch Review while they're off.
   const plain = typed("/", { apps: APPS, early: "on" }).say("Is it free?");
   assert.doesNotMatch(plain, /Genesis Pro|Pitch Review/);
-  assert.match(typed("/", { apps: APPS, review: "on" }).say("Is it free?"), /a Pitch Review is an optional paid extra/);
+  assert.match(typed("/", { apps: APPS, review: "on", reviewPrice: "$19" }).say("Is it free?"), /a Pitch Review \(\$19, once\) after sending a pitch/);
+});
+
+// ---------------------------------------------------------------- 1.28.0 (round 11): more built-in answers
+
+test("home: Genesis's price, privacy, an idea, who made this, Pilot and hello, typed with no key", () => {
+  const { pick, say } = typed("/", { apps: APPS, early: "on", pro: "on", proPrice: "$4.99" });
+  assert.match(say("is genesis free"), /^\*\*Yes, Genesis is free:\*\* no account, nothing to pay/);
+  assert.match(say("Is Genesis free?"), /Genesis Pro \(\$4\.99 a month\) is an optional extra/);
+  for (const q of ["how much is genesis pro", "What is Genesis Pro?", "how much does genesis pro cost"]) {
+    assert.match(say(q), /^\*\*Genesis Pro\*\* is an optional extra for people who ask Genesis for help a lot.*It's \$4\.99 a month, paid by a grown-up/, q);
+  }
+  // Pro switched off: never named, and Genesis is free.
+  const off = typed("/", { apps: APPS, early: "on" });
+  assert.match(off.say("how much is genesis pro"), /^\*\*Genesis is free\*\*, and there's nothing to buy/);
+  assert.doesNotMatch(off.say("how much is genesis pro"), /\$|Pro is/);
+  for (const q of ["is my data safe", "Is my data safe?", "is it private", "do you track me"]) {
+    assert.match(say(q), /^\*\*Yes, MTRX Horizyn keeps very little:\*\*/, q);
+  }
+  assert.match(say("is my data safe"), /\[Read the privacy page\]\(\/privacy\)/);
+  for (const q of ["i have an idea", "I have an idea for a game", "i have an idea for an app", "I've got an idea"]) {
+    assert.equal(pick(q), "Help with my idea", q);
+    assert.match(say(q), /^Great, let's turn it into a plan! \*\*Genesis\*\* does that, free.*\[Start my idea\]\(\/genesis#new\)/s, q);
+  }
+  for (const q of ["who made this", "Who made this website?", "who built this site"]) {
+    assert.match(say(q), /^\*\*MTRX Horizyn\*\* made this site: a small independent software company/, q);
+  }
+  // Only the company: nothing about the person who runs it.
+  assert.doesNotMatch(say("who made this"), /\b(he|she|his|her|years? old|founder is)\b/i);
+  for (const q of ["what is pilot", "What's Pilot?", "who is pilot"]) assert.match(say(q), /^I'm \*\*Pilot\*\*, the helper in the corner/, q);
+  for (const q of ["hi", "hello", "Hey!", "hi there", "Hello Pilot"]) {
+    assert.match(say(q), /^Hi! I'm \*\*Pilot\*\*\. Even without an AI key I can help here: try \*\*Is Genesis free\?\*\*/, q);
+  }
+  // Pressed, each suggestion keeps its own answer (the topics are for typed words).
+  const config = mount("/", { apps: APPS, early: "on", pro: "on", proPrice: "$4.99" });
+  assert.match(chip(config, "Is Genesis free?").answer({ label: "Is Genesis free?" }), /^\*\*Yes, Genesis is free:\*\*/);
+  const start = config.welcomePills.find((p) => p.label === "Help with my idea");
+  assert.equal(start.link, undefined, "an answer, not a link, so typed ideas get a reply");
+  assert.match(start.answer({ label: "Help with my idea" }), /^\*\*Genesis\*\* turns an idea into a plan.*\[Start my idea\]\(\/genesis#new\)/s);
+});
+
+test("genesis: how to start, is my idea saved, Genesis Pro, where my projects are and an example idea", () => {
+  const projects = [{ id: "p-1", name: "Paw Board", stage: "Spark", done: "1 of 19 steps (5%)", next: "Say the problem it solves in one sentence" }];
+  const bridge = { mine: () => projects, nextOf: () => projects[0], spark: () => null, screen: () => ({ view: "the list of projects" }) };
+  const { pick, say } = typed("/genesis", { apps: APPS, pro: "on", proPrice: "$4.99" }, bridge);
+  for (const q of ["how do I start", "How do I begin?"]) assert.match(say(q), /^\*\*Genesis\*\* turns an idea into a plan/, q);
+  for (const q of ["is my idea saved", "Is my idea saved?", "will I lose my projects", "do you keep my ideas"]) {
+    assert.match(say(q), /^\*\*Your projects are saved in this browser\*\*.*\*\*Download\*\* under your projects \(Genesis Pro adds a private cloud backup\)/s, q);
+  }
+  for (const q of ["what is genesis pro", "How much is Genesis Pro?"]) assert.match(say(q), /^\*\*Genesis Pro\*\* is an optional extra/, q);
+  for (const q of ["where are my projects", "Where are my saved projects", "show my projects"]) {
+    assert.equal(pick(q), "Show my projects", q);
+    assert.match(say(q), /^You have 1 project in this browser/, q);
+  }
+  // "Give me an idea": one of Genesis's own examples, and "Try an example".
+  const sandbox = { window: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "..", "..", "static", "js", "genesis-store.js"), "utf8"), sandbox);
+  const S = sandbox.window.GenesisStore;
+  let given = null;
+  const window = { Pilot: { mount: (c) => { given = c; } }, location: { pathname: "/genesis" }, GenesisBridge: bridge, GenesisStore: S };
+  vm.runInNewContext(source, { window, document: { getElementById: () => ({ dataset: { apps: APPS } }), title: "" } });
+  const P = panel();
+  const items = P.ownPills(given.welcomePills, "https://mtrx.example/genesis").concat(P.cleanChips(given.chips(), "https://mtrx.example/genesis"));
+  for (const q of ["give me an idea", "Give me an idea!", "can you suggest an idea"]) {
+    const m = P.matchTyped(q, items);
+    assert.ok(m, q);
+    const text = m.answer({ label: q });
+    const named = S.EXAMPLES.find((e) => text.includes(`**${e.name}**`));
+    assert.ok(named, `${q}: ${text}`);
+    assert.match(text, /\[Try an example\]\(\/genesis#example\)/, q);
+  }
+});
+
+test("Orbyt: the review's time and writer, age rules, \"Can you build my app?\" and the price, typed with no key", () => {
+  const ai = typed("/orbyt", { apps: APPS, early: "on", review: "on", reviewPrice: "$19", reviewDays: "5", reviewMode: "ai" });
+  for (const q of ["how long does the review take", "How long does a Pitch Review take?", "when will I get my review"]) {
+    assert.match(ai.say(q), /^\*\*Usually within an hour\.\*\* It's promised within 5 days of paying/, q);
+  }
+  for (const q of ["is the review written by a person", "Is the Pitch Review written by a real person?", "who writes the review"]) {
+    assert.match(ai.say(q), /^\*\*No: a Pitch Review is written by an AI service\*\*.*a person at MTRX Horizyn writes it instead/s, q);
+  }
+  const person = typed("/orbyt", { apps: APPS, review: "on", reviewPrice: "$19", reviewDays: "5", reviewMode: "person" });
+  assert.match(person.say("is the review written by a person"), /^\*\*Yes: a real person at MTRX Horizyn writes your Pitch Review\*\*/);
+  assert.match(person.say("how long does the review take"), /^\*\*Within 5 days of paying\.\*\*/);
+  // Age rules, from the page: under 13 a grown-up sends it; under 18 a grown-up signs anything.
+  for (const q of ["im 13 can i pitch", "I'm 13, can I pitch?", "I'm 14, can I pitch?", "how old do you have to be"]) {
+    assert.equal(ai.pick(q) !== null, true, q);
+  }
+  assert.match(ai.say("im 13 can i pitch"), /^\*\*Yes: at 13 you can send a pitch yourself\.\*\*.*under 18.*parent or guardian to sign it with you.*Pitch Review is bought by a grown-up/s);
+  assert.match(ai.say("I'm 10, can I pitch?"), /^\*\*At 10, ask a parent or guardian to send your pitch for you\.\*\*/);
+  assert.match(ai.say("how old do I have to be"), /^\*\*You can pitch at any age\.\*\* If you're under 13, a parent or guardian sends it for you/);
+  assert.match(ai.say("can kids pitch"), /^\*\*You can pitch at any age\.\*\*/);
+  for (const q of ["can you build my app", "Can you build my app for me?", "can you make my app"]) {
+    assert.match(ai.say(q), /^\*\*We can't promise to build it, but you can pitch it\.\*\*.*\[Pitch an idea\]\(\/orbyt#pitch\)/s, q);
+  }
+  // "Will you build it without me?" keeps the page's own answer.
+  assert.match(ai.say("Will you build it without me?"), /\*\*Will you build it without me\?\*\* No\./);
+  // The price leads with what's free, the review's price from the settings.
+  for (const q of ["How much does it cost?", "Is it free?", "how much is it"]) {
+    assert.match(ai.say(q), /^\*\*Pitching is free; the only paid thing is an optional \$19 Pitch Review\.\*\*/, q);
+  }
+  assert.match(typed("/orbyt", { apps: APPS, review: "on", reviewPrice: "$25", reviewDays: "5" }).say("How much does it cost?"), /optional \$25 Pitch Review/);
+  const off = typed("/orbyt", { apps: APPS, early: "on" });
+  assert.match(off.say("How much does it cost?"), /^\*\*Pitching is free:\*\* sending a pitch, or any Orbyt form, costs nothing\./);
+  assert.doesNotMatch(off.say("How much does it cost?"), /Pitch Review|\$/);
+  assert.match(off.say("I'm 12 can I pitch"), /^\*\*At 12, ask a parent or guardian/);
+  assert.doesNotMatch(off.say("I'm 12 can I pitch"), /Pitch Review/);
+});
+
+test("\"Explain this page\" answers at once with no key on Home, Genesis and Orbyt, and stays the AI's with a key", () => {
+  const data = { apps: APPS, early: "on", review: "on", reviewPrice: "$19", reviewDays: "5", pro: "on", proPrice: "$4.99" };
+  const want = { "/": /^\*\*This is MTRX Horizyn's home page\.\*\*/, "/genesis": /\*\*This is Genesis\.\*\* It turns an idea into a plan, free/,
+    "/orbyt": /^\*\*This is Orbyt\*\*, where you work with MTRX Horizyn/ };
+  for (const [pathname, re] of Object.entries(want)) {
+    const config = mount(pathname, data, { mine: () => [], nextOf: () => null, spark: () => null, screen: () => ({ view: "one project", project: "Paw Board" }) });
+    const pill = config.welcomePills.find((p) => p.label === "Explain this page");
+    assert.equal(pill.action, undefined, pathname);
+    const text = pill.answer({ label: "Explain this page" });
+    assert.match(text, re, pathname);
+    // Typed, its own words get it too.
+    assert.match(typed(pathname, data, { mine: () => [], nextOf: () => null, spark: () => null }).say("explain this page"), re, pathname);
+  }
+  assert.match(mount("/genesis", data, { screen: () => ({ view: "one project", project: "Paw Board" }) }).welcomePills[2].answer({ label: "Explain this page" }),
+    /^You're looking at \*\*Paw Board\*\*/);
+  assert.match(mount("/orbyt", data).welcomePills[2].answer({ label: "Explain this page" }), /\*\*Pitch Review:\*\* an optional \$19 extra/);
+  // With a key, the AI explains the screen (read when the window is built).
+  let given = null;
+  const window = { Pilot: { mount: (c) => { given = c; }, ready: () => true }, location: { pathname: "/" } };
+  vm.runInNewContext(source, { window, document: { getElementById: () => ({ dataset: data }), title: "" } });
+  assert.equal(given.welcomePills[2].action, "explain-screen");
+  assert.equal(given.welcomePills[2].answer, undefined);
+  // Other pages keep the AI's explanation.
+  assert.equal(mount("/partners", data).welcomePills[2].action, "explain-screen");
 });
 
 test("genesis: \"Show my projects\" and \"What's my next step?\" are found when typed (match words)", () => {
@@ -226,14 +362,22 @@ test("Orbyt: its FAQ answers are found when typed (own, reply, build, person, pr
   // Without Pitch Review, a price question gets "What happens after I send?", which says sending is free.
   const off = typed("/orbyt", { apps: APPS, early: "on" });
   assert.equal(off.pick("How much does it cost?"), "What happens after I send?");
-  assert.match(off.say("Is it free?"), /Sending is free\.$/);
+  assert.match(off.say("Is it free?"), /^\*\*Pitching is free:\*\*/);
   for (const q of ["Write me a poem about the sea", "Tell me a joke", "ok"]) assert.equal(on.pick(q), null, q);
 });
 
-test("each page lists a `match` word on one of its answers only, never on another's label", () => {
+// Words listed on purpose although another answer on the page has them
+// (1.28.0): "app" on "Help with my idea" ("I have an idea for an app") and on
+// Orbyt's "Who owns my idea?" ("Can you build my app?"), "saved" on both
+// "Help with my idea" and "Show my projects" on Genesis ("Is my idea saved?",
+// "Where are my saved projects?"; "keep" too), and "pitch" on "Which form is for me?"
+// ("I'm 13, can I pitch?").
+const SHARED = { "/": ["app"], "/genesis": ["app", "saved", "keep"], "/orbyt": ["app", "pitch"] };
+
+test("each page lists a `match` word on one of its answers only, never on another's label (but the few SHARED)", () => {
   const P = panel();
   for (const pathname of ["/", "/genesis", "/orbyt"]) {
-    for (const data of [{ apps: APPS, early: "on" }, { apps: APPS, early: "on", review: "on", reviewPrice: "$19", reviewDays: "5" }]) {
+    for (const data of [{ apps: APPS, early: "on" }, { apps: APPS, early: "on", review: "on", reviewPrice: "$19", reviewDays: "5", pro: "on" }]) {
       const config = mount(pathname, data, { mine: () => [], nextOf: () => null, spark: () => null });
       const base = `https://mtrx.example${pathname}`;
       const items = P.ownPills(config.welcomePills, base).concat(P.cleanChips(config.chips(), base))
@@ -241,6 +385,7 @@ test("each page lists a `match` word on one of its answers only, never on anothe
       const seen = new Map();
       for (const item of items) {
         for (const w of item.match || []) {
+          if (SHARED[pathname].includes(w)) continue;
           assert.ok(!seen.has(w) || seen.get(w) === item.label, `${pathname}: "${w}" is on "${seen.get(w)}" and "${item.label}"`);
           seen.set(w, item.label);
           for (const other of items) {
@@ -250,4 +395,16 @@ test("each page lists a `match` word on one of its answers only, never on anothe
       }
     }
   }
+});
+
+test("no answer lists more than 20 match words (the core reads no more)", () => {
+  const counted = [];
+  for (const pathname of ["/", "/genesis", "/orbyt"]) {
+    const config = mount(pathname, { apps: APPS, early: "on", review: "on", reviewPrice: "$19", reviewDays: "5", pro: "on" },
+      { mine: () => [], nextOf: () => null, spark: () => null });
+    for (const item of config.welcomePills.concat(config.chips())) {
+      if (item.match) { assert.ok(item.match.length <= 20, `${pathname} "${item.label}": ${item.match.length}`); counted.push(item.match.length); }
+    }
+  }
+  assert.ok(counted.length >= 15);
 });

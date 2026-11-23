@@ -195,14 +195,16 @@ def test_pilot_answers_its_own_pills_with_no_key_and_sends_nothing(site, browser
     """Core 1.4.0: "What is Orbyt?" and "What apps are coming?" are answered
     at once, with no AI key: no "add a key" wall, and no request leaves the
     site. The answer's link to /orbyt works in this tab; "Help with my idea"
-    goes to Genesis's start form."""
+    leads to Genesis's start form."""
     context = _phone(browser)
     page = context.new_page()
     away = []
     page.on("request", lambda r: away.append(r.url) if not r.url.startswith(site) else None)
     page.goto(f"{site}/", wait_until="networkidle")
-    page.wait_for_selector(".pilot-launcher", timeout=10000)
-    page.click(".pilot-launcher")
+    # 1.28.0: on the home page's first phone screen the robot keeps off the
+    # RankUp card (the handle shows instead), so Pilot is opened directly.
+    page.wait_for_selector(".pilot-launcher", state="attached", timeout=10000)
+    page.evaluate("() => window.Pilot.open()")
     page.wait_for_selector(".pilot-pill")
     page.click('.pilot-pill:has-text("What is Orbyt?")')
     page.wait_for_selector(".pilot-from-pilot .pilot-md")
@@ -217,9 +219,13 @@ def test_pilot_answers_its_own_pills_with_no_key_and_sends_nothing(site, browser
     for name in ("RankUp", "CyberLogix AI", "OmniArmor.ai"):
         assert name in text
     assert "in development" in text
+    # 1.28.0: "Help with my idea" is an answer (so a typed "I have an idea"
+    # gets a reply too), and its "Start my idea" link opens the start form.
     page.click(".pilot-clear")
+    page.click('.pilot-pill:has-text("Help with my idea")')
+    page.wait_for_selector(".pilot-from-pilot .pilot-md")
     with page.expect_navigation():
-        page.click('.pilot-pill:has-text("Help with my idea")')
+        page.click('.pilot-log a[href$="/genesis#new"]')
     assert page.url.endswith("/genesis#new")
     assert away == [], away
     context.close()
@@ -517,8 +523,10 @@ def test_pilot_keeps_the_welcome_pills_under_its_own_answers_and_opens_long_ones
     context = _phone(browser)
     page = context.new_page()
     page.goto(f"{site}/", wait_until="networkidle")
-    page.wait_for_selector(".pilot-launcher", timeout=10000)
-    page.click(".pilot-launcher")
+    # 1.28.0: on the home page's first phone screen the robot keeps off the
+    # RankUp card (the handle shows instead), so Pilot is opened directly.
+    page.wait_for_selector(".pilot-launcher", state="attached", timeout=10000)
+    page.evaluate("() => window.Pilot.open()")
     page.click('.pilot-pill:has-text("What is Orbyt?")')
     page.wait_for_selector(".pilot-again .pilot-pill")
     row = page.eval_on_selector_all(".pilot-again .pilot-pill", "ps => ps.map(p => p.innerText.trim())")

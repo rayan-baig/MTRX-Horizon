@@ -107,8 +107,10 @@ and the note under them). Now:
 On the MTRX site: the tagline is "Help with ideas and MTRX apps"; the pills are **Help with my idea**
 (since 1.4.0 a link to Genesis's start form, `/genesis#new`: free, and Genesis has its own free AI
 help; once Genesis has its own address, genesis.mtrxhorizyn.com, it is that page's answer with the
-link instead, from the other addresses, since a `link` pill only goes to this address's pages), **What is Orbyt?** and **What apps are coming?** (since 1.4.0 answered at once with no key:
-see **Pill actions**), **Explain this page** (`explain-screen`) and **Add my AI key** (`settings`);
+link instead, from the other addresses, since a `link` pill only goes to this address's pages; since site
+1.28.0 that answer on every address), **What is Orbyt?** and **What apps are coming?** (since 1.4.0 answered at once with no key:
+see **Pill actions**), **Explain this page** (`explain-screen`; since site 1.28.0 a built-in summary
+while there is no key) and **Add my AI key** (`settings`);
 the image and video key sections are hidden (the site has no use for pictures or videos);
 `keepInViewport` is on (below); and the welcome's one-line note is "AI keys are for grown-ups
 (18+)." (`keyNoteShort`).
@@ -209,6 +211,18 @@ so typed questions find them with no key ("What is Genesis?", "Is it free?", "Wh
 "Do you reply?"); a word is listed on one answer per page only, and never a word another answer's label
 has (tests/js/site_pilot_answers.test.js checks both). On Orbyt the second welcome pill is "Who owns my
 idea?" (the page's own "Before you send" answers) in place of "What is Orbyt?".
+
+**MTRX site 1.28.0.** "Explain this page" is the page's own built-in summary while there is no key, on
+Home, Genesis and Orbyt (`welcomePills` is a getter that reads `Pilot.ready()` when the window is
+built, and on every typed question; with a key it is `explain-screen` as before). "Help with my idea"
+is an answer on every address (its "Start my idea" link opens the form), and Home's third suggestion is
+"Is Genesis free?". Every answer of the site's own is wrapped by `topical()`: a typed question (never a
+button pressed, nor a button's own words typed) is first checked against the page's `TOPICS` ("Is my
+data safe?", "Who made this?", "hi" on Home; "Is my idea saved?", "Give me an idea" on Genesis; "I'm 13,
+can I pitch?", "Can you build my app?", the Pitch Review's time and writer, and the price on Orbyt), so
+whichever answer its `match` words reach, the reply fits the question. A few words are listed on two
+answers on purpose (`SHARED` in the test). No answer lists more than 20 `match` words, the most the
+core reads.
 
 ### Moving an app to core 1.4.3 (from 1.4.2)
 

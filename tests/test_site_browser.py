@@ -110,8 +110,10 @@ def test_home_new_strip_and_tags_are_never_cut_or_wrapped(site, browser):
     """Computers: the "New" strip's headline shows whole; each card's tags
     are one line, or left out at 901-1100px. A phone: "Tap to see" under
     each card's small screen."""
+    # 1.28.0: the strip shows where the screen is tall enough (over 940 px);
+    # shorter, "Ready today" takes its room.
     for width in (1024, 1100, 1180, 1280, 1440):
-        context = _computer(browser, width, 800)
+        context = _computer(browser, width, 1000)
         page = context.new_page()
         page.goto(f"{site}/", wait_until="load")
         strip = page.eval_on_selector(".news-strip-item span", "s => [s.scrollWidth, s.clientWidth, s.getBoundingClientRect().right]")
@@ -153,15 +155,8 @@ def test_home_phone_leads_with_what_is_ready_and_the_picture_runs_edge_to_edge(s
         assert ready["bottom"] < _box(page, ".app-card")["top"], (width, height)
         art = _box(page, ".hero-art")
         assert abs(art["left"]) < 1 and abs(art["width"] - width) < 1, (width, art)
-        assert page.eval_on_selector(".btn-genesis", "e => getComputedStyle(e).display") == "none"
         assert page.evaluate("() => document.documentElement.scrollWidth") <= width
         context.close()
-    context = _computer(browser)
-    page = context.new_page()
-    page.goto(f"{site}/", wait_until="load")
-    assert page.eval_on_selector(".ready-today", "e => getComputedStyle(e).display") == "none"
-    assert page.is_visible(".fact-genesis") and page.is_visible(".btn-genesis")
-    context.close()
 
 
 def test_tap_to_see_opens_the_screens_big(site, browser):
@@ -494,4 +489,142 @@ def test_home_on_a_computer_has_room_under_the_bar(site, browser):
           tall: document.documentElement.scrollHeight, view: innerHeight })""")
         assert at["eyebrow"] - at["bar"] >= 12, (width, at)
         assert at["tall"] <= at["view"], (width, at)
+        context.close()
+
+
+# ---------------------------------------------------------------- 1.28.0 (round 11)
+
+def test_home_main_button_is_start_my_idea_and_a_computer_shows_ready_today(site, browser):
+    """Phones (320, 375x667, 375x812) and computers: the main (filled)
+    button is "Start my idea (free)", to Genesis's start form, with early
+    access (or the apps) the outline button beside it; both whole, on one
+    row on a phone. A computer's hero has "Ready today" (Genesis and
+    Orbyt) under the headline, its words fit the hero, and Genesis and
+    Orbyt are not repeated in the bottom row."""
+    for width, height in ((320, 568), (375, 667), (375, 812)):
+        context = browser.new_context(viewport={"width": width, "height": height}, is_mobile=True, has_touch=True)
+        page = context.new_page()
+        page.goto(f"{site}/", wait_until="load")
+        page.evaluate("document.fonts.ready")
+        buttons = page.eval_on_selector_all(".hero .cta-row .btn", """b => b.filter(x => getComputedStyle(x).display !== 'none').map(x => {
+          const r = x.getBoundingClientRect();
+          return { text: x.innerText.trim(), cls: x.className, top: Math.round(r.top), right: r.right, whole: x.scrollWidth <= x.clientWidth }; })""")
+        assert buttons[0]["text"] == "Start my idea (free)" and "btn-primary" in buttons[0]["cls"], (width, buttons)
+        assert len(buttons) == 2 and "btn-ghost" in buttons[1]["cls"], (width, buttons)
+        assert buttons[0]["top"] == buttons[1]["top"] and all(b["whole"] and b["right"] <= width for b in buttons), (width, buttons)
+        assert page.evaluate("() => document.documentElement.scrollWidth") <= width
+        context.close()
+    for width, height in ((1024, 768), (1280, 720), (1440, 900), (1100, 700)):
+        context = _computer(browser, width, height)
+        page = context.new_page()
+        page.goto(f"{site}/", wait_until="load")
+        page.evaluate("document.fonts.ready")
+        at = page.evaluate("""() => {
+          const hero = document.querySelector('.hero'), copy = document.querySelector('.hero-copy');
+          const first = document.querySelector('.hero .cta-row .btn');
+          const tiles = [...document.querySelectorAll('.ready-tile')].map(t => t.getBoundingClientRect());
+          return { hero: hero.getBoundingClientRect().height, copy: copy.scrollHeight,
+            ready: getComputedStyle(document.querySelector('.ready-today')).display,
+            tilesTop: tiles.map(t => Math.round(t.top)), first: first.firstChild.textContent.trim(), primary: first.classList.contains('btn-primary'),
+            facts: [...document.querySelectorAll('.facts > li')].filter(l => getComputedStyle(l).display !== 'none').map(l => (l.querySelector('.fact-k') || l).textContent.trim()),
+            tall: document.documentElement.scrollHeight, view: innerHeight }; }""")
+        assert at["ready"] != "none" and len(at["tilesTop"]) == 2 and at["tilesTop"][0] == at["tilesTop"][1], (width, at)
+        assert at["first"] == "Start my idea (free)" and at["primary"], (width, at)
+        assert at["copy"] <= at["hero"] + 1, (width, at)
+        assert at["tall"] <= at["view"], (width, at)
+        assert "Genesis" not in at["facts"] and "Orbyt" not in at["facts"] and any("Projects" in f for f in at["facts"]), (width, at)
+        context.close()
+
+
+def test_learn_more_close_button_has_its_own_room(site, browser):
+    """The × no longer crowds "An MTRX Horizyn app" or the app's name: on a
+    phone it sits in a strip above them, on a computer beside them."""
+    for width, height, mobile in ((320, 568, True), (375, 667, True), (1440, 900, False)):
+        context = browser.new_context(viewport={"width": width, "height": height}, is_mobile=mobile, has_touch=mobile)
+        page = context.new_page()
+        for key in ("rankup", "cyberlogix", "omniarmor"):
+            page.goto(f"{site}/#learn-{key}", wait_until="load")
+            at = page.evaluate(f"""() => {{ const x = document.querySelector('#learn-{key} .sheet-x').getBoundingClientRect();
+              const parts = [...document.querySelectorAll('#learn-{key} .learn-head .eyebrow, #learn-{key} .learn-head h2')].map(e => {{
+                const r = document.createRange(); r.selectNodeContents(e); return r.getBoundingClientRect(); }});
+              return {{ x: [x.left, x.top, x.right, x.bottom], parts: parts.map(p => [p.left, p.top, p.right, p.bottom]) }}; }}""")
+            x = at["x"]
+            for p in at["parts"]:
+                apart = p[2] <= x[0] - 8 or p[1] >= x[3] + 2
+                assert apart, (width, key, at)
+            assert x[2] - x[0] >= 40, (width, key, at)
+        context.close()
+
+
+def test_pilot_explains_the_page_with_no_key_and_answers_typed_questions(site, browser):
+    """No key: "Explain this page" answers at once with the page's own
+    summary on Home, Genesis and Orbyt; typed questions ("Is my data
+    safe?", "I'm 13, can I pitch?", "Give me an idea") get their built-in
+    answers; nothing leaves the site. With a key, "Explain this page" asks
+    the AI about the screen again."""
+    context = _phone(browser)
+    page = context.new_page()
+    away = []
+    page.on("request", lambda r: away.append(r.url) if not r.url.startswith(site) else None)
+    for path, summary, asked, said in (
+            ("/", "This is MTRX Horizyn's home page.", "Is my data safe?", "MTRX Horizyn keeps very little"),
+            ("/genesis", "This is Genesis.", "Give me an idea", "Try an example"),
+            ("/orbyt", "This is Orbyt", "I'm 13, can I pitch?", "at 13 you can send a pitch yourself")):
+        page.goto(f"{site}{path}", wait_until="networkidle")
+        page.wait_for_selector(".pilot-launcher", state="attached", timeout=10000)
+        page.evaluate("() => window.Pilot.open()")
+        page.wait_for_selector(".pilot-pill")
+        page.click('.pilot-pill:has-text("Explain this page")')
+        page.wait_for_selector(".pilot-from-pilot .pilot-md")
+        assert summary in page.inner_text(".pilot-log"), path
+        assert page.is_hidden(".pilot-settings-view"), path
+        page.click(".pilot-clear")
+        page.fill(".pilot-panel textarea", asked)
+        page.press(".pilot-panel textarea", "Enter")
+        page.wait_for_selector(".pilot-from-pilot .pilot-md")
+        assert said in page.inner_text(".pilot-log"), (path, page.inner_text(".pilot-log"))
+        page.click(".pilot-clear")
+        page.evaluate("() => window.Pilot.close()")
+    assert away == [], away
+    # A key added: the button is the AI's explanation again (the provider is
+    # never reached here: the request is stopped).
+    page.route("https://**", lambda route: route.abort())
+    page.evaluate("() => window.Pilot.store.addKey({ provider: 'anthropic', key: 'sk-test-not-real', model: 'test-model' })")
+    page.goto(f"{site}/", wait_until="networkidle")
+    page.wait_for_selector(".pilot-launcher", state="attached", timeout=10000)
+    page.evaluate("() => window.Pilot.open()")
+    page.wait_for_selector(".pilot-pill")
+    page.click('.pilot-pill:has-text("Explain this page")')
+    page.wait_for_selector(".pilot-from-user")
+    assert "This is MTRX Horizyn's home page." not in page.inner_text(".pilot-log")
+    assert "Analyze & explain this screen" in page.inner_text(".pilot-log")
+    context.close()
+
+
+def test_orbyt_send_error_shows_whole_under_the_bar(site, browser):
+    """A pitch that can't be sent ("Please wait a while...") shows its error
+    box in view, its top just under the bar (scroll-margin-top is the bar's
+    measured height, like "Sent."), at 375x667, 320x568 and 1440x900."""
+    why = "You've sent a few messages already. Please wait a while before sending another, or add anything you forgot when we reply."
+    for width, height, mobile in ((375, 667, True), (320, 568, True), (1440, 900, False)):
+        context = browser.new_context(viewport={"width": width, "height": height}, is_mobile=mobile, has_touch=mobile)
+        page = context.new_page()
+        page.route("**/api/vortex/send", lambda route: route.fulfill(status=429, content_type="application/json",
+                                                                      body='{"ok": false, "error": "' + why + '"}'))
+        page.goto(f"{site}/orbyt#pitch", wait_until="load")
+        form = 'form[data-kind="pitch"]'
+        page.fill(f'{form} input[name="name"]', "Ada")
+        page.fill(f'{form} input[name="email"]', "ada@example.com")
+        page.fill(f'{form} input[name="idea"]', "Nova")
+        page.fill(f'{form} input[name="pitch"]', "Homework reminders")
+        page.fill(f'{form} input[name="audience"]', "Students")
+        page.click(f'{form} button[type="submit"]')
+        page.wait_for_function(f"() => document.querySelector('{form} [data-error]').textContent.length > 0")
+        page.wait_for_timeout(200)
+        at = page.evaluate(f"""() => {{ const box = document.querySelector('{form} [data-error]').getBoundingClientRect();
+          const bar = document.querySelector('.topbar').getBoundingClientRect();
+          return {{ top: box.top, bottom: box.bottom, bar: bar.bottom, view: innerHeight,
+            margin: getComputedStyle(document.querySelector('{form} [data-error]')).scrollMarginTop }}; }}""")
+        assert at["top"] >= at["bar"] - 1 and at["bottom"] <= at["view"], (width, at)
+        assert at["margin"] == f"{round(at['bar'])}px" or abs(float(at["margin"][:-2]) - at["bar"]) <= 1, (width, at)
         context.close()

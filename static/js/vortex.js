@@ -89,7 +89,7 @@
     const bad = V.problems(kind, vals, choices(form));
     const fields = Object.keys(bad);
     if (fields.length) {
-      for (const f of fields) if (!say(form, f, bad[f])) form.querySelector("[data-error]").textContent = bad[f];
+      for (const f of fields) if (!say(form, f, bad[f])) showError(form, bad[f]);
       focusField(form, fields[0]);
       return;
     }
@@ -120,8 +120,26 @@
     }
     const why = res ? data.error || "That didn't send. Please try again in a minute."
       : "No connection. Check you're online and try again.";
-    if (!(data.field && say(form, data.field, why))) form.querySelector("[data-error]").textContent = why;
+    if (!(data.field && say(form, data.field, why))) showError(form, why);
     if (data.field) focusField(form, data.field);
+  }
+
+  // The bar's own height, measured (it differs by width and font).
+  const barHeight = () => {
+    const bar = document.querySelector(".topbar");
+    return bar ? Math.ceil(bar.getBoundingClientRect().height) : 0;
+  };
+
+  // A form's error box ("That didn't send...", "Please wait a while..."),
+  // brought into view when it isn't, its top just under the bar like
+  // "Sent." (1.28.0: its scroll-margin-top is the bar's measured height, so
+  // the bar never covers its first line).
+  function showError(form, text) {
+    const box = form.querySelector("[data-error]");
+    box.textContent = text;
+    box.style.scrollMarginTop = `${barHeight()}px`;
+    const r = box.getBoundingClientRect();
+    if (r.top < barHeight() || r.bottom > window.innerHeight) box.scrollIntoView({ block: "start", behavior: "instant" });
   }
 
   const sentTitle = document.querySelector(".v-sent-title");
@@ -152,8 +170,7 @@
   function placeSent() {
     const sent = $("v-sent");
     if (sent.hidden) return;
-    const bar = document.querySelector(".topbar");
-    sent.style.scrollMarginTop = `${bar ? Math.ceil(bar.getBoundingClientRect().height) : 0}px`;
+    sent.style.scrollMarginTop = `${barHeight()}px`;
     sent.scrollIntoView({ block: "start", behavior: "instant" });
   }
   function showPanel() {

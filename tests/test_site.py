@@ -1100,10 +1100,12 @@ def test_on_a_phone_genesis_and_orbyt_are_on_the_page_and_the_menu_fits(client):
     strip = hero.split('<p class="news-strip">', 1)[1].split("</p>", 1)[0] if 'class="news-strip"' in hero else ""
     # 1.25.0: and "Ready today" under the headline, which a phone shows in
     # place of that button and the tile (still once each on any screen).
-    assert hero.count('href="/genesis"') - strip.count('href="/genesis"') == 2 and "Try Genesis now (free)" in hero
+    # 1.28.0: the main button is "Start my idea (free)", to Genesis's start form.
+    assert hero.count('href="/genesis"') - strip.count('href="/genesis"') == 1
+    assert hero.count('<a class="btn btn-primary btn-start" href="/genesis#new">Start my idea (free)') == 1
     assert hero.count('<a class="ready-tile ready-genesis" href="/genesis">') == 1
     news = main.split('id="news"', 1)[1]
-    assert main.count('href="/genesis"') - news.count('href="/genesis"') - strip.count('href="/genesis"') == 3
+    assert main.count('href="/genesis"') - news.count('href="/genesis"') - strip.count('href="/genesis"') == 2
     css = Path("static/css/site.css").read_text(encoding="utf-8")
     phone = css.split("@media (max-width: 720px) {\n  /* A phone may scroll", 1)[1].split("\n}\n", 1)[0]
     assert ".page .facts { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr));" in phone
@@ -1224,8 +1226,10 @@ def test_the_rankup_screens_have_no_start_for_free_button():
 def test_the_phone_hero_has_two_buttons_and_a_balanced_headline(client):
     page = client.get("/").text
     hero = page.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
-    assert ('<a class="btn btn-ghost btn-genesis" href="/genesis"><span class="say-long">Try Genesis now (free)</span>'
-            '<span class="say-short">Try Genesis free</span></a>') in hero
+    # 1.28.0: the main button is Genesis's start form, early access the outline one beside it.
+    assert ('<a class="btn btn-primary btn-start" href="/genesis#new">Start my idea (free) <span aria-hidden="true">→</span></a>') in hero
+    assert '<a class="btn btn-ghost btn-early" href="#early-access">Get early access</a>' in hero or 'btn-early' not in hero
+    assert hero.index("btn-start") < hero.index("btn-tour")
     css = Path("static/css/site.css").read_text(encoding="utf-8")
     late = css.split("/* ---------- 1.17.0:", 1)[1]
     phone = late.split("@media (max-width: 720px) {", 1)[1].split("\n}\n", 1)[0]
@@ -1410,7 +1414,8 @@ def test_a_phones_first_screen_leads_with_what_is_ready_today(client):
     rules = Path("static/css/site.css").read_text(encoding="utf-8").split("/* ---------- 1.25.0:", 1)[1]
     assert ".ready-today, .apps-k { display: none; }" in rules
     phone = rules.split("@media (max-width: 720px) {", 1)[1].split("\n}", 1)[0]
-    assert ".page .hero-copy .btn-genesis { display: none; }" in phone
+    # 1.28.0: "Start my idea (free)" shows on a phone too (beside early access).
+    assert ".btn-genesis" not in phone and ".btn-start" not in phone
     assert ".page .facts > li:has(> .fact-genesis), .page .facts > li:has(> .fact-orbyt) { display: none; }" in phone
     # The picture edge to edge, fading into the page: no hard-edged band.
     assert "width: 100vw; margin-inline: calc(50% - 50vw)" in phone and "mask-image: linear-gradient(to bottom" in phone

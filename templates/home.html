@@ -148,7 +148,8 @@
         {%- else %}More apps on the way.{% endif %}</span></h1>
       {%- endif %}
       {#- A phone's first screen leads with what works today (1.25.0):
-          Genesis and Orbyt, then the three apps in development below. -#}
+          Genesis and Orbyt, then the three apps in development below.
+          1.28.0: a computer's hero has the row too. -#}
       {% if not demo %}<div class="ready-today" aria-label="Ready today">
         <p class="ready-k">Ready today</p>
         <a class="ready-tile ready-genesis" href="{{ app_url('genesis') }}"><b>Genesis</b><span>Plan your idea, free</span><i aria-hidden="true">→</i></a>
@@ -159,11 +160,12 @@
         <a href="#learn-cyberlogix">CyberLogix AI</a>, equipment alarms for businesses; and
         <a href="#learn-omniarmor">OmniArmor.ai</a>, compliance checklists for businesses.</p>
       <div class="cta-row">
-        {#- While early access is on, it takes the first button. -#}
-        {% if early %}<a class="btn btn-primary" href="#early-access">Get early access <span aria-hidden="true">→</span></a>
-        {% else %}<a class="btn btn-primary" href="#apps">Explore Our Apps <span aria-hidden="true">→</span></a>{% endif %}
-        {#- "Try Genesis free" where the button is narrow (phones). -#}
-        {% if not demo %}<a class="btn btn-ghost btn-genesis" href="{{ app_url('genesis') }}"><span class="say-long">Try Genesis now (free)</span><span class="say-short">Try Genesis free</span></a>{% endif %}
+        {#- 1.28.0: the main button is what works today, Genesis, on a phone
+            and a computer alike; early access (or the apps) comes second,
+            as an outline button. The demo has no Genesis. -#}
+        {% if not demo %}<a class="btn btn-primary btn-start" href="{{ app_url('genesis', '#new') }}">Start my idea (free) <span aria-hidden="true">→</span></a>{% endif %}
+        {% if early %}<a class="btn {{ 'btn-ghost' if not demo else 'btn-primary' }} btn-early" href="#early-access">Get early access{% if demo %} <span aria-hidden="true">→</span>{% endif %}</a>
+        {% else %}<a class="btn {{ 'btn-ghost' if not demo else 'btn-primary' }} btn-explore" href="#apps">Explore Our Apps{% if demo %} <span aria-hidden="true">→</span>{% endif %}</a>{% endif %}
         <a class="btn btn-ghost btn-tour" href="#tour">
           <svg class="play" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg>
           Quick tour</a>

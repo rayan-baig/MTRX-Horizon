@@ -998,8 +998,9 @@ test("the MTRX site's own welcome: its tagline and five pills, no picture or vid
   vm.runInNewContext(mtrx, { window: { Pilot: { mount: (c) => { given = c; } }, location: { pathname: "/" } },
     document: { getElementById: () => ({ dataset: {} }), title: "" } });
   const pills = sandbox.window.PilotPanel.welcomePills(given.welcomePills, "https://mtrx.example/");
+  // MTRX 1.28.0: "Explain this page" is the page's own summary while there is no key.
   assert.deepEqual(JSON.parse(JSON.stringify(pills.map((p) => [p.label, p.builtin]))), [["Help with my idea", false], ["What is Orbyt?", false],
-    ["Explain this page", true], ["What apps are coming?", false], ["Add my AI key", true]]);
+    ["Explain this page", false], ["What apps are coming?", false], ["Add my AI key", true]]);
 });
 
 // ---------------------------------------------------------------- core 1.3.0: the first look, one key ask, room for the welcome, tap targets
@@ -1367,12 +1368,14 @@ test("the MTRX site 1.4.0: its pills work with no key: Genesis's start form, and
   };
   const given = run("/", { apps, early: "on" });
   const pills = sandbox.window.PilotPanel.welcomePills(given.welcomePills, "https://mtrx.example/");
-  assert.equal(pills[0].link, "https://mtrx.example/genesis#new");
-  assert.equal(typeof pills[1].answer, "string");
-  assert.match(pills[1].answer, /\[Open Orbyt\]\(\/orbyt\)/);
-  assert.match(pills[1].answer, /7 days/);
-  assert.equal(pills[2].action, "explain-screen");
-  const coming = pills[3].answer({ facts: given.facts });
+  // MTRX 1.28.0: every answer is a function (a typed question's words are
+  // checked first); pressed, it is the button's own answer.
+  const press = (item) => item.answer({ label: item.label, facts: given.facts });
+  assert.match(press(pills[0]), /\[Start my idea\]\(\/genesis#new\)/);
+  assert.match(press(pills[1]), /\[Open Orbyt\]\(\/orbyt\)/);
+  assert.match(press(pills[1]), /7 days/);
+  assert.match(press(pills[2]), /This is MTRX Horizyn's home page/);
+  const coming = press(pills[3]);
   assert.match(coming, /2 apps: 1 open, 1 in development/);
   assert.match(coming, /\*\*RankUp\*\*: A chores game for families\. \(in development\)/);
   assert.match(coming, /\[Open CyberLogix AI\]\(https:\/\/cyberlogix\.example\)/);
@@ -1384,8 +1387,8 @@ test("the MTRX site 1.4.0: its pills work with no key: Genesis's start form, and
   assert.match(run("/", { apps: "not json" }).welcomePills[3].answer({}), /\[home page\]\(\/\)/);
   // Some page suggestions are answered at once too; the rest stay AI prompts.
   const chips = run("/orbyt", { apps }).chips();
-  assert.equal(typeof chips[0].answer, "string");
-  assert.match(chips[1].answer, /7 days/);
+  assert.equal(typeof chips[0].answer, "function");
+  assert.match(chips[1].answer({ label: chips[1].label }), /7 days/);
   assert.equal(chips[2].prompt, "How do I pitch a project from Genesis in Orbyt?");
   // Words from the catalog can't add markdown of their own.
   const odd = JSON.stringify([{ name: "**Big** [x](//e)", line: "_a_", open: false, url: "" }]);
@@ -1412,16 +1415,17 @@ test("the MTRX site 1.20.0: Orbyt's \"What's a Pitch Review?\" answer is there o
   const chips = on.chips();
   assert.equal(chips.length, 3);
   assert.equal(chips[2].label, "What's a Pitch Review?");
-  assert.equal(typeof chips[2].answer, "string");
-  assert.match(chips[2].answer, /within 5 days, for one payment of \$19 \(not a subscription\)/);
-  assert.match(chips[2].answer, /grown-up \(18\+\) pays through Stripe/);
-  assert.match(chips[2].answer, /If it's late, or we can't review your idea, you get a full refund\./);
-  assert.match(chips[2].answer, /Pitching is free, and every pitch gets a reply with or without one\./);
+  const said = chips[2].answer({ label: chips[2].label });
+  assert.match(said, /within 5 days, for one payment of \$19 \(not a subscription\)/);
+  assert.match(said, /grown-up \(18\+\) pays through Stripe/);
+  assert.match(said, /If it's late, or we can't review your idea, you get a full refund\./);
+  assert.match(said, /Pitching is free, and every pitch gets a reply with or without one\./);
   assert.deepEqual([on.facts.review, on.facts.reviewPrice, on.facts.reviewDays], [true, "$19", 5]);
   // Other pages don't get it.
   assert.ok(!JSON.stringify(run("/", { review: "on", reviewPrice: "$19", reviewDays: "5" }).chips()).includes("Pitch Review"));
   // A price can't add markdown of its own.
-  assert.match(run("/orbyt", { review: "on", reviewPrice: "[$1](//x)", reviewDays: "5" }).chips()[2].answer, /payment of \$1\(\/\/x\)/);
+  const odd = run("/orbyt", { review: "on", reviewPrice: "[$1](//x)", reviewDays: "5" }).chips()[2];
+  assert.match(odd.answer({ label: odd.label }), /payment of \$1\(\/\/x\)/);
   // The knowledge pack says it only while the fact is on, and Orbyt's own words stay true either way.
   const pack = fs.readFileSync(site("pilot-mtrx-pack.js"), "utf8");
   assert.ok(pack.includes("lines.push(f.review"));
