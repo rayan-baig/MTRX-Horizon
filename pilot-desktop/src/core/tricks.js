@@ -235,8 +235,9 @@
     const x0 = k.now.x;
     for (let i = 0; i < 8; i += 1) {
       // A tap to the right on walk1 (it faces right), back on the camera-facing picture.
-      k.show(i % 2 ? "standing" : "walk1", 70);
-      k.to(110, { x: x0 + g.u * 0.06 * (i % 2 ? -1 : 1), y: g.floor - g.u * 0.04, sy: 1.03 }, "out").to(110, { y: g.floor, sy: 0.96 }, "in");
+      // (1.5.1: the tap's shift happens as the picture changes, so the foot doesn't slide.)
+      k.show(i % 2 ? "standing" : "walk1", 70).set({ x: x0 + g.u * 0.06 * (i % 2 ? -1 : 1) });
+      k.to(110, { y: g.floor - g.u * 0.04, sy: 1.03 }, "out").to(110, { y: g.floor, sy: 0.96 }, "in");
       k.fx("spark", g.u * 0.15 * (i % 2 ? -1 : 1), -g.u * 0.02);
     }
     k.to(80, { x: x0 }, "out");
@@ -1155,10 +1156,12 @@
     k.wait(300);
     // Careful steps to the right, wobbling.
     k.heading(1);
+    // (1.5.1: a step at each change of picture, the planted foot still on the
+    // rope while a picture shows, wobbling from the ankle.)
     for (let i = 0; i < 8; i += 1) {
-      k.show(i % 2 ? "walk2" : "walk1", 110);
-      const wob = (i % 3 === 1 ? 7 : 3) * (i % 2 ? -1 : 1);
-      k.to(380, { x: k.now.x + g.u * 0.3, y: y - g.u * 0.03 * Math.sin(Math.PI * (i % 2)), r: wob }, "soft");
+      k.show(i % 2 ? "walk2" : "walk1", 0).set({ x: k.now.x + g.u * 0.3 });
+      const wob = (i % 3 === 1 ? 4 : 2) * (i % 2 ? -1 : 1);
+      k.to(190, { r: wob }, "soft").to(190, { r: 0 }, "soft");
     }
     k.heading(0).show("standing", 120).to(400, { r: 0 }, "spring");
     gone(k, "pole", k.t);
@@ -1167,14 +1170,24 @@
     R.touchDown(k, g, k.now.x);
   });
 
-  add("Screen", "climb-wave", "Climb and Wave", ["climb1", "wave", "standing", "land"], {}, (k, g) => {
+  add("Screen", "climb-wave", "Climb and Wave", ["climb1", "fly", "standing", "land"], {}, (k, g) => {
     const side = k.now.x - g.left < g.right - k.now.x ? -1 : 1;
-    R.climbUp(k, g, side, Math.max(g.u * 1.2, g.floor - g.top - g.u * 0.1));
-    k.show("wave", 120);
+    R.toWall(k, g, side);
+    R.climbUp(k, g, side, Math.min(Math.max(g.u * 1.2, g.floor - g.top - g.u * 0.1), R.climbRoom(k, g, 1, 6000)));
+    // (1.5.1: he waves from the air, flying, not with the standing wave
+    // picture hanging off the wall.) A push off the wall into a hover, a
+    // wave with a bob in the air, then down to a landing.
+    const x0 = k.now.x;
+    const y0 = k.now.y;
+    const hx = clamp(x0 - side * g.u * 0.9, g.left, g.right);
+    k.heading(0).to(140, { x: x0 + side * g.u * 0.015, sy: 0.95, sx: 1.02, r: 0 }, "anticipate");
+    k.show(k.has("fly") ? "fly" : R.airPose(k), 80).to(320, { x: hx, y: y0 + g.u * 0.1, r: -side * 3, sy: 1.04, sx: 0.98 }, "out").fx("trail", 0, -g.u * 0.1);
+    k.to(200, { r: 0, sy: 1, sx: 1 }, "springSoft");
     say(k, g, "Hi!");
-    for (let i = 0; i < 3; i += 1) k.to(220, { r: 6 }, "soft").to(220, { r: -5 }, "soft");
+    k.fx("bubble", g.u * 0.6, -g.u * 1.2, { text: "👋" });
+    for (let i = 0; i < 3; i += 1) k.to(300, { y: y0 + g.u * 0.04, r: 2.5 }, "soft").to(300, { y: y0 + g.u * 0.12, r: -2 }, "soft");
     k.to(200, { r: 0 }, "springSoft");
-    R.dropOff(k, g, side);
+    R.touchDown(k, g, hx);
   });
 
   add("Screen", "hide-seek", "Hide-and-Seek", ["love", "standing", "peek-door"], { room: { right: 1.8 } }, (k, g) => {
@@ -1592,9 +1605,9 @@
     const m = BY[id];
     if (!m) return null;
     const r = typeof g.random === "function" ? g.random : Math.random;
-    const k = R.track(g.pos, g.poses, pose0);
+    const k = R.track(g.pos, g.poses, pose0, g);
     if (!R.atFloor(g)) {
-      R.getUp(k);
+      R.airUp(k); // (1.5.1: up into the flying picture, not standing in mid-air)
       if (g.floor - g.pos.y < g.u * 1.5) R.touchDown(k, g, g.pos.x);
       else R.flyTo(k, g, { x: g.pos.x, y: g.floor }, false);
     }

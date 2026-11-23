@@ -41,11 +41,19 @@ jobs:
         run: npm ci
       - name: Tests
         run: npm test
-      - name: Smoke test, Pilot (the real app, clicked by Playwright)
+      # A tiny helper that moves and clicks the real system pointer, so the
+      # smoke test also clicks the walking robot through macOS's own mouse
+      # events and the click-through overlay (Playwright's clicks skip both).
+      - name: Build the real-click helper (for the smoke test only, never shipped)
+        run: swiftc -O test/smoke/realclick.swift -o "$RUNNER_TEMP/realclick"
+      - name: Smoke test, Pilot (the real app, clicked by Playwright and by real system clicks)
+        env:
+          PILOT_REAL_CLICK: ${{ runner.temp }}/realclick
         run: node test/smoke/run-smoke.mjs --shots ../pilot-shots/pilot
       - name: Smoke test, Pilot Free
         env:
           PILOT_EDITION: free
+          PILOT_REAL_CLICK: ${{ runner.temp }}/realclick
         run: node test/smoke/run-smoke.mjs --shots ../pilot-shots/free
       - name: Screenshots from the smoke test
         if: always()

@@ -135,3 +135,9 @@
 /* Only the picture showing now (and the one fading out) is drawn at all:
    the other pose pictures, decoded and waiting, cost nothing per frame. */
 .pa-pose:not(.pa-on) { visibility: hidden; }
+/* 1.5.1: ... except the picture dissolving away on top of the new one
+   (smooth.js marks it mac-out; in 1.5.0 the rule above hid it the moment it
+   stopped being the current picture, so no dissolve was ever seen), and the
+   pictures of a move whose showing and hiding the move's own clock does
+   (mac-sync: their opacity is animated, see smooth.js's poseClock). */
+.pa-pose.mac-out, .pa-pose.mac-sync { visibility: visible; }

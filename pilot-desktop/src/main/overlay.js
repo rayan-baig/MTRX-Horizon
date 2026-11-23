@@ -47,6 +47,17 @@ class MouseGate {
   }
 }
 
+// How often the main process checks the cursor (ms). 1.5.1: 20 times a
+// second only while it matters (he's moving, the pointer is on or near him,
+// or he's being dragged); otherwise 5 times a second, which still catches a
+// pointer coming to rest on him (1.5.0 checked 20 times a second all the time).
+const CURSOR_FAST_MS = 50;
+const CURSOR_REST_MS = 200;
+function cursorEvery(s) {
+  const x = s || {};
+  return x.moving || x.near || x.over || x.dragging ? CURSOR_FAST_MS : CURSOR_REST_MS;
+}
+
 const finite = (p) => Boolean(p) && Number.isFinite(p.x) && Number.isFinite(p.y);
 
 // The robot's home is the point between its feet, in screen points.
@@ -92,4 +103,4 @@ function backFromIdle(previousIdle, idle, awayFor) {
   return Number.isFinite(previousIdle) && Number.isFinite(idle) && previousIdle >= (awayFor || 180) && idle < 5;
 }
 
-module.exports = { U, MouseGate, defaultHome, homeFromLegacy, clampHome, fullscreenFront, typingGuess, backFromIdle };
+module.exports = { U, CURSOR_FAST_MS, CURSOR_REST_MS, cursorEvery, MouseGate, defaultHome, homeFromLegacy, clampHome, fullscreenFront, typingGuess, backFromIdle };
