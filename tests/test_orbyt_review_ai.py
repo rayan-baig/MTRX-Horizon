@@ -408,9 +408,12 @@ def test_the_daily_cap_queues_reviews_for_tomorrow_and_never_lets_one_be_late(cl
     # One due before tomorrow would be late: it goes to the owner instead.
     third = buy_ai(client, ai, session="cs_test_third", intent="pi_test_review_3")
     assert wait_for(lambda: job(third)["next_at"] > time.time() + 60, seconds=10)
+    # Due in two hours, or before tomorrow's first try when that is sooner (late
+    # in the UTC day two hours would reach past it, and it would rightly wait).
+    now = time.time()
     with db.connect() as conn:
         conn.execute("UPDATE orbyt_reviews SET paid_at = ?, due_at = ? WHERE id = ?",
-                     (time.time(), time.time() + 7200, third))
+                     (now, now + min(7200, tomorrow - now), third))
         conn.execute("UPDATE orbyt_review_jobs SET state = 'queued', next_at = ? WHERE order_id = ?",
                      (time.time() - 1, third))
     orbyt_review_ai.work()
