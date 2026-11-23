@@ -212,7 +212,8 @@ idea?" (the page's own "Before you send" answers) in place of "What is Orbyt?".
 
 ### Moving an app to core 1.4.3 (from 1.4.2)
 
-A small patch: typed questions, the row under an answer, the no-key reply, and the phone's side gutter.
+A small patch: typed questions, the row under an answer, the no-key reply, the phone's side gutter, a
+compact window while typing on a short screen, and dense words near the page's end.
 
 1. Copy the thirteen core files from `static/pilot/` over the app's copies (they all say `Pilot core
    1.4.3` on their first line), and Pilot for Mac's six shared files if the app ships them (only their
@@ -253,7 +254,23 @@ A small patch: typed questions, the row under an answer, the no-key reply, and t
    `noKeyReply: false` keeps the jump to key settings; `noKeyReply: "..."` uses the app's own words.
    A pill or suggestion that is an AI prompt goes the same way; a shared screen ("Summarise this")
    still opens key settings.
-7. Copy the new `tests/js/pilot.test.js` core tests (the 1.4.3 ones, and the 1.4.2 tests that
+7. **A button's own words, typed, always get its answer** (MTRX round-9 review). Typing a pill's or a
+   suggestion's label (any case, with or without its punctuation: "what is orbyt", "show my
+   projects") gets that item's answer or link every time, a live answer function included, before
+   any word matching; even a label made only of question words ("What can you do?"). A prompt or a
+   built-in typed whole still goes on as before.
+8. **Compact while typing on a short screen** (MTRX round-9 review). With a phone's keyboard open the
+   visible height drops under 500 px (320 px wide, 375 x 667) and only a line or two of an answer
+   showed. While the message box has focus the window has `.pilot-typing`, and `.pilot-short` while
+   the visual viewport is under `SHORT_MOST` (500 px); then the tagline, the grown-ups line and the
+   row of round buttons are hidden (also under `@media (max-height: 500px)`). They come back when the
+   box loses focus. An app that themes those parts needs nothing new.
+9. **Dense words near the page's end** (MTRX round-9 review). Once scrolled on a phone the tucked robot
+   keeps its bottom corner over words (1.4.1). Now, with less than half a screen left to scroll
+   (`nearEnd`), words over at least `TEXT_DENSE` (15%) of its box (a footer's "© 2026 / YOUR IDEA", a
+   tile's text) send it to the other bottom corner once scrolling stops, but only when that corner is
+   wholly clear (no words, nothing pressed, nothing avoided). Otherwise it stays, as before.
+10. Copy the new `tests/js/pilot.test.js` core tests (the 1.4.3 ones, and the 1.4.2 tests that
    changed: the `answerWith` line, distinct answers in the "at most six" check, and the no-key line
    in the 1.2.0 "message typed with no key" check).
 

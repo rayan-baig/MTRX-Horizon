@@ -52,6 +52,17 @@ Home, Genesis and Orbyt round-10 fixes.
 - **Orbyt on a phone: a shorter top,** one short paragraph ("It takes about 2 minutes, and a real
   person replies by email.") in place of two lines and two badges, so "Pitch an idea" shows whole on
   the first screen at 375x667 (it now ends at 445 px, was 579 px).
+## 1.26.2 (23 November 2026)
+
+Three more fixes to Pilot core 1.4.3, from the round-9 review:
+
+- **Typing a button's own words gets its answer, every time.** "what is orbyt" gets the "What is
+  Orbyt?" answer and "show my projects" lists your Genesis projects, with no AI key.
+- **Typing on a small phone keeps the answer in view.** With the keyboard open, Pilot's tagline, the
+  18+ line and the row of round buttons step aside while you type, so more of the answer shows. They
+  come back when you're done typing.
+- **The robot keeps off footer words at the end of a page.** Near the bottom of a page, when it would
+  sit on dense words (like "© 2026 / YOUR IDEA") and the other corner is empty, it moves there.
 
 ## 1.26.1 (22 November 2026)
 

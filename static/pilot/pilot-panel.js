@@ -296,6 +296,15 @@
   // The one item (of `items`: cleaned pills and suggestions) that clearly
   // fits the typed `text`, or null.
   function matchTyped(text, items) {
+    // A pill's or a suggestion's own words, typed (core 1.4.3): always that
+    // item, whatever its words are ("what is orbyt", "show my projects",
+    // even a label of question words only), a live answer function or not.
+    const typed = labelKey(text);
+    if (typed) {
+      const same = (Array.isArray(items) ? items : []).find((item) => item && (item.link || item.answer !== undefined)
+        && typeof item.label === "string" && labelKey(item.label) === typed);
+      if (same) return same;
+    }
     const asked = wordsOf(text);
     if (!asked.length || asked.length > 12) return null;
     const scored = [];
@@ -403,6 +412,15 @@
   // suggestion pressed, or (after a typed question) the one it matched,
   // which the answer remembers as `of`.
   const AGAIN_MOST = 6;
+
+  // Short while typing (core 1.4.3): the visible height, in CSS pixels,
+  // under which the window goes compact while its message box is typed in
+  // (a phone's keyboard open at 320 px wide, or 375 x 667): the tagline, the
+  // grown-ups line and the row of round buttons step aside, so more than a
+  // line or two of the answer shows. view: the visual viewport's height
+  // (innerHeight where there is none).
+  const SHORT_MOST = 500;
+  const isShort = (view) => Number(view) > 0 && Number(view) < SHORT_MOST;
   function againItems(messages, given, chips, keyPill) {
     const pills = againPills(messages, given, keyPill);
     const i = localAnswerAt(messages);
@@ -1194,6 +1212,19 @@
     });
     function grow() { input.classList.toggle("pilot-tall", input.value.length > 48 || input.value.includes("\n")); }
     input.addEventListener("input", grow);
+    // Typing on a short screen (core 1.4.3): .pilot-typing on the window
+    // while its box has focus, and .pilot-short while the visible height is
+    // under SHORT_MOST (the keyboard takes the rest); pilot-panel.css then
+    // hides the tagline, the grown-ups line and the round buttons.
+    const viewHeight = () => (window.visualViewport && window.visualViewport.height) || window.innerHeight || 0;
+    const compact = () => {
+      panel.classList.toggle("pilot-typing", document.activeElement === input);
+      panel.classList.toggle("pilot-short", isShort(viewHeight()));
+    };
+    input.addEventListener("focus", compact);
+    input.addEventListener("blur", compact);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", compact);
+    window.addEventListener("resize", compact);
 
     // Voice: the browser's own speech recognition, only where it has one.
     // The words land in the box to check before sending. Nothing goes to the
@@ -1512,5 +1543,5 @@
   window.PilotPanel = { VERSION, create, screenText, redact, welcomePills, ownPills, keyPillGiven, keyWords, KEY_WORDS, hiddenSections,
     DEFAULT_PILLS, DEFAULT_TAGLINE, BUILTINS, siteLink, noAi, cleanChips, DEFAULT_MORE, againPills, localAnswerAt, answerScroll,
     SCREEN_CHIP, screenChip, matchTyped, wordsOf, MATCH_LEAD, againItems, AGAIN_MOST, sameItem, labelKey,
-    NO_KEY_REPLY, NO_KEY_ALONE, NO_KEY_PILL, noKeyItems, noKeyText };
+    NO_KEY_REPLY, NO_KEY_ALONE, NO_KEY_PILL, noKeyItems, noKeyText, SHORT_MOST, isShort };
 })();

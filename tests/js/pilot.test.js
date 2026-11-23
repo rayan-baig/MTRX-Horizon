@@ -2293,3 +2293,89 @@ test("no key 1.4.3: a typed question nothing fits gets a message in the chat and
   const engine = fs.readFileSync(core("pilot-engine.js"), "utf8");
   assert.ok(engine.includes('return messages.filter((m) => m.role !== "note")'));
 });
+
+test("typed 1.4.3: a pill's or a suggestion's own words, typed, always get that item's answer (live answer functions too)", () => {
+  const P = panelHelpers();
+  const mtrx = fs.readFileSync(site("pilot-mtrx.js"), "utf8");
+  const run = (pathname) => {
+    let given = null;
+    vm.runInNewContext(mtrx, { window: { Pilot: { mount: (c) => { given = c; } }, location: { pathname, origin: "https://mtrx.example", href: `https://mtrx.example${pathname}` } },
+      document: { getElementById: () => ({ dataset: { apps: "[]", early: "on" } }), title: "" } });
+    return given;
+  };
+  // Every page of the MTRX site: each pill and suggestion that answers or links, typed as words (any case, no "?").
+  let checked = 0;
+  for (const pathname of ["/", "/genesis", "/orbyt", "/privacy", "/partners", "/bundle"]) {
+    const given = run(pathname);
+    const base = `https://mtrx.example${pathname}`;
+    const items = P.ownPills(given.welcomePills, base).concat(P.cleanChips(given.chips(), base));
+    for (const item of items.filter((x) => x.link || x.answer !== undefined)) {
+      for (const typed of [item.label, item.label.toLowerCase().replace(/[?’'!.]/g, ""), ` ${item.label.toUpperCase()} `]) {
+        const got = P.matchTyped(typed, items);
+        assert.ok(got && P.sameItem(got, item), `${pathname}: "${typed}" -> ${got && got.label}`);
+        checked += 1;
+      }
+    }
+  }
+  assert.ok(checked >= 30, checked);
+  const home = P.ownPills(run("/").welcomePills, "https://mtrx.example/").concat(P.cleanChips(run("/").chips(), "https://mtrx.example/"));
+  assert.equal(P.matchTyped("what is orbyt", home).label, "What is Orbyt?");
+  const genesis = P.cleanChips(run("/genesis").chips(), "https://mtrx.example/genesis");
+  assert.equal(P.matchTyped("show my projects", genesis).label, "Show my projects");
+  assert.equal(typeof P.matchTyped("show my projects", genesis).answer, "function", "a live answer");
+  // A label of question words only still matches when typed whole; one word of it doesn't.
+  const only = P.ownPills([{ label: "What can you do?", answer: () => "Lots." }], "https://x.example/");
+  assert.equal(P.matchTyped("what can you do", only).label, "What can you do?");
+  assert.equal(P.matchTyped("what", only), null);
+  // A prompt or a built-in typed whole is still never what it answers with (they need the AI or open settings).
+  assert.equal(P.matchTyped("Explain this page", P.ownPills([{ label: "Explain this page", action: "explain-screen" }], "https://x.example/")), null);
+});
+
+test("panel 1.4.3: typing on a short screen (keyboard open, under 500 px visible): tagline, grown-ups line and round buttons step aside", () => {
+  const P = panelHelpers();
+  assert.equal(P.SHORT_MOST, 500);
+  assert.equal(P.isShort(420), true);
+  assert.equal(P.isShort(499), true);
+  assert.equal(P.isShort(500), false);
+  assert.equal(P.isShort(812), false);
+  assert.equal(P.isShort(0), false, "unknown: not short");
+  const panel = fs.readFileSync(core("pilot-panel.js"), "utf8");
+  assert.ok(panel.includes('panel.classList.toggle("pilot-typing", document.activeElement === input);'));
+  assert.ok(panel.includes('panel.classList.toggle("pilot-short", isShort(viewHeight()));'));
+  assert.ok(panel.includes("(window.visualViewport && window.visualViewport.height) || window.innerHeight || 0"));
+  assert.ok(panel.includes('if (window.visualViewport) window.visualViewport.addEventListener("resize", compact);'));
+  assert.ok(panel.includes('input.addEventListener("focus", compact);') && panel.includes('input.addEventListener("blur", compact);'));
+  const css = fs.readFileSync(core("pilot-panel.css"), "utf8");
+  assert.match(css, /\.pilot-panel\.pilot-typing\.pilot-short \.pilot-tagline,\s*\.pilot-panel\.pilot-typing\.pilot-short \.pilot-foot-note,\s*\.pilot-panel\.pilot-typing\.pilot-short \.pilot-bottom \{ display: none; \}/);
+  assert.match(css, /@media \(max-height: 500px\) \{\s*\.pilot-panel\.pilot-typing \.pilot-tagline,/);
+});
+
+test("placement 1.4.3: near the page's end, dense words under the tucked robot move it to a wholly clear corner; otherwise as before", () => {
+  const view = { width: 320, height: 640 };
+  const size = { width: 56, height: 54 };
+  const keep = { scale: 0.82, margin: 3, pull: 9 };
+  const base = { corner: "br", stay: "br", view, size, gap: 12, peekShow: 20, keep, away: true };
+  const box = Mascot.peekBox("br", view, size, 12, 20, keep);
+  const area = (box.right - box.left) * (box.bottom - box.top);
+  // A footer's "© 2026 / YOUR IDEA" under the bottom right; nothing at the bottom left.
+  const footer = (share) => (s, c) => (c === "br" ? area * share : 0);
+  assert.deepEqual(Mascot.scrollPlace({ ...base, cost: footer(0.4), full: true, nearEnd: true }), { corner: "bl", peek: true }, "1.4.2 stayed on the words");
+  // Conservative: not near the end, mid-scroll, sparse words, words in both corners, or anything in the other: it stays.
+  assert.deepEqual(Mascot.scrollPlace({ ...base, cost: footer(0.4), full: true, nearEnd: false }), { corner: "br", peek: true });
+  assert.deepEqual(Mascot.scrollPlace({ ...base, cost: footer(0.4), full: false, nearEnd: true }), { corner: "br", peek: true });
+  assert.deepEqual(Mascot.scrollPlace({ ...base, cost: footer(0.05), full: true, nearEnd: true }), { corner: "br", peek: true });
+  assert.deepEqual(Mascot.scrollPlace({ ...base, cost: () => area * 0.4, full: true, nearEnd: true }), { corner: "br", peek: true });
+  const blockLeft = { left: 0, top: 560, right: 60, bottom: 640 };
+  assert.deepEqual(Mascot.scrollPlace({ ...base, cost: footer(0.4), full: true, nearEnd: true, blocks: [blockLeft] }), { corner: "br", peek: true });
+  // Once there, it stays (the bottom left is clear).
+  assert.deepEqual(Mascot.scrollPlace({ ...base, stay: "bl", cost: footer(0.4), full: true, nearEnd: true }), { corner: "bl", peek: true });
+  assert.equal(Mascot.TEXT_DENSE, 0.15);
+  // nearEnd: less than half a screen left to scroll.
+  const at = (y, total) => Mascot.nearEnd({ innerHeight: 640, scrollY: y }, { documentElement: { scrollHeight: total }, body: { scrollHeight: 0 } });
+  assert.equal(at(2000, 2640), true);
+  assert.equal(at(1700, 2640), true);
+  assert.equal(at(1600, 2640), false);
+  assert.equal(at(0, 0), false);
+  const mascot = fs.readFileSync(core("pilot-mascot.js"), "utf8");
+  assert.ok(mascot.includes("nearEnd: nearEnd(o.win, o.doc) });"));
+});

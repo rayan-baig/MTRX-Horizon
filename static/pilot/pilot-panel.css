@@ -402,6 +402,21 @@
   .pilot-bottom { margin-top: 8px; }
 }
 
+/* Typing on a short screen (core 1.4.3): with the keyboard open the visible
+   height drops under 500 px (320 px wide, 375 x 667) and only a line or two
+   of the answer showed. While the message box has focus (.pilot-typing) and
+   the visible height is short (.pilot-short, from the visual viewport; or a
+   short window), the tagline, the grown-ups line and the round buttons step
+   aside. Back as soon as the box loses focus. */
+.pilot-panel.pilot-typing.pilot-short .pilot-tagline,
+.pilot-panel.pilot-typing.pilot-short .pilot-foot-note,
+.pilot-panel.pilot-typing.pilot-short .pilot-bottom { display: none; }
+@media (max-height: 500px) {
+  .pilot-panel.pilot-typing .pilot-tagline,
+  .pilot-panel.pilot-typing .pilot-foot-note,
+  .pilot-panel.pilot-typing .pilot-bottom { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pilot-dots i, .pilot-mic.on, .pilot-state-thinking .pilot-state-dot { animation: none; }
   .pilot-pill, .pilot-copy { transition: none; }
