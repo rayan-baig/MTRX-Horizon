@@ -134,12 +134,47 @@
   // brought into view when it isn't, its top just under the bar like
   // "Sent." (1.28.0: its scroll-margin-top is the bar's measured height, so
   // the bar never covers its first line).
+  // 1.29.0: placed again once the fonts are in and the page has drawn one
+  // frame (document.fonts.ready, then one requestAnimationFrame), like
+  // "Sent." (placeSent), unless the visitor has scrolled or tapped since:
+  // the button coming back and the words wrapping can move it after the
+  // first look. Not when a field has been focused since (focusField: the
+  // field the error is about comes first).
+  function placeError(box) {
+    if (!box.isConnected || !box.textContent) return;
+    const bar = barHeight();
+    box.style.scrollMarginTop = `${bar}px`;
+    const r = box.getBoundingClientRect();
+    if (r.top < bar || r.bottom > window.innerHeight) box.scrollIntoView({ block: "start", behavior: "instant" });
+  }
+  let placingError = 0;
+  // Once an error has shown, the arrival's "keep the form in view" (below)
+  // stops: it put the form's top back and the error out of sight (1.29.0).
+  let errorShown = false;
   function showError(form, text) {
     const box = form.querySelector("[data-error]");
     box.textContent = text;
-    box.style.scrollMarginTop = `${barHeight()}px`;
-    const r = box.getBoundingClientRect();
-    if (r.top < barHeight() || r.bottom > window.innerHeight) box.scrollIntoView({ block: "start", behavior: "instant" });
+    errorShown = true;
+    placeError(box);
+    const mine = ++placingError;
+    const focused = document.activeElement;
+    let moved = false;
+    const touches = ["wheel", "touchstart", "keydown", "mousedown"];
+    const visitor = () => { moved = true; };
+    touches.forEach((type) => window.addEventListener(type, visitor, { passive: true, once: true }));
+    const settled = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+    const again = () => {
+      if (mine === placingError && !moved && box.textContent === text && document.activeElement === focused) placeError(box);
+    };
+    // A smooth scroll still running (the page scrolls smoothly) can carry the
+    // box past the bar after that: once it ends, it is placed again too.
+    const ended = () => again();
+    window.addEventListener("scrollend", ended);
+    settled.catch(() => {}).then(() => requestAnimationFrame(again));
+    setTimeout(() => {
+      window.removeEventListener("scrollend", ended);
+      touches.forEach((type) => window.removeEventListener(type, visitor));
+    }, 1500);
   }
 
   const sentTitle = document.querySelector(".v-sent-title");
@@ -495,7 +530,7 @@
     const touches = ["wheel", "touchstart", "keydown", "mousedown"];
     touches.forEach((type) => window.addEventListener(type, visitor, { passive: true, once: true }));
     const again = () => {
-      if (done || moved || sentKind) return;
+      if (done || moved || sentKind || errorShown) return;
       const kind = V.fromHash(window.location.hash).kind;
       if (kind !== arrived) return;
       const top = $(`v-${kind}`).getBoundingClientRect().top;

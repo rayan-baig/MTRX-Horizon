@@ -4,6 +4,38 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.29.0 (24 November 2026)
+
+Home, Genesis and Orbyt round-12 polish.
+
+- **Orbyt: "Is the review AI?" is answered "Yes".** It used to say "No: a Pitch Review is written by an AI
+  service", the answer meant for "Is it written by a person?". Now the answer follows the question: asked
+  about AI, a robot or a computer, Pilot says yes (or, while reviews are written by a person, "No, it isn't
+  AI"); asked about a person, a human or someone, it says no (or yes); asked "Who writes it?", it just says
+  who.
+- **Shorter answers about the Pitch Review.** Who writes it, how long it takes and what it costs no longer
+  repeat the whole "What's a Pitch Review?" paragraph (that button still gives it), and "Pitching is free"
+  is said once.
+- **More typed questions get Pilot's built-in answers with no key.** Orbyt: "I'm 11, can I send an idea?",
+  "i am 10 can i send my idea", "How long does it take?", "How fast?", "How long until I get my review?",
+  "Can you make my game?", "Is a human writing my review?", "How do I submit my idea?" and "I have an idea
+  for a game" (pitch it here). Genesis: "How do I start a project?" and "Will I lose my idea?". Home: "Is my
+  info private?", "How old do I have to be?" and "Can kids use this?" (anyone can use the site; Orbyt's
+  rule for under 13s and under 18s; an AI key and the paid extras are for grown-ups), and "yo", "good
+  morning" or "good evening".
+- **Genesis: "Give me an idea" fills in the idea Pilot named.** Its "Try this example" link opens the start
+  form with that very example (`#example/N`), not another one picked at random.
+- **Orbyt: a send error stays in view.** The error box is placed again once the fonts are in and the page
+  has drawn (like "Sent."), and arriving at a form no longer pulls the page back to the form's top once an
+  error has shown, so "That didn't send", "Please wait a while" or "No connection" is always whole, just
+  under the bar, however many sends fail.
+- **Pilot keeps clear of more:** Orbyt's "Our apps" heading and the line under it, the Kitchen Safety
+  Bundle card and each app's name and line, and on a computer "Other ways to talk to us" and the Business
+  enquiries card (on a phone they fill the width, and the handle Pilot shows while hidden needs a free
+  edge). On a
+  phone, Genesis's spark week ends a little short of the card's edge, so Pilot's hello wave in the corner
+  never covers today's circle.
+
 ## 1.28.0 (23 November 2026)
 
 Home, Genesis and Orbyt round-11 fixes.

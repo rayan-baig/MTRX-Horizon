@@ -276,9 +276,12 @@
   function exampleIdea() {
     const S = window.GenesisStore;
     const e = S && typeof S.example === "function" ? S.example() : null;
-    const one = e && e.name ? e : { name: "Plant Pal", pitch: "Reminds you to water your plants, and tells you how much", audience: "people who keep forgetting their houseplants" };
+    const one = e && e.name ? e : { name: "Plant Pal", pitch: "Reminds you to water your plants, and tells you how much", audience: "people who keep forgetting their houseplants", index: 0 };
+    // 1.29.0: "Try it" fills the form with this very example (#example/N,
+    // genesis.js), not another one picked at random.
+    const at = Number.isInteger(one.index) && one.index >= 0 && one.index < 100 ? `/${one.index}` : "";
     return `Here's one to start from: **${words(one.name)}**. ${stop(words(one.pitch))} It's for ${stop(words(one.audience))}\n\n`
-      + "[Try an example](/genesis#example) to see an idea like it as a plan, or [start your own](/genesis#new). "
+      + `[Try this example](/genesis#example${at}) to see it as a plan, or [start your own](/genesis#new). `
       + "Stuck? Think of one small thing that annoyed you this week: making it easier is an idea.";
   }
   // Genesis's price (1.28.0): free, and Genesis Pro only while it's on (the
@@ -312,10 +315,14 @@
   // Orbyt's age rules, from the page and the terms: under 13, a parent or
   // guardian sends it; under 18, a grown-up signs any agreement (and pays
   // for a Pitch Review).
-  function ageAnswer(ctx) {
+  // The age typed ("I'm 11", "i am 10", "a 12 year old"), or 0.
+  function typedAge(ctx) {
     const asked = String((ctx && ctx.label) || "").toLowerCase().replace(/[’]/g, "'");
     const m = asked.match(/\b(?:i'?m|i am|im|age|aged)\s+(\d{1,2})\b/) || asked.match(/\b(\d{1,2})\s*(?:years?|yrs?|yo)\b/);
-    const age = m ? Number(m[1]) : 0;
+    return m ? Number(m[1]) : 0;
+  }
+  function ageAnswer(ctx) {
+    const age = typedAge(ctx);
     const lead = !age ? "**You can pitch at any age.** If you're under 13, a parent or guardian sends it for you; from 13, you can send it yourself."
       : age < 13 ? `**At ${age}, ask a parent or guardian to send your pitch for you.** That's Orbyt's rule for anyone under 13.`
         : age < 18 ? `**Yes: at ${age} you can send a pitch yourself.** (Under 13, a parent or guardian sends it.)`
@@ -325,24 +332,85 @@
         + (review ? " A Pitch Review is bought by a grown-up (18+)." : "");
     return `${lead} A real person reads it and replies by email within 7 days, even if the answer is no.${young}\n\n[Pitch an idea](/orbyt#pitch)`;
   }
+  // Home's "How old do I have to be?", "Can kids use this?" (1.29.0): anyone
+  // can use the site; Orbyt's own age rule for sending (the page, the terms);
+  // and what needs a grown-up (an AI key, and the paid extras that are on).
+  function homeAgeAnswer(ctx) {
+    const age = typedAge(ctx);
+    const paid = [pro ? "Genesis Pro" : "", review ? "a Pitch Review" : ""].filter(Boolean);
+    const grown = `- **For grown-ups (18+):** adding an AI key for me (the AI companies require it)${paid.length ? `, and paying for ${paid.join(" or ")}` : ""}.`;
+    const rule = "- **Orbyt's rule:** under 13, a parent or guardian sends a pitch or message for you; from 13 you can send it yourself. "
+      + "Under 18, any agreement about your idea needs a parent or guardian to sign it with you.";
+    const go = "\n\n[Start my idea](/genesis#new), or [see Orbyt](/orbyt#pitch).";
+    if (age >= 18) return `**Yes, you can use everything here.** There's no account to make.${go}`;
+    if (age && age < 13) {
+      return `**At ${age}, you can plan your idea in Genesis and ask me questions.** To send a pitch in Orbyt, ask a parent or guardian to send it for you.\n\n${grown}${go}`;
+    }
+    if (age) return `**At ${age}, you can use Genesis and send a pitch in Orbyt yourself.** Under 18, any agreement about your idea needs a parent or guardian to sign it with you.\n\n${grown}${go}`;
+    return "**Anyone can use this site, at any age.** There's no account to make, and Genesis keeps your ideas in this browser.\n\n"
+      + `${rule}\n${grown}${go}`;
+  }
   const BUILD = "**We can't promise to build it, but you can pitch it.** A real person reads every idea and replies by email within "
     + "7 days, even if the answer is no; if we'd like to hear more, we'll ask in that email. Your idea stays yours, and sending it "
     + "doesn't create an agreement for either of us.\n\n[Pitch an idea](/orbyt#pitch), or plan it first in [Genesis](/genesis), free.";
   // The Pitch Review, asked about one part at a time (1.28.0): who writes it,
   // how long it takes, and what costs money.
-  const reviewWho = () => (reviewAi
-    ? "**No: a Pitch Review is written by an AI service**, following our instructions, and checked by our automatic rules before it's sent. "
-      + "If the AI can't write it well, a person at MTRX Horizyn writes it instead. (Your pitch itself is always read by a real person.)"
-    : "**Yes: a real person at MTRX Horizyn writes your Pitch Review**: what's strong, what to fix, your next 3 steps, and whether it might fit Orbyt.")
-    + `\n\n${REVIEW}`;
+  // 1.29.0: who writes it answers the question asked. "Is it AI?" gets "Yes"
+  // in AI mode (it was "No: ... an AI service", the person answer); only a
+  // question about a person, a human or someone gets the person answer; and
+  // a plain "Who writes it?" gets a plain statement. These answers are short:
+  // the whole "What's a Pitch Review?" paragraph is no longer repeated under
+  // them (that button still gives it).
+  const ASKS_PERSON = /\b(person|people|human|humans|someone|somebody|staff)\b/;
+  const ASKS_AI = /\b(ai|robots?|bots?|automatic|automated|automatically|computer|machine|artificial)\b/;
+  const reviewPrice = words(d.reviewPrice);
+  const daysText = `${reviewDays} day${reviewDays === 1 ? "" : "s"}`;
+  const REVIEW_TAIL = `It's an optional ${reviewPrice} extra you can add after sending a pitch; pitching itself is free. [Pitch an idea](/orbyt#pitch)`;
+  function reviewWho(ctx) {
+    const asked = String((ctx && ctx.label) || "").toLowerCase();
+    const person = ASKS_PERSON.test(asked);
+    const ai = ASKS_AI.test(asked);
+    if (reviewAi) {
+      const lead = ai && !person ? "**Yes: a Pitch Review is written by an AI service**"
+        : person && !ai ? "**No: a Pitch Review is written by an AI service**"
+          : "**An AI service writes your Pitch Review**";
+      return `${lead}, following our instructions, and checked by our automatic rules before it's sent. `
+        + "If the AI can't write it well, a person at MTRX Horizyn writes it instead. (Your pitch itself is always read by a real person.)\n\n"
+        + "To write it, the idea you sent (not your name or email) goes to the AI service, and the grown-up (18+) who pays agrees to that at checkout. "
+        + REVIEW_TAIL;
+    }
+    const lead = person && !ai ? "**Yes: a real person at MTRX Horizyn writes your Pitch Review**"
+      : ai && !person ? "**No, it isn't AI: a real person at MTRX Horizyn writes your Pitch Review**"
+        : "**A real person at MTRX Horizyn writes your Pitch Review**";
+    return `${lead}: what's strong, what to fix, your next 3 steps, and whether it might fit Orbyt. It's emailed within ${daysText} of paying.\n\n${REVIEW_TAIL}`;
+  }
   const reviewTime = () => (reviewAi
-    ? `**Usually within an hour.** It's promised within ${reviewDays} day${reviewDays === 1 ? "" : "s"} of paying; if it's later, you get a full refund.`
-    : `**Within ${reviewDays} day${reviewDays === 1 ? "" : "s"} of paying.** If it's later, you get a full refund.`)
-    + `\n\n${REVIEW}`;
+    ? `**Usually within an hour.** It's promised within ${daysText} of paying; if it's later, you get a full refund.`
+    : `**Within ${daysText} of paying.** If it's later, you get a full refund.`)
+    + `\n\n${REVIEW_TAIL}`;
   const PITCH_FREE = review
-    ? `**Pitching is free; the only paid thing is an optional ${words(d.reviewPrice)} Pitch Review.** Every pitch gets a reply with or without one.`
+    ? `**Pitching is free; the only paid thing is an optional ${reviewPrice} Pitch Review.** Every pitch gets a reply with or without one.`
     : "**Pitching is free:** sending a pitch, or any Orbyt form, costs nothing.";
-  const costAnswer = () => (review ? `${PITCH_FREE}\n\n${REVIEW}` : `${PITCH_FREE}\n\n${AFTER_SEND}`);
+  // The review in two lines under the price (1.29.0: not the whole paragraph,
+  // which said "Pitching is free" a second time).
+  const REVIEW_SHORT = (reviewAi
+    ? "A Pitch Review is an AI-written review of your idea (what's strong, what to fix, your next 3 steps), usually within an hour."
+    : `A Pitch Review is a personal review of your idea by a real person at MTRX Horizyn (what's strong, what to fix, your next 3 steps), emailed within ${daysText}.`)
+    + " A grown-up (18+) pays once through Stripe (not a subscription), and gets a full refund if it's late or we can't review the idea.\n\n[Pitch an idea](/orbyt#pitch)";
+  const costAnswer = () => (review ? `${PITCH_FREE}\n\n${REVIEW_SHORT}` : `${PITCH_FREE}\n\n${AFTER_SEND}`);
+  // "How long does it take?", "How fast?" (1.29.0): the whole wait, from
+  // writing the pitch to the reply (and the review, while it's offered).
+  const timeAnswer = () => "**Writing a pitch takes about 2 minutes.** A real person reads it and emails you back within 7 days, even if the answer is no."
+    + (!review ? "" : reviewAi
+      ? `\n\nA Pitch Review (an optional ${reviewPrice} extra) usually comes within an hour, and within ${daysText} at most, or you get a full refund.`
+      : `\n\nA Pitch Review (an optional ${reviewPrice} extra) is emailed within ${daysText} of paying, or you get a full refund.`)
+    + "\n\n[Pitch an idea](/orbyt#pitch)";
+  // "How do I submit my idea?" on Orbyt (1.29.0): the form itself.
+  const PITCH_HOW = "**Use Pitch an idea on this page:** your name, your email, the idea's name, one line on what it does, and who it's for. "
+    + "It takes about 2 minutes; then press **Send**. If you're under 13, ask a parent or guardian to send it for you.\n\n[Pitch an idea](/orbyt#pitch)";
+  // "I have an idea for a game" on Orbyt (1.29.0): pitch it here, or plan it first.
+  const PITCH_IT = "Great, you can pitch it right here! **Pitch an idea** takes about 2 minutes: a name, one line on what it does, and who it's for. "
+    + "A real person reads it and replies by email within 7 days, and your idea stays yours.\n\n[Pitch an idea](/orbyt#pitch), or plan it first in [Genesis](/genesis), free.";
 
   // What "Explain this page" says with no key (1.28.0): a short built-in
   // summary of the page, so the button works for everyone. With a key it
@@ -386,37 +454,52 @@
   // its `match` words (core 1.4.2); whichever it reaches, these make sure the
   // words get the right reply ("Is my data safe?", "I'm 13, can I pitch?").
   // A button pressed (or its own words typed) always gets its own answer.
+  // 1.29.0: a greeting may be "yo" or "good morning"; more ways to ask each
+  // thing (an age next to "send", "how long does it take", "how do I start a
+  // project", "will I lose my idea", "is my info private", "can kids use this").
+  const GREET = /^(hi+|hello|hey+|hiya|howdy|yo|(good )?(morning|afternoon|evening))\b[\s,!.]*(there|pilot)?[\s!.?]*$/;
+  const IDEA_HAD = /\b(i|we)('ve| have|'ve got| got| have got)\b.*\bideas?\b|\bidea for\b|^(my )?idea\b/;
+  const EXAMPLE_ASK = /\b(give|suggest|need|want)\b.*\bideas?\b|\bany ideas\b|\bideas? (please|for me)\b|\bexample\b/;
   const TOPICS = {
     "/": [
-      ["greet", /^(hi+|hello|hey+|hiya|howdy|yo|good (morning|afternoon|evening))\b[\s,!.]*(there|pilot)?[\s!.?]*$/, greeting],
+      ["greet", GREET, greeting],
       ["pilot", /\bpilot\b|^who are you\b/, () => PILOT_TEXT],
       ["made", /\bwho('s| is)? ?(made|makes|built|created|runs|is behind)\b|\b(made|built|created) (this|it|the (web)?site|mtrx)\b|\b(company|founder)\b/, () => MADE],
-      ["privacy", /\b(data|privacy|private|safe|secure|security|track|tracking|tracked|cookies?)\b/, () => PRIVACY],
-      ["example", /\b(give|suggest|need|want)\b.*\bideas?\b|\bany ideas\b|\bideas? (please|for me)\b|\bexample\b/, exampleIdea],
+      ["privacy", /\b(data|privacy|private|safe|secure|security|track|tracking|tracked|cookies?|info|information|personal)\b/, () => PRIVACY],
+      ["age", /\bhow old\b|\bold enough\b|\b(age|ages|aged)\b|\b(i'?m|i am|im)\s+\d{1,2}\b|\b\d{1,2}\s*(years?|yrs?|yo)\b|\b(kids?|children|child|teens?|teenagers?)\b.*\b(use|join|try|allowed|sign ?up)\b/, homeAgeAnswer],
+      ["example", EXAMPLE_ASK, exampleIdea],
       ["free", /\bgenesis\b.*\b(free|cost|costs|price|pay|paid|much|pro|charge|money)\b|\b(free|cost|costs|price|pay|paid|much|charge|money)\b.*\bgenesis\b|\bpro\b/, freeAnswer],
       ["genesis", /\bgenesis\b/, () => START_IDEA],
-      ["idea", /\b(i|we)('ve| have|'ve got| got| have got)\b.*\bideas?\b|\bidea for\b|^(my )?idea\b/, () => IDEA],
+      ["idea", IDEA_HAD, () => IDEA],
     ],
     "/genesis": [
-      ["greet", /^(hi+|hello|hey+|hiya|howdy|yo|good (morning|afternoon|evening))\b[\s,!.]*(there|pilot)?[\s!.?]*$/, greeting],
+      ["greet", GREET, greeting],
       ["pilot", /\bpilot\b|^who are you\b/, () => PILOT_TEXT],
-      ["example", /\b(give|suggest|need|want)\b.*\bideas?\b|\bany ideas\b|\bideas? (please|for me)\b|\bexample\b/, exampleIdea],
+      // "How do I start a project?", "Where do I begin?" (1.29.0).
+      ["start", /\b(how|where) (do|can|should|would) (i|we|you) (start|begin)\b|\b(start|begin|create|make)( a| an| my| another)?( new)? (project|idea)\b|^(start|begin)\b/, () => START_IDEA],
+      ["example", EXAMPLE_ASK, exampleIdea],
       ["free", /\bpro\b|\b(free|cost|costs|price|pay|paid|much|charge|money)\b/, freeAnswer],
-      // "Is my idea saved?", "Will I lose my projects?"; "Where are my saved
+      // "Is my idea saved?", "Will I lose my idea?"; "Where are my saved
       // projects?" is the list itself.
-      ["saved", (t) => /\b(save|saved|saving|keep|kept|store|stored|lose|lost|backup|back up)\b/.test(t) && !/\b(where|show|list|see)\b/.test(t), () => SAVED],
-      ["idea", /\b(i|we)('ve| have|'ve got| got| have got)\b.*\bideas?\b|\bidea for\b|^(my )?idea\b/, () => IDEA],
+      ["saved", (t) => /\b(save|saved|saving|keep|kept|store|stored|lose|lost|losing|backup|back up|disappear|gone)\b/.test(t) && !/\b(where|show|list|see)\b/.test(t), () => SAVED],
+      ["idea", IDEA_HAD, () => IDEA],
     ],
     "/orbyt": [
-      ["greet", /^(hi+|hello|hey+|hiya|howdy|yo|good (morning|afternoon|evening))\b[\s,!.]*(there|pilot)?[\s!.?]*$/, greeting],
+      ["greet", GREET, greeting],
       ["pilot", /\bpilot\b|^who are you\b/, () => PILOT_TEXT],
       ["age", /\b(i'?m|i am|im|age|aged)\s+\d{1,2}\b|\b\d{1,2}\s*(years?|yrs?|yo)\b|\b(how old|old enough|age|young|younger|teen|teenager|kids?|child|children|under ?1[38])\b/, ageAnswer],
       ...(review ? [
-        ["reviewWho", /\breview\b.*\b(person|human|people|real|written|writes|write|ai|robot|bot|who)\b|\b(person|human|real|written|writes|who|ai)\b.*\breview\b/, reviewWho],
-        ["reviewTime", /\breview\b.*\b(long|take|takes|time|when|fast|quick|soon|hours?|days?)\b|\b(long|when|fast|soon)\b.*\breview\b/, reviewTime],
+        ["reviewWho", /\breview\b.*\b(person|people|human|someone|somebody|staff|real|written|writes|write|writing|wrote|ai|robots?|bots?|automatic|automated|computer|machine|who)\b|\b(person|people|human|someone|somebody|staff|real|written|writes|write|writing|who|ai|robots?|bots?|computer)\b.*\breview\b/, reviewWho],
+        ["reviewTime", /\breview\b.*\b(long|take|takes|time|when|fast|quick|soon|hours?|days?)\b|\b(long|when|fast|quick|soon)\b.*\breview\b/, reviewTime],
       ] : []),
+      // "How long does it take?", "How fast?": the whole wait (1.29.0); a
+      // question about the reply keeps "What happens after I send?".
+      ["time", (t) => /\bhow (long|fast|quick|quickly|soon)\b|\bhow much time\b/.test(t) && !/\b(reply|replies|respond|answer|hear)\b/.test(t), timeAnswer],
       ["cost", /\b(cost|costs|price|pay|paid|much|free|charge|money|fee|fees)\b/, costAnswer],
       ["build", /\b(build|make|create|develop|code)\b.*\b(my|an?|the|our)\b.*\b(app|game|website|site|idea)\b(?!.*\bwithout\b)|\b(build|make) (it|this) for (me|us)\b/, () => BUILD],
+      ["howPitch", (t) => /\bsubmit\b|^(how|where) (do|can|should|would) (i|we) (send|pitch)\b|\bsend (my|an|the|our|a) (idea|pitch)\b/.test(t)
+        && !/\b(after|happens|then|next)\b/.test(t), () => PITCH_HOW],
+      ["idea", IDEA_HAD, () => PITCH_IT],
     ],
   };
   // Every pill's and suggestion's own words on this page, made plain: a
@@ -445,40 +528,69 @@
   // 1.28.0: the topics above have their words here too (at most 20 an answer:
   // the core reads no more), so the typed question reaches one answer.
   const MATCH = {
-    fit: ["family", "families", "kid", "kids", "child", "children", "parent", "chore", "business", "restaurant", "kitchen",
-      "fridge", "freezer", "safety", "compliance", "suit", "best", "right", "choose", "pick"],
-    ready: ["ready", "today", "now", "available", "use", "try", "live", "working"],
+    // 1.29.0: "kids" and "families" were the same words as "kid" and
+    // "family" once made plain, so they made room for "teen" and "use" ("Can
+    // kids use this?", answered with the site's age rules: TOPICS).
+    fit: ["family", "kid", "child", "children", "teen", "parent", "chore", "business", "restaurant", "kitchen",
+      "fridge", "freezer", "safety", "compliance", "suit", "best", "right", "choose", "pick", "use"],
+    // 1.29.0: and what the site keeps ("Is my info private?", answered by
+    // the privacy topic), moved here from "Explain this page" to make room.
+    ready: ["ready", "today", "now", "available", "use", "try", "live", "working",
+      "data", "safe", "privacy", "private", "secure", "security", "track", "info", "information", "cookie", "personal"],
     // "Is Genesis free?" (home, 1.28.0): Genesis itself, and money.
     free: ["genesis", "free", "cost", "much", "price", "pay", "paid", "money", "pro", "charge", "subscription"],
     // "Help with my idea": starting, an idea of one's own, an example idea.
     idea: ["start", "begin", "game", "invent", "invention", "plan", "planner", "give", "suggest", "example", "app"],
     apps: ["rankup", "cyberlogix", "omniarmor", "open", "opening", "launch", "release", "coming", "soon", "date", "early", "access"],
     orbyt: ["orbyt", "pitch", "partner", "invest", "investor", "contact", "work"],
-    projects: ["project", "projects", "saved", "save", "list", "mine", "progress", "stage", "done", "where", "keep", "lose", "lost", "backup"],
+    // Home (1.29.0): "How old do I have to be?", "Is there an age limit?",
+    // "I'm 12, can I use this?", on "What is Orbyt?" (the age rule is Orbyt's).
+    homeAge: ["old", "age", "limit", "im", "10", "11", "12", "13", "14", "15", "16", "17"],
+    // 1.29.0: "start" and "begin" are here on Genesis, not on "Help with my
+    // idea", so "How do I start a project?" finds one answer (the start
+    // topic: "Help with my idea"'s answer) and a plain "How do I start?" too.
+    projects: ["project", "projects", "saved", "save", "list", "mine", "progress", "stage", "done", "where", "keep", "lose", "lost", "backup",
+      "start", "begin"],
     next: ["next", "step", "steps", "todo", "continue", "tick", "task"],
     spark: ["spark", "sparks", "prompt", "daily", "today", "streak", "challenge"],
     // "Which form is for me?", and (1.28.0) who may pitch: "I'm 13, can I pitch?"
+    // 1.29.0: the ages themselves are on Orbyt's "Help with my idea" (orbytIdea).
     form: ["form", "path", "investor", "invest", "buy", "business", "partner", "orbyt", "pitch",
-      "im", "age", "old", "young", "younger", "teen", "kid", "child", "12", "13", "14"],
-    after: ["reply", "replies", "person", "human", "real", "read", "answer", "email", "hear", "back", "long", "wait", "days", "keep", "delete"],
-    review: ["review", "price", "cost", "pay", "paid", "money", "much", "free", "charge", "refund", "stripe", "take", "written", "writes", "ai"],
-    own: ["own", "owns", "owner", "ownership", "mine", "build", "without", "steal", "copy", "publish", "share", "secret", "safe", "rights", "app", "make", "create"],
+      "im", "age", "old", "young", "younger", "teen", "kid", "child"],
+    after: ["reply", "person", "human", "real", "read", "answer", "email", "hear", "back", "long", "wait", "days", "keep", "delete"],
+    // 1.29.0: "Is a human writing my review?", "How fast is the review?",
+    // "How long does it take?" ("long" is on "What happens after I send?" too).
+    review: ["review", "price", "cost", "pay", "paid", "money", "much", "free", "charge", "refund", "stripe", "take", "written", "writes", "ai",
+      "writing", "robot", "long", "fast", "quick"],
+    // 1.29.0: "game" ("Can you make my game?"), off Orbyt's "Help with my idea".
+    own: ["own", "owns", "owner", "ownership", "mine", "build", "without", "steal", "copy", "publish", "share", "secret", "safe", "rights", "app", "make", "create",
+      "game"],
     // "Explain this page" with no key: the page itself, a hello, Pilot, and
     // (home) who made the site and what it keeps.
     explain: {
-      "/": ["page", "here", "site", "website", "hi", "hello", "hey", "pilot", "made", "built", "created", "company", "founder",
-        "data", "safe", "privacy", "private", "secure", "security", "track"],
+      // 1.29.0: more ways to say hello ("yo", "good morning").
+      "/": ["page", "here", "site", "website", "pilot", "hi", "hello", "hey", "hiya", "yo", "good", "morning", "afternoon", "evening",
+        "made", "built", "created", "company", "founder"],
       "/genesis": ["page", "here", "site", "hi", "hello", "hey", "hiya", "pilot", "genesis", "pro", "free", "cost", "much", "price",
-        "pay", "paid", "money", "subscription"],
-      "/orbyt": ["page", "here", "site", "hi", "hello", "hey", "hiya", "pilot"],
+        "pay", "paid", "money", "subscription", "good", "morning"],
+      "/orbyt": ["page", "here", "site", "hi", "hello", "hey", "hiya", "yo", "good", "morning", "afternoon", "evening", "pilot"],
     },
   };
   // Words listed on purpose although another answer's label has them: "app"
   // ("I have an idea for an app", home and Genesis; "Can you build my app?"
   // on Orbyt, where "Help with my idea" doesn't list it); on Genesis "saved"
   // and "keep" are on "Show my projects" and "Help with my idea" both, so
-  // "Is my idea saved?" and "Where are my saved projects?" each find theirs.
-  const ideaMatch = path === "/orbyt" ? MATCH.idea.filter((w) => w !== "app") : MATCH.idea;
+  // "Is my idea saved?" and "Where are my saved projects?" each find theirs
+  // (1.29.0: "lose" and "lost" too, for "Will I lose my idea?").
+  // 1.29.0: on Orbyt, "Help with my idea" also has the ages a visitor types
+  // with "send" or "idea" ("I'm 11, can I send an idea?", "i am 10 can i send
+  // my idea"; the age topic answers) and "submit"; "game" is on "Who owns my
+  // idea?" there ("Can you make my game?"). On Genesis "start" and "begin"
+  // are on "Show my projects" (MATCH.projects).
+  const ideaMatch = path === "/orbyt"
+    ? MATCH.idea.filter((w) => !["app", "game", "start"].includes(w)).concat(["submit", "10", "11", "12", "13", "14", "15", "16", "17"])
+    : path === "/genesis" ? MATCH.idea.filter((w) => w !== "start" && w !== "begin").concat(["saved", "keep", "lose", "lost", "disappear", "gone"])
+      : MATCH.idea;
   // While Pitch Review is off, "Is it free?" and the like go to what happens
   // after sending, which says sending is free.
   const AFTER = review ? AFTER_SEND : `${AFTER_SEND} Sending is free.`;
@@ -491,7 +603,10 @@
       ["Help with today's spark", { answer: sparkAnswer, match: MATCH.spark }]],
     // At most three: while Pitch Review is on, its answer takes the third place.
     "/orbyt": [["Which form is for me?", { answer: FORM_CHOOSER, match: MATCH.form }],
-      ["What happens after I send?", { answer: AFTER, match: review ? MATCH.after : MATCH.after.concat(["free", "cost", "much", "price", "pay", "money"]) }],
+      // Without Pitch Review (1.29.0): "How long does it take?" too, and
+      // still 20 words at most (the core reads no more).
+      ["What happens after I send?", { answer: AFTER, match: review ? MATCH.after
+        : MATCH.after.filter((w) => w !== "back").concat(["free", "cost", "much", "price", "pay", "take", "fast"]) }],
       review ? ["What's a Pitch Review?", { answer: REVIEW, match: MATCH.review }]
         : ["Bring a Genesis idea", "How do I pitch a project from Genesis in Orbyt?"]],
     "/partners": [["How do partners earn?", "How do CyberLogix AI partners earn?"], ["What can partners see?", "What can a partner see in the partner portal?"],
@@ -528,10 +643,9 @@
   // to Genesis's start form on the main site), so "I have an idea for a
   // game" or "Give me an idea" typed with no key gets its own reply. The
   // answer ends with that same link.
-  const startPill = { icon: "spark", label: "Help with my idea", answer: own(START_IDEA),
-    match: path === "/genesis" ? ideaMatch.concat(["saved", "keep"]) : ideaMatch };
+  const startPill = { icon: "spark", label: "Help with my idea", answer: own(START_IDEA), match: ideaMatch };
   const secondPill = onOrbyt ? { icon: "chat", label: "Who owns my idea?", answer: own(OWN_IDEA), match: MATCH.own }
-    : { icon: "chat", label: "What is Orbyt?", answer: own(ORBYT_TEXT), match: MATCH.orbyt };
+    : { icon: "chat", label: "What is Orbyt?", answer: own(ORBYT_TEXT), match: path === "/" ? MATCH.orbyt.concat(MATCH.homeAge) : MATCH.orbyt };
   const appsPill = { icon: "bolt", label: "What apps are coming?", answer: own(appsAnswer), match: MATCH.apps };
   const keyPill = { icon: "key", label: "Add my AI key", action: "settings" };
   // "Explain this page" (1.28.0): with no key, on Home, Genesis and Orbyt,
@@ -547,6 +661,13 @@
   const pageChips = (CHIPS[path] || []).map(([label, what]) => (typeof what === "string" ? { label, prompt: what }
     : { label, ...what, ...(what.answer ? { answer: own(what.answer) } : {}) }));
   for (const item of [startPill, secondPill, aiExplain, appsPill, keyPill, ...pageChips]) LABELS.add(plainLabel(item.label));
+
+  // What the robot keeps clear of (the `avoid` getter below).
+  const AVOID = [".g-track", "#g-address", ".g-head .g-address", ".g-item-row", ".g-group-head", ".g-hidden-steps > summary",
+    ".g-add-form", ".g-moves", "#g-week", ".g-week .g-day", ".v-path-go", ".page .app-card", ".fact-projects",
+    ".v-how", ".v-h", ".v-kicker", ".v-catalog-head", "#v-apps-title", ".v-catalog-head .v-lede",
+    ".v-bundle", ".v-app-head", ".v-app-line"];
+  const AVOID_WIDE = [".v-paths-other", ".v-business"];
 
   window.Pilot.mount({
     appName: "MTRX Horizyn",
@@ -601,9 +722,19 @@
     // 1.28.0: on the home page the app cards (RankUp's is on a phone's first
     // screen) and the Projects tile; on Genesis each day of the spark week
     // with its letter; on Orbyt the three steps and the section headings.
-    avoid: [".g-track", "#g-address", ".g-head .g-address", ".g-item-row", ".g-group-head", ".g-hidden-steps > summary",
-      ".g-add-form", ".g-moves", "#g-week", ".g-week .g-day", ".v-path-go", ".page .app-card", ".fact-projects",
-      ".v-how", ".v-h", ".v-kicker", ".v-catalog-head"],
+    // 1.29.0: Orbyt's "Our apps" heading and the line under it (named, as
+    // well as their block), the Kitchen Safety Bundle card and each app's
+    // name and line in "Our apps" (it tucked over their edge); on a computer
+    // (wider than 720 px) also the "Other ways to talk to us" label and the
+    // Business enquiries card. On a phone those two span the screen, so the
+    // handle (shown while the robot is hidden) would find no free edge.
+    // Read on every placement, so it follows the window's width. (Genesis's
+    // week is narrower on a phone, genesis.css, so the hello wave in the
+    // corner stays clear of it.)
+    get avoid() {
+      const wide = typeof window.innerWidth === "number" && window.innerWidth > 720;
+      return AVOID.concat(wide ? AVOID_WIDE : []);
+    },
     screen,
     // A suggestion is an AI prompt (words), or an answer given at once (core 1.4.0).
     chips: () => pageChips,

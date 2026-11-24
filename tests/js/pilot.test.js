@@ -662,7 +662,8 @@ test("placement: smaller on phones, a gutter pages can reserve, and Genesis's ba
   const loader = fs.readFileSync(core("pilot.js"), "utf8");
   assert.ok(loader.includes("config.avoid") && loader.includes("config.yieldTo"));
   const mtrx = fs.readFileSync(site("pilot-mtrx.js"), "utf8");
-  assert.ok(mtrx.includes('avoid: [".g-track", "#g-address"'));
+  // Site 1.29.0: the list is AVOID, read through an `avoid` getter.
+  assert.ok(mtrx.includes('const AVOID = [".g-track", "#g-address"') && mtrx.includes("get avoid()"));
 });
 
 // ---------------------------------------------------------------- core 1.1.1: clear of the page wherever it scrolls

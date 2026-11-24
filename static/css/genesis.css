@@ -522,6 +522,7 @@
 .g-daily-answer::before { content: "✓ "; color: var(--launched); font-weight: 700; }
 .g-week { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; }
 .g-day { display: grid; justify-items: center; gap: 4px; width: 34px; }
+
 .g-day small { font-size: 11.5px; color: var(--faint); }
 .g-day-dot {
   width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line-strong); background: transparent;
@@ -630,7 +631,10 @@
   .g-how li { padding: 10px 12px; }
   .g-daily { padding: 18px 16px; }
   .g-daily-form .btn { flex: 1 1 100%; justify-content: center; }
-  .g-week { justify-content: space-between; gap: 4px; }
+  /* 1.29.0: the week ends 40 px short of the card's edge, so Pilot's hello
+     wave in the bottom corner, standing up, stays clear of today's circle
+     (not on the narrowest phones, which need every pixel: 360 px below). */
+  .g-week { justify-content: space-between; gap: 4px; padding-right: 40px; }
   .g-next { grid-template-columns: minmax(0, 1fr); }
   .g-next .btn { grid-column: 1; grid-row: auto; margin-top: 8px; justify-self: start; }
   .g-next > .g-next-actions { grid-column: 1; grid-row: auto; flex-direction: row; flex-wrap: wrap; margin-top: 8px; }
@@ -649,6 +653,7 @@
   .g-daily-eyebrow { letter-spacing: 0.12em; }
   .g-daily-eyebrow span { display: block; margin-top: 4px; }
   .g-day { width: 28px; }
+  .g-week { padding-right: 0; }
 }
 
 /* ---------- 1.17.0 ---------- */

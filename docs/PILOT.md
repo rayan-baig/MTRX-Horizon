@@ -224,6 +224,19 @@ whichever answer its `match` words reach, the reply fits the question. A few wor
 answers on purpose (`SHARED` in the test). No answer lists more than 20 `match` words, the most the
 core reads.
 
+**MTRX site 1.29.0.** Who writes the Pitch Review follows the question: "Is it AI?" gets "Yes" in AI mode
+(and "No, it isn't AI" in person mode); only a question about a person, a human or someone gets the
+person answer. The review's time and writer, and the price, no longer repeat the whole "What's a Pitch
+Review?" paragraph. More typed questions reach an answer: an age next to "send" or "idea" ("I'm 11, can
+I send an idea?": the ages 10 to 17 and "submit" are on Orbyt's "Help with my idea"), "How long does it
+take?", "Can you make my game?", "Is a human writing my review?" (Orbyt); "How do I start a project?"
+("start" and "begin" are on Genesis's "Show my projects", and the start topic answers) and "Will I lose
+my idea?" (Genesis); "Is my info private?", "How old do I have to be?", "Can kids use this?" (Orbyt's
+age rule, and what needs a grown-up), "yo" and "good morning" (Home). "Give me an idea" links to
+`/genesis#example/N`, which fills the form with the very example it named. The line "Here's what I can
+tell you without an AI key:" over a typed question's answer is the core's (`MATCH_LEAD`), on every such
+answer; once per chat would be a core change.
+
 ### Moving an app to core 1.4.3 (from 1.4.2)
 
 A small patch: typed questions, the row under an answer, the no-key reply, the phone's side gutter, a

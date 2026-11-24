@@ -568,7 +568,7 @@ def test_pilot_explains_the_page_with_no_key_and_answers_typed_questions(site, b
     page.on("request", lambda r: away.append(r.url) if not r.url.startswith(site) else None)
     for path, summary, asked, said in (
             ("/", "This is MTRX Horizyn's home page.", "Is my data safe?", "MTRX Horizyn keeps very little"),
-            ("/genesis", "This is Genesis.", "Give me an idea", "Try an example"),
+            ("/genesis", "This is Genesis.", "Give me an idea", "Try this example"),
             ("/orbyt", "This is Orbyt", "I'm 13, can I pitch?", "at 13 you can send a pitch yourself")):
         page.goto(f"{site}{path}", wait_until="networkidle")
         page.wait_for_selector(".pilot-launcher", state="attached", timeout=10000)
@@ -627,4 +627,111 @@ def test_orbyt_send_error_shows_whole_under_the_bar(site, browser):
             margin: getComputedStyle(document.querySelector('{form} [data-error]')).scrollMarginTop }}; }}""")
         assert at["top"] >= at["bar"] - 1 and at["bottom"] <= at["view"], (width, at)
         assert at["margin"] == f"{round(at['bar'])}px" or abs(float(at["margin"][:-2]) - at["bar"]) <= 1, (width, at)
+        context.close()
+
+
+def test_orbyt_send_error_stays_whole_under_the_bar_over_many_failed_sends(site, browser):
+    """1.29.0 (round-12 review): the error box is placed again once the fonts
+    are in and the page has drawn a frame (as "Sent." is). Over many failed
+    sends in a row (too many messages, a server error, no connection), each
+    time from wherever the visitor scrolled to, at 320x568 and 375x667, the
+    box is whole, just under the bar, and says the right thing."""
+    texts = {
+        "429": "You've sent a few messages already. Please wait a while before sending another.",
+        "500": "That didn't send. Please try again in a minute.",
+        "offline": "No connection. Check you're online and try again.",
+    }
+    for width, height in ((320, 568), (375, 667)):
+        context = browser.new_context(viewport={"width": width, "height": height}, is_mobile=True, has_touch=True)
+        page = context.new_page()
+        state = {"kind": "429"}
+
+        def answer(route):
+            kind = state["kind"]
+            if kind == "offline":
+                route.abort()
+            elif kind == "429":
+                route.fulfill(status=429, content_type="application/json", body='{"ok": false, "error": "' + texts["429"] + '"}')
+            else:
+                route.fulfill(status=500, content_type="text/plain", body="Internal Server Error")
+        page.route("**/api/vortex/send", answer)
+        page.goto(f"{site}/orbyt#pitch", wait_until="load")
+        form = 'form[data-kind="pitch"]'
+        page.fill(f'{form} input[name="name"]', "Ada")
+        page.fill(f'{form} input[name="email"]', "ada@example.com")
+        page.fill(f'{form} input[name="idea"]', "Nova")
+        page.fill(f'{form} input[name="pitch"]', "Homework reminders")
+        page.fill(f'{form} input[name="audience"]', "Students")
+        for i, kind in enumerate(["429", "500", "offline", "429", "offline", "500", "500", "429"]):
+            state["kind"] = kind
+            # From wherever the visitor is: the Send button, or the page's end.
+            if i % 2:
+                page.evaluate("() => scrollTo(0, document.documentElement.scrollHeight)")
+            page.evaluate(f"() => {{ document.querySelector('{form} [data-error]').textContent = ''; }}")
+            # A real tap (Playwright scrolls the button into view, smoothly
+            # on this page), or the button pressed where it is.
+            if i % 3 == 2:
+                page.click(f'{form} button[type="submit"]')
+            else:
+                page.eval_on_selector(f'{form} button[type="submit"]', "b => b.click()")
+            page.wait_for_function(f"t => document.querySelector('{form} [data-error]').textContent === t", arg=texts[kind])
+            # After the fonts and a frame (the second placing) and a moment more.
+            page.evaluate("() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))")
+            page.wait_for_timeout(150)
+            at = page.evaluate(f"""() => {{ const box = document.querySelector('{form} [data-error]').getBoundingClientRect();
+              const bar = document.querySelector('.topbar').getBoundingClientRect();
+              return {{ top: box.top, bottom: box.bottom, bar: bar.bottom, view: innerHeight }}; }}""")
+            assert at["top"] >= at["bar"] - 1 and at["bottom"] <= at["view"], (width, i, kind, at)
+            assert page.eval_on_selector(f"{form} [data-error]", "e => e.getAttribute('role')") == "alert"
+            assert page.evaluate("() => document.documentElement.scrollWidth") <= width
+        context.close()
+
+
+def test_genesis_example_link_fills_the_form_with_that_example(site, browser):
+    """1.29.0: "#example/N" fills the start form with Genesis's example N, and
+    Pilot's "Give me an idea" links to the very example it named (it used
+    to be "#example", which picked another one at random)."""
+    context = _phone(browser)
+    page = context.new_page()
+    page.goto(f"{site}/genesis#example/3", wait_until="load")
+    page.wait_for_selector("#g-new:not([hidden])")
+    want = page.evaluate("() => window.GenesisStore.EXAMPLES[3]")
+    assert page.input_value("#g-name") == want["name"]
+    assert page.input_value("#g-pitch") == want["pitch"]
+    # Plain "#example" still works.
+    page.goto(f"{site}/genesis", wait_until="load")
+    page.goto(f"{site}/genesis#example", wait_until="load")
+    page.wait_for_selector("#g-new:not([hidden])")
+    assert page.input_value("#g-name") in page.evaluate("() => window.GenesisStore.EXAMPLES.map((e) => e.name)")
+    # Pilot names an example; its link fills in that one.
+    page.goto(f"{site}/genesis", wait_until="networkidle")
+    page.wait_for_selector(".pilot-launcher", state="attached", timeout=10000)
+    page.evaluate("() => window.Pilot.open()")
+    page.wait_for_selector(".pilot-panel textarea")
+    page.fill(".pilot-panel textarea", "Give me an idea")
+    page.press(".pilot-panel textarea", "Enter")
+    page.wait_for_selector('.pilot-from-pilot a:has-text("Try this example")')
+    said = page.inner_text(".pilot-from-pilot .pilot-md")
+    named = next(e["name"] for e in page.evaluate("() => window.GenesisStore.EXAMPLES") if f"one to start from: {e['name']}" in said)
+    page.click('.pilot-from-pilot a:has-text("Try this example")')
+    page.wait_for_selector("#g-new:not([hidden])")
+    page.wait_for_function("n => document.querySelector('#g-name').value === n", arg=named)
+    context.close()
+
+
+def test_genesis_week_leaves_room_for_pilots_corner_on_a_phone(site, browser):
+    """1.29.0 (round-12 review): Pilot's hello wave in the bottom right corner
+    stood up over today's circle in the spark week (375x812, 390x844). On a
+    phone the week now ends 40 px short of the card's edge, all seven days
+    still in one row, the page no wider than the screen."""
+    for width, height in ((375, 812), (390, 844), (414, 896), (320, 568)):
+        context = browser.new_context(viewport={"width": width, "height": height}, is_mobile=True, has_touch=True)
+        page = context.new_page()
+        page.goto(f"{site}/genesis", wait_until="load")
+        page.wait_for_selector("#g-week .g-day")
+        days = page.eval_on_selector_all("#g-week .g-day-dot", "ds => ds.map(d => d.getBoundingClientRect().toJSON())")
+        assert len(days) == 7 and len({round(d["top"]) for d in days}) == 1, (width, days)
+        if width > 360:
+            assert days[-1]["right"] <= width - 70, (width, days[-1])
+        assert page.evaluate("() => document.documentElement.scrollWidth") <= width
         context.close()

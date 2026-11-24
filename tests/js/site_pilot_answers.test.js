@@ -259,7 +259,10 @@ test("genesis: how to start, is my idea saved, Genesis Pro, where my projects ar
     const text = m.answer({ label: q });
     const named = S.EXAMPLES.find((e) => text.includes(`**${e.name}**`));
     assert.ok(named, `${q}: ${text}`);
-    assert.match(text, /\[Try an example\]\(\/genesis#example\)/, q);
+    // 1.29.0: the link fills the form with that very example (#example/N).
+    const link = text.match(/\[Try this example\]\(\/genesis#example\/(\d+)\)/);
+    assert.ok(link, `${q}: ${text}`);
+    assert.equal(S.EXAMPLES[Number(link[1])].name, named.name, q);
   }
 });
 
@@ -268,9 +271,10 @@ test("Orbyt: the review's time and writer, age rules, \"Can you build my app?\" 
   for (const q of ["how long does the review take", "How long does a Pitch Review take?", "when will I get my review"]) {
     assert.match(ai.say(q), /^\*\*Usually within an hour\.\*\* It's promised within 5 days of paying/, q);
   }
-  for (const q of ["is the review written by a person", "Is the Pitch Review written by a real person?", "who writes the review"]) {
+  for (const q of ["is the review written by a person", "Is the Pitch Review written by a real person?"]) {
     assert.match(ai.say(q), /^\*\*No: a Pitch Review is written by an AI service\*\*.*a person at MTRX Horizyn writes it instead/s, q);
   }
+  assert.match(ai.say("who writes the review"), /^\*\*An AI service writes your Pitch Review\*\*/);
   const person = typed("/orbyt", { apps: APPS, review: "on", reviewPrice: "$19", reviewDays: "5", reviewMode: "person" });
   assert.match(person.say("is the review written by a person"), /^\*\*Yes: a real person at MTRX Horizyn writes your Pitch Review\*\*/);
   assert.match(person.say("how long does the review take"), /^\*\*Within 5 days of paying\.\*\*/);
@@ -372,7 +376,12 @@ test("Orbyt: its FAQ answers are found when typed (own, reply, build, person, pr
 // "Help with my idea" and "Show my projects" on Genesis ("Is my idea saved?",
 // "Where are my saved projects?"; "keep" too), and "pitch" on "Which form is for me?"
 // ("I'm 13, can I pitch?").
-const SHARED = { "/": ["app"], "/genesis": ["app", "saved", "keep"], "/orbyt": ["app", "pitch"] };
+// 1.29.0: "use" on home's "Which app fits me?" and "What's ready today?"
+// ("Can kids use this?", "What can I use today?"); "lose" and "lost" on
+// Genesis's "Help with my idea" too ("Will I lose my idea?"); "long" on
+// Orbyt's "What happens after I send?" and "What's a Pitch Review?" ("How
+// long does it take?", "How long until I get my review?").
+const SHARED = { "/": ["app", "use"], "/genesis": ["app", "saved", "keep", "lose", "lost"], "/orbyt": ["app", "pitch", "long"] };
 
 test("each page lists a `match` word on one of its answers only, never on another's label (but the few SHARED)", () => {
   const P = panel();
@@ -407,4 +416,139 @@ test("no answer lists more than 20 match words (the core reads no more)", () => 
     }
   }
   assert.ok(counted.length >= 15);
+});
+
+// ---------------------------------------------------------------- 1.29.0 (round 12)
+
+test("Orbyt: \"Is the review AI?\" gets \"Yes\" in AI mode; only a question about a person gets the person answer", () => {
+  const facts = { apps: APPS, review: "on", reviewPrice: "$19", reviewDays: "5" };
+  const ai = typed("/orbyt", { ...facts, reviewMode: "ai" });
+  for (const q of ["Is the review AI?", "is the review done by AI", "is the review written by AI", "is my review by a robot"]) {
+    const text = ai.say(q);
+    assert.match(text, /^\*\*Yes: a Pitch Review is written by an AI service\*\*/, q);
+    assert.doesNotMatch(text, /^\*\*No/, q);
+  }
+  for (const q of ["is a human writing my review", "Is the review written by a person?", "does someone write my review"]) {
+    assert.match(ai.say(q), /^\*\*No: a Pitch Review is written by an AI service\*\*/, q);
+  }
+  // In AI mode it still says what goes to the AI service, and who agrees.
+  assert.match(ai.say("is the review AI"), /the idea you sent \(not your name or email\) goes to the AI service/);
+  // Person mode: the other way round.
+  const person = typed("/orbyt", { ...facts, reviewMode: "person" });
+  for (const q of ["Is the review AI?", "is the review done by AI", "is my review by a robot"]) {
+    assert.match(person.say(q), /^\*\*No, it isn't AI: a real person at MTRX Horizyn writes your Pitch Review\*\*/, q);
+  }
+  for (const q of ["is a human writing my review", "Is the review written by a person?", "does someone write my review"]) {
+    assert.match(person.say(q), /^\*\*Yes: a real person at MTRX Horizyn writes your Pitch Review\*\*/, q);
+  }
+  assert.match(person.say("who writes the review"), /^\*\*A real person at MTRX Horizyn writes your Pitch Review\*\*/);
+  assert.doesNotMatch(person.say("is the review AI"), /AI service/);
+});
+
+test("Orbyt: an age next to send or idea, how long it takes, \"Can you make my game?\" and a human review, typed", () => {
+  const on = typed("/orbyt", { apps: APPS, early: "on", review: "on", reviewPrice: "$19", reviewDays: "5", reviewMode: "ai" });
+  for (const [q, age] of [["I'm 11, can I send an idea?", 11], ["i am 10 can i send my idea", 10], ["I am 11", 11], ["im 12 can i submit my idea", 12]]) {
+    assert.match(on.say(q), new RegExp(`^\\*\\*At ${age}, ask a parent or guardian to send your pitch for you\\.\\*\\*`), q);
+  }
+  assert.match(on.say("I'm 15 can I send my idea"), /^\*\*Yes: at 15 you can send a pitch yourself\.\*\*/);
+  // The old ones still work.
+  assert.match(on.say("im 13 can i pitch"), /^\*\*Yes: at 13 you can send a pitch yourself/);
+  assert.match(on.say("can a 12 year old pitch"), /^\*\*At 12, ask a parent/);
+  for (const q of ["how long does it take", "How long does it take?", "how fast"]) {
+    const text = on.say(q);
+    assert.match(text, /^\*\*Writing a pitch takes about 2 minutes\.\*\* A real person reads it and emails you back within 7 days/, q);
+    assert.match(text, /Pitch Review \(an optional \$19 extra\) usually comes within an hour/, q);
+  }
+  for (const q of ["how long until i get my review", "how fast is the review", "How long does a Pitch Review take?"]) {
+    assert.match(on.say(q), /^\*\*Usually within an hour\.\*\*/, q);
+  }
+  // A question about the reply keeps "What happens after I send?".
+  assert.equal(on.pick("how long until you reply"), "What happens after I send?");
+  assert.match(on.say("how long until you reply"), /^A real person reads your message/);
+  for (const q of ["can you make my game", "Can you make my game?"]) {
+    assert.match(on.say(q), /^\*\*We can't promise to build it, but you can pitch it\.\*\*/, q);
+  }
+  assert.match(on.say("I have an idea for a game"), /^Great, you can pitch it right here!.*\[Pitch an idea\]\(\/orbyt#pitch\)/s);
+  assert.match(on.say("how do I submit my idea"), /^\*\*Use Pitch an idea on this page:\*\*/);
+  assert.match(on.say("What happens after I send my idea"), /^A real person reads your message/);
+  assert.match(on.say("is a human writing my review"), /^\*\*No: a Pitch Review is written by an AI service\*\*/);
+  // Without Pitch Review: the time answer says nothing about one.
+  const off = typed("/orbyt", { apps: APPS, early: "on" });
+  assert.match(off.say("how long does it take"), /^\*\*Writing a pitch takes about 2 minutes\.\*\*/);
+  assert.doesNotMatch(off.say("how long does it take"), /Pitch Review/);
+  assert.match(off.say("I'm 11, can I send an idea?"), /^\*\*At 11, ask a parent/);
+  for (const q of ["Write me a poem about the sea", "Tell me a joke", "ok"]) assert.equal(on.pick(q), null, q);
+});
+
+test("Orbyt: a specific answer about the review no longer repeats the whole \"What's a Pitch Review?\" paragraph", () => {
+  const on = typed("/orbyt", { apps: APPS, review: "on", reviewPrice: "$19", reviewDays: "5", reviewMode: "ai" });
+  const whole = /A \*\*Pitch Review\*\* is an optional extra you can add after sending a pitch/;
+  for (const q of ["is the review AI", "who writes the review", "how long does the review take", "How much does it cost?", "how long does it take"]) {
+    const text = on.say(q);
+    assert.doesNotMatch(text, whole, q);
+    // "Pitching is free" at most once.
+    assert.ok((text.match(/[Pp]itching (itself )?is free/g) || []).length <= 1, `${q}: ${text}`);
+    assert.ok(text.length < 700, `${q}: ${text.length}`);
+  }
+  // The button itself still gives the whole paragraph.
+  const config = mount("/orbyt", { apps: APPS, review: "on", reviewPrice: "$19", reviewDays: "5", reviewMode: "ai" });
+  assert.match(chip(config, "What's a Pitch Review?").answer({ label: "What's a Pitch Review?" }), whole);
+});
+
+test("Genesis: \"How do I start a project?\" and \"Will I lose my idea?\", typed with no key", () => {
+  const projects = [{ id: "p-1", name: "Paw Board", stage: "Spark", done: "1 of 19 steps (5%)", next: "Say the problem it solves in one sentence" }];
+  const { pick, say } = typed("/genesis", { apps: APPS, pro: "on", proPrice: "$4.99" }, { mine: () => projects, nextOf: () => projects[0], spark: () => null });
+  for (const q of ["how do i start a project", "How do I start a new project?", "how do I start", "How do I begin?", "where do I start"]) {
+    assert.match(say(q), /^\*\*Genesis\*\* turns an idea into a plan.*\[Start my idea\]\(\/genesis#new\)/s, q);
+  }
+  for (const q of ["will i lose my idea", "Will I lose my ideas?", "is my idea lost", "did i lose my idea", "will my idea disappear", "will I lose my projects"]) {
+    assert.match(say(q), /^\*\*Your projects are saved in this browser\*\*/, q);
+  }
+  // The list itself is still the list.
+  for (const q of ["my projects", "projects?", "show my projects", "Where are my saved projects"]) assert.equal(pick(q), "Show my projects", q);
+  assert.match(say("my projects"), /^You have 1 project in this browser/);
+});
+
+test("Home: \"Is my info private?\", how old you have to be, \"Can kids use this?\" and more greetings, typed", () => {
+  const { pick, say } = typed("/", { apps: APPS, early: "on", pro: "on", proPrice: "$4.99", review: "on", reviewPrice: "$19", reviewDays: "5" });
+  for (const q of ["is my info private", "Is my information private?", "is my data safe", "do you track me", "is it safe"]) {
+    assert.match(say(q), /^\*\*Yes, MTRX Horizyn keeps very little:\*\*/, q);
+  }
+  for (const q of ["how old do i have to be", "How old do you need to be?", "is there an age limit", "can kids use this", "Can children use it?"]) {
+    const text = say(q);
+    assert.match(text, /^\*\*Anyone can use this site, at any age\.\*\*/, q);
+    // Orbyt's own rule, and what needs a grown-up.
+    assert.match(text, /\*\*Orbyt's rule:\*\* under 13, a parent or guardian sends a pitch or message for you; from 13 you can send it yourself\./, q);
+    assert.match(text, /\*\*For grown-ups \(18\+\):\*\* adding an AI key for me.*paying for Genesis Pro or a Pitch Review/, q);
+    assert.match(text, /\[see Orbyt\]\(\/orbyt#pitch\)/, q);
+  }
+  assert.match(say("I'm 12 can I use this"), /^\*\*At 12, you can plan your idea in Genesis and ask me questions\.\*\* To send a pitch in Orbyt, ask a parent or guardian/);
+  assert.match(say("im 15 can i use this"), /^\*\*At 15, you can use Genesis and send a pitch in Orbyt yourself\.\*\*/);
+  // Paid extras that are off are never named.
+  assert.doesNotMatch(typed("/", { apps: APPS, early: "on" }).say("how old do i have to be"), /Genesis Pro|Pitch Review/);
+  for (const q of ["good morning", "Good morning!", "yo", "good evening", "morning!"]) {
+    assert.match(say(q), /^Hi! I'm \*\*Pilot\*\*\./, q);
+  }
+  // "Which app is for my kids?" still picks the app.
+  assert.equal(pick("which app is for my kids"), "Which app fits me?");
+  assert.match(say("which app is for my kids"), /^Which sounds like you\?/);
+  assert.equal(pick("what can I use today"), "What's ready today?");
+  for (const q of ["Write me a poem about the sea", "Tell me a joke", "ok"]) assert.equal(pick(q), null, q);
+});
+
+test("Pilot keeps clear of Orbyt's \"Our apps\" heading and line, \"Other ways to talk to us\" and the Business enquiries card (1.29.0)", () => {
+  const window = { Pilot: { mount: (c) => { given = c; } }, location: { pathname: "/orbyt" }, innerWidth: 1024 };
+  let given = null;
+  vm.runInNewContext(source, { window, document: { getElementById: () => ({ dataset: { apps: APPS } }), title: "" } });
+  for (const sel of ["#v-apps-title", ".v-catalog-head .v-lede", ".v-paths-other", ".v-business", ".v-bundle", ".v-app-head", ".v-app-line",
+    "#g-week", ".g-week .g-day"]) {
+    assert.ok(given.avoid.includes(sel), sel);
+  }
+  // On a phone the two full-width ones are left out (the handle needs a free edge); read each time.
+  window.innerWidth = 375;
+  assert.ok(!given.avoid.includes(".v-business") && !given.avoid.includes(".v-paths-other"));
+  assert.ok(given.avoid.includes("#v-apps-title") && given.avoid.includes(".v-bundle"));
+  // Each one is on the page it is for.
+  const orbyt = fs.readFileSync(path.join(__dirname, "..", "..", "templates", "vortex.html"), "utf8");
+  for (const cls of ["v-apps-title", "v-lede", "v-paths-other", "v-business", "v-bundle", "v-app-head", "v-app-line"]) assert.ok(orbyt.includes(cls), cls);
 });

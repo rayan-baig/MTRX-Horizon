@@ -12,7 +12,7 @@
   const genesis = (box.dataset.genesis || "").replace(/\/+$/, "");
   const q = new URLSearchParams(window.location.hash.slice(1));
   const n = /^[a-f0-9]{16,64}$/.test(q.get("n") || "") ? q.get("n") : "";
-  const then = /^(?:p\/[A-Za-z0-9-]{1,64}|new|example|pro|spark)$/.test(q.get("then") || "") ? q.get("then") : "";
+  const then = /^(?:p\/[A-Za-z0-9-]{1,64}|new|example(?:\/\d{1,2})?|pro|spark)$/.test(q.get("then") || "") ? q.get("then") : "";
   const back = (what) => `${genesis}/#move=${what}&n=${n}${then ? `&then=${encodeURIComponent(then)}` : ""}`;
   if (!/^https?:\/\/[^\s/]+$/.test(genesis)) return;
   // Not sent by genesis.*: nothing to hand over.

@@ -167,7 +167,8 @@ def test_a_first_visit_never_starts_at_a_blank_page(client):
     assert '<ol class="g-path" id="g-path" hidden>' in hero
     assert 'id="g-example"' in page  # "Stuck? Fill in an example" on the form
     script = (ROOT / "static/js/genesis.js").read_text()
-    assert 'hash === "#example"' in script and "S.example(" in script
+    # "#example", or "#example/N" for one example by its number (1.29.0).
+    assert "exampleHash(hash)" in script and "S.example(" in script
 
 
 def test_todays_spark_is_kept_in_the_browser_and_never_nags(client):

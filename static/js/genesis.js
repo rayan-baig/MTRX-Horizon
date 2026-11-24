@@ -447,8 +447,10 @@
   }
 
   let exampleAt = -1;
-  function nextExample() {
-    exampleAt = exampleAt < 0 ? S.example().index : exampleAt + 1;
+  // at: one example by its number (#example/N, 1.29.0: Pilot's "Give me an
+  // idea" names one, and its link fills the form with that very one).
+  function nextExample(at) {
+    exampleAt = Number.isInteger(at) ? at : exampleAt < 0 ? S.example().index : exampleAt + 1;
     const ex = S.example(exampleAt);
     return { ...ex, note: "An example to start from. Change any of it to make it yours." };
   }
@@ -1370,11 +1372,18 @@
 
   // ---------------------------------------------------------------- which view
 
+  // "#example" (the next example) or "#example/N" (that one): {at}, or null.
+  function exampleHash(hash) {
+    const m = String(hash || "").match(/^#example(?:\/(\d{1,2}))?$/);
+    return m ? { at: m[1] === undefined ? undefined : Number(m[1]) } : null;
+  }
+
   function route() {
     flushNotes();
     const hash = window.location.hash;
     const match = hash.match(/^#p\/([A-Za-z0-9-]{1,64})$/);
-    const view = hash === "#new" || hash === "#example" ? "new" : match ? "project" : "list";
+    const example = exampleHash(hash);
+    const view = hash === "#new" || example ? "new" : match ? "project" : "list";
     let project = null;
     if (view === "project") {
       // Another tab may have changed things.
@@ -1387,7 +1396,7 @@
     $("g-detail").hidden = view !== "project";
     if (view === "list") { current = null; projects = store.usable ? store.load() : projects; drawList(); }
     else if (view === "new") {
-      showForm(hash === "#example" ? nextExample() : prefill);
+      showForm(example ? nextExample(example.at) : prefill);
       prefill = null;
     }
     else drawProject(project);
@@ -1453,7 +1462,7 @@
   window.GenesisBridge = {
     screen() {
       const hash = window.location.hash;
-      if (hash === "#new" || hash === "#example") return { view: "the form to start a new project" };
+      if (hash === "#new" || exampleHash(hash)) return { view: "the form to start a new project" };
       if (current && !$("g-detail").hidden) return { view: "one project", project: current.name };
       return { view: "the list of projects", count: projects.length };
     },
@@ -1534,7 +1543,7 @@
     const from = $("genesis").dataset.move || "";
     const MOVED_KEY = "mtrx-genesis-moved";
     const ASK_KEY = "mtrx-genesis-move-ask";
-    const THEN = /^(?:p\/[A-Za-z0-9-]{1,64}|new|example|pro|spark)$/;
+    const THEN = /^(?:p\/[A-Za-z0-9-]{1,64}|new|example(?:\/\d{1,2})?|pro|spark)$/;
     let local = null;
     let tab = null;
     try { local = window.localStorage; } catch (_) { local = null; }
