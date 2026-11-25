@@ -140,7 +140,11 @@ def test_every_link_to_genesis_and_orbyt_uses_their_own_address(moved):
     partners = moved["main"].get("/partners").text
     assert f'href="{ORBYT}/#partner' in partners
     home = moved["main"].get("/").text
-    assert f'<a class="ready-tile ready-genesis" href="{GENESIS}/">' in home
+    # 1.30.0: the tile opens Genesis's simple page on the main site first,
+    # and that page's "Open Genesis" uses Genesis's own address.
+    assert '<a class="ready-tile ready-genesis" href="/apps/genesis">' in home
+    intro = moved["main"].get("/apps/genesis").text
+    assert f'class="btn btn-solid intro-open" href="{GENESIS}/"' in intro
 
 
 def test_on_an_apps_address_main_site_links_are_whole_addresses(moved):

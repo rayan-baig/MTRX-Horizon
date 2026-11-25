@@ -1088,7 +1088,7 @@ def test_on_a_phone_genesis_and_orbyt_are_on_the_page_and_the_menu_fits(client):
     page = client.get("/").text
     assert 'class="more-places"' not in page and 'class="place ' not in page
     tiles = page.split('<ul class="facts" aria-label="Where to go next">', 1)[1].split("</ul>", 1)[0]
-    assert tiles.count('href="/genesis"') == 1 and tiles.count('href="/orbyt"') == 1
+    assert tiles.count('href="/apps/genesis"') == 1 and tiles.count('href="/apps/orbyt"') == 1
     # Every tile is one link, the whole tile: nothing in the strip is just a figure.
     assert tiles.count("<li>") == tiles.count('<a class="fact ')
     main = page.split('<main id="top">', 1)[1].split("</main>", 1)[0]
@@ -1101,11 +1101,12 @@ def test_on_a_phone_genesis_and_orbyt_are_on_the_page_and_the_menu_fits(client):
     # 1.25.0: and "Ready today" under the headline, which a phone shows in
     # place of that button and the tile (still once each on any screen).
     # 1.28.0: the main button is "Start my idea (free)", to Genesis's start form.
-    assert hero.count('href="/genesis"') - strip.count('href="/genesis"') == 1
+    # 1.30.0: the tile opens Genesis's simple page first (/apps/genesis).
+    assert hero.count('href="/genesis"') - strip.count('href="/genesis"') == 0
     assert hero.count('<a class="btn btn-primary btn-start" href="/genesis#new">Start my idea (free)') == 1
-    assert hero.count('<a class="ready-tile ready-genesis" href="/genesis">') == 1
+    assert hero.count('<a class="ready-tile ready-genesis" href="/apps/genesis">') == 1
     news = main.split('id="news"', 1)[1]
-    assert main.count('href="/genesis"') - news.count('href="/genesis"') - strip.count('href="/genesis"') == 2
+    assert main.count('href="/apps/genesis"') == 2
     css = Path("static/css/site.css").read_text(encoding="utf-8")
     phone = css.split("@media (max-width: 720px) {\n  /* A phone may scroll", 1)[1].split("\n}\n", 1)[0]
     assert ".page .facts { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr));" in phone
@@ -1408,8 +1409,8 @@ def test_a_phones_first_screen_leads_with_what_is_ready_today(client):
     hero = page.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
     ready = hero.split('<div class="ready-today"', 1)[1].split("</div>", 1)[0]
     assert hero.index('class="ready-today"') < hero.index('class="lede"')
-    assert '<a class="ready-tile ready-genesis" href="/genesis">' in ready
-    assert '<a class="ready-tile ready-orbyt" href="/orbyt">' in ready
+    assert '<a class="ready-tile ready-genesis" href="/apps/genesis">' in ready
+    assert '<a class="ready-tile ready-orbyt" href="/apps/orbyt">' in ready
     apps = page.split('<section id="apps"', 1)[1].split("</article>", 1)[0]
     assert '<p class="apps-k">In development</p>' in apps
     rules = Path("static/css/site.css").read_text(encoding="utf-8").split("/* ---------- 1.25.0:", 1)[1]
