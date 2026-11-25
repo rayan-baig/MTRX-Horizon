@@ -1,0 +1,6 @@
+{%- macro app_icon(a, size=64) -%}
+{%- if a.icon %}<img src="{{ a.icon }}" alt="" width="{{ size }}" height="{{ size }}">
+{%- elif a.key == 'genesis' %}<svg class="ico-svg" viewBox="0 0 24 24" width="{{ size }}" height="{{ size }}" aria-hidden="true"><path d="M12 2.5l2.2 6.6 6.8 2.4-6.8 2.4L12 20.5l-2.2-6.6L3 11.5l6.8-2.4Z"/></svg>
+{%- else %}<svg class="ico-svg" viewBox="0 0 24 24" width="{{ size }}" height="{{ size }}" aria-hidden="true"><circle cx="12" cy="12" r="4"/><ellipse class="ico-ring" cx="12" cy="12" rx="10" ry="4.2"/></svg>
+{%- endif -%}
+{%- endmacro -%}

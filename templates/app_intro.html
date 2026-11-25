@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+<link rel="stylesheet" href="{{ asset('css/apps.css') }}">
+<title>{{ item.name }} · MTRX Horizyn</title>
+<meta name="description" content="{{ item.full }}: {{ item.one }}">
+<link rel="canonical" href="{{ base }}/apps/{{ key }}">
+</head>
+<body class="legal-page apps-page">
+{% include "_apps_top.html" %}
+{% from "_app_icon.html" import app_icon %}
+{#- The very simple page: one sentence, three steps, one picture, two buttons. -#}
+<main class="intro c-{{ item.color }}{% if item.kind == 'tool' %} is-side{% endif %}">
+  {% if item.kind == 'tool' %}<div class="intro-card"><span class="side-badge">Free tool on this site</span>{% endif %}
+  <div class="intro-ico">{{ app_icon(dict(item, key=key), 72) }}</div>
+  <h1 class="intro-name">{{ item.name }}</h1>
+  <p class="intro-one">{{ item.one }}</p>
+  <p class="intro-who">{{ item.who }}</p>
+
+  <ol class="intro-steps" aria-label="How it works">
+    {% for emoji, text in item.steps %}
+    <li><span class="intro-emoji" aria-hidden="true">{{ emoji }}</span><span class="intro-n">{{ loop.index }}</span> {{ text }}</li>
+    {% endfor %}
+  </ol>
+
+  {% if item.shots %}
+  <figure class="intro-shot"><img src="{{ item.shots[0] }}" alt="A screen from {{ item.full }}, with pretend data" width="280" height="467" loading="lazy" decoding="async"><figcaption>Pretend data</figcaption></figure>
+  {% endif %}
+
+  {% if item.kind == 'tool' %}
+  {#- A side show works for real right here, so the real thing comes first. -#}
+  <div class="intro-acts">
+    <a class="btn btn-solid intro-open" href="{{ open_url }}">{{ open_label }} <span aria-hidden="true">→</span></a>
+    <a class="btn btn-outline intro-demo" href="{{ site_url('/apps/' ~ key ~ '/demo') }}">Quick look first</a>
+  </div>
+  </div>
+  {% else %}
+  <div class="intro-acts">
+    <a class="btn btn-solid intro-demo" href="{{ site_url('/apps/' ~ key ~ '/demo') }}">Try the demo <span aria-hidden="true">→</span></a>
+    {% if open_url %}<a class="btn btn-outline" href="{{ open_url }}"{% if open_url.startswith('http') %} rel="noopener"{% endif %}>{{ open_label }}</a>
+    {% else %}<span class="btn btn-outline is-soon" aria-disabled="true">{{ open_label }}</span>{% endif %}
+  </div>
+  {% endif %}
+  <p class="intro-back"><a href="{{ site_url('/apps') }}">← All apps</a></p>
+</main>
+<footer class="footer">
+  <span class="foot-brand">MTRX HORIZYN</span>
+  <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
+  {% include "_foot_links.html" %}
+</footer>
+{% include "_pilot.html" %}
+</body>
+</html>

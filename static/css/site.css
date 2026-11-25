@@ -1300,3 +1300,7 @@ body:has(.calm-switch:checked) .sky::after { animation: none !important; }
 @media (max-width: 360px) {
   .learn .learn-head .eyebrow { letter-spacing: 0.14em; }
 }
+
+/* 1.30.0: an app card's name opens its simple page (/apps/<app>). */
+.app-head h2 .app-title { color: inherit; text-decoration: none; }
+.app-head h2 .app-title:hover, .app-head h2 .app-title:focus-visible { text-decoration: underline; text-underline-offset: 4px; }

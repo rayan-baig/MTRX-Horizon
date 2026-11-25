@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+<link rel="stylesheet" href="{{ asset('css/apps.css') }}">
+<title>{{ item.name }} {% if item.kind == 'tool' %}quick look{% else %}demo{% endif %} · MTRX Horizyn</title>
+<meta name="description" content="Try {{ item.full }} with pretend data: {{ item.one }}">
+<link rel="canonical" href="{{ base }}/apps/{{ key }}/demo">
+</head>
+<body class="legal-page apps-page">
+{% include "_apps_top.html" %}
+{% from "_app_icon.html" import app_icon %}
+<main class="demo-wrap c-{{ item.color }}">
+  <p class="demo-crumb"><a href="{{ site_url('/apps/' ~ key) }}">← {{ item.name }}</a></p>
+  <div class="demo-head">
+    <span class="demo-ico">{{ app_icon(dict(item, key=key), 44) }}</span>
+    <div>
+      <h1 class="demo-title">{% if item.kind == 'tool' %}{{ item.name }}: a quick look{% else %}{{ item.name }} demo{% endif %}</h1>
+      <p class="demo-note">Pretend data. Nothing you do here is saved or sent.</p>
+    </div>
+  </div>
+
+  {#- The hands-on part (static/js/app-demo.js). Without JavaScript, the
+      steps in words. -#}
+  <section class="demo-stage" id="demo" data-app="{{ key }}" data-genesis="{{ app_url('genesis') }}" data-orbyt="{{ app_url('orbyt') }}" aria-live="polite">
+    <ol class="demo-fallback">
+      {% for emoji, text in item.steps %}<li><span aria-hidden="true">{{ emoji }}</span> {{ text }}</li>{% endfor %}
+    </ol>
+  </section>
+
+  {% if item.shots %}
+  <section class="demo-shots" aria-label="Real screens from {{ item.full }}">
+    <h2 class="demo-h2">Real screens (pretend data)</h2>
+    <div class="demo-shot-row">
+      {% for s in item.shots %}<img src="{{ s }}" alt="A real screen from {{ item.full }}, with pretend data" width="240" height="400" loading="lazy" decoding="async">{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="intro-acts">
+    {% if open_url %}<a class="btn btn-solid" href="{{ open_url }}"{% if open_url.startswith('http') %} rel="noopener"{% endif %}>{{ open_label }} <span aria-hidden="true">→</span></a>
+    {% else %}<span class="btn btn-solid is-soon" aria-disabled="true">{{ open_label }}</span>{% endif %}
+    <a class="btn btn-outline" href="{{ site_url('/apps') }}">Try another app</a>
+  </div>
+</main>
+<footer class="footer">
+  <span class="foot-brand">MTRX HORIZYN</span>
+  <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
+  {% include "_foot_links.html" %}
+</footer>
+<script src="{{ asset('js/app-demo.js') }}" defer></script>
+{% include "_pilot.html" %}
+</body>
+</html>

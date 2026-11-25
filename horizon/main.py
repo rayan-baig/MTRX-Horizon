@@ -26,7 +26,7 @@ from fastapi.templating import Jinja2Templates
 
 from jinja2 import pass_context
 
-from . import (catalog, config, costs, creators, db, early_access, errors, genesis_ai, genesis_pro, growth,
+from . import (app_pages, catalog, config, costs, creators, db, early_access, errors, genesis_ai, genesis_pro, growth,
                health, hosts, lock, news, numbers, offers, orbyt_review, ready, stats, upkeep, vortex)
 
 DEVICE_COOKIE = "mh_d"
@@ -683,6 +683,49 @@ def genesis_move(request: Request):
 # (vortex.py). It keeps what the visitor chooses to send, for the owner to
 # reply to, and nothing else. Its app list is the released apps in the
 # catalog, read on every visit, so an app shows the moment it is released.
+# 1.30.0: each app's simple page (what it does, three steps, one picture),
+# then its pretend demo. The home page's app cards open the simple page first.
+MAC_RELEASES = "https://github.com/rayan-baig/MTRX-Horizon/releases/latest"
+
+
+def _app_page(request: Request, key: str, template: str) -> HTMLResponse:
+    item = app_pages.get(key)
+    if item is None:
+        return not_found(request)
+    urls = catalog.for_home()["urls"]
+    if key in ("genesis", "orbyt"):
+        open_url, open_label = app_url(key), f"Open {item['name']}"
+    elif key == "pilot":
+        open_url, open_label = MAC_RELEASES, "Get Pilot for Mac"
+    elif urls.get(key):
+        open_url, open_label = urls[key], f"Open {item['name']}"
+    elif early_access.offer():
+        open_url, open_label = f"/#early-access-{key}", "Get early access"
+    else:
+        open_url, open_label = "", "In development"
+    return templates.TemplateResponse(request, template, {
+        "key": key, "item": item, "apps": app_pages.listing(),
+        "open_url": open_url, "open_label": open_label,
+        "base": base_url(request),
+    })
+
+
+@app.api_route("/apps", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def apps_index(request: Request):
+    return templates.TemplateResponse(request, "apps.html", {
+        "apps": app_pages.listing(), "base": base_url(request)})
+
+
+@app.api_route("/apps/{key}", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def app_intro(request: Request, key: str):
+    return _app_page(request, key, "app_intro.html")
+
+
+@app.api_route("/apps/{key}/demo", methods=["GET", "HEAD"], response_class=HTMLResponse)
+def app_demo(request: Request, key: str):
+    return _app_page(request, key, "app_demo.html")
+
+
 @app.api_route("/orbyt", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def vortex_page(request: Request):
     apps = [catalog.public(a) for a in catalog.released()]

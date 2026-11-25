@@ -4,6 +4,22 @@ The newest version is at the top. The number in `VERSION` is shown at the
 bottom of the home page and the console, and by `/healthz`, so you can tell
 which version is live.
 
+## 1.30.0 (25 November 2026)
+
+- **Every app has a very simple page, then a hands-on demo.** Clicking an app on the home page
+  (its name, "What it does", or the Genesis and Orbyt tiles) now opens a short page first: what it
+  does in one sentence, three steps, one picture and two buttons. From there, "Try the demo" opens
+  a pretend version you can tap through, with pretend data and nothing saved or sent:
+  - **RankUp:** tap Done on a chore, accept it as the grown-up, and watch the coins and level go up.
+  - **CyberLogix:** leave a fridge door open, get the text, say you're on it, and record the food.
+  - **OmniArmor:** mark red and amber checks as done until everything is green.
+  - **Genesis:** write an idea, get a plan and tick a step, then open the real Genesis.
+  - **Orbyt:** pick a path and write a note (not sent), then open the real Orbyt.
+  - **Pilot:** tap a question and get an answer straight away.
+- **All apps in one place** at /apps (the home page's "Apps" link). Genesis and Orbyt are free
+  tools on this site, so they have their own lighter "side show" look, and their first button opens
+  the real thing.
+
 ## 1.29.0 (24 November 2026)
 
 Home, Genesis and Orbyt round-12 polish.

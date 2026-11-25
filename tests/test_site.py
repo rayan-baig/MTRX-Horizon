@@ -1390,7 +1390,8 @@ def test_tap_to_see_opens_the_screens_and_learn_more_stays_the_card(client):
     page = client.get("/").text
     for key, full in (("rankup", "RankUp"), ("cyberlogix", "CyberLogix AI"), ("omniarmor", "OmniArmor.ai")):
         card = page.split(f'data-app="{key}"', 1)[1].split("</article>", 1)[0]
-        assert f'href="#learn-{key}" aria-label="Learn more about {full}"' in card
+        # 1.30.0: the card's own button opens the app's simple page first.
+        assert f'href="/apps/{key}" aria-label="What {full} does"' in card
         viewer = page.split(f'id="shot-{key}"', 1)[1].split("</section>", 1)[0]
         assert viewer.count(f'src="/static/img/{key}-screen-') == 2
         assert f'href="#learn-{key}" aria-label="Learn more about {full}"' in viewer

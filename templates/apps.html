@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+<link rel="stylesheet" href="{{ asset('css/apps.css') }}">
+<title>All apps · MTRX Horizyn</title>
+<meta name="description" content="Every MTRX Horizyn app in one place: what each one does, and a hands-on demo with pretend data.">
+<link rel="canonical" href="{{ base }}/apps">
+</head>
+<body class="legal-page apps-page">
+{% set key = none %}
+{% include "_apps_top.html" %}
+{% from "_app_icon.html" import app_icon %}
+<main class="apps-wrap">
+  <h1 class="apps-title">Try every app</h1>
+  <p class="apps-sub">Tap one to see what it does. Each has a hands-on demo with pretend data.</p>
+  <h2 class="apps-h2">The apps</h2>
+  <ul class="apps-grid">
+    {% for a in apps if a.kind != 'tool' %}
+    <li><a class="apps-tile c-{{ a.color }}" href="{{ site_url('/apps/' ~ a.key) }}">
+      <span class="apps-ico">{{ app_icon(a, 48) }}</span>
+      <b>{{ a.name }}</b>
+      <span>{{ a.one }}</span>
+      <i class="apps-go" aria-hidden="true">→</i>
+    </a></li>
+    {% endfor %}
+  </ul>
+  {#- Genesis and Orbyt are free tools on this site, not apps: their own look. -#}
+  <h2 class="apps-h2">Side shows <span class="side-badge c-gold">Free tools on this site</span></h2>
+  <ul class="side-grid">
+    {% for a in apps if a.kind == 'tool' %}
+    <li><a class="side-tile c-{{ a.color }}" href="{{ site_url('/apps/' ~ a.key) }}">
+      {{ app_icon(a, 36) }}
+      <span><b>{{ a.name }}</b><span>{{ a.one }}</span></span>
+    </a></li>
+    {% endfor %}
+  </ul>
+</main>
+<footer class="footer">
+  <span class="foot-brand">MTRX HORIZYN</span>
+  <span class="foot-copy">© 2026 MTRX HORIZYN. All rights reserved.</span>
+  {% include "_foot_links.html" %}
+</footer>
+{% include "_pilot.html" %}
+</body>
+</html>
